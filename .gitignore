@@ -1,5 +1,42 @@
+# Build output
 bin/
 obj/
-/packages/
-riderModule.iml
-/_ReSharper.Caches/
+artifacts/
+TestResults/
+*.nupkg
+*.snupkg
+
+# VS / Rider / JetBrains
+.vs/
+.idea/
+*.sln.iml
+_ReSharper.*
+*.DotSettings.user
+
+# User-specific
+*.user
+*.rsuser
+*.suo
+*.userprefs
+
+# Logs, caches
+*.log
+*.svclog
+*.Cache/
+*.opendb
+*.VC.db
+
+# Coverage/profiling
+*.coverage
+*.coveragexml
+*.dotCover
+*.iTrace
+*.trace
+
+# Publish/AOT drops
+publish/
+dist/
+
+# OS cruft
+.DS_Store
+Thumbs.db
