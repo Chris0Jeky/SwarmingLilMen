@@ -28,29 +28,29 @@ public sealed class World
 
     // ===== Agent Data (SoA) =====
     // Position
-    public float[] X { get; private set; }
-    public float[] Y { get; private set; }
+    public float[] X { get; private set; } = null!;
+    public float[] Y { get; private set; } = null!;
 
     // Velocity
-    public float[] Vx { get; private set; }
-    public float[] Vy { get; private set; }
+    public float[] Vx { get; private set; } = null!;
+    public float[] Vy { get; private set; } = null!;
 
     // Forces (scratch buffers for systems)
-    public float[] Fx { get; private set; }
-    public float[] Fy { get; private set; }
+    public float[] Fx { get; private set; } = null!;
+    public float[] Fy { get; private set; } = null!;
 
     // Resources
-    public float[] Energy { get; private set; }
-    public float[] Health { get; private set; }
-    public float[] Age { get; private set; } // In seconds
+    public float[] Energy { get; private set; } = null!;
+    public float[] Health { get; private set; } = null!;
+    public float[] Age { get; private set; } = null!; // In seconds
 
     // State
-    public byte[] Group { get; private set; }
-    public AgentState[] State { get; private set; }
-    public Genome[] Genomes { get; private set; }
+    public byte[] Group { get; private set; } = null!;
+    public AgentState[] State { get; private set; } = null!;
+    public Genome[] Genomes { get; private set; } = null!;
 
     // Combat timers
-    public float[] LastAttackTime { get; private set; }
+    public float[] LastAttackTime { get; private set; } = null!;
 
     // Free-list for efficient recycling (to be implemented)
     // private int _freeListHead = -1;
