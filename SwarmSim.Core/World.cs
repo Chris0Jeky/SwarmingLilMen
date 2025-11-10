@@ -1,3 +1,5 @@
+using SwarmSim.Core.Spatial;
+using SwarmSim.Core.Systems;
 using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core;
@@ -18,6 +20,10 @@ public sealed class World
     // ===== Configuration =====
     public SimConfig Config { get; private set; }
     public Rng Rng { get; private set; }
+
+    // ===== Spatial Partitioning & Systems =====
+    public UniformGrid Grid { get; private set; } = null!;
+    private readonly List<ISimSystem> _systems = new();
 
     // ===== Population Tracking =====
     public int Capacity { get; private set; }
@@ -96,6 +102,20 @@ public sealed class World
         State = new AgentState[capacity];
         Genomes = new Genome[capacity];
         LastAttackTime = new float[capacity];
+
+        // Initialize spatial grid
+        // Cell size = SenseRadius for optimal neighbor queries
+        Grid = new UniformGrid(
+            cellSize: Config.SenseRadius,
+            worldWidth: Config.WorldWidth,
+            worldHeight: Config.WorldHeight,
+            capacity: capacity);
+
+        // Initialize systems (Phase 1: RandomWalk + Integrate only)
+        // Later phases will add more systems in the proper order
+        _systems.Clear();
+        _systems.Add(new RandomWalkSystem(forceStrength: 100f));
+        _systems.Add(new IntegrateSystem());
     }
 
     /// <summary>
@@ -249,21 +269,27 @@ public sealed class World
     {
         float dt = Config.FixedDeltaTime;
 
+        // Rebuild spatial grid (O(n) operation)
+        Grid.Rebuild(X, Y, Count);
+
         // Clear force accumulators
         ClearForces();
 
-        // TODO: Run systems in order
+        // Run all systems in order
+        // Phase 1: RandomWalk + Integrate
+        // Later phases will expand this pipeline:
         // 1. SenseSystem
-        // 2. BehaviorSystem
+        // 2. BehaviorSystem (replaces RandomWalk)
         // 3. CombatSystem
         // 4. ForageSystem
         // 5. ReproductionSystem
         // 6. MetabolismSystem
         // 7. IntegrateSystem
         // 8. LifecycleSystem
-
-        // For now, just do basic integration with random forces
-        BasicIntegration(dt);
+        foreach (var system in _systems)
+        {
+            system.Run(this, dt);
+        }
 
         // Update time
         TickCount++;
