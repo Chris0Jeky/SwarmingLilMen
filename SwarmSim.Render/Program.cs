@@ -325,23 +325,29 @@ internal static class Program
         DrawText($"  Cohesion:   {world.Config.CohesionWeight:F1}", padding, y, 14, Color.Gray);
         y += lineHeight - 3;
         DrawText($"  Sense Radius: {world.Config.SenseRadius:F0}px", padding, y, 14, Color.Gray);
-        y += lineHeight;
+        y += lineHeight + 5;
 
-        DrawText($"Avg Speed: {stats.AverageSpeed:F1}", padding, y, 18, Color.SkyBlue);
-        y += lineHeight + 10;
+        // Visualization options
+        DrawText($"Visualization:", padding, y, 16, Color.Yellow);
+        y += lineHeight;
+        DrawText($"  Velocity: {(_showVelocityVectors ? "ON" : "OFF")} (V)", padding, y, 14,
+            _showVelocityVectors ? Color.Green : Color.Gray);
+        y += lineHeight - 3;
+        DrawText($"  Sense Radius: {(_showSenseRadius ? "ON" : "OFF")} (S)", padding, y, 14,
+            _showSenseRadius ? Color.Green : Color.Gray);
+        y += lineHeight - 3;
+        DrawText($"  Neighbors: {(_showNeighborConnections ? "ON" : "OFF")} (N)", padding, y, 14,
+            _showNeighborConnections ? Color.Green : Color.Gray);
+        y += lineHeight + 5;
 
         // Controls
         DrawText("Controls:", padding, y, 16, Color.Yellow);
         y += lineHeight;
         DrawText("  Left Click: Spawn agents", padding, y, 14, Color.LightGray);
-        y += lineHeight - 2;
-        DrawText("  Right Click: Spawn group 2", padding, y, 14, Color.LightGray);
-        y += lineHeight - 2;
+        y += lineHeight - 3;
         DrawText("  Space: Spawn 100 random", padding, y, 14, Color.LightGray);
-        y += lineHeight - 2;
-        DrawText("  R: Reset world", padding, y, 14, Color.LightGray);
-        y += lineHeight - 2;
-        DrawText("  ESC: Quit", padding, y, 14, Color.LightGray);
+        y += lineHeight - 3;
+        DrawText("  R: Reset  |  ESC: Quit", padding, y, 14, Color.LightGray);
     }
 
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
