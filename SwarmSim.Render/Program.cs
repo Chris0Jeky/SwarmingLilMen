@@ -61,15 +61,15 @@ internal static class Program
             FixedDeltaTime = 1f / 60f,  // 60 Hz simulation to match render
 
             // Physics tuned for visible, dynamic movement
-            MaxSpeed = 300f,             // Fast movement
-            Friction = 0.995f,           // Much less friction (was killing velocity too fast)
+            MaxSpeed = 200f,             // Reduced from 300 for more controlled movement
+            Friction = 0.98f,            // Increased friction to dampen oscillations
 
-            // Boids settings - Strong forces (dt is now 1/60)
-            SenseRadius = 120f,          // Larger interaction range
-            SeparationRadius = 30f,      // Slightly increased
-            SeparationWeight = 150.0f,   // 50x increase from original
-            AlignmentWeight = 100.0f,    // 50x increase
-            CohesionWeight = 75.0f,      // 50x increase
+            // Boids settings - Rebalanced to prevent static equilibrium
+            SenseRadius = 100f,          // Reduced from 120 (fewer neighbors = less clustering)
+            SeparationRadius = 40f,      // INCREASED from 30 (push apart more)
+            SeparationWeight = 250.0f,   // INCREASED - dominant force
+            AlignmentWeight = 80.0f,     // Reduced - less "locking" to group velocity
+            CohesionWeight = 30.0f,      // MUCH REDUCED - less attraction (prevents tight packing)
 
             // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
@@ -126,7 +126,7 @@ internal static class Program
         for (int i = 0; i < world.Count; i++)
         {
             (float vx, float vy) = rng.NextUnitVector();
-            float speed = rng.NextFloat(100f, 200f);  // INCREASED from 50-100 to 100-200
+            float speed = rng.NextFloat(50f, 150f);  // Moderate initial speed
             world.Vx[i] = vx * speed;
             world.Vy[i] = vy * speed;
         }
@@ -371,5 +371,108 @@ internal static class Program
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
     {
         Raylib.DrawText(text, x, y, fontSize, color);
+    }
+
+    private static void PrintDiagnostics(World world, SimConfig config)
+    {
+        var stats = world.GetStats();
+
+        // Compute aggregate statistics
+        float minSpeed = float.MaxValue;
+        float maxSpeed = 0f;
+        float minForce = float.MaxValue;
+        float maxForce = 0f;
+        int totalNeighbors = 0;
+        int agentsWithFewNeighbors = 0; // < 5 neighbors
+        int agentsWithManyNeighbors = 0; // > 30 neighbors
+
+        for (int i = 0; i < world.Count; i++)
+        {
+            if (world.State[i].HasFlag(AgentState.Dead)) continue;
+
+            float speed = MathF.Sqrt(world.Vx[i] * world.Vx[i] + world.Vy[i] * world.Vy[i]);
+            float force = MathF.Sqrt(world.Fx[i] * world.Fx[i] + world.Fy[i] * world.Fy[i]);
+
+            minSpeed = MathF.Min(minSpeed, speed);
+            maxSpeed = MathF.Max(maxSpeed, speed);
+            minForce = MathF.Min(minForce, force);
+            maxForce = MathF.Max(maxForce, force);
+
+            // Count neighbors
+            int neighbors = 0;
+            for (int j = 0; j < world.Count; j++)
+            {
+                if (i == j || world.State[j].HasFlag(AgentState.Dead)) continue;
+                if (world.Group[i] != world.Group[j]) continue;
+
+                float dx = world.X[j] - world.X[i];
+                float dy = world.Y[j] - world.Y[i];
+                float distSq = dx * dx + dy * dy;
+                if (distSq < config.SenseRadius * config.SenseRadius)
+                    neighbors++;
+            }
+            totalNeighbors += neighbors;
+
+            if (neighbors < 5) agentsWithFewNeighbors++;
+            if (neighbors > 30) agentsWithManyNeighbors++;
+        }
+
+        float avgNeighbors = stats.AliveAgents > 0 ? (float)totalNeighbors / stats.AliveAgents : 0f;
+
+        Console.WriteLine($"═══ [T={world.TickCount:D5}] ═══");
+        Console.WriteLine($"Agents: {stats.AliveAgents}  |  Avg Speed: {stats.AverageSpeed:F1}/{config.MaxSpeed:F0}  |  Range: [{minSpeed:F1}, {maxSpeed:F1}]");
+        Console.WriteLine($"Forces: Avg N/A  |  Range: [{minForce:F1}, {maxForce:F1}]");
+        Console.WriteLine($"Neighbors: Avg {avgNeighbors:F1}  |  Few(<5): {agentsWithFewNeighbors}  |  Many(>30): {agentsWithManyNeighbors}");
+
+        // Pick 5 random agents to track if we haven't yet
+        if (_trackedAgents.Length == 0 && world.Count > 0)
+        {
+            int numToTrack = Math.Min(5, world.Count);
+            _trackedAgents = new int[numToTrack];
+            for (int i = 0; i < numToTrack; i++)
+            {
+                _trackedAgents[i] = _random.Next(0, world.Count);
+            }
+            Console.WriteLine($"Tracking agents: {string.Join(", ", _trackedAgents)}");
+        }
+
+        // Show tracked agent details
+        if (_trackedAgents.Length > 0)
+        {
+            Console.WriteLine("Tracked Agents:");
+            foreach (int idx in _trackedAgents)
+            {
+                if (idx >= world.Count) continue;
+
+                float speed = MathF.Sqrt(world.Vx[idx] * world.Vx[idx] + world.Vy[idx] * world.Vy[idx]);
+                float force = MathF.Sqrt(world.Fx[idx] * world.Fx[idx] + world.Fy[idx] * world.Fy[idx]);
+
+                // Count neighbors for this agent
+                int neighbors = 0;
+                for (int j = 0; j < world.Count; j++)
+                {
+                    if (idx == j || world.State[j].HasFlag(AgentState.Dead)) continue;
+                    if (world.Group[idx] != world.Group[j]) continue;
+
+                    float dx = world.X[j] - world.X[idx];
+                    float dy = world.Y[j] - world.Y[idx];
+                    float distSq = dx * dx + dy * dy;
+                    if (distSq < config.SenseRadius * config.SenseRadius)
+                        neighbors++;
+                }
+
+                Console.WriteLine($"  #{idx:D4}: Spd={speed:F1} Frc={force:F1} Nbr={neighbors:D2} Pos=({world.X[idx]:F0},{world.Y[idx]:F0}) Grp={world.Group[idx]}");
+            }
+        }
+
+        // Detect anomalies
+        if (maxForce > 500f)
+            Console.WriteLine($"⚠️  HIGH FORCE DETECTED: {maxForce:F0} (agents too close!)");
+        if (stats.AverageSpeed < 5f && stats.AliveAgents > 100)
+            Console.WriteLine($"⚠️  LOW ACTIVITY: Avg speed {stats.AverageSpeed:F1} (agents in static equilibrium)");
+        if (agentsWithManyNeighbors > stats.AliveAgents * 0.5)
+            Console.WriteLine($"⚠️  OVER-CLUSTERING: {agentsWithManyNeighbors}/{stats.AliveAgents} agents have >30 neighbors");
+
+        Console.WriteLine();
     }
 }
