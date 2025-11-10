@@ -119,11 +119,11 @@ internal static class Program
         float clusterSpacing = 600f; // EXTREME spacing
         float spawnRadius = 350f;     // HUGE circles
 
-        // Spawn 4 groups in corners, EXTREMELY widely spread
-        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, 200, group: 0);
-        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, 200, group: 1);
-        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 200, group: 2);
-        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, 200, group: 3);
+        // Spawn FEWER agents per group for lower density
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, 100, group: 0);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, 100, group: 1);
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 2);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 3);
 
         // Give agents VERY strong initial velocity
         var rng = world.Rng;
