@@ -1,7 +1,7 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2025-11-10
-**Current Phase**: P0 - Skeleton (Foundation)
+**Last Updated**: 2025-11-10 (Session 1 - Foundation Complete)
+**Current Phase**: P0 - Skeleton (Foundation) - 80% COMPLETE
 
 > **IMPORTANT FOR FUTURE CLAUDE INSTANCES**: This document is your primary memory and source of truth for project status. Read this FIRST before making any changes. Update it LAST after completing work. This ensures continuity across conversation restarts.
 
@@ -12,15 +12,21 @@
 ### What This Project Is
 A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents @ 60 FPS with emergent behavior from simple rules. Data-oriented design (SoA), deterministic, zero-allocation hot paths.
 
-### What's Been Done
+### What's Been Done (Session 1)
 - ✅ Solution structure reorganized and cleaned up
 - ✅ Project references properly configured (all projects reference SwarmSim.Core)
 - ✅ Directory.Build.props created with shared build configuration
 - ✅ CLAUDE.md documentation created
-- ✅ Root SwarmingLilMen project removed from solution
+- ✅ PROJECT_STATUS.md created as persistent memory
+- ✅ **Core data structures implemented**: Genome, AgentState, SimConfig
+- ✅ **Utilities implemented**: Rng (deterministic RNG), MathUtils (vector operations)
+- ✅ **World class implemented**: Full SoA layout, agent management, tick loop skeleton
+- ✅ **Tests created**: 21 tests (RngTests + WorldTests), all passing
+- ✅ **Solution builds successfully** with no warnings
 
 ### What to Work On Next
-See "Implementation Priority Queue" section below. Start with Phase 0 (P0) items.
+- Minimal rendering (Program.cs in SwarmSim.Render)
+- Then move to Phase 1 (Spatial Grid & Systems)
 
 ### Key Files to Reference
 - `filesAndResources/swarming_lil_men_master_plan_v_1.md` - Detailed design document
@@ -49,31 +55,37 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ## Implementation Priority Queue
 
-### Phase 0: Foundation (P0) - CURRENT PHASE
+### Phase 0: Foundation (P0) - 80% COMPLETE
 **Goal**: Basic data structures, World skeleton, can compile and run minimal simulation
 
-- [ ] **Core Data Structures** (SwarmSim.Core/)
-  - [ ] `Genome.cs` - readonly record struct with traits (speedFactor, senseFactor, aggression, colorIdx)
-  - [ ] `AgentState.cs` - byte flags enum (Fleeing, Hunting, Reproducing, etc.)
-  - [ ] `SimConfig.cs` - Configuration class (JSON-serializable)
+- [x] **Core Data Structures** (SwarmSim.Core/)
+  - [x] `Genome.cs` - readonly record struct with traits, mutation logic
+  - [x] `AgentState.cs` - byte flags enum with extension methods
+  - [x] `SimConfig.cs` - Complete configuration with presets (Peaceful, Warbands, Evolution)
 
-- [ ] **Utilities** (SwarmSim.Core/Utils/)
-  - [ ] `Rng.cs` - Deterministic RNG wrapper with explicit seed
-  - [ ] `MathUtils.cs` - Distance calculations, vector operations, clamping
+- [x] **Utilities** (SwarmSim.Core/Utils/)
+  - [x] `Rng.cs` - Full deterministic RNG with Gaussian, unit vectors, shuffle, etc.
+  - [x] `MathUtils.cs` - Complete vector math, distance, normalization, wrapping, reflection
 
-- [ ] **World Class** (SwarmSim.Core/)
-  - [ ] `World.cs` - SoA arrays, Capacity, Count, Add/Remove agent methods
-  - [ ] Basic tick loop skeleton (no systems yet)
+- [x] **World Class** (SwarmSim.Core/)
+  - [x] `World.cs` - Complete SoA arrays (13 arrays), agent management
+  - [x] Add/Remove/Spawn methods with multiple overloads
+  - [x] Basic integration loop with boundary handling
+  - [x] Compaction for dead agents
+  - [x] Stats retrieval and readonly span accessors
 
-- [ ] **Basic Tests** (SwarmSim.Tests/)
-  - [ ] `RngTests.cs` - Verify determinism
-  - [ ] `WorldTests.cs` - Add/remove agents, capacity checks
+- [x] **Basic Tests** (SwarmSim.Tests/)
+  - [x] `RngTests.cs` - 8 tests covering determinism, distributions, shuffling
+  - [x] `WorldTests.cs` - 13 tests covering agents, boundaries, determinism
+  - [x] **All 21 tests passing**
 
-- [ ] **Minimal Render** (SwarmSim.Render/)
+- [ ] **Minimal Render** (SwarmSim.Render/) - REMAINING WORK
   - [ ] Program.cs - Initialize Raylib window, create World, basic render loop
-  - [ ] Draw agents as colored pixels
+  - [ ] Draw agents as colored pixels/dots
 
 **Exit Criteria**: Can create World with 1000 agents, render them as dots, window runs at 60 FPS
+
+**Status**: Core foundation is solid. Only rendering implementation remains for P0 completion.
 
 ---
 
