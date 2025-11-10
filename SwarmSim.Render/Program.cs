@@ -54,7 +54,7 @@ internal static class Program
             WorldWidth = WindowWidth,
             WorldHeight = WindowHeight,
             BoundaryMode = BoundaryMode.Wrap,
-            FixedDeltaTime = 1f / 120f,  // 120 Hz simulation, 60 Hz render
+            FixedDeltaTime = 1f / 60f,  // 60 Hz simulation to match render
 
             // Physics tuned for visible, dynamic movement
             MaxSpeed = 300f,             // Fast movement
