@@ -19,15 +19,15 @@ You can paste these verbatim and commit.
 
 ```
 SwarmSim.sln
-  /Sim.Core
-  /Sim.Render
+  /SwarmSim.Core
+  /SwarmSim.Render
     /Properties
       /PublishProfiles
         Jit-win-x64.pubxml
         R2R-win-x64.pubxml
         AOT-win-x64.pubxml
-  /Sim.Tests
-  /Sim.Benchmarks
+  /SwarmSim.Tests
+  /SwarmSim.Benchmarks
 /scripts
   publish.ps1
   publish.sh
@@ -35,7 +35,7 @@ SwarmSim.sln
   ci.yml
 ```
 
-> Assumes your entrypoint app is **Sim.Render**. If not, replace project paths accordingly.
+> Assumes your entrypoint app is **SwarmSim.Render**. If not, replace project paths accordingly.
 
 ---
 
@@ -45,7 +45,7 @@ SwarmSim.sln
 
 ```powershell
 Param(
-  [string]$Project = "Sim.Render",
+  [string]$Project = "SwarmSim.Render",
   [string]$Rid = "win-x64",                  # e.g., win-x64 | linux-x64 | osx-arm64
   [string]$Configuration = "Release",
   [ValidateSet("jit","r2r","aot")]
@@ -120,7 +120,7 @@ pwsh scripts/publish.ps1 -Mode aot -Rid win-x64 -SingleFile
 #!/usr/bin/env bash
 set -euo pipefail
 
-PROJECT="${1:-Sim.Render}"
+PROJECT="${1:-SwarmSim.Render}"
 RID="${2:-linux-x64}"          # linux-x64 | win-x64 | osx-arm64
 CONFIG="${3:-Release}"
 MODE="${4:-jit}"               # jit | r2r | aot
@@ -147,14 +147,14 @@ echo "Published $MODE → $OUT_DIR"
 Examples:
 
 ```bash
-bash scripts/publish.sh Sim.Render linux-x64 Release jit
-bash scripts/publish.sh Sim.Render linux-x64 Release r2r true
-bash scripts/publish.sh Sim.Render linux-x64 Release aot true
+bash scripts/publish.sh SwarmSim.Render linux-x64 Release jit
+bash scripts/publish.sh SwarmSim.Render linux-x64 Release r2r true
+bash scripts/publish.sh SwarmSim.Render linux-x64 Release aot true
 ```
 
 ---
 
-# 2) Publish Profiles (`Sim.Render/Properties/PublishProfiles`)
+# 2) Publish Profiles (`SwarmSim.Render/Properties/PublishProfiles`)
 
 These make Rider’s **Publish…** UI (and CLI `-p:PublishProfile=…`) one-click.
 
@@ -213,9 +213,9 @@ These make Rider’s **Publish…** UI (and CLI `-p:PublishProfile=…`) one-cli
 CLI usage:
 
 ```bash
-dotnet publish Sim.Render -p:PublishProfile=Jit-win-x64
-dotnet publish Sim.Render -p:PublishProfile=R2R-win-x64
-dotnet publish Sim.Render -p:PublishProfile=AOT-win-x64
+dotnet publish SwarmSim.Render -p:PublishProfile=Jit-win-x64
+dotnet publish SwarmSim.Render -p:PublishProfile=R2R-win-x64
+dotnet publish SwarmSim.Render -p:PublishProfile=AOT-win-x64
 ```
 
 > For Linux/macOS, duplicate and change `RuntimeIdentifier`. **NativeAOT must be built on its target OS** (don’t cross-AOT).
@@ -283,7 +283,7 @@ jobs:
     # Tip: Keep your benchmark project targeting net8.0 only for CI.
     - name: Run Benchmarks (Short)
       run: |
-        dotnet run -c Release --project Sim.Benchmarks -- \
+        dotnet run -c Release --project SwarmSim.Benchmarks -- \
           --runtimes net8.0 \
           --filter * \
           --artifacts ./BenchmarkDotNet.Artifacts \
@@ -300,7 +300,7 @@ jobs:
     # ---- Publish: JIT (framework-dependent) ----
     - name: Publish JIT
       run: |
-        dotnet publish Sim.Render -c Release -r ${{ matrix.rid }} \
+        dotnet publish SwarmSim.Render -c Release -r ${{ matrix.rid }} \
           --self-contained false \
           -o artifacts/${{ matrix.rid }}/jit
       shell: bash
@@ -308,7 +308,7 @@ jobs:
     # ---- Publish: ReadyToRun (self-contained, single-file) ----
     - name: Publish R2R
       run: |
-        dotnet publish Sim.Render -c Release -r ${{ matrix.rid }} \
+        dotnet publish SwarmSim.Render -c Release -r ${{ matrix.rid }} \
           --self-contained true \
           -p:PublishReadyToRun=true -p:PublishSingleFile=true -p:StripSymbols=true \
           -o artifacts/${{ matrix.rid }}/r2r
@@ -318,7 +318,7 @@ jobs:
     - name: Publish NativeAOT (Windows)
       if: matrix.os == 'windows-latest'
       run: |
-        dotnet publish Sim.Render -c Release -r ${{ matrix.rid }} \
+        dotnet publish SwarmSim.Render -c Release -r ${{ matrix.rid }} \
           --self-contained true \
           -p:PublishAot=true -p:PublishSingleFile=true -p:InvariantGlobalization=true -p:StripSymbols=true \
           -o artifacts/${{ matrix.rid }}/aot
@@ -367,8 +367,8 @@ pwsh ./scripts/publish.ps1 -Mode aot -Rid win-x64 -SingleFile
 # 5) Sanity checklist
 
 * [ ] `dotnet build -c Release` succeeds locally.
-* [ ] `Sim.Benchmarks` runs locally in Release.
-* [ ] `pwsh scripts/publish.ps1 -Mode r2r -Rid win-x64 -SingleFile` produces `artifacts\win-x64\r2r\Sim.Render.exe` (Windows).
+* [ ] `SwarmSim.Benchmarks` runs locally in Release.
+* [ ] `pwsh scripts/publish.ps1 -Mode r2r -Rid win-x64 -SingleFile` produces `artifacts\win-x64\r2r\SwarmSim.Render.exe` (Windows).
 * [ ] Push to GitHub → Actions tab shows Tests + Benchmarks + artifacts (JIT/R2R/Windows AOT).
 * [ ] Grab the **R2R** artifact for the smallest “just works” single-file build; use **AOT** if you want the fastest startup and lowest RAM.
 
