@@ -24,6 +24,16 @@ internal static class Program
     private static int _selectedParameter = 0;
     private static bool _fineAdjustment = false; // Hold shift for fine adjustment
     private static float _forceClampMultiplier = 10f; // For testing force clamping
+    private static World? _world = null;  // Store reference to world for recreation
+
+    // Parameter values (mutable copies)
+    private static float _separationWeight = 0.05f;
+    private static float _alignmentWeight = 0.05f;
+    private static float _cohesionWeight = 0.0005f;
+    private static float _separationRadius = 15f;
+    private static float _senseRadius = 60f;
+    private static float _maxSpeed = 6f;
+    private static float _friction = 0.99f;
 
     // Parameter info for display and adjustment
     private struct AdjustableParameter
@@ -34,26 +44,26 @@ internal static class Program
         public float MaxValue;
         public float StepSize;
         public float FineStepSize;
-        public Func<SimConfig, float> GetValue;
-        public Action<SimConfig, float> SetValue;
+        public Func<float> GetValue;
+        public Action<float> SetValue;
     }
 
     private static readonly AdjustableParameter[] Parameters =
     [
         new() { Name = "Separation Weight", Key = "1", MinValue = 0f, MaxValue = 500f, StepSize = 10f, FineStepSize = 0.01f,
-            GetValue = c => c.SeparationWeight, SetValue = (c, v) => c.SeparationWeight = v },
+            GetValue = () => _separationWeight, SetValue = v => _separationWeight = v },
         new() { Name = "Alignment Weight", Key = "2", MinValue = 0f, MaxValue = 500f, StepSize = 10f, FineStepSize = 0.01f,
-            GetValue = c => c.AlignmentWeight, SetValue = (c, v) => c.AlignmentWeight = v },
+            GetValue = () => _alignmentWeight, SetValue = v => _alignmentWeight = v },
         new() { Name = "Cohesion Weight", Key = "3", MinValue = 0f, MaxValue = 10f, StepSize = 0.1f, FineStepSize = 0.0001f,
-            GetValue = c => c.CohesionWeight, SetValue = (c, v) => c.CohesionWeight = v },
+            GetValue = () => _cohesionWeight, SetValue = v => _cohesionWeight = v },
         new() { Name = "Separation Radius", Key = "4", MinValue = 5f, MaxValue = 200f, StepSize = 5f, FineStepSize = 1f,
-            GetValue = c => c.SeparationRadius, SetValue = (c, v) => c.SeparationRadius = v },
+            GetValue = () => _separationRadius, SetValue = v => _separationRadius = v },
         new() { Name = "Sense Radius", Key = "5", MinValue = 10f, MaxValue = 300f, StepSize = 10f, FineStepSize = 2f,
-            GetValue = c => c.SenseRadius, SetValue = (c, v) => c.SenseRadius = v },
+            GetValue = () => _senseRadius, SetValue = v => _senseRadius = v },
         new() { Name = "Max Speed", Key = "6", MinValue = 1f, MaxValue = 500f, StepSize = 10f, FineStepSize = 1f,
-            GetValue = c => c.MaxSpeed, SetValue = (c, v) => c.MaxSpeed = v },
+            GetValue = () => _maxSpeed, SetValue = v => _maxSpeed = v },
         new() { Name = "Friction", Key = "7", MinValue = 0.8f, MaxValue = 1.0f, StepSize = 0.01f, FineStepSize = 0.001f,
-            GetValue = c => c.Friction, SetValue = (c, v) => c.Friction = v },
+            GetValue = () => _friction, SetValue = v => _friction = v },
     ];
 
     // Preset configurations
