@@ -209,6 +209,68 @@ internal static class Program
 
     private static void HandleInput(World world)
     {
+        var config = world.Config;
+
+        // Check for shift key (fine adjustment)
+        _fineAdjustment = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
+
+        // === PARAMETER ADJUSTMENT ===
+        // Number keys 1-7: Select parameter to adjust
+        for (int i = 0; i < Parameters.Length; i++)
+        {
+            var keyCode = KeyboardKey.One + i;
+            if (Raylib.IsKeyPressed(keyCode))
+            {
+                _selectedParameter = i;
+                var param = Parameters[i];
+                float currentValue = param.GetValue(config);
+                Console.WriteLine($"Selected: {param.Name} = {currentValue:F4}");
+            }
+        }
+
+        // Up/Down arrows or +/- : Adjust selected parameter
+        bool increase = Raylib.IsKeyPressed(KeyboardKey.Up) ||
+                       Raylib.IsKeyPressed(KeyboardKey.Equal) ||
+                       Raylib.IsKeyPressed(KeyboardKey.KpAdd);
+        bool decrease = Raylib.IsKeyPressed(KeyboardKey.Down) ||
+                       Raylib.IsKeyPressed(KeyboardKey.Minus) ||
+                       Raylib.IsKeyPressed(KeyboardKey.KpSubtract);
+
+        if (increase || decrease)
+        {
+            var param = Parameters[_selectedParameter];
+            float currentValue = param.GetValue(config);
+            float step = _fineAdjustment ? param.FineStepSize : param.StepSize;
+
+            if (increase)
+                currentValue = Math.Min(currentValue + step, param.MaxValue);
+            else
+                currentValue = Math.Max(currentValue - step, param.MinValue);
+
+            param.SetValue(config, currentValue);
+            Console.WriteLine($"{param.Name} = {currentValue:F4} (Step: {step:F4})");
+        }
+
+        // === PRESETS (F1-F5) ===
+        if (Raylib.IsKeyPressed(KeyboardKey.F1)) ApplyPreset(config, Presets[0]); // Traditional Boids
+        if (Raylib.IsKeyPressed(KeyboardKey.F2)) ApplyPreset(config, Presets[1]); // Original High Forces
+        if (Raylib.IsKeyPressed(KeyboardKey.F3)) ApplyPreset(config, Presets[2]); // Medium Forces
+        if (Raylib.IsKeyPressed(KeyboardKey.F4)) ApplyPreset(config, Presets[3]); // Separation Only
+        if (Raylib.IsKeyPressed(KeyboardKey.F5)) ApplyPreset(config, Presets[4]); // Alignment Only
+
+        // P: Print current configuration
+        if (Raylib.IsKeyPressed(KeyboardKey.P))
+        {
+            Console.WriteLine("\n=== Current Configuration ===");
+            foreach (var param in Parameters)
+            {
+                Console.WriteLine($"{param.Name}: {param.GetValue(config):F4}");
+            }
+            Console.WriteLine($"Force Clamp Multiplier: {_forceClampMultiplier}");
+            Console.WriteLine("=============================\n");
+        }
+
+        // === EXISTING CONTROLS ===
         // Left click: Spawn agents at mouse position
         if (Raylib.IsMouseButtonPressed(MouseButton.Left))
         {
@@ -269,8 +331,6 @@ internal static class Program
             Console.WriteLine($"Neighbor connections: {(_showNeighborConnections ? "ON" : "OFF")}");
         }
 
-        // ESC: Quit (handled by WindowShouldClose)
-
         // C: Export CSV snapshot
         if (Raylib.IsKeyPressed(KeyboardKey.C))
         {
@@ -292,6 +352,21 @@ internal static class Program
             }
             Console.WriteLine("Shook agents to break equilibrium!");
         }
+    }
+
+    private static void ApplyPreset(SimConfig config, Preset preset)
+    {
+        config.SeparationWeight = preset.SeparationWeight;
+        config.AlignmentWeight = preset.AlignmentWeight;
+        config.CohesionWeight = preset.CohesionWeight;
+        config.SeparationRadius = preset.SeparationRadius;
+        config.SenseRadius = preset.SenseRadius;
+        config.MaxSpeed = preset.MaxSpeed;
+        config.Friction = preset.Friction;
+        Console.WriteLine($"Applied preset: {preset.Name}");
+        Console.WriteLine($"  Weights: Sep={preset.SeparationWeight:F4}, Ali={preset.AlignmentWeight:F4}, Coh={preset.CohesionWeight:F6}");
+        Console.WriteLine($"  Radii: Sep={preset.SeparationRadius}, Sense={preset.SenseRadius}");
+        Console.WriteLine($"  Physics: Speed={preset.MaxSpeed}, Friction={preset.Friction:F3}");
     }
 
     private static void Render(World world)
@@ -405,64 +480,130 @@ internal static class Program
     {
         const int padding = 10;
         int y = padding;
-        const int lineHeight = 20;
+        const int lineHeight = 18;
+        var config = world.Config;
 
         // Get stats
         var stats = world.GetStats();
         int fps = Raylib.GetFPS();
 
-        // Background panel for readability
-        Raylib.DrawRectangle(0, 0, 380, 320, new Color(0, 0, 0, 180));
+        // Larger background panel for parameters
+        Raylib.DrawRectangle(0, 0, 450, 580, new Color(0, 0, 0, 200));
 
-        // Draw stats
-        DrawText($"SwarmingLilMen - Phase 2: Boids", padding, y, 20, Color.White);
+        // Title
+        DrawText($"SwarmingLilMen - Dynamic Parameter Adjustment", padding, y, 20, Color.White);
         y += lineHeight + 5;
 
-        DrawText($"FPS: {fps}", padding, y, 18, fps >= 60 ? Color.Green : Color.Yellow);
-        y += lineHeight;
-
-        DrawText($"Agents: {stats.AliveAgents} / {stats.TotalAgents}", padding, y, 18, Color.White);
-        y += lineHeight;
-
-        DrawText($"Avg Speed: {stats.AverageSpeed:F1} / {world.Config.MaxSpeed:F0}", padding, y, 18, Color.SkyBlue);
-        y += lineHeight;
-
-        // Boids settings
-        y += 5;
-        DrawText($"Boids Settings:", padding, y, 16, Color.Yellow);
-        y += lineHeight;
-        DrawText($"  Separation: {world.Config.SeparationWeight:F1}", padding, y, 14, Color.Gray);
-        y += lineHeight - 3;
-        DrawText($"  Alignment:  {world.Config.AlignmentWeight:F1}", padding, y, 14, Color.Gray);
-        y += lineHeight - 3;
-        DrawText($"  Cohesion:   {world.Config.CohesionWeight:F1}", padding, y, 14, Color.Gray);
-        y += lineHeight - 3;
-        DrawText($"  Sense Radius: {world.Config.SenseRadius:F0}px", padding, y, 14, Color.Gray);
+        // Stats
+        DrawText($"FPS: {fps} | Agents: {stats.AliveAgents} | Speed: {stats.AverageSpeed:F1}/{config.MaxSpeed:F0}",
+            padding, y, 14, fps >= 60 ? Color.Green : Color.Yellow);
         y += lineHeight + 5;
 
-        // Visualization options
-        DrawText($"Visualization:", padding, y, 16, Color.Yellow);
+        // === ADJUSTABLE PARAMETERS ===
+        DrawText($"PARAMETERS (1-7 to select, ↑↓/+- to adjust{(_fineAdjustment ? " [FINE]" : "")})", padding, y, 14, Color.Cyan);
         y += lineHeight;
-        DrawText($"  Velocity: {(_showVelocityVectors ? "ON" : "OFF")} (V)", padding, y, 14,
+
+        for (int i = 0; i < Parameters.Length; i++)
+        {
+            var param = Parameters[i];
+            float value = param.GetValue(config);
+            bool isSelected = i == _selectedParameter;
+
+            Color textColor = isSelected ? Color.Yellow : Color.White;
+            Color valueColor = isSelected ? Color.Gold : Color.Gray;
+            string marker = isSelected ? "►" : " ";
+
+            string valueStr = param.Name.Contains("Weight") || param.Name.Contains("Friction")
+                ? $"{value:F6}" : $"{value:F1}";
+
+            DrawText($"{marker}[{param.Key}] {param.Name}:", padding, y, 14, textColor);
+            DrawText($"{valueStr}", padding + 250, y, 14, valueColor);
+
+            // Show adjustment hints for selected parameter
+            if (isSelected)
+            {
+                float step = _fineAdjustment ? param.FineStepSize : param.StepSize;
+                DrawText($"[{step:F6}]", padding + 360, y, 12, new Color(100, 100, 100, 255));
+            }
+
+            y += lineHeight - 2;
+        }
+
+        y += 8;
+
+        // === PRESETS ===
+        DrawText("PRESETS (F1-F5):", padding, y, 14, Color.Cyan);
+        y += lineHeight;
+
+        for (int i = 0; i < Math.Min(5, Presets.Length); i++)
+        {
+            DrawText($"  F{i + 1}: {Presets[i].Name}", padding, y, 12, Color.LightGray);
+            y += lineHeight - 4;
+        }
+
+        y += 8;
+
+        // === VISUALIZATION ===
+        DrawText("VISUALIZATION:", padding, y, 14, Color.Cyan);
+        y += lineHeight;
+        DrawText($"  [V] Velocity: {(_showVelocityVectors ? "ON" : "OFF")}", padding, y, 12,
             _showVelocityVectors ? Color.Green : Color.Gray);
-        y += lineHeight - 3;
-        DrawText($"  Sense Radius: {(_showSenseRadius ? "ON" : "OFF")} (S)", padding, y, 14,
+        y += lineHeight - 4;
+        DrawText($"  [S] Sense Radius: {(_showSenseRadius ? "ON" : "OFF")}", padding, y, 12,
             _showSenseRadius ? Color.Green : Color.Gray);
-        y += lineHeight - 3;
-        DrawText($"  Neighbors: {(_showNeighborConnections ? "ON" : "OFF")} (N)", padding, y, 14,
+        y += lineHeight - 4;
+        DrawText($"  [N] Neighbors: {(_showNeighborConnections ? "ON" : "OFF")}", padding, y, 12,
             _showNeighborConnections ? Color.Green : Color.Gray);
-        y += lineHeight + 5;
+        y += lineHeight - 2;
 
-        // Controls
-        DrawText("Controls:", padding, y, 16, Color.Yellow);
+        y += 8;
+
+        // === CONTROLS ===
+        DrawText("CONTROLS:", padding, y, 14, Color.Cyan);
         y += lineHeight;
-        DrawText("  Left Click: Spawn agents", padding, y, 14, Color.LightGray);
-        y += lineHeight - 3;
-        DrawText("  Space: Spawn 100 random", padding, y, 14, Color.LightGray);
-        y += lineHeight - 3;
-        DrawText("  R: Reset  |  X: Shake", padding, y, 14, Color.LightGray);
-        y += lineHeight - 3;
-        DrawText("  C: Export CSV  |  ESC: Quit", padding, y, 14, Color.LightGray);
+        DrawText("  Click: Spawn | Space: Random", padding, y, 12, Color.LightGray);
+        y += lineHeight - 4;
+        DrawText("  [R] Reset | [X] Shake | [C] CSV", padding, y, 12, Color.LightGray);
+        y += lineHeight - 4;
+        DrawText("  [P] Print Config | ESC: Quit", padding, y, 12, Color.LightGray);
+        y += lineHeight - 4;
+        DrawText("  Hold SHIFT for fine adjustment", padding, y, 12, Color.Gold);
+
+        // === CURRENT VALUES DISPLAY (right side panel) ===
+        int rightX = WindowWidth - 300;
+        int rightY = padding;
+        Raylib.DrawRectangle(rightX - 10, 0, 310, 200, new Color(0, 0, 0, 180));
+
+        DrawText("CURRENT VALUES", rightX, rightY, 14, Color.Cyan);
+        rightY += lineHeight;
+
+        // Show key metrics
+        float avgNeighbors = 0;
+        float maxForce = 0;
+        for (int i = 0; i < Math.Min(world.Count, 100); i++)  // Sample first 100 for performance
+        {
+            if (world.State[i].HasFlag(AgentState.Dead)) continue;
+            float force = MathF.Sqrt(world.Fx[i] * world.Fx[i] + world.Fy[i] * world.Fy[i]);
+            maxForce = MathF.Max(maxForce, force);
+        }
+
+        DrawText($"Max Force: {maxForce:F1}", rightX, rightY, 12,
+            maxForce > 500 ? Color.Red : Color.White);
+        rightY += lineHeight - 4;
+
+        DrawText($"Avg Speed: {stats.AverageSpeed:F2}", rightX, rightY, 12,
+            stats.AverageSpeed < 1 ? Color.Orange : Color.White);
+        rightY += lineHeight - 4;
+
+        // Show selected parameter in detail
+        if (_selectedParameter >= 0 && _selectedParameter < Parameters.Length)
+        {
+            var param = Parameters[_selectedParameter];
+            rightY += 10;
+            DrawText($"Selected: {param.Name}", rightX, rightY, 12, Color.Yellow);
+            rightY += lineHeight - 4;
+            DrawText($"Range: [{param.MinValue:F2} - {param.MaxValue:F2}]", rightX, rightY, 12, Color.Gray);
+        }
     }
 
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
