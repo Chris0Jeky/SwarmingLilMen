@@ -109,17 +109,15 @@ internal static class Program
 
     private static void SpawnInitialAgents(World world)
     {
-        // Spawn agents EXTREMELY SPREAD OUT
-        // Math: 200 agents in 300px radius = density 0.0007 agents/px²
-        //       Expected neighbors in 150px = 0.0007 * π*150² ≈ 50 (still too many!)
-        // Solution: MASSIVE spawn areas OR fewer agents per group
+        // Spawn agents with moderate spacing for traditional Boids
+        // With SenseRadius=60px and slower speeds, groups need to be closer
 
         float centerX = WindowWidth * 0.5f;
         float centerY = WindowHeight * 0.5f;
-        float clusterSpacing = 600f; // EXTREME spacing
-        float spawnRadius = 350f;     // HUGE circles
+        float clusterSpacing = 300f; // Moderate spacing for interaction
+        float spawnRadius = 150f;     // Reasonable spawn circles
 
-        // Spawn FEWER agents per group for lower density
+        // Spawn 100 agents per group (400 total)
         world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, 100, group: 0);
         world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, 100, group: 1);
         world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 2);
