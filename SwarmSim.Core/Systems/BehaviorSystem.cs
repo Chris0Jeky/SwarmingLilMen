@@ -108,16 +108,8 @@ public sealed class BehaviorSystem : ISimSystem
             float totalForceX = separationForceX + alignmentForceX + cohesionForceX;
             float totalForceY = separationForceY + alignmentForceY + cohesionForceY;
 
-            // Limit force magnitude (optional, helps stability)
-            float forceMag = MathUtils.Length(totalForceX, totalForceY);
-            float maxForce = maxSpeed * 10f; // Reasonable limit relative to max speed
-
-            if (forceMag > maxForce)
-            {
-                float forceScale = maxForce / forceMag;
-                totalForceX *= forceScale;
-                totalForceY *= forceScale;
-            }
+            // NO FORCE CLAMPING - Traditional Boids doesn't clamp forces, only speeds
+            // The small weights (0.05 instead of 300) naturally limit force magnitudes
 
             // Add to force accumulators
             fx[i] += totalForceX;
