@@ -30,10 +30,11 @@ The renderer shows **800 agents** (200 per group) performing **boids flocking be
 - **N** - Neighbor connections: Draws lines between nearby agents in the same group
 
 ### What Makes It Dynamic:
-- **MaxSpeed**: 300 pixels/sec (increased from default 200)
-- **SenseRadius**: 80 pixels (increased from default 50)
-- **Friction**: 0.99 (smooth, sustained movement)
-- **Initial velocity**: Agents start moving immediately
+- **MaxSpeed**: 300 pixels/sec
+- **SenseRadius**: 120 pixels (larger interaction range)
+- **Friction**: 0.95 (less friction = more sustained movement)
+- **Initial velocity**: 100-200 pixels/sec (agents start fast)
+- **Stronger Forces**: All boids weights doubled for more dramatic flocking
 
 ## Interaction Controls
 
