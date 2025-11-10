@@ -38,13 +38,19 @@ internal static class Program
         Raylib.InitWindow(WindowWidth, WindowHeight, WindowTitle);
         Raylib.SetTargetFPS(60);
 
-        // Create world with peaceful flocking config
-        var config = SimConfig.PeacefulFlocks() with
+        // Create world with custom config
+        var config = new SimConfig
         {
             WorldWidth = WindowWidth,
             WorldHeight = WindowHeight,
             BoundaryMode = BoundaryMode.Wrap,
-            FixedDeltaTime = 1f / 120f  // 120 Hz simulation, 60 Hz render
+            FixedDeltaTime = 1f / 120f,  // 120 Hz simulation, 60 Hz render
+            // Peaceful flocking settings
+            SeparationWeight = 2.0f,
+            AlignmentWeight = 1.5f,
+            CohesionWeight = 1.5f,
+            AttackDamage = 0f,
+            BaseDrain = 0.1f
         };
 
         var world = new World(config, seed: 42);
@@ -190,10 +196,10 @@ internal static class Program
         DrawText($"Sim Time: {stats.SimulationTime:F2}s", padding, y, 18, Color.Gray);
         y += lineHeight;
 
-        DrawText($"Avg Energy: {stats.AverageEnergy:F1}", padding, y, 18, Color.Cyan);
+        DrawText($"Avg Energy: {stats.AverageEnergy:F1}", padding, y, 18, Color.SkyBlue);
         y += lineHeight;
 
-        DrawText($"Avg Speed: {stats.AverageSpeed:F1}", padding, y, 18, Color.Cyan);
+        DrawText($"Avg Speed: {stats.AverageSpeed:F1}", padding, y, 18, Color.SkyBlue);
         y += lineHeight + 10;
 
         // Controls
