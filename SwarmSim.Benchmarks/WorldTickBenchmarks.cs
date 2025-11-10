@@ -30,8 +30,7 @@ public class WorldTickBenchmarks
 
     private static World CreateWorld(int agentCount)
     {
-        var config = SimConfig.PeacefulFlocks();
-        config.InitialCapacity = agentCount;
+        var config = SimConfig.PeacefulFlocks() with { InitialCapacity = agentCount };
 
         var world = new World(config, seed: 42);
 
