@@ -1,7 +1,7 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2025-11-10 (Session 1 - Phase 0 COMPLETE ✅)
-**Current Phase**: P0 - Skeleton (Foundation) - 100% COMPLETE
+**Last Updated**: 2025-11-10 (Session 2 - Phase 1 COMPLETE ✅)
+**Current Phase**: P1 - Spatial Grid & Basic Movement - 100% COMPLETE
 
 > **IMPORTANT FOR FUTURE CLAUDE INSTANCES**: This document is your primary memory and source of truth for project status. Read this FIRST before making any changes. Update it LAST after completing work. This ensures continuity across conversation restarts.
 
@@ -12,27 +12,33 @@
 ### What This Project Is
 A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents @ 60 FPS with emergent behavior from simple rules. Data-oriented design (SoA), deterministic, zero-allocation hot paths.
 
-### What's Been Done (Session 1) ✅
-- ✅ Solution structure reorganized and cleaned up
-- ✅ Project references properly configured (all projects reference SwarmSim.Core)
-- ✅ Directory.Build.props created with shared build configuration
-- ✅ CLAUDE.md documentation created
-- ✅ PROJECT_STATUS.md created as persistent memory
-- ✅ **Core data structures implemented**: Genome, AgentState, SimConfig
-- ✅ **Utilities implemented**: Rng (deterministic RNG), MathUtils (vector operations)
-- ✅ **World class implemented**: Full SoA layout, agent management, tick loop skeleton
-- ✅ **Tests created**: 21 tests (RngTests + WorldTests), all passing
-- ✅ **Rendering implemented**: Full Raylib visualization with interactive controls
-- ✅ **Documentation**: README.md, CONTRIBUTING.md, QUICKSTART.md
-- ✅ **Solution builds successfully** with no warnings
-- ✅ **PHASE 0 COMPLETE** - Ready for Phase 1
+### What's Been Done
+
+**Session 1 - Phase 0 (Foundation)** ✅
+- Solution structure, build system, core data structures
+- World class with SoA layout, Rng, MathUtils
+- 21 tests, Raylib rendering, full documentation
+- **Phase 0 Complete**
+
+**Session 2 - Phase 1 (Spatial Grid & Basic Movement)** ✅
+- ✅ **Spatial Grid**: UniformGrid with Head[]/Next[] linked lists, O(1) insertion, 3x3 queries
+- ✅ **Systems**: ISimSystem interface, IntegrateSystem, RandomWalkSystem
+- ✅ **World Integration**: Systems pipeline, grid rebuild each tick
+- ✅ **Tests**: 14 new UniformGrid tests + 4 performance tests (39 total, all passing)
+- ✅ **Benchmarks**: WorldTickBenchmarks and GridBenchmarks (BenchmarkDotNet)
+- ✅ **Performance Results** (Release mode):
+  - **50k agents: 1.92ms/tick (521 FPS)** - 8.7x better than 60 FPS target! 🚀
+  - 10k agents: 0.38ms/tick (2,612 FPS)
+  - 1k agents: 0.069ms/tick (14,522 FPS)
+  - Grid rebuild (50k): 0.093ms
+- ✅ **PHASE 1 COMPLETE** - Ready for Phase 2 (Boids)
 
 ### What to Work On Next
-**Phase 1**: Spatial Grid & Basic Movement
-- Implement UniformGrid for fast neighbor queries
-- Create ISimSystem interface and basic systems
-- Add RandomWalkSystem for testing
-- Target: 50k agents @ 60 FPS
+**Phase 2**: Boids & Flocking
+- Implement SenseSystem for neighbor queries
+- Create BehaviorSystem with separation, alignment, cohesion
+- Replace RandomWalkSystem with proper flocking behavior
+- Target: Visible emergent flocking with 50k agents @ 60 FPS
 
 ### Key Files to Reference
 - `filesAndResources/swarming_lil_men_master_plan_v_1.md` - Detailed design document
