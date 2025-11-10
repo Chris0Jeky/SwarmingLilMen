@@ -97,35 +97,7 @@ internal static class Program
             frameCount++;
             if (frameCount % 120 == 0) // Every 2 seconds at 60 FPS
             {
-                var stats = world.GetStats();
-                Console.WriteLine($"[T={world.TickCount:D5}] Agents: {stats.AliveAgents}, Avg Speed: {stats.AverageSpeed:F1}/{config.MaxSpeed:F0}");
-
-                // Sample a few agents to see their state
-                if (world.Count > 0)
-                {
-                    // Check first agent's velocity and force
-                    float speed0 = MathF.Sqrt(world.Vx[0] * world.Vx[0] + world.Vy[0] * world.Vy[0]);
-                    float force0 = MathF.Sqrt(world.Fx[0] * world.Fx[0] + world.Fy[0] * world.Fy[0]);
-                    Console.WriteLine($"  Agent 0: Speed={speed0:F1}, Force={force0:F1}, Pos=({world.X[0]:F0},{world.Y[0]:F0})");
-
-                    // Check if agents are finding neighbors
-                    int neighborsInRange = 0;
-                    float x0 = world.X[0];
-                    float y0 = world.Y[0];
-                    byte group0 = world.Group[0];
-
-                    for (int i = 1; i < Math.Min(world.Count, 50); i++) // Check first 50 agents
-                    {
-                        if (world.Group[i] != group0) continue;
-                        float dx = world.X[i] - x0;
-                        float dy = world.Y[i] - y0;
-                        float dist = MathF.Sqrt(dx * dx + dy * dy);
-                        if (dist < config.SenseRadius)
-                            neighborsInRange++;
-                    }
-                    Console.WriteLine($"  Agent 0 has {neighborsInRange} neighbors in range, dt={config.FixedDeltaTime:F4}");
-                }
-                Console.WriteLine();
+                PrintDiagnostics(world, config);
             }
 
             // Render
