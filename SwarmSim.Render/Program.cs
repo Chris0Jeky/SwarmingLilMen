@@ -23,7 +23,6 @@ internal static class Program
     // Dynamic parameter adjustment
     private static int _selectedParameter = 0;
     private static bool _fineAdjustment = false; // Hold shift for fine adjustment
-    private static float _forceClampMultiplier = 10f; // For testing force clamping
     private static World? _world = null;  // Store reference to world for recreation
 
     // Parameter values (mutable copies)
@@ -623,7 +622,6 @@ internal static class Program
         rightY += lineHeight;
 
         // Show key metrics
-        float avgNeighbors = 0;
         float maxForce = 0;
         for (int i = 0; i < Math.Min(world.Count, 100); i++)  // Sample first 100 for performance
         {
