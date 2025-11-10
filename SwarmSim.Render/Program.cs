@@ -109,32 +109,34 @@ internal static class Program
 
     private static void SpawnInitialAgents(World world)
     {
-        // Spawn agents SPREAD OUT to prevent initial clustering
-        // The problem was: 200 agents in 80px radius = 147 neighbors each!
-        // Solution: Much larger spawn areas, farther apart
+        // Spawn agents EXTREMELY SPREAD OUT
+        // Math: 200 agents in 300px radius = density 0.0007 agents/px²
+        //       Expected neighbors in 150px = 0.0007 * π*150² ≈ 50 (still too many!)
+        // Solution: MASSIVE spawn areas OR fewer agents per group
 
         float centerX = WindowWidth * 0.5f;
         float centerY = WindowHeight * 0.5f;
-        float clusterSpacing = 400f; // MUCH farther apart (was 150)
-        float spawnRadius = 200f;     // MUCH larger circles (was 80)
+        float clusterSpacing = 600f; // EXTREME spacing
+        float spawnRadius = 350f;     // HUGE circles
 
-        // Spawn 4 groups in corners, widely spread
+        // Spawn 4 groups in corners, EXTREMELY widely spread
         world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, 200, group: 0);
         world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, 200, group: 1);
         world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 200, group: 2);
         world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, 200, group: 3);
 
-        // Give agents strong initial velocity to prevent static start
+        // Give agents VERY strong initial velocity
         var rng = world.Rng;
         for (int i = 0; i < world.Count; i++)
         {
             (float vx, float vy) = rng.NextUnitVector();
-            float speed = rng.NextFloat(80f, 150f);  // Higher initial speed
+            float speed = rng.NextFloat(100f, 200f);  // Fast initial speeds
             world.Vx[i] = vx * speed;
             world.Vy[i] = vy * speed;
         }
 
-        Console.WriteLine($"Spawned {world.Count} agents in 4 SPREAD OUT groups (spacing={clusterSpacing}, radius={spawnRadius})");
+        Console.WriteLine($"Spawned {world.Count} agents EXTREMELY SPREAD (spacing={clusterSpacing}, radius={spawnRadius})");
+        Console.WriteLine($"Expected initial neighbors: ~15-25 (target < 30)");
     }
 
     private static void HandleInput(World world)
