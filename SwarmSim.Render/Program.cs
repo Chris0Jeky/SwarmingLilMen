@@ -61,15 +61,15 @@ internal static class Program
             FixedDeltaTime = 1f / 60f,  // 60 Hz simulation to match render
 
             // Physics tuned for visible, dynamic movement
-            MaxSpeed = 250f,             // Increased for more energetic movement
-            Friction = 0.99f,            // Very low friction - let them flow
+            MaxSpeed = 200f,             // Good max speed
+            Friction = 0.92f,            // MUCH lower friction - maintain momentum!
 
-            // Boids settings - EXTREME: Separation-dominant to prevent clustering
-            SenseRadius = 150f,          // Large enough to see neighbors
-            SeparationRadius = 60f,      // MUCH larger separation zone
-            SeparationWeight = 1000.0f,  // MASSIVE separation force
-            AlignmentWeight = 50.0f,     // Modest alignment
-            CohesionWeight = 0.0f,       // ZERO cohesion - no attraction at all!
+            // Boids settings - Balanced with wander to prevent equilibrium
+            SenseRadius = 100f,          // Moderate sensing range
+            SeparationRadius = 50f,      // Good personal space
+            SeparationWeight = 300.0f,   // Strong but not extreme
+            AlignmentWeight = 150.0f,    // Strong alignment for coordinated movement
+            CohesionWeight = 10.0f,      // TINY cohesion - just enough to form loose groups
 
             // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
