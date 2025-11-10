@@ -8,15 +8,20 @@ SwarmingLilMen is a high-performance 2D swarm simulation built from first princi
 
 ## Solution Structure
 
-The solution follows a multi-project architecture with clear separation of concerns:
+The solution follows a clean multi-project architecture with clear separation of concerns:
 
-- **SwarmingLilMen** (root) - Early development playground/entry point (currently a simple test console app)
 - **SwarmSim.Core** - Core simulation library with data-oriented design (SoA layout), deterministic systems, allocation-free tick loop
-- **SwarmSim.Render** - Raylib-cs visualization layer for live interaction and parameter tweaking
-- **SwarmSim.Tests** - xUnit test suite for property tests, unit tests, and regression tests
-- **SwarmSim.Benchmarks** - BenchmarkDotNet performance benchmarking suite
+- **SwarmSim.Render** - Raylib-cs visualization layer for live interaction and parameter tweaking (references SwarmSim.Core)
+- **SwarmSim.Tests** - xUnit test suite for property tests, unit tests, and regression tests (references SwarmSim.Core)
+- **SwarmSim.Benchmarks** - BenchmarkDotNet performance benchmarking suite (references SwarmSim.Core)
 
-All projects target .NET 8.0 with `ImplicitUsings` and `Nullable` enabled.
+All projects share common settings via `Directory.Build.props`:
+- Target framework: .NET 8.0
+- Nullable reference types enabled
+- Implicit usings enabled
+- Treat warnings as errors
+- Deterministic builds
+- Embedded debug symbols
 
 ## Build and Development Commands
 
@@ -34,13 +39,10 @@ dotnet build -c Release
 
 ### Running Projects
 ```bash
-# Run main entry point
-dotnet run --project SwarmingLilMen.csproj
-
-# Run renderer (when implemented)
+# Run renderer
 dotnet run --project SwarmSim.Render/SwarmSim.Render.csproj
 
-# Run benchmarks
+# Run benchmarks (always use Release for accurate results)
 dotnet run --project SwarmSim.Benchmarks/SwarmSim.Benchmarks.csproj -c Release
 ```
 
@@ -153,11 +155,13 @@ dotnet test --filter "Category=Property"
 
 ## Key Dependencies
 
-- **Raylib-cs 7.0.2** - Rendering and windowing (in SwarmingLilMen.csproj and SwarmSim.Render)
-- **BenchmarkDotNet 0.15.6** - Performance benchmarking (in SwarmSim.Benchmarks)
-- **xUnit 2.9.3** - Unit testing framework (in SwarmSim.Tests)
-- **Microsoft.NET.Test.Sdk 17.8.0** - Test SDK
-- **coverlet.collector 6.0.0** - Code coverage collection
+- **Raylib-cs 7.0.2** - Rendering and windowing (SwarmSim.Render)
+- **BenchmarkDotNet 0.15.6** - Performance benchmarking (SwarmSim.Benchmarks)
+- **xUnit 2.9.3** - Unit testing framework (SwarmSim.Tests)
+- **Microsoft.NET.Test.Sdk 17.8.0** - Test SDK (SwarmSim.Tests)
+- **coverlet.collector 6.0.0** - Code coverage collection (SwarmSim.Tests)
+
+All projects reference SwarmSim.Core as their central dependency.
 
 ## Configuration and Presets
 
@@ -207,10 +211,23 @@ Export full or sampled agent arrays to CSV/binary every N ticks for Python analy
 - Short-lived feature branches
 - PRs with performance checks before merge
 
+## Project Organization
+
+### Directory.Build.props
+Shared MSBuild properties are defined in `Directory.Build.props` at the solution root. This ensures consistency across all projects:
+- Target framework and language version
+- Nullable and implicit usings settings
+- Warning treatment and deterministic builds
+- Debug symbol configuration
+- Global usings (System, System.Collections.Generic, System.Linq)
+
+When adding new projects, they automatically inherit these settings. Only override in individual .csproj files when necessary.
+
 ## Important Notes
 
-- The project is in **early development**; SwarmSim.Core contains only placeholder code (Class1.cs)
+- The project is in **early development**; core implementation has not yet begun
 - Implementation follows the detailed master plan in `filesAndResources/swarming_lil_men_master_plan_v_1.md`
 - Focus is on performance-first design: measure, profile, optimize in that order
 - Keep systems small, testable, and composable
 - All core simulation code must be deterministic and allocation-free
+- The solution is properly structured with project references; SwarmSim.Core has no dependencies, while Render/Tests/Benchmarks all reference Core
