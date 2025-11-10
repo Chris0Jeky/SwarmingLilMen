@@ -89,62 +89,94 @@ internal static class MinimalTest
 
     private static SimConfig CreateConfigForStage(int stage)
     {
-        // Start with absolutely minimal config
-        var config = new SimConfig
+        // Create config based on stage (must set all values in initializer due to init-only properties)
+        return stage switch
         {
-            WorldWidth = WindowWidth,
-            WorldHeight = WindowHeight,
-            BoundaryMode = BoundaryMode.Wrap,
-            FixedDeltaTime = 1f / 60f,
+            0 or 1 => new SimConfig // No forces or manual force
+            {
+                WorldWidth = WindowWidth,
+                WorldHeight = WindowHeight,
+                BoundaryMode = BoundaryMode.Wrap,
+                FixedDeltaTime = 1f / 60f,
+                MaxSpeed = 10f,
+                Friction = 0.99f,
+                SeparationWeight = 0f,
+                AlignmentWeight = 0f,
+                CohesionWeight = 0f,
+                SeparationRadius = 30f,
+                SenseRadius = 100f,
+                AttackDamage = 0f,
+                BaseDrain = 0f
+            },
 
-            // Start with very simple physics
-            MaxSpeed = 10f,
-            Friction = 0.99f,
+            2 or 3 => new SimConfig // Separation only
+            {
+                WorldWidth = WindowWidth,
+                WorldHeight = WindowHeight,
+                BoundaryMode = BoundaryMode.Wrap,
+                FixedDeltaTime = 1f / 60f,
+                MaxSpeed = 10f,
+                Friction = 0.99f,
+                SeparationWeight = 1.0f,
+                AlignmentWeight = 0f,
+                CohesionWeight = 0f,
+                SeparationRadius = 30f,
+                SenseRadius = 100f,
+                AttackDamage = 0f,
+                BaseDrain = 0f
+            },
 
-            // Disable everything initially
-            SeparationWeight = 0f,
-            AlignmentWeight = 0f,
-            CohesionWeight = 0f,
-            SeparationRadius = 30f,
-            SenseRadius = 100f,
+            4 => new SimConfig // Alignment only
+            {
+                WorldWidth = WindowWidth,
+                WorldHeight = WindowHeight,
+                BoundaryMode = BoundaryMode.Wrap,
+                FixedDeltaTime = 1f / 60f,
+                MaxSpeed = 10f,
+                Friction = 0.99f,
+                SeparationWeight = 0f,
+                AlignmentWeight = 1.0f,
+                CohesionWeight = 0f,
+                SeparationRadius = 30f,
+                SenseRadius = 100f,
+                AttackDamage = 0f,
+                BaseDrain = 0f
+            },
 
-            // No combat/energy
-            AttackDamage = 0f,
-            BaseDrain = 0f
+            5 => new SimConfig // Cohesion only
+            {
+                WorldWidth = WindowWidth,
+                WorldHeight = WindowHeight,
+                BoundaryMode = BoundaryMode.Wrap,
+                FixedDeltaTime = 1f / 60f,
+                MaxSpeed = 10f,
+                Friction = 0.99f,
+                SeparationWeight = 0f,
+                AlignmentWeight = 0f,
+                CohesionWeight = 0.1f,
+                SeparationRadius = 30f,
+                SenseRadius = 100f,
+                AttackDamage = 0f,
+                BaseDrain = 0f
+            },
+
+            _ => new SimConfig // All forces (stages 6-8)
+            {
+                WorldWidth = WindowWidth,
+                WorldHeight = WindowHeight,
+                BoundaryMode = BoundaryMode.Wrap,
+                FixedDeltaTime = 1f / 60f,
+                MaxSpeed = 10f,
+                Friction = 0.99f,
+                SeparationWeight = 1.0f,
+                AlignmentWeight = 0.5f,
+                CohesionWeight = 0.1f,
+                SeparationRadius = 30f,
+                SenseRadius = 100f,
+                AttackDamage = 0f,
+                BaseDrain = 0f
+            }
         };
-
-        // Adjust based on stage
-        switch (stage)
-        {
-            case 0: // No forces
-                break;
-
-            case 1: // Manual force (we'll add it directly)
-                break;
-
-            case 2: // Separation only
-            case 3:
-                config.SeparationWeight = 1.0f;
-                break;
-
-            case 4: // Alignment only
-                config.AlignmentWeight = 1.0f;
-                break;
-
-            case 5: // Cohesion only
-                config.CohesionWeight = 0.1f;
-                break;
-
-            case 6: // All forces
-            case 7:
-            case 8:
-                config.SeparationWeight = 1.0f;
-                config.AlignmentWeight = 0.5f;
-                config.CohesionWeight = 0.1f;
-                break;
-        }
-
-        return config;
     }
 
     private static void SpawnAgentsForStage(int stage)
