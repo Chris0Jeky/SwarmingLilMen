@@ -126,8 +126,9 @@ public sealed class World
         // BehaviorSystem depends on SenseSystem
         _systems.Add(new BehaviorSystem(_senseSystem));
 
-        // WanderSystem adds random forces to prevent equilibrium
-        _systems.Add(new WanderSystem(wanderStrength: 30f));
+        // WanderSystem adds small random forces to prevent equilibrium
+        // With MaxSpeed=6, wander should be much smaller (was 30 for MaxSpeed=200)
+        _systems.Add(new WanderSystem(wanderStrength: 0.5f));
 
         // IntegrateSystem applies forces and updates positions
         _systems.Add(new IntegrateSystem());
