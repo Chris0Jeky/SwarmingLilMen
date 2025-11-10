@@ -86,8 +86,7 @@ internal static class Program
             // Handle input
             HandleInput(world);
 
-            // Update simulation (run 2 ticks per frame for 120 Hz sim @ 60 FPS render)
-            world.Tick();
+            // Update simulation (1 tick per frame at 60 Hz)
             world.Tick();
 
             // Periodic diagnostic output (every 2 seconds)
