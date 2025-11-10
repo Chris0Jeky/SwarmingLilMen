@@ -42,6 +42,8 @@ The renderer shows **800 agents** (200 per group) performing **boids flocking be
 - **Right Click**: Spawn 50 red agents at mouse position
 - **Space**: Spawn 100 random agents
 - **R**: Reset to initial state (800 agents in 4 groups)
+- **X**: Shake - Add random velocity to all agents (breaks equilibrium)
+- **C**: Export CSV snapshot for data analysis
 - **ESC**: Quit
 
 ## Understanding the Flocking
@@ -85,6 +87,30 @@ Each agent follows three simple rules:
 - This is normal for the initial convergence phase
 - After a few seconds, flocks become more dynamic
 - Try spawning more agents with Space for chaos
+
+**"Agents stuck in static blobs"**:
+- This means forces have reached equilibrium (all cancel out)
+- Press **X** to "shake" agents and add random velocity
+- Press **R** to reset with new initial conditions
+- If you see >30 avg neighbors in diagnostics, agents are too clustered
+
+## Data Export & Analysis
+
+Press **C** to export a CSV snapshot of all agents. The file includes:
+- Agent position (X, Y)
+- Velocity (Vx, Vy, Speed)
+- Group membership
+- Energy, Health, Age
+- State flags
+
+Files are saved as `swarm_snapshot_YYYYMMDD_HHMMSS_T######.csv` with timestamp and tick count.
+
+**Use cases**:
+- Analyze clustering patterns in Python/R
+- Plot agent trajectories over time
+- Calculate spatial statistics (density, dispersion)
+- Verify force balance and equilibrium states
+- Debug anomalous behaviors
 
 ## What's Next
 
