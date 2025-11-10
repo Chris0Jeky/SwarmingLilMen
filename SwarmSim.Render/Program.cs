@@ -43,6 +43,11 @@ internal static class Program
         Raylib.InitWindow(WindowWidth, WindowHeight, WindowTitle);
         Raylib.SetTargetFPS(60);
 
+        // Enable console output for debugging
+        Console.WriteLine("=== SwarmingLilMen Renderer Starting ===");
+        Console.WriteLine("Press V/S/N to toggle visualizations");
+        Console.WriteLine("Watching for flocking behavior...\n");
+
         // Create world with config tuned for visible flocking
         var config = new SimConfig
         {
