@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(dotnet list:*)",
-      "Bash(dotnet add reference:*)"
+      "Bash(dotnet add reference:*)",
+      "Bash(dotnet sln:*)"
     ],
     "deny": [],
     "ask": []
