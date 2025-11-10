@@ -159,12 +159,23 @@ public sealed class SenseSystem : ISimSystem
 
                 senseCount++;
 
-                // Separation: repulsion weighted by 1/r^2
+                // Separation: LINEAR repulsion within protected radius
                 if (distSq < separationRadiusSq)
                 {
-                    float invDistSq = 1f / distSq;
-                    separationAccumX -= dx * invDistSq; // Push away
-                    separationAccumY -= dy * invDistSq;
+                    // Linear repulsion: stronger when closer, but bounded
+                    float dist = MathF.Sqrt(distSq);
+                    if (dist > 0.001f) // Avoid division by zero
+                    {
+                        // Normalize direction and scale by (1 - distance/radius)
+                        // This gives 1.0 repulsion at distance 0, 0.0 at separationRadius
+                        float repulsionStrength = (separationRadius - dist) / separationRadius;
+                        float normX = dx / dist;
+                        float normY = dy / dist;
+
+                        // Accumulate repulsion (pointing away from neighbor)
+                        separationAccumX -= normX * repulsionStrength;
+                        separationAccumY -= normY * repulsionStrength;
+                    }
                 }
 
                 // Alignment: sum of neighbor velocities
