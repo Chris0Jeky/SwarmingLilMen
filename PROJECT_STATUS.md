@@ -376,18 +376,23 @@ None currently.
 | Phase | Agents | Tick Time | FPS | Allocs/Tick | Notes |
 |-------|--------|-----------|-----|-------------|-------|
 | P0    | 1k     | 0.069ms   | 14,522 | N/A | Baseline (no systems) |
-| **P1**| **1k** | **0.069ms** | **14,522** | **TBD** | **Grid + RandomWalk + Integrate** ✅ |
-| **P1**| **10k** | **0.38ms** | **2,612** | **TBD** | **Grid + RandomWalk + Integrate** ✅ |
-| **P1**| **50k** | **1.92ms** | **521** | **TBD** | **Grid + RandomWalk + Integrate** ✅ |
-| P2    | 50k    | TBD       | 60+ (target) | 0 | With full boids |
+| P1    | 1k     | 0.069ms   | 14,522 | TBD | Grid + RandomWalk + Integrate ✅ |
+| P1    | 10k    | 0.38ms    | 2,612  | TBD | Grid + RandomWalk + Integrate ✅ |
+| P1    | 50k    | 1.92ms    | 521    | TBD | Grid + RandomWalk + Integrate ✅ |
+| **P2**| **1k** | **0.117ms** | **8,555** | **TBD** | **Grid + Boids + Integrate** ✅ |
+| **P2**| **10k** | **7.75ms** | **129** | **TBD** | **Grid + Boids + Integrate** ✅ |
+| **P2**| **50k** | **154ms** | **6.5** | **TBD** | **Grid + Boids + Integrate** ⚠️ |
 | P3    | 50k    | TBD       | 60+ (target) | 0 | With combat/metabolism |
 | P4    | 50k    | TBD       | 60+ (target) | 0 | With reproduction |
 | P5    | 200k+  | TBD       | 60+ (target) | 0 | With SIMD/parallel |
 
 **Notes**:
-- P1 results measured in Release mode on development machine
+- All results measured in Release mode on development machine
 - Grid rebuild time (50k agents): 0.093ms
-- Current phase far exceeds performance targets (521 FPS vs 60 FPS goal)
+- P1 (RandomWalk): 521 FPS @ 50k agents - far exceeds target
+- P2 (Boids): 129 FPS @ 10k agents - exceeds target; 6.5 FPS @ 50k needs optimization
+- Boids calculations are O(n*k) where k = avg neighbors, explaining performance drop at high density
+- Optimization opportunities for P5: SIMD, parallelization, neighbor limits
 
 ---
 
