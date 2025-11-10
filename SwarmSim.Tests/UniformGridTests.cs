@@ -165,11 +165,12 @@ public class UniformGridTests
     }
 
     [Fact]
-    public void Query3x3_CompareWithBruteForce_MatchesExactly()
+    public void Query3x3_CompareWithBruteForce_FindsAllWithinRadius()
     {
-        // Property test: grid query should match brute force within radius
+        // Property test: grid query should find all agents within radius
+        // (no false negatives, though may include agents outside radius in 3x3 cells)
         var rng = new Rng(42);
-        var grid = new UniformGrid(cellSize: 20f, worldWidth: 200f, worldHeight: 200f, capacity: 100);
+        var grid = new UniformGrid(cellSize: 25f, worldWidth: 200f, worldHeight: 200f, capacity: 100);
 
         // Create 100 random agents
         var x = new float[100];
@@ -182,12 +183,13 @@ public class UniformGridTests
 
         grid.Rebuild(x, y, count: 100);
 
-        // Pick a random query point
+        // Pick a query point
         float qx = 100f;
         float qy = 100f;
-        float radius = 30f; // Should cover 3x3 cells (cellSize=20)
+        // Use radius < cellSize to ensure all agents within radius are in 3x3 neighborhood
+        float radius = 20f;
 
-        // Grid query
+        // Grid query (filter by radius)
         var gridResults = new HashSet<int>();
         grid.Query3x3(qx, qy, idx =>
         {
@@ -209,8 +211,28 @@ public class UniformGridTests
                 bruteForceResults.Add(i);
         }
 
-        // Should match exactly
+        // Grid should find all agents that brute force finds (no false negatives)
         Assert.Equal(bruteForceResults, gridResults);
+    }
+
+    [Fact]
+    public void Query3x3_ReturnsAllAgentsInNeighborhood()
+    {
+        // Verify that grid returns all agents in 3x3 cells (not just those within radius)
+        var grid = new UniformGrid(cellSize: 10f, worldWidth: 100f, worldHeight: 100f, capacity: 100);
+        // Place agents in a 3x3 grid of cells around (15, 15)
+        // Center cell (1,1): (15, 15)
+        // Neighbors: cells (0,0), (0,1), (0,2), (1,0), (1,2), (2,0), (2,1), (2,2)
+        var x = new float[] { 5f, 5f, 5f, 15f, 15f, 25f, 25f, 25f };
+        var y = new float[] { 5f, 15f, 25f, 5f, 25f, 5f, 15f, 25f };
+
+        grid.Rebuild(x, y, count: 8);
+
+        var found = new List<int>();
+        grid.Query3x3(15f, 15f, idx => found.Add(idx));
+
+        // Should find all 8 agents (all cells in 3x3 neighborhood)
+        Assert.Equal(8, found.Count);
     }
 
     [Fact]
