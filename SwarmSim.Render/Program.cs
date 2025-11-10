@@ -127,34 +127,14 @@ internal static class Program
 
         // Enable console output for debugging
         Console.WriteLine("=== SwarmingLilMen Renderer Starting ===");
-        Console.WriteLine("Press V/S/N to toggle visualizations");
-        Console.WriteLine("Watching for flocking behavior...\n");
+        Console.WriteLine("Dynamic Parameter Adjustment Enabled!");
+        Console.WriteLine("Use number keys 1-7 to select parameters");
+        Console.WriteLine("Use ↑↓/+- to adjust, hold SHIFT for fine tuning");
+        Console.WriteLine("Press F1-F5 for presets\n");
 
-        // Create world with config tuned for visible flocking
-        var config = new SimConfig
-        {
-            WorldWidth = WindowWidth,
-            WorldHeight = WindowHeight,
-            BoundaryMode = BoundaryMode.Wrap,
-            FixedDeltaTime = 1f / 60f,  // 60 Hz simulation to match render
-
-            // TRADITIONAL BOIDS PARAMETERS - Based on research and typical implementations
-            MaxSpeed = 6f,               // Low max speed (4-6 typical)
-            Friction = 0.99f,            // High friction (near 1.0) for gradual changes
-
-            // Boids settings - Traditional small weights
-            SenseRadius = 60f,           // Visual range
-            SeparationRadius = 15f,      // Small protected zone
-            SeparationWeight = 0.05f,    // TINY weight (was 300!)
-            AlignmentWeight = 0.05f,     // TINY weight (was 150!)
-            CohesionWeight = 0.0005f,    // VERY TINY weight (was 10!)
-
-            // Disable combat for peaceful flocking demo
-            AttackDamage = 0f,
-            BaseDrain = 0.1f
-        };
-
-        var world = new World(config, seed: 42);
+        // Create initial world
+        var world = CreateWorldWithCurrentParams();
+        _world = world;
 
         // Spawn initial agents
         SpawnInitialAgents(world);
@@ -166,23 +146,49 @@ internal static class Program
         while (!Raylib.WindowShouldClose())
         {
             // Handle input
-            HandleInput(world);
+            HandleInput(_world);
 
             // Update simulation (1 tick per frame at 60 Hz)
-            world.Tick();
+            _world.Tick();
 
             // Periodic diagnostic output (every 2 seconds)
             frameCount++;
             if (frameCount % 120 == 0) // Every 2 seconds at 60 FPS
             {
-                PrintDiagnostics(world, config);
+                PrintDiagnostics(_world);
             }
 
             // Render
-            Render(world);
+            Render(_world);
         }
 
         Raylib.CloseWindow();
+    }
+
+    private static World CreateWorldWithCurrentParams()
+    {
+        var config = new SimConfig
+        {
+            WorldWidth = WindowWidth,
+            WorldHeight = WindowHeight,
+            BoundaryMode = BoundaryMode.Wrap,
+            FixedDeltaTime = 1f / 60f,
+
+            // Use current parameter values
+            MaxSpeed = _maxSpeed,
+            Friction = _friction,
+            SenseRadius = _senseRadius,
+            SeparationRadius = _separationRadius,
+            SeparationWeight = _separationWeight,
+            AlignmentWeight = _alignmentWeight,
+            CohesionWeight = _cohesionWeight,
+
+            // Disable combat for flocking demo
+            AttackDamage = 0f,
+            BaseDrain = 0.1f
+        };
+
+        return new World(config, seed: 42);
     }
 
     private static void SpawnInitialAgents(World world)
@@ -233,7 +239,7 @@ internal static class Program
             {
                 _selectedParameter = i;
                 var param = Parameters[i];
-                float currentValue = param.GetValue(config);
+                float currentValue = param.GetValue();
                 Console.WriteLine($"Selected: {param.Name} = {currentValue:F4}");
             }
         }
@@ -249,7 +255,7 @@ internal static class Program
         if (increase || decrease)
         {
             var param = Parameters[_selectedParameter];
-            float currentValue = param.GetValue(config);
+            float currentValue = param.GetValue();
             float step = _fineAdjustment ? param.FineStepSize : param.StepSize;
 
             if (increase)
@@ -257,16 +263,19 @@ internal static class Program
             else
                 currentValue = Math.Max(currentValue - step, param.MinValue);
 
-            param.SetValue(config, currentValue);
+            param.SetValue(currentValue);
             Console.WriteLine($"{param.Name} = {currentValue:F4} (Step: {step:F4})");
+
+            // Recreate world with new parameters
+            RecreateWorldWithNewParams(world);
         }
 
         // === PRESETS (F1-F5) ===
-        if (Raylib.IsKeyPressed(KeyboardKey.F1)) ApplyPreset(config, Presets[0]); // Traditional Boids
-        if (Raylib.IsKeyPressed(KeyboardKey.F2)) ApplyPreset(config, Presets[1]); // Original High Forces
-        if (Raylib.IsKeyPressed(KeyboardKey.F3)) ApplyPreset(config, Presets[2]); // Medium Forces
-        if (Raylib.IsKeyPressed(KeyboardKey.F4)) ApplyPreset(config, Presets[3]); // Separation Only
-        if (Raylib.IsKeyPressed(KeyboardKey.F5)) ApplyPreset(config, Presets[4]); // Alignment Only
+        if (Raylib.IsKeyPressed(KeyboardKey.F1)) { ApplyPreset(Presets[0]); RecreateWorldWithNewParams(world); }
+        if (Raylib.IsKeyPressed(KeyboardKey.F2)) { ApplyPreset(Presets[1]); RecreateWorldWithNewParams(world); }
+        if (Raylib.IsKeyPressed(KeyboardKey.F3)) { ApplyPreset(Presets[2]); RecreateWorldWithNewParams(world); }
+        if (Raylib.IsKeyPressed(KeyboardKey.F4)) { ApplyPreset(Presets[3]); RecreateWorldWithNewParams(world); }
+        if (Raylib.IsKeyPressed(KeyboardKey.F5)) { ApplyPreset(Presets[4]); RecreateWorldWithNewParams(world); }
 
         // P: Print current configuration
         if (Raylib.IsKeyPressed(KeyboardKey.P))
@@ -274,9 +283,8 @@ internal static class Program
             Console.WriteLine("\n=== Current Configuration ===");
             foreach (var param in Parameters)
             {
-                Console.WriteLine($"{param.Name}: {param.GetValue(config):F4}");
+                Console.WriteLine($"{param.Name}: {param.GetValue():F4}");
             }
-            Console.WriteLine($"Force Clamp Multiplier: {_forceClampMultiplier}");
             Console.WriteLine("=============================\n");
         }
 
@@ -364,19 +372,46 @@ internal static class Program
         }
     }
 
-    private static void ApplyPreset(SimConfig config, Preset preset)
+    private static void ApplyPreset(Preset preset)
     {
-        config.SeparationWeight = preset.SeparationWeight;
-        config.AlignmentWeight = preset.AlignmentWeight;
-        config.CohesionWeight = preset.CohesionWeight;
-        config.SeparationRadius = preset.SeparationRadius;
-        config.SenseRadius = preset.SenseRadius;
-        config.MaxSpeed = preset.MaxSpeed;
-        config.Friction = preset.Friction;
+        _separationWeight = preset.SeparationWeight;
+        _alignmentWeight = preset.AlignmentWeight;
+        _cohesionWeight = preset.CohesionWeight;
+        _separationRadius = preset.SeparationRadius;
+        _senseRadius = preset.SenseRadius;
+        _maxSpeed = preset.MaxSpeed;
+        _friction = preset.Friction;
         Console.WriteLine($"Applied preset: {preset.Name}");
         Console.WriteLine($"  Weights: Sep={preset.SeparationWeight:F4}, Ali={preset.AlignmentWeight:F4}, Coh={preset.CohesionWeight:F6}");
         Console.WriteLine($"  Radii: Sep={preset.SeparationRadius}, Sense={preset.SenseRadius}");
         Console.WriteLine($"  Physics: Speed={preset.MaxSpeed}, Friction={preset.Friction:F3}");
+    }
+
+    private static void RecreateWorldWithNewParams(World oldWorld)
+    {
+        // Store agent positions and velocities
+        var positions = new List<(float x, float y, float vx, float vy, byte group)>();
+        for (int i = 0; i < oldWorld.Count; i++)
+        {
+            if (!oldWorld.State[i].HasFlag(AgentState.Dead))
+            {
+                positions.Add((oldWorld.X[i], oldWorld.Y[i], oldWorld.Vx[i], oldWorld.Vy[i], oldWorld.Group[i]));
+            }
+        }
+
+        // Create new world with updated parameters
+        _world = CreateWorldWithCurrentParams();
+
+        // Restore agents
+        foreach (var (x, y, vx, vy, group) in positions)
+        {
+            int idx = _world.AddAgent(x, y, group);
+            if (idx >= 0)
+            {
+                _world.Vx[idx] = vx;
+                _world.Vy[idx] = vy;
+            }
+        }
     }
 
     private static void Render(World world)
@@ -510,13 +545,13 @@ internal static class Program
         y += lineHeight + 5;
 
         // === ADJUSTABLE PARAMETERS ===
-        DrawText($"PARAMETERS (1-7 to select, ↑↓/+- to adjust{(_fineAdjustment ? " [FINE]" : "")})", padding, y, 14, Color.Cyan);
+        DrawText($"PARAMETERS (1-7 to select, ↑↓/+- to adjust{(_fineAdjustment ? " [FINE]" : "")})", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
 
         for (int i = 0; i < Parameters.Length; i++)
         {
             var param = Parameters[i];
-            float value = param.GetValue(config);
+            float value = param.GetValue();
             bool isSelected = i == _selectedParameter;
 
             Color textColor = isSelected ? Color.Yellow : Color.White;
@@ -542,7 +577,7 @@ internal static class Program
         y += 8;
 
         // === PRESETS ===
-        DrawText("PRESETS (F1-F5):", padding, y, 14, Color.Cyan);
+        DrawText("PRESETS (F1-F5):", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
 
         for (int i = 0; i < Math.Min(5, Presets.Length); i++)
@@ -554,7 +589,7 @@ internal static class Program
         y += 8;
 
         // === VISUALIZATION ===
-        DrawText("VISUALIZATION:", padding, y, 14, Color.Cyan);
+        DrawText("VISUALIZATION:", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
         DrawText($"  [V] Velocity: {(_showVelocityVectors ? "ON" : "OFF")}", padding, y, 12,
             _showVelocityVectors ? Color.Green : Color.Gray);
@@ -569,7 +604,7 @@ internal static class Program
         y += 8;
 
         // === CONTROLS ===
-        DrawText("CONTROLS:", padding, y, 14, Color.Cyan);
+        DrawText("CONTROLS:", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
         DrawText("  Click: Spawn | Space: Random", padding, y, 12, Color.LightGray);
         y += lineHeight - 4;
@@ -584,7 +619,7 @@ internal static class Program
         int rightY = padding;
         Raylib.DrawRectangle(rightX - 10, 0, 310, 200, new Color(0, 0, 0, 180));
 
-        DrawText("CURRENT VALUES", rightX, rightY, 14, Color.Cyan);
+        DrawText("CURRENT VALUES", rightX, rightY, 14, Color.SkyBlue);
         rightY += lineHeight;
 
         // Show key metrics
@@ -621,7 +656,7 @@ internal static class Program
         Raylib.DrawText(text, x, y, fontSize, color);
     }
 
-    private static void PrintDiagnostics(World world, SimConfig config)
+    private static void PrintDiagnostics(World world)
     {
         var stats = world.GetStats();
 
@@ -656,7 +691,7 @@ internal static class Program
                 float dx = world.X[j] - world.X[i];
                 float dy = world.Y[j] - world.Y[i];
                 float distSq = dx * dx + dy * dy;
-                if (distSq < config.SenseRadius * config.SenseRadius)
+                if (distSq < world.Config.SenseRadius * world.Config.SenseRadius)
                     neighbors++;
             }
             totalNeighbors += neighbors;
@@ -668,7 +703,7 @@ internal static class Program
         float avgNeighbors = stats.AliveAgents > 0 ? (float)totalNeighbors / stats.AliveAgents : 0f;
 
         Console.WriteLine($"═══ [T={world.TickCount:D5}] ═══");
-        Console.WriteLine($"Agents: {stats.AliveAgents}  |  Avg Speed: {stats.AverageSpeed:F1}/{config.MaxSpeed:F0}  |  Range: [{minSpeed:F1}, {maxSpeed:F1}]");
+        Console.WriteLine($"Agents: {stats.AliveAgents}  |  Avg Speed: {stats.AverageSpeed:F1}/{world.Config.MaxSpeed:F0}  |  Range: [{minSpeed:F1}, {maxSpeed:F1}]");
         Console.WriteLine($"Forces: Avg N/A  |  Range: [{minForce:F1}, {maxForce:F1}]");
         Console.WriteLine($"Neighbors: Avg {avgNeighbors:F1}  |  Few(<5): {agentsWithFewNeighbors}  |  Many(>30): {agentsWithManyNeighbors}");
 
@@ -705,7 +740,7 @@ internal static class Program
                     float dx = world.X[j] - world.X[idx];
                     float dy = world.Y[j] - world.Y[idx];
                     float distSq = dx * dx + dy * dy;
-                    if (distSq < config.SenseRadius * config.SenseRadius)
+                    if (distSq < world.Config.SenseRadius * world.Config.SenseRadius)
                         neighbors++;
                 }
 
