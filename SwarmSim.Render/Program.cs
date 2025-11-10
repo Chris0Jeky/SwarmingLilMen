@@ -57,15 +57,15 @@ internal static class Program
             FixedDeltaTime = 1f / 120f,  // 120 Hz simulation, 60 Hz render
 
             // Physics tuned for visible, dynamic movement
-            MaxSpeed = 300f,             // Increased from 200 for faster movement
-            Friction = 0.99f,            // Slightly higher from 0.98 for smoother motion
+            MaxSpeed = 300f,             // Fast movement
+            Friction = 0.95f,            // REDUCED from 0.99 for more sustained movement
 
-            // Boids settings for good flocking
-            SenseRadius = 80f,           // Increased from 50 so agents can see each other
-            SeparationRadius = 25f,      // Increased from 20
-            SeparationWeight = 1.5f,     // Keep reasonable separation
-            AlignmentWeight = 1.0f,      // Match neighbor velocities
-            CohesionWeight = 0.8f,       // Attract to group center
+            // Boids settings - MORE AGGRESSIVE for visible flocking
+            SenseRadius = 120f,          // INCREASED from 80 - larger interaction range
+            SeparationRadius = 30f,      // Slightly increased
+            SeparationWeight = 3.0f,     // DOUBLED from 1.5 - stronger separation
+            AlignmentWeight = 2.0f,      // DOUBLED from 1.0 - stronger alignment
+            CohesionWeight = 1.5f,       // NEARLY DOUBLED from 0.8 - stronger cohesion
 
             // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
