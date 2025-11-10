@@ -26,7 +26,7 @@ The renderer shows **800 agents** (200 per group) performing **boids flocking be
 
 ### Visualization Options (Press Keys to Toggle):
 - **V** - Velocity vectors (ON by default): Shows direction and speed of movement
-- **S** - Sense radius circles: Shows how far each agent can "see" (80 pixels)
+- **S** - Sense radius circles: Shows how far each agent can "see" (120 pixels)
 - **N** - Neighbor connections: Draws lines between nearby agents in the same group
 
 ### What Makes It Dynamic:
