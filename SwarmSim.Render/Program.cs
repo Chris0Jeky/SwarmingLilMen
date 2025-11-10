@@ -58,14 +58,14 @@ internal static class Program
 
             // Physics tuned for visible, dynamic movement
             MaxSpeed = 300f,             // Fast movement
-            Friction = 0.95f,            // REDUCED from 0.99 for more sustained movement
+            Friction = 0.995f,           // Much less friction (was killing velocity too fast)
 
-            // Boids settings - MORE AGGRESSIVE for visible flocking
-            SenseRadius = 120f,          // INCREASED from 80 - larger interaction range
+            // Boids settings - MASSIVE forces to overcome tiny dt
+            SenseRadius = 120f,          // Larger interaction range
             SeparationRadius = 30f,      // Slightly increased
-            SeparationWeight = 3.0f,     // DOUBLED from 1.5 - stronger separation
-            AlignmentWeight = 2.0f,      // DOUBLED from 1.0 - stronger alignment
-            CohesionWeight = 1.5f,       // NEARLY DOUBLED from 0.8 - stronger cohesion
+            SeparationWeight = 300.0f,   // 100x increase to overcome dt=1/120
+            AlignmentWeight = 200.0f,    // 100x increase
+            CohesionWeight = 150.0f,     // 100x increase
 
             // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
