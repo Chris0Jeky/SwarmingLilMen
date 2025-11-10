@@ -299,10 +299,10 @@ internal static class Program
         int fps = Raylib.GetFPS();
 
         // Background panel for readability
-        Raylib.DrawRectangle(0, 0, 300, 200, new Color(0, 0, 0, 180));
+        Raylib.DrawRectangle(0, 0, 380, 320, new Color(0, 0, 0, 180));
 
         // Draw stats
-        DrawText($"SwarmingLilMen - Phase 0 Demo", padding, y, 20, Color.White);
+        DrawText($"SwarmingLilMen - Phase 2: Boids", padding, y, 20, Color.White);
         y += lineHeight + 5;
 
         DrawText($"FPS: {fps}", padding, y, 18, fps >= 60 ? Color.Green : Color.Yellow);
@@ -311,13 +311,20 @@ internal static class Program
         DrawText($"Agents: {stats.AliveAgents} / {stats.TotalAgents}", padding, y, 18, Color.White);
         y += lineHeight;
 
-        DrawText($"Tick: {stats.TickCount}", padding, y, 18, Color.Gray);
+        DrawText($"Avg Speed: {stats.AverageSpeed:F1} / {world.Config.MaxSpeed:F0}", padding, y, 18, Color.Cyan);
         y += lineHeight;
 
-        DrawText($"Sim Time: {stats.SimulationTime:F2}s", padding, y, 18, Color.Gray);
+        // Boids settings
+        y += 5;
+        DrawText($"Boids Settings:", padding, y, 16, Color.Yellow);
         y += lineHeight;
-
-        DrawText($"Avg Energy: {stats.AverageEnergy:F1}", padding, y, 18, Color.SkyBlue);
+        DrawText($"  Separation: {world.Config.SeparationWeight:F1}", padding, y, 14, Color.Gray);
+        y += lineHeight - 3;
+        DrawText($"  Alignment:  {world.Config.AlignmentWeight:F1}", padding, y, 14, Color.Gray);
+        y += lineHeight - 3;
+        DrawText($"  Cohesion:   {world.Config.CohesionWeight:F1}", padding, y, 14, Color.Gray);
+        y += lineHeight - 3;
+        DrawText($"  Sense Radius: {world.Config.SenseRadius:F0}px", padding, y, 14, Color.Gray);
         y += lineHeight;
 
         DrawText($"Avg Speed: {stats.AverageSpeed:F1}", padding, y, 18, Color.SkyBlue);
