@@ -27,3 +27,5 @@ static string SpeedBand(float v) => v switch
 }; 
 
 Console.WriteLine(SpeedBand(0.05f));
+
+Console.Beep();
