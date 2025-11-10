@@ -60,12 +60,12 @@ internal static class Program
             MaxSpeed = 300f,             // Fast movement
             Friction = 0.995f,           // Much less friction (was killing velocity too fast)
 
-            // Boids settings - MASSIVE forces to overcome tiny dt
+            // Boids settings - Strong forces (dt is now 1/60)
             SenseRadius = 120f,          // Larger interaction range
             SeparationRadius = 30f,      // Slightly increased
-            SeparationWeight = 300.0f,   // 100x increase to overcome dt=1/120
-            AlignmentWeight = 200.0f,    // 100x increase
-            CohesionWeight = 150.0f,     // 100x increase
+            SeparationWeight = 150.0f,   // 50x increase from original
+            AlignmentWeight = 100.0f,    // 50x increase
+            CohesionWeight = 75.0f,      // 50x increase
 
             // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
