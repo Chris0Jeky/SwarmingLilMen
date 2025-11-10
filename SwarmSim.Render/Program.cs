@@ -16,6 +16,10 @@ internal static class Program
     private static bool _showSenseRadius = false;
     private static bool _showNeighborConnections = false;
 
+    // Diagnostic tracking
+    private static int[] _trackedAgents = Array.Empty<int>();
+    private static readonly Random _random = new Random(42);
+
     // Color palette for groups (16 colors)
     private static readonly Color[] GroupColors =
     [
