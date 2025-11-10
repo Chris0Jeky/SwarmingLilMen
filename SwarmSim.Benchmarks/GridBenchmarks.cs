@@ -24,7 +24,7 @@ public class GridBenchmarks
     [GlobalSetup]
     public void Setup()
     {
-        var config = SimConfig.CreatePeacefulFlocks();
+        var config = SimConfig.PeacefulFlocks();
         _grid = new UniformGrid(
             cellSize: config.SenseRadius,
             worldWidth: config.WorldWidth,
