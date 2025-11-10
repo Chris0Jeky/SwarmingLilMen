@@ -25,6 +25,9 @@ public sealed class World
     public UniformGrid Grid { get; private set; } = null!;
     private readonly List<ISimSystem> _systems = new();
 
+    // Sense system needs to be accessible for BehaviorSystem
+    private SenseSystem _senseSystem = null!;
+
     // ===== Population Tracking =====
     public int Capacity { get; private set; }
     public int Count { get; private set; }
@@ -111,11 +114,27 @@ public sealed class World
             worldHeight: Config.WorldHeight,
             capacity: capacity);
 
-        // Initialize systems (Phase 1: RandomWalk + Integrate only)
-        // Later phases will add more systems in the proper order
+        // Initialize systems (Phase 2: Boids behavior)
+        // Systems run in order each tick
         _systems.Clear();
-        _systems.Add(new RandomWalkSystem(forceStrength: 100f));
+
+        // Create and initialize SenseSystem
+        _senseSystem = new SenseSystem();
+        _senseSystem.Initialize(capacity);
+        _systems.Add(_senseSystem);
+
+        // BehaviorSystem depends on SenseSystem
+        _systems.Add(new BehaviorSystem(_senseSystem));
+
+        // IntegrateSystem applies forces and updates positions
         _systems.Add(new IntegrateSystem());
+
+        // Future systems:
+        // - CombatSystem (Phase 3)
+        // - ForageSystem (Phase 3)
+        // - ReproductionSystem (Phase 4)
+        // - MetabolismSystem (Phase 3)
+        // - LifecycleSystem (Phase 3)
     }
 
     /// <summary>
@@ -276,16 +295,18 @@ public sealed class World
         ClearForces();
 
         // Run all systems in order
-        // Phase 1: RandomWalk + Integrate
-        // Later phases will expand this pipeline:
-        // 1. SenseSystem
-        // 2. BehaviorSystem (replaces RandomWalk)
-        // 3. CombatSystem
-        // 4. ForageSystem
-        // 5. ReproductionSystem
-        // 6. MetabolismSystem
-        // 7. IntegrateSystem
-        // 8. LifecycleSystem
+        // Phase 2: Boids flocking behavior
+        // Current pipeline:
+        // 1. SenseSystem - Query neighbors, compute aggregates
+        // 2. BehaviorSystem - Apply boids rules (separation, alignment, cohesion)
+        // 3. IntegrateSystem - Apply forces, update positions
+        //
+        // Future phases will add:
+        // 4. CombatSystem (Phase 3)
+        // 5. ForageSystem (Phase 3)
+        // 6. ReproductionSystem (Phase 4)
+        // 7. MetabolismSystem (Phase 3)
+        // 8. LifecycleSystem (Phase 3)
         foreach (var system in _systems)
         {
             system.Run(this, dt);
