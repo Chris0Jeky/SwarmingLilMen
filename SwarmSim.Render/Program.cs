@@ -218,7 +218,7 @@ internal static class Program
             if (_showSenseRadius && world.Count < 100)
             {
                 Raylib.DrawCircleLines((int)x, (int)y, world.Config.SenseRadius,
-                    new Color(color.R, color.G, color.B, 30));
+                    new Color(color.R, color.G, color.B, (byte)30));
             }
 
             // Draw velocity vector (if enabled)
@@ -239,7 +239,7 @@ internal static class Program
                         new Vector2(x, y),
                         new Vector2(x + dirX * lineLength, y + dirY * lineLength),
                         1.5f,
-                        new Color(color.R, color.G, color.B, 150)
+                        new Color(color.R, color.G, color.B, (byte)150)
                     );
                 }
             }
@@ -282,7 +282,7 @@ internal static class Program
                     new Vector2(x, y),
                     new Vector2(world.X[j], world.Y[j]),
                     0.5f,
-                    new Color(color.R, color.G, color.B, 40)
+                    new Color(color.R, color.G, color.B, (byte)40)
                 );
             }
         }
@@ -311,7 +311,7 @@ internal static class Program
         DrawText($"Agents: {stats.AliveAgents} / {stats.TotalAgents}", padding, y, 18, Color.White);
         y += lineHeight;
 
-        DrawText($"Avg Speed: {stats.AverageSpeed:F1} / {world.Config.MaxSpeed:F0}", padding, y, 18, Color.Cyan);
+        DrawText($"Avg Speed: {stats.AverageSpeed:F1} / {world.Config.MaxSpeed:F0}", padding, y, 18, Color.SkyBlue);
         y += lineHeight;
 
         // Boids settings
