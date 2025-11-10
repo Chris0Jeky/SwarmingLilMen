@@ -136,8 +136,9 @@ internal static class Program
         }
 
         Console.WriteLine($"Spawned {world.Count} agents (100 per group, 400 total)");
-        Console.WriteLine($"Config: Friction=0.92, Wander=30, Separation=300, Alignment=150, Cohesion=10");
-        Console.WriteLine($"Expected: Continuous movement without equilibrium");
+        Console.WriteLine($"TRADITIONAL BOIDS: MaxSpeed=6, Friction=0.99");
+        Console.WriteLine($"Weights: Sep=0.05, Ali=0.05, Coh=0.0005 (vs old 300/150/10)");
+        Console.WriteLine($"Expected: Smooth, continuous flocking without equilibrium");
     }
 
     private static void HandleInput(World world)
