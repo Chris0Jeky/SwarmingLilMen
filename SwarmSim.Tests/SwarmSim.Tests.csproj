@@ -23,4 +23,8 @@
     <Using Include="Xunit" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SwarmSim.Core\SwarmSim.Core.csproj" />
+  </ItemGroup>
+
 </Project>
