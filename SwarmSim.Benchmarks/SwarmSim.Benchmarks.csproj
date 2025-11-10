@@ -11,4 +11,8 @@
     <PackageReference Include="BenchmarkDotNet" Version="0.15.6" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\SwarmSim.Core\SwarmSim.Core.csproj" />
+  </ItemGroup>
+
 </Project>
