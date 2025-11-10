@@ -135,8 +135,9 @@ internal static class Program
             world.Vy[i] = vy * speed;
         }
 
-        Console.WriteLine($"Spawned {world.Count} agents EXTREMELY SPREAD (spacing={clusterSpacing}, radius={spawnRadius})");
-        Console.WriteLine($"Expected initial neighbors: ~15-25 (target < 30)");
+        Console.WriteLine($"Spawned {world.Count} agents (100 per group, 400 total)");
+        Console.WriteLine($"Config: Friction=0.92, Wander=30, Separation=300, Alignment=150, Cohesion=10");
+        Console.WriteLine($"Expected: Continuous movement without equilibrium");
     }
 
     private static void HandleInput(World world)
