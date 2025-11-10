@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dotnet list:*)",
+      "Bash(dotnet add reference:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
