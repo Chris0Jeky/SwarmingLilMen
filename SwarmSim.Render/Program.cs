@@ -60,16 +60,16 @@ internal static class Program
             BoundaryMode = BoundaryMode.Wrap,
             FixedDeltaTime = 1f / 60f,  // 60 Hz simulation to match render
 
-            // Physics tuned for visible, dynamic movement
-            MaxSpeed = 200f,             // Good max speed
-            Friction = 0.92f,            // MUCH lower friction - maintain momentum!
+            // TRADITIONAL BOIDS PARAMETERS - Based on research and typical implementations
+            MaxSpeed = 6f,               // Low max speed (4-6 typical)
+            Friction = 0.99f,            // High friction (near 1.0) for gradual changes
 
-            // Boids settings - Balanced with wander to prevent equilibrium
-            SenseRadius = 100f,          // Moderate sensing range
-            SeparationRadius = 50f,      // Good personal space
-            SeparationWeight = 300.0f,   // Strong but not extreme
-            AlignmentWeight = 150.0f,    // Strong alignment for coordinated movement
-            CohesionWeight = 10.0f,      // TINY cohesion - just enough to form loose groups
+            // Boids settings - Traditional small weights
+            SenseRadius = 60f,           // Visual range
+            SeparationRadius = 15f,      // Small protected zone
+            SeparationWeight = 0.05f,    // TINY weight (was 300!)
+            AlignmentWeight = 0.05f,     // TINY weight (was 150!)
+            CohesionWeight = 0.0005f,    // VERY TINY weight (was 10!)
 
             // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
@@ -125,12 +125,12 @@ internal static class Program
         world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 2);
         world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 3);
 
-        // Give agents VERY strong initial velocity
+        // Give agents moderate initial velocity (matching new low max speed)
         var rng = world.Rng;
         for (int i = 0; i < world.Count; i++)
         {
             (float vx, float vy) = rng.NextUnitVector();
-            float speed = rng.NextFloat(100f, 200f);  // Fast initial speeds
+            float speed = rng.NextFloat(2f, 4f);  // Small initial speeds for traditional Boids
             world.Vx[i] = vx * speed;
             world.Vy[i] = vy * speed;
         }
