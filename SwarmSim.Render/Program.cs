@@ -121,6 +121,7 @@ internal static class Program
                             neighborsInRange++;
                     }
                     Console.WriteLine($"  Agent 0 has {neighborsInRange} neighbors in range, dt={config.FixedDeltaTime:F4}");
+                }
                 Console.WriteLine();
             }
 
