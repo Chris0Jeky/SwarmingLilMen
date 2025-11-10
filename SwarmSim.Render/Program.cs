@@ -109,29 +109,32 @@ internal static class Program
 
     private static void SpawnInitialAgents(World world)
     {
-        // Spawn agents closer together in the center for immediate interaction
-        // Use smaller clusters that are close enough to interact (within SenseRadius)
+        // Spawn agents SPREAD OUT to prevent initial clustering
+        // The problem was: 200 agents in 80px radius = 147 neighbors each!
+        // Solution: Much larger spawn areas, farther apart
+
         float centerX = WindowWidth * 0.5f;
         float centerY = WindowHeight * 0.5f;
-        float clusterSpacing = 150f; // Close enough to interact (within 2x SenseRadius)
+        float clusterSpacing = 400f; // MUCH farther apart (was 150)
+        float spawnRadius = 200f;     // MUCH larger circles (was 80)
 
-        // Spawn 4 groups in a tighter formation around center
-        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, 80f, 200, group: 0);
-        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, 80f, 200, group: 1);
-        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, 80f, 200, group: 2);
-        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, 80f, 200, group: 3);
+        // Spawn 4 groups in corners, widely spread
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, 200, group: 0);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, 200, group: 1);
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 200, group: 2);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, 200, group: 3);
 
-        // Give agents some initial random velocity so they start moving
+        // Give agents strong initial velocity to prevent static start
         var rng = world.Rng;
         for (int i = 0; i < world.Count; i++)
         {
             (float vx, float vy) = rng.NextUnitVector();
-            float speed = rng.NextFloat(50f, 150f);  // Moderate initial speed
+            float speed = rng.NextFloat(80f, 150f);  // Higher initial speed
             world.Vx[i] = vx * speed;
             world.Vy[i] = vy * speed;
         }
 
-        Console.WriteLine($"Spawned {world.Count} agents in 4 groups (centered for interaction)");
+        Console.WriteLine($"Spawned {world.Count} agents in 4 SPREAD OUT groups (spacing={clusterSpacing}, radius={spawnRadius})");
     }
 
     private static void HandleInput(World world)
