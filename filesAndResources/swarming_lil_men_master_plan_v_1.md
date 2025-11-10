@@ -36,10 +36,10 @@
 ## 3) Architecture (high level)
 ```
 SwarmSim.sln
-  Sim.Core        // data + systems, deterministic, allocation‑free tick
-  Sim.Render      // raylib‑cs window, input, overlay, draws from spans
-  Sim.Tests       // xUnit property/unit tests (grid, invariants, rules)
-  Sim.Benchmarks  // BenchmarkDotNet microbenches for hot loops
+  SwarmSim.Core        // data + systems, deterministic, allocation‑free tick
+  SwarmSim.Render      // raylib‑cs window, input, overlay, draws from spans
+  SwarmSim.Tests       // xUnit property/unit tests (grid, invariants, rules)
+  SwarmSim.Benchmarks  // BenchmarkDotNet microbenches for hot loops
 ```
 
 **Core design principles**
@@ -96,7 +96,7 @@ SwarmSim.sln
 
 ---
 
-## 7) Rendering & UX (Sim.Render)
+## 7) Rendering & UX (SwarmSim.Render)
 - **Loop**: fixed‑timestep sim (e.g., 120 Hz); render as fast as possible; show FPS.
 - **Primitives**: pixels/2×2 rects/triangles with heading; colour by group or trait.
 - **Overlay**: counts, avg energy/speed, cell grid toggle, allocs (from metrics).
@@ -110,8 +110,8 @@ SwarmSim.sln
 - **Events**: `Birth`, `Death`, `Attack`, `Mutation`, `ConfigChanged` (DTOs only).
 - **Snapshots**: every N ticks, export sample or full arrays to CSV/binary on a background `Channel` consumer.
 - **Profiling**: Rider + **dotTrace** (CPU) + **dotMemory** (allocs) profiles cached as artifacts.
-- **Benchmarks**: **BenchmarkDotNet** suite in Sim.Benchmarks for `RebuildGrid`, `Sense`, `Integrate`, full `Tick`.
-- **Coverage**: **dotCover** runs on Sim.Tests; keep behaviour & grid tests green.
+- **Benchmarks**: **BenchmarkDotNet** suite in SwarmSim.Benchmarks for `RebuildGrid`, `Sense`, `Integrate`, full `Tick`.
+- **Coverage**: **dotCover** runs on SwarmSim.Tests; keep behaviour & grid tests green.
 
 ---
 
