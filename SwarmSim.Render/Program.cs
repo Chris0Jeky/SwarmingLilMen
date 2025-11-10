@@ -150,7 +150,7 @@ internal static class Program
         for (int i = 0; i < world.Count; i++)
         {
             (float vx, float vy) = rng.NextUnitVector();
-            float speed = rng.NextFloat(50f, 100f);
+            float speed = rng.NextFloat(100f, 200f);  // INCREASED from 50-100 to 100-200
             world.Vx[i] = vx * speed;
             world.Vy[i] = vy * speed;
         }
