@@ -218,7 +218,7 @@ internal static class Program
             {
                 if (world.State[i].HasFlag(AgentState.Dead)) continue;
                 (float dvx, float dvy) = rng.NextUnitVector();
-                float dSpeed = rng.NextFloat(20f, 50f);
+                float dSpeed = rng.NextFloat(1f, 3f); // Small shake for low max speed
                 world.Vx[i] += dvx * dSpeed;
                 world.Vy[i] += dvy * dSpeed;
             }
