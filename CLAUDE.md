@@ -25,6 +25,18 @@ All projects share common settings via `Directory.Build.props`:
 
 ## Build and Development Commands
 
+### Quick Reference
+```bash
+# Run renderer
+dotnet run --project SwarmSim.Render/SwarmSim.Render.csproj
+
+# Run benchmarks (always use Release for accurate results)
+dotnet run --project SwarmSim.Benchmarks/SwarmSim.Benchmarks.csproj -c Release
+
+# Run tests
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj
+```
+
 ### Building
 ```bash
 # Build entire solution
