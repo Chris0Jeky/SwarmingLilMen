@@ -20,6 +20,74 @@ internal static class Program
     private static int[] _trackedAgents = Array.Empty<int>();
     private static readonly Random _random = new Random(42);
 
+    // Dynamic parameter adjustment
+    private static int _selectedParameter = 0;
+    private static bool _fineAdjustment = false; // Hold shift for fine adjustment
+    private static float _forceClampMultiplier = 10f; // For testing force clamping
+
+    // Parameter info for display and adjustment
+    private struct AdjustableParameter
+    {
+        public string Name;
+        public string Key;
+        public float MinValue;
+        public float MaxValue;
+        public float StepSize;
+        public float FineStepSize;
+        public Func<SimConfig, float> GetValue;
+        public Action<SimConfig, float> SetValue;
+    }
+
+    private static readonly AdjustableParameter[] Parameters =
+    [
+        new() { Name = "Separation Weight", Key = "1", MinValue = 0f, MaxValue = 500f, StepSize = 10f, FineStepSize = 0.01f,
+            GetValue = c => c.SeparationWeight, SetValue = (c, v) => c.SeparationWeight = v },
+        new() { Name = "Alignment Weight", Key = "2", MinValue = 0f, MaxValue = 500f, StepSize = 10f, FineStepSize = 0.01f,
+            GetValue = c => c.AlignmentWeight, SetValue = (c, v) => c.AlignmentWeight = v },
+        new() { Name = "Cohesion Weight", Key = "3", MinValue = 0f, MaxValue = 10f, StepSize = 0.1f, FineStepSize = 0.0001f,
+            GetValue = c => c.CohesionWeight, SetValue = (c, v) => c.CohesionWeight = v },
+        new() { Name = "Separation Radius", Key = "4", MinValue = 5f, MaxValue = 200f, StepSize = 5f, FineStepSize = 1f,
+            GetValue = c => c.SeparationRadius, SetValue = (c, v) => c.SeparationRadius = v },
+        new() { Name = "Sense Radius", Key = "5", MinValue = 10f, MaxValue = 300f, StepSize = 10f, FineStepSize = 2f,
+            GetValue = c => c.SenseRadius, SetValue = (c, v) => c.SenseRadius = v },
+        new() { Name = "Max Speed", Key = "6", MinValue = 1f, MaxValue = 500f, StepSize = 10f, FineStepSize = 1f,
+            GetValue = c => c.MaxSpeed, SetValue = (c, v) => c.MaxSpeed = v },
+        new() { Name = "Friction", Key = "7", MinValue = 0.8f, MaxValue = 1.0f, StepSize = 0.01f, FineStepSize = 0.001f,
+            GetValue = c => c.Friction, SetValue = (c, v) => c.Friction = v },
+    ];
+
+    // Preset configurations
+    private struct Preset
+    {
+        public string Name;
+        public float SeparationWeight;
+        public float AlignmentWeight;
+        public float CohesionWeight;
+        public float SeparationRadius;
+        public float SenseRadius;
+        public float MaxSpeed;
+        public float Friction;
+    }
+
+    private static readonly Preset[] Presets =
+    [
+        new() { Name = "Traditional Boids",
+            SeparationWeight = 0.05f, AlignmentWeight = 0.05f, CohesionWeight = 0.0005f,
+            SeparationRadius = 15f, SenseRadius = 60f, MaxSpeed = 6f, Friction = 0.99f },
+        new() { Name = "Original (High Forces)",
+            SeparationWeight = 300f, AlignmentWeight = 150f, CohesionWeight = 10f,
+            SeparationRadius = 50f, SenseRadius = 100f, MaxSpeed = 200f, Friction = 0.92f },
+        new() { Name = "Medium Forces",
+            SeparationWeight = 30f, AlignmentWeight = 15f, CohesionWeight = 1f,
+            SeparationRadius = 30f, SenseRadius = 80f, MaxSpeed = 50f, Friction = 0.95f },
+        new() { Name = "Separation Only",
+            SeparationWeight = 1f, AlignmentWeight = 0f, CohesionWeight = 0f,
+            SeparationRadius = 40f, SenseRadius = 100f, MaxSpeed = 20f, Friction = 0.98f },
+        new() { Name = "Alignment Only",
+            SeparationWeight = 0f, AlignmentWeight = 1f, CohesionWeight = 0f,
+            SeparationRadius = 20f, SenseRadius = 100f, MaxSpeed = 20f, Friction = 0.98f },
+    ];
+
     // Color palette for groups (16 colors)
     private static readonly Color[] GroupColors =
     [
