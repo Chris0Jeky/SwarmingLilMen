@@ -200,6 +200,28 @@ internal static class Program
         }
 
         // ESC: Quit (handled by WindowShouldClose)
+
+        // C: Export CSV snapshot
+        if (Raylib.IsKeyPressed(KeyboardKey.C))
+        {
+            ExportCSV(world);
+            Console.WriteLine("Exported CSV snapshot");
+        }
+
+        // X: "Shake" - add random velocity to break equilibrium
+        if (Raylib.IsKeyPressed(KeyboardKey.X))
+        {
+            var rng = world.Rng;
+            for (int i = 0; i < world.Count; i++)
+            {
+                if (world.State[i].HasFlag(AgentState.Dead)) continue;
+                (float dvx, float dvy) = rng.NextUnitVector();
+                float dSpeed = rng.NextFloat(20f, 50f);
+                world.Vx[i] += dvx * dSpeed;
+                world.Vy[i] += dvy * dSpeed;
+            }
+            Console.WriteLine("Shook agents to break equilibrium!");
+        }
     }
 
     private static void Render(World world)
@@ -368,7 +390,9 @@ internal static class Program
         y += lineHeight - 3;
         DrawText("  Space: Spawn 100 random", padding, y, 14, Color.LightGray);
         y += lineHeight - 3;
-        DrawText("  R: Reset  |  ESC: Quit", padding, y, 14, Color.LightGray);
+        DrawText("  R: Reset  |  X: Shake", padding, y, 14, Color.LightGray);
+        y += lineHeight - 3;
+        DrawText("  C: Export CSV  |  ESC: Quit", padding, y, 14, Color.LightGray);
     }
 
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
@@ -477,5 +501,39 @@ internal static class Program
             Console.WriteLine($"⚠️  OVER-CLUSTERING: {agentsWithManyNeighbors}/{stats.AliveAgents} agents have >30 neighbors");
 
         Console.WriteLine();
+    }
+
+    private static void ExportCSV(World world)
+    {
+        string timestamp = DateTime.Now.ToString("yyyyMMdd_HHmmss");
+        string filename = $"swarm_snapshot_{timestamp}_T{world.TickCount:D6}.csv";
+
+        using (var writer = new StreamWriter(filename))
+        {
+            // Header
+            writer.WriteLine("AgentID,Group,X,Y,Vx,Vy,Speed,Energy,Health,Age,State");
+
+            // Data rows
+            for (int i = 0; i < world.Count; i++)
+            {
+                if (world.State[i].HasFlag(AgentState.Dead)) continue;
+
+                float speed = MathF.Sqrt(world.Vx[i] * world.Vx[i] + world.Vy[i] * world.Vy[i]);
+
+                writer.WriteLine($"{i}," +
+                    $"{world.Group[i]}," +
+                    $"{world.X[i]:F2}," +
+                    $"{world.Y[i]:F2}," +
+                    $"{world.Vx[i]:F2}," +
+                    $"{world.Vy[i]:F2}," +
+                    $"{speed:F2}," +
+                    $"{world.Energy[i]:F2}," +
+                    $"{world.Health[i]:F2}," +
+                    $"{world.Age[i]:F2}," +
+                    $"{world.State[i]}");
+            }
+        }
+
+        Console.WriteLine($"📊 Exported {world.Count} agents to {filename}");
     }
 }
