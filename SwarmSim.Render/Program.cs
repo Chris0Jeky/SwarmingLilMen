@@ -202,19 +202,89 @@ internal static class Program
         var posY = world.GetPositionsY();
         var groups = world.GetGroups();
 
-        // Draw each agent as a colored circle
+        // Draw each agent with various visualizations
         for (int i = 0; i < world.Count; i++)
         {
             // Skip dead agents
             if (world.State[i].HasFlag(AgentState.Dead))
                 continue;
 
-            // Get color based on group
+            float x = posX[i];
+            float y = posY[i];
             byte group = groups[i];
             Color color = GroupColors[group % GroupColors.Length];
 
-            // Draw agent as a small circle (2 pixel radius)
-            Raylib.DrawCircle((int)posX[i], (int)posY[i], 2f, color);
+            // Draw sense radius (if enabled and not too many agents)
+            if (_showSenseRadius && world.Count < 100)
+            {
+                Raylib.DrawCircleLines((int)x, (int)y, world.Config.SenseRadius,
+                    new Color(color.R, color.G, color.B, 30));
+            }
+
+            // Draw velocity vector (if enabled)
+            if (_showVelocityVectors)
+            {
+                float vx = world.Vx[i];
+                float vy = world.Vy[i];
+                float speed = MathF.Sqrt(vx * vx + vy * vy);
+
+                if (speed > 0.1f) // Only draw if moving
+                {
+                    // Scale velocity for visibility (divide by 3 to make reasonable length)
+                    float lineLength = MathF.Min(speed / 3f, 30f);
+                    float dirX = vx / speed;
+                    float dirY = vy / speed;
+
+                    Raylib.DrawLineEx(
+                        new Vector2(x, y),
+                        new Vector2(x + dirX * lineLength, y + dirY * lineLength),
+                        1.5f,
+                        new Color(color.R, color.G, color.B, 150)
+                    );
+                }
+            }
+
+            // Draw neighbor connections (if enabled and not too many agents)
+            if (_showNeighborConnections && world.Count < 500)
+            {
+                DrawNeighborConnections(world, i, x, y, color);
+            }
+
+            // Draw agent as a larger, more visible circle
+            Raylib.DrawCircle((int)x, (int)y, 3f, color); // Increased from 2 to 3
+        }
+    }
+
+    private static void DrawNeighborConnections(World world, int agentIdx, float x, float y, Color color)
+    {
+        // Query neighbors and draw lines
+        var grid = world.Grid;
+        float senseRadiusSq = world.Config.SenseRadius * world.Config.SenseRadius;
+
+        Span<int> neighbors = stackalloc int[64]; // Limit for performance
+        int neighborCount = grid.Query3x3(x, y, neighbors, 64);
+
+        for (int n = 0; n < neighborCount && n < 64; n++)
+        {
+            int j = neighbors[n];
+
+            if (j == agentIdx || j >= world.Count) continue;
+            if (world.State[j].HasFlag(AgentState.Dead)) continue;
+            if (world.Group[j] != world.Group[agentIdx]) continue; // Same group only
+
+            float dx = world.X[j] - x;
+            float dy = world.Y[j] - y;
+            float distSq = dx * dx + dy * dy;
+
+            if (distSq > 0.01f && distSq < senseRadiusSq)
+            {
+                Raylib.DrawLineEx(
+                    new Vector2(x, y),
+                    new Vector2(world.X[j], world.Y[j]),
+                    0.5f,
+                    new Color(color.R, color.G, color.B, 40)
+                );
+            }
         }
     }
 
