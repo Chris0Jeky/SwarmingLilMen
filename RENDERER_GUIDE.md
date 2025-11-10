@@ -78,7 +78,7 @@ Each agent follows three simple rules:
 
 **"Agents not flocking"**:
 - Each color only flocks with itself
-- Agents need to be within 80 pixels (SenseRadius) to interact
+- Agents need to be within 120 pixels (SenseRadius) to interact
 - Press N to see neighbor connections
 
 **"Too slow"**:
