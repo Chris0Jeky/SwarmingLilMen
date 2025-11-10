@@ -30,7 +30,16 @@ public class WorldTickBenchmarks
 
     private static World CreateWorld(int agentCount)
     {
-        var config = SimConfig.PeacefulFlocks() with { InitialCapacity = agentCount };
+        var config = new SimConfig
+        {
+            InitialCapacity = agentCount,
+            SeparationWeight = 2.0f,
+            AlignmentWeight = 1.5f,
+            CohesionWeight = 1.5f,
+            AttackDamage = 0f, // No combat
+            BaseDrain = 0.1f, // Low energy drain
+            AggressionMatrix = SimConfig.NeutralAggressionMatrix(4)
+        };
 
         var world = new World(config, seed: 42);
 
