@@ -120,6 +120,13 @@ internal static class Program
 
     private static void Main(string[] args)
     {
+        // Check if we should run minimal test
+        if (args.Length > 0 && args[0] == "--minimal")
+        {
+            MinimalTest.Run();
+            return;
+        }
+
         // Initialize Raylib
         Raylib.InitWindow(WindowWidth, WindowHeight, WindowTitle);
         Raylib.SetTargetFPS(60);
