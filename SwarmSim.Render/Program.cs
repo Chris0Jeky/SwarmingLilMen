@@ -9,7 +9,12 @@ internal static class Program
     // Window settings
     private const int WindowWidth = 1920;
     private const int WindowHeight = 1080;
-    private const string WindowTitle = "SwarmingLilMen - Phase 0 Demo";
+    private const string WindowTitle = "SwarmingLilMen - Phase 2: Boids Flocking";
+
+    // Visualization options
+    private static bool _showVelocityVectors = true;
+    private static bool _showSenseRadius = false;
+    private static bool _showNeighborConnections = false;
 
     // Color palette for groups (16 colors)
     private static readonly Color[] GroupColors =
@@ -38,17 +43,26 @@ internal static class Program
         Raylib.InitWindow(WindowWidth, WindowHeight, WindowTitle);
         Raylib.SetTargetFPS(60);
 
-        // Create world with custom config
+        // Create world with config tuned for visible flocking
         var config = new SimConfig
         {
             WorldWidth = WindowWidth,
             WorldHeight = WindowHeight,
             BoundaryMode = BoundaryMode.Wrap,
             FixedDeltaTime = 1f / 120f,  // 120 Hz simulation, 60 Hz render
-            // Peaceful flocking settings
-            SeparationWeight = 2.0f,
-            AlignmentWeight = 1.5f,
-            CohesionWeight = 1.5f,
+
+            // Physics tuned for visible, dynamic movement
+            MaxSpeed = 300f,             // Increased from 200 for faster movement
+            Friction = 0.99f,            // Slightly higher from 0.98 for smoother motion
+
+            // Boids settings for good flocking
+            SenseRadius = 80f,           // Increased from 50 so agents can see each other
+            SeparationRadius = 25f,      // Increased from 20
+            SeparationWeight = 1.5f,     // Keep reasonable separation
+            AlignmentWeight = 1.0f,      // Match neighbor velocities
+            CohesionWeight = 0.8f,       // Attract to group center
+
+            // Disable combat for peaceful flocking demo
             AttackDamage = 0f,
             BaseDrain = 0.1f
         };
@@ -77,13 +91,29 @@ internal static class Program
 
     private static void SpawnInitialAgents(World world)
     {
-        // Spawn agents in multiple groups
-        world.SpawnAgentsInCircle(WindowWidth * 0.25f, WindowHeight * 0.25f, 100f, 250, group: 0);
-        world.SpawnAgentsInCircle(WindowWidth * 0.75f, WindowHeight * 0.25f, 100f, 250, group: 1);
-        world.SpawnAgentsInCircle(WindowWidth * 0.25f, WindowHeight * 0.75f, 100f, 250, group: 2);
-        world.SpawnAgentsInCircle(WindowWidth * 0.75f, WindowHeight * 0.75f, 100f, 250, group: 3);
+        // Spawn agents closer together in the center for immediate interaction
+        // Use smaller clusters that are close enough to interact (within SenseRadius)
+        float centerX = WindowWidth * 0.5f;
+        float centerY = WindowHeight * 0.5f;
+        float clusterSpacing = 150f; // Close enough to interact (within 2x SenseRadius)
 
-        Console.WriteLine($"Spawned {world.Count} agents in 4 groups");
+        // Spawn 4 groups in a tighter formation around center
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, 80f, 200, group: 0);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, 80f, 200, group: 1);
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, 80f, 200, group: 2);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, 80f, 200, group: 3);
+
+        // Give agents some initial random velocity so they start moving
+        var rng = world.Rng;
+        for (int i = 0; i < world.Count; i++)
+        {
+            (float vx, float vy) = rng.NextUnitVector();
+            float speed = rng.NextFloat(50f, 100f);
+            world.Vx[i] = vx * speed;
+            world.Vy[i] = vy * speed;
+        }
+
+        Console.WriteLine($"Spawned {world.Count} agents in 4 groups (centered for interaction)");
     }
 
     private static void HandleInput(World world)
@@ -125,6 +155,27 @@ internal static class Program
             world.CompactDeadAgents();
             SpawnInitialAgents(world);
             Console.WriteLine("World reset");
+        }
+
+        // V: Toggle velocity vectors
+        if (Raylib.IsKeyPressed(KeyboardKey.V))
+        {
+            _showVelocityVectors = !_showVelocityVectors;
+            Console.WriteLine($"Velocity vectors: {(_showVelocityVectors ? "ON" : "OFF")}");
+        }
+
+        // S: Toggle sense radius visualization
+        if (Raylib.IsKeyPressed(KeyboardKey.S))
+        {
+            _showSenseRadius = !_showSenseRadius;
+            Console.WriteLine($"Sense radius: {(_showSenseRadius ? "ON" : "OFF")}");
+        }
+
+        // N: Toggle neighbor connections
+        if (Raylib.IsKeyPressed(KeyboardKey.N))
+        {
+            _showNeighborConnections = !_showNeighborConnections;
+            Console.WriteLine($"Neighbor connections: {(_showNeighborConnections ? "ON" : "OFF")}");
         }
 
         // ESC: Quit (handled by WindowShouldClose)
