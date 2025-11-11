@@ -88,6 +88,9 @@ dotnet run --project SwarmSim.Render -- --help
 
 # Start with 5k agents using the fast-loose preset
 dotnet run --project SwarmSim.Render -- --preset fast-loose --agent-count 5000
+
+# Load a JSON config from the configs/ directory
+dotnet run --project SwarmSim.Render -- --config configs/warbands.json
 ```
 
 Tips:
@@ -191,3 +194,4 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines!
 ---
 
 **Questions?** Check the [README.md](README.md) or [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
+- Sample configuration files live in the [`configs/`](configs) directory; copy and tweak them to experiment with `SimConfig`.
