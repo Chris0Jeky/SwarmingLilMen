@@ -368,66 +368,96 @@ internal static class Program
             CompactionInterval = template.CompactionInterval
         };
     }
+    private static void Main(string[] args)
     {
-        // Check if we should run minimal test
-        if (args.Length > 0 && args[0] == "--minimal")
+        _cliOptions = CommandLineOptions.Parse(args);
+
+        if (_cliOptions.RunMinimalTest)
         {
             MinimalTest.Run();
             return;
         }
 
-        // Initialize Raylib
+        if (_cliOptions.ShowVersion)
+        {
+            PrintVersionInfo();
+            return;
+        }
+
+        if (_cliOptions.ListPresets)
+        {
+            PrintPresetList();
+            return;
+        }
+
+        if (_cliOptions.ShowHelp)
+        {
+            Console.WriteLine(CommandLineOptions.GetHelpText());
+            PrintPresetList();
+            return;
+        }
+
+        if (!string.IsNullOrWhiteSpace(_cliOptions.ConfigFile))
+        {
+            try
+            {
+                var config = SimConfig.LoadFromJson(_cliOptions.ConfigFile);
+                ApplyBaseConfig(config);
+                Console.WriteLine($"Loaded configuration from {_cliOptions.ConfigFile}");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Failed to load config '{_cliOptions.ConfigFile}': {ex.Message}");
+                return;
+            }
+        }
+        else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName) &&
+                 TryGetPreset(_cliOptions.PresetName, out var preset))
+        {
+            ApplyBaseConfig(preset.Config);
+            Console.WriteLine($"Preset '{preset.Name}' loaded.");
+        }
+        else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName))
+        {
+            Console.WriteLine($"Unknown preset '{_cliOptions.PresetName}'. Use --list-presets to view options.");
+            return;
+        }
+
+        _initialAgentCount = _cliOptions.AgentCount ?? _initialAgentCount;
+
+        if (_cliOptions.BenchmarkMode)
+        {
+            RunBenchmark(_initialAgentCount);
+            return;
+        }
+
+        PrintStartupBanner(_initialAgentCount);
+
         Raylib.InitWindow(WindowWidth, WindowHeight, WindowTitle);
         Raylib.SetTargetFPS(60);
 
-        // Enable console output for debugging
-        Console.WriteLine("=== SwarmingLilMen Renderer Starting ===");
-        Console.WriteLine("Dynamic Parameter Adjustment Enabled!");
-        Console.WriteLine("Use number keys 1-7 to select parameters");
-        Console.WriteLine("Use ↑↓/+- to adjust, hold SHIFT for fine tuning");
-        Console.WriteLine("Press F1-F5 for presets\n");
-
-        // Create initial world
         var world = CreateWorldWithCurrentParams();
         _world = world;
+        SpawnInitialAgents(world, _initialAgentCount);
 
-        // Spawn initial agents
-        SpawnInitialAgents(world);
-
-        // Create fixed-timestep simulation runner
         _runner = new SimulationRunner(world);
         ForceSnapshotRefresh("initial world", notifyRunner: false);
 
-        // Diagnostic tracking
         int frameCount = 0;
 
-        // Main loop
         while (!Raylib.WindowShouldClose())
         {
-            // Handle input
             HandleInput(_world);
 
-            // Get elapsed time since last frame
             float frameTime = Raylib.GetFrameTime();
-
-            // Advance simulation using fixed timestep
             int stepsProcessed = _runner.Advance(frameTime);
 
-            // Update snapshots if simulation stepped
             if (stepsProcessed > 0)
             {
                 _prevSnapshot = _currSnapshot;
                 _currSnapshot = _runner.CaptureSnapshot();
             }
 
-            // Periodic diagnostic output (every 2 seconds)
-            frameCount++;
-            if (frameCount % 120 == 0) // Every 2 seconds at 60 FPS
-            {
-                PrintDiagnostics(_world);
-            }
-
-            // Determine interpolation state based on snapshot versions/mutations
             SimSnapshot? prevSnapshot = _prevSnapshot ?? _currSnapshot;
             SimSnapshot? currSnapshot = _currSnapshot ?? _prevSnapshot;
 
@@ -450,7 +480,12 @@ internal static class Program
                 prevSnapshot = currSnapshot;
             }
 
-            // Render with interpolation (or direct draw when alpha == 0)
+            frameCount++;
+            if (frameCount % 120 == 0 && _world != null)
+            {
+                PrintDiagnostics(_world);
+            }
+
             RenderInterpolated(prevSnapshot!, currSnapshot, alpha);
         }
 
