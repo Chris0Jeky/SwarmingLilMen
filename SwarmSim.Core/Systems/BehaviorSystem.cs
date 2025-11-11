@@ -82,9 +82,10 @@ public sealed class BehaviorSystem : ISimSystem
             float currentVx = vx[i];
             float currentVy = vy[i];
 
-            // Accumulators for total steering force
+            // Accumulators for total steering force (prioritized budget)
             float totalSteeringX = 0f;
             float totalSteeringY = 0f;
+            float remainingForce = maxForce;
 
             // === Separation Steering ===
             // Desired: Move away from neighbors at maxSpeed
@@ -94,18 +95,31 @@ public sealed class BehaviorSystem : ISimSystem
 
             if (sepMag > 0.001f)
             {
+                float crowdingBoost = 1f;
+                if (neighborCount > config.SeparationCrowdingThreshold)
+                {
+                    float excess = neighborCount - config.SeparationCrowdingThreshold;
+                    float normalized = MathF.Min(1f, excess / Math.Max(1, config.SeparationCrowdingThreshold));
+                    crowdingBoost = MathUtils.Lerp(1f, config.SeparationCrowdingBoost, normalized);
+                }
+
                 // Desired velocity: away from neighbors at (maxSpeed * weight)
-                float desiredSpeed = maxSpeed * separationWeight;
+                float desiredSpeed = maxSpeed * separationWeight * crowdingBoost;
                 float desiredVx = (sepX / sepMag) * desiredSpeed;
                 float desiredVy = (sepY / sepMag) * desiredSpeed;
 
                 // Steering: desired - current, clamped to maxForce
                 float steerX = desiredVx - currentVx;
                 float steerY = desiredVy - currentVy;
-                (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
+                (steerX, steerY) = ClampMagnitude(steerX, steerY, remainingForce);
+                AddPrioritizedSteer(ref totalSteeringX, ref totalSteeringY, ref remainingForce, steerX, steerY);
+            }
 
-                totalSteeringX += steerX;
-                totalSteeringY += steerY;
+            if (remainingForce <= 0f)
+            {
+                fx[i] += totalSteeringX;
+                fy[i] += totalSteeringY;
+                continue;
             }
 
             // === Alignment Steering ===
@@ -125,10 +139,15 @@ public sealed class BehaviorSystem : ISimSystem
                 // Steering: desired - current, clamped to maxForce
                 float steerX = desiredVx - currentVx;
                 float steerY = desiredVy - currentVy;
-                (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
+                (steerX, steerY) = ClampMagnitude(steerX, steerY, remainingForce);
+                AddPrioritizedSteer(ref totalSteeringX, ref totalSteeringY, ref remainingForce, steerX, steerY);
+            }
 
-                totalSteeringX += steerX;
-                totalSteeringY += steerY;
+            if (remainingForce <= 0f)
+            {
+                fx[i] += totalSteeringX;
+                fy[i] += totalSteeringY;
+                continue;
             }
 
             // === Cohesion Steering ===
@@ -149,10 +168,8 @@ public sealed class BehaviorSystem : ISimSystem
                 // Steering: desired - current, clamped to maxForce
                 float steerX = desiredVx - currentVx;
                 float steerY = desiredVy - currentVy;
-                (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
-
-                totalSteeringX += steerX;
-                totalSteeringY += steerY;
+                (steerX, steerY) = ClampMagnitude(steerX, steerY, remainingForce);
+                AddPrioritizedSteer(ref totalSteeringX, ref totalSteeringY, ref remainingForce, steerX, steerY);
             }
 
             // Add combined steering force to accumulators
@@ -174,5 +191,21 @@ public sealed class BehaviorSystem : ISimSystem
             return (x * scale, y * scale);
         }
         return (x, y);
+    }
+
+    private static void AddPrioritizedSteer(ref float totalX, ref float totalY, ref float remainingForce, float steerX, float steerY)
+    {
+        if (remainingForce <= 0f)
+            return;
+
+        float mag = MathUtils.Length(steerX, steerY);
+        if (mag < 0.0001f)
+            return;
+
+        float allowed = MathF.Min(mag, remainingForce);
+        float scale = allowed / mag;
+        totalX += steerX * scale;
+        totalY += steerY * scale;
+        remainingForce -= allowed;
     }
 }
