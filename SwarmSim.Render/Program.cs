@@ -1188,6 +1188,113 @@ internal static class Program
         Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
     }
 
+    private static void DrawHelpOverlay()
+    {
+        int width = 640;
+        int height = 420;
+        int x = (WindowWidth - width) / 2;
+        int y = 40;
+
+        Raylib.DrawRectangle(x, y, width, height, new Color(0, 0, 0, 230));
+        Raylib.DrawRectangleLines(x, y, width, height, Color.SkyBlue);
+
+        int line = 0;
+        void Write(string text, Color color)
+        {
+            DrawText(text, x + 16, y + 20 + line * 18, 16, color);
+            line++;
+        }
+
+        Write("SwarmingLilMen – Help Overlay (press H to hide)", Color.Yellow);
+        line++;
+        Write("SPAWNING", Color.SkyBlue);
+        Write("  Left Click      Spawn 50 agents at cursor (group 0)", Color.LightGray);
+        Write("  Right Click     Spawn 50 agents at cursor (group 1)", Color.LightGray);
+        Write("  SPACE           Spawn 100 random agents", Color.LightGray);
+        line++;
+        Write("VISUALIZATION", Color.SkyBlue);
+        Write($"  V               Velocity vectors [{(_showVelocityVectors ? "ON" : "OFF")}]", Color.LightGray);
+        Write($"  S               Sense radius [{(_showSenseRadius ? "ON" : "OFF")}]", Color.LightGray);
+        Write($"  N               Neighbor connections [{(_showNeighborConnections ? "ON" : "OFF")}]", Color.LightGray);
+        Write($"  F12             Debug overlay [{(_showDebugOverlay ? "ON" : "OFF")}]", Color.LightGray);
+        line++;
+        Write("PARAMETERS", Color.SkyBlue);
+        Write("  1-7             Select parameter to adjust", Color.LightGray);
+        Write("  ↑/↓ or +/-      Increase / decrease selected parameter", Color.LightGray);
+        Write("  SHIFT + ↑/↓     Fine adjustment", Color.LightGray);
+        line++;
+        Write("PRESETS & WORLD", Color.SkyBlue);
+        Write("  F1-F5           Load preset configurations", Color.LightGray);
+        Write("  P               Print current configuration to console", Color.LightGray);
+        Write("  R               Reset world to initial state", Color.LightGray);
+        Write("  X               Shake (adds random velocity)", Color.LightGray);
+        Write("  C               Export CSV snapshot", Color.LightGray);
+        Write("  ESC             Quit", Color.LightGray);
+    }
+
+    private static void PrintStartupBanner(int agentCount)
+    {
+        var config = BuildCurrentConfig();
+        Console.WriteLine("╔══════════════════════════════════════════════════════════════╗");
+        Console.WriteLine($"║  SwarmingLilMen - High-Performance Swarm Simulation v{AppVersion}  ║");
+        Console.WriteLine("╠══════════════════════════════════════════════════════════════╣");
+        Console.WriteLine($"║  Starting with {agentCount} agents across 4 groups".PadRight(61) + "║");
+        Console.WriteLine($"║  Fixed timestep: {config.FixedDeltaTime:F4}s | Interpolation: Enabled".PadRight(61) + "║");
+        Console.WriteLine("║                                                              ║");
+        Console.WriteLine("║  Press H for help | Press F12 for debug overlay              ║");
+        Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
+    }
+
+    private static void PrintVersionInfo()
+    {
+        Console.WriteLine($"SwarmingLilMen v{AppVersion}");
+        Console.WriteLine(".NET Runtime: " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+    }
+
+    private static void PrintPresetList()
+    {
+        Console.WriteLine("Available presets:");
+        foreach (var preset in Presets)
+        {
+            Console.WriteLine($"  {preset.Id,-15} - {preset.Name} :: {preset.Description}");
+        }
+    }
+
+    private static bool TryGetPreset(string? name, out Preset preset)
+    {
+        preset = null!;
+        if (string.IsNullOrWhiteSpace(name))
+            return false;
+
+        var match = Presets.FirstOrDefault(p =>
+            string.Equals(p.Id, name, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+
+        if (match is null)
+            return false;
+
+        preset = match;
+        return true;
+    }
+
+    private static void RunBenchmark(int agentCount)
+    {
+        Console.WriteLine("Running headless benchmark...");
+        var world = new World(BuildCurrentConfig(), seed: 42);
+        SpawnInitialAgents(world, agentCount);
+        var runner = new SimulationRunner(world);
+        const int ticks = 600;
+        var sw = Stopwatch.StartNew();
+        for (int i = 0; i < ticks; i++)
+        {
+            runner.Step();
+        }
+        sw.Stop();
+        var stats = world.GetStats();
+        Console.WriteLine($"Ticks: {ticks}, Elapsed: {sw.Elapsed.TotalSeconds:F2}s ({ticks / sw.Elapsed.TotalSeconds:F1} TPS)");
+        Console.WriteLine($"Agents: {stats.AliveAgents}, Avg Speed: {stats.AverageSpeed:F2}");
+    }
+
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
     {
         Raylib.DrawText(text, x, y, fontSize, color);
