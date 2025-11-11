@@ -58,6 +58,9 @@ public sealed class BehaviorSystem : ISimSystem
         var alignmentVy = _senseSystem.AlignmentVy;
         var cohesionX = _senseSystem.CohesionX;
         var cohesionY = _senseSystem.CohesionY;
+        var nearestDx = _senseSystem.NearestNeighborDx;
+        var nearestDy = _senseSystem.NearestNeighborDy;
+        var nearestDistSq = _senseSystem.NearestNeighborDistSq;
 
         // Parameters from config
         float maxSpeed = config.MaxSpeed;
@@ -65,6 +68,9 @@ public sealed class BehaviorSystem : ISimSystem
         float separationWeight = config.SeparationWeight;
         float alignmentWeight = config.AlignmentWeight;
         float cohesionWeight = config.CohesionWeight;
+        float collisionRadius = MathF.Max(0.01f, config.CollisionAvoidanceRadius);
+        float collisionRadiusSq = collisionRadius * collisionRadius;
+        float collisionBoost = MathF.Max(1f, config.CollisionAvoidanceBoost);
 
         for (int i = 0; i < count; i++)
         {
@@ -86,6 +92,34 @@ public sealed class BehaviorSystem : ISimSystem
             float totalSteeringX = 0f;
             float totalSteeringY = 0f;
             float remainingForce = maxForce;
+
+            // === Collision override ===
+            if (nearestDistSq[i] < collisionRadiusSq)
+            {
+                float dx = nearestDx[i];
+                float dy = nearestDy[i];
+                float distSq = nearestDistSq[i];
+                if (distSq > 0.0001f)
+                {
+                    float dist = MathF.Sqrt(distSq);
+                    float awayX = -dx / dist;
+                    float awayY = -dy / dist;
+                    float desiredSpeed = maxSpeed * collisionBoost;
+                    float desiredVx = awayX * desiredSpeed;
+                    float desiredVy = awayY * desiredSpeed;
+                    float steerX = desiredVx - currentVx;
+                    float steerY = desiredVy - currentVy;
+                    (steerX, steerY) = ClampMagnitude(steerX, steerY, remainingForce);
+                    AddPrioritizedSteer(ref totalSteeringX, ref totalSteeringY, ref remainingForce, steerX, steerY);
+                }
+            }
+
+            if (remainingForce <= 0f)
+            {
+                fx[i] += totalSteeringX;
+                fy[i] += totalSteeringY;
+                continue;
+            }
 
             // === Separation Steering ===
             // Desired: Move away from neighbors at maxSpeed
