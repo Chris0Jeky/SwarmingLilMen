@@ -723,17 +723,9 @@ internal static class Program
 
     private static void ApplyPreset(Preset preset)
     {
-        _separationWeight = preset.SeparationWeight;
-        _alignmentWeight = preset.AlignmentWeight;
-        _cohesionWeight = preset.CohesionWeight;
-        _separationRadius = preset.SeparationRadius;
-        _senseRadius = preset.SenseRadius;
-        _maxSpeed = preset.MaxSpeed;
-        _friction = preset.Friction;
+        ApplyBaseConfig(preset.Config);
         Console.WriteLine($"Applied preset: {preset.Name}");
-        Console.WriteLine($"  Weights: Sep={preset.SeparationWeight:F4}, Ali={preset.AlignmentWeight:F4}, Coh={preset.CohesionWeight:F6}");
-        Console.WriteLine($"  Radii: Sep={preset.SeparationRadius}, Sense={preset.SenseRadius}");
-        Console.WriteLine($"  Physics: Speed={preset.MaxSpeed}, Friction={preset.Friction:F3}");
+        Console.WriteLine($"  Description: {preset.Description}");
     }
 
     private static void RecreateWorldWithNewParams(World oldWorld)
