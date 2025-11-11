@@ -168,8 +168,10 @@ public sealed class SimConfig
         if (WorldHeight <= 0) errors.Add("WorldHeight must be positive");
         if (FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
         if (MaxSpeed <= 0) errors.Add("MaxSpeed must be positive");
+        if (MaxForce <= 0) errors.Add("MaxForce must be positive");
         if (GridCellSize <= 0) errors.Add("GridCellSize must be positive");
         if (SenseRadius <= 0) errors.Add("SenseRadius must be positive");
+        if (FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
         if (InitialCapacity <= 0) errors.Add("InitialCapacity must be positive");
         if (MaxCapacity < InitialCapacity) errors.Add("MaxCapacity must be >= InitialCapacity");
 
