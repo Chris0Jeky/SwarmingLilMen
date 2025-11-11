@@ -507,6 +507,10 @@ internal static class Program
     /// </summary>
     private static void RenderInterpolated(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha)
     {
+        prevSnapshot.DebugAssertConsistent("render-prev");
+        currSnapshot.DebugAssertConsistent("render-curr");
+        bool interpolating = alpha > 0f && prevSnapshot.CaptureVersion != currSnapshot.CaptureVersion;
+
         Raylib.BeginDrawing();
         Raylib.ClearBackground(Color.Black);
 
@@ -517,6 +521,11 @@ internal static class Program
         if (_world != null)
         {
             DrawUI(_world);
+        }
+
+        if (_showDebugOverlay && _runner != null)
+        {
+            DrawDebugOverlay(prevSnapshot, currSnapshot, alpha, interpolating);
         }
 
         Raylib.EndDrawing();
