@@ -24,6 +24,8 @@ internal static class Program
     // Dynamic parameter adjustment
     private static int _selectedParameter = 0;
     private static bool _fineAdjustment = false; // Hold shift for fine adjustment
+    private static bool _showHelpOverlay = false;
+    private static CommandLineOptions _cliOptions = new();
     private static World? _world = null;  // Store reference to world for recreation
     private static SimulationRunner? _runner = null;  // Fixed-timestep runner
 
@@ -41,6 +43,7 @@ internal static class Program
     private static float _senseRadius = 100f;         // Was 60
     private static float _maxSpeed = 10f;             // Was 6
     private static float _friction = 1f;           // Was 0.99 (CRITICAL FIX!)
+    private static int _initialAgentCount = 400;
 
     // Parameter info for display and adjustment
     private struct AdjustableParameter
