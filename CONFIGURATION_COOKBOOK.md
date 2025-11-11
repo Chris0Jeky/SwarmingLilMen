@@ -20,10 +20,10 @@ Use these recipes as starting points when building your own `SimConfig` JSON fil
 ## Recipes
 
 ### Balanced (configs/balanced.json)
-- MaxSpeed: 10, MaxForce: 2
-- SenseRadius: 100, SeparationRadius: 30
-- Weights: Sep 5, Ali 2.5, Coh 0.5
-- Friction: 0.95, WanderStrength: 0.5
+- MaxSpeed: 10, MaxForce: 2.5
+- SenseRadius: 110, SeparationRadius: 45
+- Weights: Sep 7.5, Ali 2.2, Coh 0.35
+- Friction: 0.95, WanderStrength: 0.45
 
 Good general-purpose flocking with noticeable swirls and separation.
 
