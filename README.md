@@ -57,12 +57,47 @@ dotnet test
 
 ### Running the Simulation
 ```bash
-# Run the renderer (once implemented)
+# Launch the interactive renderer
 dotnet run --project SwarmSim.Render
 
-# Run benchmarks (always use Release)
+# Display CLI options
+dotnet run --project SwarmSim.Render -- --help
+
+# Run a headless benchmark (no window)
+dotnet run --project SwarmSim.Render -- --benchmark --agent-count 20000
+
+# Run the BenchmarkDotNet suite
 dotnet run --project SwarmSim.Benchmarks -c Release
 ```
+
+While the renderer is running:
+- Press **H** to toggle the in-app help overlay with every control.
+- Press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
+- See [`CONTROLS.md`](CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
+
+### Command-Line Options
+SwarmSim.Render now accepts a lightweight CLI so you can start with presets or external configs without modifying code:
+
+```
+SwarmSim.Render [OPTIONS]
+
+  -h, --help                Show help and exit
+  -v, --version             Show version information
+  -l, --list-presets        Print available presets
+  -p, --preset NAME         Load a preset (balanced, strong-separation, etc.)
+  -c, --config FILE         Load configuration from JSON (see configs/ folder)
+  -n, --agent-count N       Override initial agent count (default 400)
+  -b, --benchmark           Run a headless benchmark (no window)
+      --minimal             Launch the minimal debugging harness
+```
+
+Example:
+```bash
+dotnet run --project SwarmSim.Render -- --preset fast-loose --agent-count 5000
+dotnet run --project SwarmSim.Render -- --config configs/warbands.json
+```
+
+Sample configuration files live in the [`configs/`](configs) directory and demonstrate how to tweak `SimConfig` via JSON.
 
 ## 📁 Project Structure
 
