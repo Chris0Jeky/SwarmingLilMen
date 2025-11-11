@@ -1,6 +1,7 @@
 using Raylib_cs;
 using SwarmSim.Core;
 using System.Numerics;
+using System.Linq;
 
 namespace SwarmSim.Render;
 
@@ -29,6 +30,8 @@ internal static class Program
     // Interpolation state for smooth rendering
     private static SimSnapshot? _prevSnapshot = null;
     private static SimSnapshot? _currSnapshot = null;
+    private static bool _showDebugOverlay = false;
+    private static ulong _lastSnapshotWarningVersion = 0;
 
     // Parameter values (mutable copies) - FIXED FOR PROPER EQUILIBRIUM
     private static float _separationWeight = 5.0f;    // Was 0.05 (100x stronger)
