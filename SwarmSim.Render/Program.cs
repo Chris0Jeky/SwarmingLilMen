@@ -451,6 +451,7 @@ internal static class Program
 
         while (!Raylib.WindowShouldClose())
         {
+            Debug.Assert(_world != null, nameof(_world) + " != null");
             HandleInput(_world);
 
             float frameTime = Raylib.GetFrameTime();
