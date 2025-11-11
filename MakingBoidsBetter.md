@@ -1,3 +1,5 @@
+> **Status (2025-11-12)**: Steering refactor completed; this document remains as a design reference.
+
 Great prompt, and yes—setting friction to 1 “unblocked” things, but it’s a symptom fix, not the root. Here’s how your write-up stacks up against the consensus, plus a concrete path to make your boids kernel solid and extensible.
 
 # 1) What the literature actually does (and why)
