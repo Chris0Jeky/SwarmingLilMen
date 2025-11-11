@@ -31,7 +31,7 @@ internal static class Program
     private static SimSnapshot? _prevSnapshot = null;
     private static SimSnapshot? _currSnapshot = null;
     private static bool _showDebugOverlay = false;
-    private static ulong _lastSnapshotWarningVersion = 0;
+    private static long _lastSnapshotWarningVersion = 0;
 
     // Parameter values (mutable copies) - FIXED FOR PROPER EQUILIBRIUM
     private static float _separationWeight = 5.0f;    // Was 0.05 (100x stronger)
@@ -898,33 +898,6 @@ internal static class Program
             rightY += lineHeight - 4;
             DrawText($"Range: [{param.MinValue:F2} - {param.MaxValue:F2}]", rightX, rightY, 12, Color.Gray);
         }
-    }
-
-    private static void DrawDebugOverlay(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha, bool interpolating)
-    {
-        if (_runner == null)
-            return;
-
-        const int panelWidth = 360;
-        const int panelHeight = 120;
-        int x = 10;
-        int y = WindowHeight - panelHeight - 10;
-
-        Raylib.DrawRectangle(x, y, panelWidth, panelHeight, new Color(0, 0, 0, 180));
-
-        int line = 0;
-        void Write(string text, Color color)
-        {
-            DrawText(text, x + 8, y + 8 + line * 16, 14, color);
-            line++;
-        }
-
-        Write($"Prev #{prevSnapshot.CaptureVersion} ({prevSnapshot.AgentCount} agents)", Color.LightGray);
-        Write($"Curr #{currSnapshot.CaptureVersion} ({currSnapshot.AgentCount} agents)", Color.LightGray);
-        Write($"Δ Count: {currSnapshot.AgentCount - prevSnapshot.AgentCount}", Color.Yellow);
-        Write($"Mutation: prev {prevSnapshot.MutationVersion}, curr {currSnapshot.MutationVersion}", Color.SkyBlue);
-        Write($"Alpha: {alpha:F2} | Mode: {(interpolating ? "Interpolating" : "Direct")}", interpolating ? Color.Green : Color.Orange);
-        Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
     }
 
     private static void DrawDebugOverlay(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha, bool interpolating)
