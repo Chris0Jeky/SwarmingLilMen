@@ -113,6 +113,9 @@ internal static class Program
                 MaxForce = 2.5f,
                 FieldOfView = 270f,
                 WanderStrength = 0.45f,
+                MaxNeighbors = 16,
+                CollisionAvoidanceRadius = 12f,
+                CollisionAvoidanceBoost = 4f,
                 AttackDamage = 0f,
                 BaseDrain = 0.1f,
                 FixedDeltaTime = 1f / 60f
@@ -239,6 +242,9 @@ internal static class Program
         AlignmentWeight = 2.2f,
         CohesionWeight = 0.35f,
         WanderStrength = 0.45f,
+        MaxNeighbors = 16,
+        CollisionAvoidanceRadius = 12f,
+        CollisionAvoidanceBoost = 4f,
         AttackDamage = 0f,
         AttackRadius = 15f,
         AttackCooldown = 0.5f,
@@ -1231,6 +1237,11 @@ internal static class Program
         Write($"  S               Sense radius [{(_showSenseRadius ? "ON" : "OFF")}]", Color.LightGray);
         Write($"  N               Neighbor connections [{(_showNeighborConnections ? "ON" : "OFF")}]", Color.LightGray);
         Write($"  F12             Debug overlay [{(_showDebugOverlay ? "ON" : "OFF")}]", Color.LightGray);
+        var cfg = _world?.Config;
+        if (cfg != null)
+        {
+            Write($"  Vision: radius {cfg.SenseRadius:F0}, FOV {cfg.FieldOfView:F0}°, Max neighbors {cfg.MaxNeighbors}", Color.LightGray);
+        }
         line++;
         Write("PARAMETERS", Color.SkyBlue);
         Write("  1-7             Select parameter to adjust", Color.LightGray);
