@@ -100,6 +100,10 @@ dotnet run --project SwarmSim.Render -- --config configs/warbands.json
 Sample configuration files live in the [`configs/`](configs) directory and demonstrate how to tweak `SimConfig` via JSON.
 For recipes see [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) and for parameter effects see [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md).
 
+### Understanding Parameters
+- [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) explains every major field (vision, weights, collision avoidance, etc.) and how changing it affects behaviour.
+- [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) provides ready-made recipes (balanced, peaceful, warbands) you can copy and modify.
+
 ## 📁 Project Structure
 
 ```
@@ -114,7 +118,10 @@ SwarmingLilMen/
 ├── SwarmSim.Tests/         # xUnit test suite
 ├── SwarmSim.Benchmarks/    # BenchmarkDotNet performance tests
 ├── filesAndResources/      # Documentation and scripts
+├── configs/                # JSON configuration presets
 ├── CLAUDE.md               # AI assistant guidelines
+├── CONTROLS.md             # Keyboard/mouse reference
+├── PARAMETER_GUIDE.md      # Detailed explanation of SimConfig fields
 ├── PROJECT_STATUS.md       # Implementation tracker
 └── README.md               # This file
 ```
