@@ -13,6 +13,12 @@ public sealed class SimSnapshot
     /// <summary>Simulation time in seconds at capture.</summary>
     public float SimulationTime { get; }
 
+    /// <summary>Monotonic identifier assigned by SimulationRunner when the snapshot was captured.</summary>
+    public long CaptureVersion { get; }
+
+    /// <summary>Mutation version of the world when the snapshot was captured.</summary>
+    public long MutationVersion { get; }
+
     /// <summary>Total active agents captured.</summary>
     public int AgentCount { get; }
 
@@ -34,6 +40,8 @@ public sealed class SimSnapshot
     private SimSnapshot(
         ulong tickCount,
         float simulationTime,
+        long captureVersion,
+        long mutationVersion,
         int agentCount,
         float[] positionsX,
         float[] positionsY,
@@ -43,6 +51,8 @@ public sealed class SimSnapshot
     {
         TickCount = tickCount;
         SimulationTime = simulationTime;
+        CaptureVersion = captureVersion;
+        MutationVersion = mutationVersion;
         AgentCount = agentCount;
         PositionsX = positionsX;
         PositionsY = positionsY;
@@ -55,7 +65,7 @@ public sealed class SimSnapshot
     /// Creates an immutable snapshot by copying the leading <paramref name="world.Count"/>
     /// entries from the world's SoA arrays.
     /// </summary>
-    public static SimSnapshot FromWorld(World world)
+    public static SimSnapshot FromWorld(World world, long captureVersion, long mutationVersion)
     {
         int agentCount = world.Count;
 
@@ -74,11 +84,38 @@ public sealed class SimSnapshot
         return new SimSnapshot(
             world.TickCount,
             world.SimulationTime,
+            captureVersion,
+            mutationVersion,
             agentCount,
             posX,
             posY,
             velX,
             velY,
             groups);
+    }
+
+    /// <summary>
+    /// Returns true when the recorded agent count matches the backing array lengths.
+    /// </summary>
+    public bool IsConsistent =>
+        AgentCount == PositionsX.Length &&
+        AgentCount == PositionsY.Length &&
+        AgentCount == VelocitiesX.Length &&
+        AgentCount == VelocitiesY.Length &&
+        AgentCount == Groups.Length;
+
+    /// <summary>
+    /// In debug builds, verifies internal consistency to catch partial copies.
+    /// </summary>
+    public void DebugAssertConsistent(string context)
+    {
+#if DEBUG
+        if (!IsConsistent)
+        {
+            System.Diagnostics.Debug.Fail(
+                $"SimSnapshot inconsistent in {context}: count={AgentCount}, " +
+                $"posX={PositionsX.Length}, posY={PositionsY.Length}, vx={VelocitiesX.Length}, vy={VelocitiesY.Length}, groups={Groups.Length}");
+        }
+#endif
     }
 }
