@@ -12,6 +12,8 @@
   "AlignmentWeight": 2.2,
   "CohesionWeight": 0.35,
   "WanderStrength": 0.45,
+  "SeparationCrowdingThreshold": 12,
+  "SeparationCrowdingBoost": 2.5,
   "AttackDamage": 0,
   "BaseDrain": 0.1
 }
