@@ -9,7 +9,7 @@ public class SimulationRunnerTests
     private static SimConfig CreateBasicConfig() => new()
     {
         InitialCapacity = 8,
-        FixedDeltaTime = 0.1f,
+        FixedDeltaTime = 0.125f, // Use power-of-2 fraction for exact binary representation
         SenseRadius = 10f,
         SeparationWeight = 0f,
         AlignmentWeight = 0f,
@@ -23,13 +23,13 @@ public class SimulationRunnerTests
         var world = new World(CreateBasicConfig(), seed: 1);
         var runner = new SimulationRunner(world);
 
-        // First half step → no tick
-        int steps = runner.Advance(0.05);
+        // First half step → no tick (0.0625 < 0.125)
+        int steps = runner.Advance(0.0625);
         Assert.Equal(0, steps);
         Assert.Equal((ulong)0, world.TickCount);
 
-        // Second half step → one tick processed
-        steps = runner.Advance(0.05);
+        // Second half step → one tick processed (0.0625 + 0.0625 = 0.125)
+        steps = runner.Advance(0.0625);
         Assert.Equal(1, steps);
         Assert.Equal((ulong)1, world.TickCount);
     }
@@ -40,7 +40,7 @@ public class SimulationRunnerTests
         var config = new SimConfig
         {
             InitialCapacity = 8,
-            FixedDeltaTime = 0.01f, // Smaller dt to need more steps
+            FixedDeltaTime = 0.0625f, // Use power-of-2 fraction (1/16)
             SenseRadius = 10f,
             SeparationWeight = 0f,
             AlignmentWeight = 0f,
@@ -51,8 +51,8 @@ public class SimulationRunnerTests
         var world = new World(config, seed: 1);
         var runner = new SimulationRunner(world, maxStepsPerAdvance: 2);
 
-        // Needs 5 steps worth of time, but cap should limit to 2
-        int steps = runner.Advance(0.05);
+        // Needs 4 steps worth of time (0.25 / 0.0625 = 4), but cap should limit to 2
+        int steps = runner.Advance(0.25);
 
         Assert.Equal(2, steps);
         Assert.Equal((ulong)2, world.TickCount);
