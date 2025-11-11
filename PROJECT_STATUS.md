@@ -289,37 +289,37 @@ Finishing the remaining tests/logging work will make the snapshot pipeline fully
 ### Active TODO – Developer Experience & Documentation Improvements
 The current project lacks clear onboarding and runtime discoverability. Developers need better visibility into:
 
-1. **Runtime Help System** ⏳
-   - [ ] Add `--help` flag to SwarmSim.Render showing all command-line options
-   - [ ] Add in-app help overlay (H key) showing all controls and their current state
-   - [ ] Add configuration file examples for common use cases
-   - [ ] Document all keyboard shortcuts with grouping (spawning, visualization, parameters, presets)
+1. **Runtime Help System** ✅
+   - [x] Add `--help` flag to SwarmSim.Render showing all command-line options
+   - [x] Add in-app help overlay (H key) showing all controls and their current state
+   - [x] Add configuration file examples for common use cases (`configs/` folder)
+   - [x] Document all keyboard shortcuts with grouping (see `CONTROLS.md` + help overlay)
 
-2. **Command-Line Interface** ⏳
-   - [ ] Add command-line arguments for preset selection (`--preset peaceful`, `--preset warbands`)
-   - [ ] Add `--config <path>` to load custom configuration from JSON file
-   - [ ] Add `--agent-count <n>` to override initial agent count
-   - [ ] Add `--benchmark` mode for headless performance testing
-   - [ ] Add `--version` and `--list-presets` commands
+2. **Command-Line Interface** ✅
+   - [x] Add command-line arguments for preset selection (`--preset peaceful`, `--preset warbands`)
+   - [x] Add `--config <path>` to load custom configuration from JSON file
+   - [x] Add `--agent-count <n>` to override initial agent count
+   - [x] Add `--benchmark` mode for headless performance testing
+   - [x] Add `--version` and `--list-presets` commands
 
 3. **Documentation Consolidation** ⏳
-   - [ ] Update README.md with current capabilities and feature status
-   - [ ] Consolidate QUICKSTART.md with practical examples (running presets, tweaking parameters)
-   - [ ] Remove or archive outdated documentation (DecouplingPlan.md, MakingBoidsBetter.md - completed plans)
-   - [ ] Create CONTROLS.md reference guide with all keyboard/mouse interactions
-   - [ ] Update CLAUDE.md with recent architectural decisions (snapshots, versioning, interpolation)
+   - [x] Update README.md with current capabilities and feature status (CLI, help overlay, configs)
+   - [x] Consolidate QUICKSTART.md with practical examples (running presets, tweaking parameters)
+   - [x] Remove or archive outdated documentation (DecouplingPlan.md, MakingBoidsBetter.md marked as historical reference)
+   - [x] Create CONTROLS.md reference guide with all keyboard/mouse interactions
+   - [x] Update CLAUDE.md with recent architectural decisions (snapshots, versioning, CLI)
 
 4. **Configuration Discovery** ⏳
-   - [ ] Create `configs/` directory with example JSON files for each preset
-   - [ ] Document SimConfig parameter ranges and their effects
-   - [ ] Add validation messages that explain why a config is invalid
-   - [ ] Create "Configuration Cookbook" with recipes for common scenarios
+   - [x] Create `configs/` directory with example JSON files for each preset
+   - [x] Document SimConfig parameter ranges and their effects (`CONFIGURATION_COOKBOOK.md`)
+   - [x] Add validation messages that explain why a config is invalid (warnings on load)
+   - [x] Create "Configuration Cookbook" with recipes for common scenarios
 
 5. **Testing Improvements** ✅
    - [x] Convert performance tests to warnings instead of hard failures
    - [x] Document that Phase 5 performance targets are deferred until optimization phase
-   - [ ] Add integration tests for command-line argument parsing
-   - [ ] Add tests for configuration loading from JSON
+   - [x] Add integration tests for command-line argument parsing
+   - [x] Add tests for configuration loading from JSON
 
 **Goal**: Any developer (or future Claude instance) should be able to:
 - Discover all program capabilities without reading source code
