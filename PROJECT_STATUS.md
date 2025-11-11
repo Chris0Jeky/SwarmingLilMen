@@ -1,7 +1,7 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2025-11-10 (Session 2 - Phase 2 COMPLETE ✅)
-**Current Phase**: P2 - Boids & Flocking - 100% COMPLETE
+**Last Updated**: 2025-11-11 (Session 3 - Architecture Improvements)
+**Current Phase**: Architecture Improvements (Post-P2) - Refactoring to Canonical Boids + Fixed Timestep
 
 > **IMPORTANT FOR FUTURE CLAUDE INSTANCES**: This document is your primary memory and source of truth for project status. Read this FIRST before making any changes. Update it LAST after completing work. This ensures continuity across conversation restarts.
 
@@ -176,6 +176,76 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ---
 
+### PRIORITY: Architecture Improvements (Post-P2, Pre-P3) 🔥
+**Goal**: Fix boids implementation to be canonical, decouple simulation from rendering
+
+These improvements address fundamental architecture issues discovered during Phase 2 debugging and should be completed before continuing to Phase 3. They will provide a solid foundation for all future features.
+
+#### Part A: Canonical Boids Implementation (PRIORITY 1)
+**Rationale**: Current implementation uses raw forces which caused parameter tuning issues. Steering behaviors are the industry-standard approach.
+
+- [ ] **Refactor to Steering Behaviors** (SwarmSim.Core/Systems/)
+  - [ ] Change BehaviorSystem to compute desired velocities (not raw forces)
+  - [ ] Implement steering: `steer = clamp(desired - current, maxForce)`
+  - [ ] Update separation to use 1/d weighting (not 1/d²) with per-neighbor caps
+  - [ ] Add MaxForce parameter to SimConfig
+  - [ ] Semi-implicit Euler: `v += steer*dt; x += v*dt`
+
+- [ ] **Speed Model Choice**
+  - [ ] Add SpeedModel enum to SimConfig (ConstantSpeed vs Damped)
+  - [ ] ConstantSpeed: friction=1.0, agents always at maxSpeed
+  - [ ] Damped: friction 0.95-0.99, equilibrium speeds based on forces
+
+- [ ] **Perception Improvements**
+  - [ ] Add FOV (field of view) parameter (default 270°)
+  - [ ] Filter neighbors by angular visibility in SenseSystem
+  - [ ] Document perception cone in SIMULATION_MECHANICS_EXPLAINED.md
+
+- [ ] **Tests**
+  - [ ] Verify steering formulation works correctly
+  - [ ] Test 1/d separation doesn't explode at close range
+  - [ ] Verify two-agent separation without oscillation
+  - [ ] Test constant-speed vs damped modes
+
+**References**: `MakingBoidsBetter.md`, Reynolds' steering behaviors paper
+
+**Exit Criteria**: Boids use steering behaviors, parameters easy to tune, no force/friction pathologies
+
+---
+
+#### Part B: Fixed Timestep & Decoupling (PRIORITY 2)
+**Rationale**: Current implementation couples simulation rate to render rate. Fixed timestep ensures determinism and stability.
+
+- [ ] **Fixed Timestep Loop** (SwarmSim.Core/)
+  - [ ] Add accumulator-based timestep in World.cs
+  - [ ] `while (accumulator >= dt) { Tick(dt); accumulator -= dt; }`
+  - [ ] Add spiral-of-death guard (max steps per frame)
+  - [ ] Make simulation rate independent of render rate
+
+- [ ] **Snapshot Architecture** (SwarmSim.Core/)
+  - [ ] Create `SimSnapshot` struct with read-only agent data
+  - [ ] `SimSnapshot { float[] PosX, PosY, Heading[], Speed[] }`
+  - [ ] Add `World.CreateSnapshot()` method
+  - [ ] Keep snapshots SoA for cache-friendly rendering
+
+- [ ] **Interpolation Support** (SwarmSim.Render/)
+  - [ ] Store previous and current snapshots
+  - [ ] Calculate alpha = accumulator / dt
+  - [ ] Render with `lerp(prev, curr, alpha)` for smooth motion
+  - [ ] Use shortest-arc interpolation for headings (wrap at ±π)
+
+- [ ] **Optional: Threading** (Future optimization)
+  - [ ] Create bounded channel for snapshots (capacity 2-3)
+  - [ ] Simulation thread publishes snapshots
+  - [ ] Render thread consumes latest snapshots
+  - [ ] Non-blocking, frame dropping when renderer is slow
+
+**References**: `DecouplingPlan.md`, Gaffer on Games "Fix Your Timestep"
+
+**Exit Criteria**: Simulation runs at fixed 120 Hz, rendering interpolates smoothly, deterministic across framerates
+
+---
+
 ### Phase 3: Groups, Combat, Energy (P3)
 **Goal**: Multiple groups, aggression matrix, combat interactions, metabolism
 
@@ -305,6 +375,18 @@ None currently.
 ---
 
 ## Recent Changes Log
+
+### 2025-11-11 (Session 3 - Architecture Improvements Added)
+- **Added High-Priority Architecture Improvements** (Post-P2, Pre-P3):
+  - Part A: Canonical Boids Implementation (steering behaviors, 1/d separation, FOV)
+  - Part B: Fixed Timestep & Decoupling (accumulator loop, snapshots, interpolation)
+- **Rationale**: Issues discovered during P2 debugging revealed fundamental architecture gaps
+  - Current force-based approach caused parameter tuning pathologies
+  - Simulation coupled to render rate (not deterministic across framerates)
+  - Industry-standard approaches (Reynolds steering, Gaffer fixed timestep) will provide solid foundation
+- **References**: Added `DecouplingPlan.md` and `MakingBoidsBetter.md` as design documents
+- **Next Steps**: Implement Part A (Canonical Boids) first, then Part B (Fixed Timestep)
+- Updated PROJECT_STATUS.md to reflect new priority tasks
 
 ### 2025-11-10 (Session 2 - Phase 2 COMPLETE ✅)
 - **Implemented Phase 2: Boids & Flocking**:
