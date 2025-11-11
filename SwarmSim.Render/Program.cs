@@ -327,6 +327,13 @@ internal static class Program
             var mousePos = Raylib.GetMousePosition();
             int spawned = world.SpawnAgentsInCircle(mousePos.X, mousePos.Y, 50f, 50, group: 0);
             Console.WriteLine($"Spawned {spawned} agents at mouse position");
+
+            // Immediately update snapshots to prevent blinking/out-of-bounds issues
+            if (_runner != null)
+            {
+                _currSnapshot = _runner.CaptureSnapshot();
+                _prevSnapshot = _currSnapshot; // No interpolation for newly spawned agents
+            }
         }
 
         // Right click: Spawn different group
@@ -335,6 +342,13 @@ internal static class Program
             var mousePos = Raylib.GetMousePosition();
             int spawned = world.SpawnAgentsInCircle(mousePos.X, mousePos.Y, 50f, 50, group: 1);
             Console.WriteLine($"Spawned {spawned} agents (group 1) at mouse position");
+
+            // Immediately update snapshots to prevent blinking/out-of-bounds issues
+            if (_runner != null)
+            {
+                _currSnapshot = _runner.CaptureSnapshot();
+                _prevSnapshot = _currSnapshot; // No interpolation for newly spawned agents
+            }
         }
 
         // Space: Spawn random agents
@@ -345,6 +359,13 @@ internal static class Program
                 world.AddRandomAgent(group: (byte)(i % 4));
             }
             Console.WriteLine("Spawned 100 random agents");
+
+            // Immediately update snapshots to prevent blinking/out-of-bounds issues
+            if (_runner != null)
+            {
+                _currSnapshot = _runner.CaptureSnapshot();
+                _prevSnapshot = _currSnapshot; // No interpolation for newly spawned agents
+            }
         }
 
         // R: Reset world
@@ -358,6 +379,13 @@ internal static class Program
             world.CompactDeadAgents();
             SpawnInitialAgents(world);
             Console.WriteLine("World reset");
+
+            // Immediately update snapshots to prevent blinking/out-of-bounds issues
+            if (_runner != null)
+            {
+                _currSnapshot = _runner.CaptureSnapshot();
+                _prevSnapshot = _currSnapshot;
+            }
         }
 
         // V: Toggle velocity vectors
