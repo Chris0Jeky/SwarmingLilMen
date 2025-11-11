@@ -3,6 +3,7 @@ using SwarmSim.Core;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace SwarmSim.Render;
 
