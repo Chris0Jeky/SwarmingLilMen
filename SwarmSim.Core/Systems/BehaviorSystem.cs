@@ -61,6 +61,9 @@ public sealed class BehaviorSystem : ISimSystem
         var nearestDx = _senseSystem.NearestNeighborDx;
         var nearestDy = _senseSystem.NearestNeighborDy;
         var nearestDistSq = _senseSystem.NearestNeighborDistSq;
+        var nearestDx = _senseSystem.NearestNeighborDx;
+        var nearestDy = _senseSystem.NearestNeighborDy;
+        var nearestDistSq = _senseSystem.NearestNeighborDistSq;
 
         // Parameters from config
         float maxSpeed = config.MaxSpeed;
@@ -68,6 +71,9 @@ public sealed class BehaviorSystem : ISimSystem
         float separationWeight = config.SeparationWeight;
         float alignmentWeight = config.AlignmentWeight;
         float cohesionWeight = config.CohesionWeight;
+        float collisionRadius = MathF.Max(0.01f, config.CollisionAvoidanceRadius);
+        float collisionRadiusSq = collisionRadius * collisionRadius;
+        float collisionBoost = MathF.Max(1f, config.CollisionAvoidanceBoost);
         float collisionRadius = MathF.Max(0.01f, config.CollisionAvoidanceRadius);
         float collisionRadiusSq = collisionRadius * collisionRadius;
         float collisionBoost = MathF.Max(1f, config.CollisionAvoidanceBoost);
