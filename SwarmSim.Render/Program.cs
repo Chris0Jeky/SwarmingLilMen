@@ -219,7 +219,155 @@ internal static class Program
         Color.Maroon      // Group 15
     ];
 
-    private static void Main(string[] args)
+    private static SimConfig CreateDefaultBaseConfig() => new()
+    {
+        WorldWidth = WindowWidth,
+        WorldHeight = WindowHeight,
+        BoundaryMode = BoundaryMode.Wrap,
+        FixedDeltaTime = 1f / 60f,
+        MaxSpeed = 10f,
+        MaxForce = 2f,
+        Friction = 1f,
+        SpeedModel = SpeedModel.ConstantSpeed,
+        GridCellSize = 50f,
+        SenseRadius = 100f,
+        SeparationRadius = 30f,
+        FieldOfView = 270f,
+        SeparationWeight = 5f,
+        AlignmentWeight = 2.5f,
+        CohesionWeight = 0.5f,
+        WanderStrength = 0.5f,
+        AttackDamage = 0f,
+        AttackRadius = 15f,
+        AttackCooldown = 0.5f,
+        InitialEnergy = 100f,
+        MaxEnergy = 200f,
+        BaseDrain = 0.1f,
+        MoveCost = 0.01f,
+        DeathEnergyThreshold = 0f,
+        InitialHealth = 100f,
+        MaxHealth = 100f,
+        HealthRegenRate = 0.5f,
+        ReproductionEnergyThreshold = 150f,
+        ReproductionEnergyCost = 50f,
+        ChildEnergyStart = 50f,
+        MutationRate = 0.1f,
+        MutationStdDev = 0.2f,
+        FoodEnergyGain = 20f,
+        ForageRadius = 10f,
+        AggressionMatrix = SimConfig.NeutralAggressionMatrix(4),
+        InitialCapacity = 100_000,
+        MaxCapacity = 200_000,
+        CompactionInterval = 600
+    };
+
+    private static void ApplyBaseConfig(SimConfig config)
+    {
+        _baseConfigTemplate = CopyConfig(config);
+        SyncParametersWithConfig(_baseConfigTemplate);
+    }
+
+    private static void SyncParametersWithConfig(SimConfig config)
+    {
+        _maxSpeed = config.MaxSpeed;
+        _friction = config.Friction;
+        _senseRadius = config.SenseRadius;
+        _separationRadius = config.SeparationRadius;
+        _separationWeight = config.SeparationWeight;
+        _alignmentWeight = config.AlignmentWeight;
+        _cohesionWeight = config.CohesionWeight;
+    }
+
+    private static SimConfig CopyConfig(SimConfig source)
+    {
+        return new SimConfig
+        {
+            WorldWidth = source.WorldWidth,
+            WorldHeight = source.WorldHeight,
+            BoundaryMode = source.BoundaryMode,
+            FixedDeltaTime = source.FixedDeltaTime,
+            MaxSpeed = source.MaxSpeed,
+            MaxForce = source.MaxForce,
+            Friction = source.Friction,
+            SpeedModel = source.SpeedModel,
+            GridCellSize = source.GridCellSize,
+            SenseRadius = source.SenseRadius,
+            SeparationRadius = source.SeparationRadius,
+            FieldOfView = source.FieldOfView,
+            SeparationWeight = source.SeparationWeight,
+            AlignmentWeight = source.AlignmentWeight,
+            CohesionWeight = source.CohesionWeight,
+            WanderStrength = source.WanderStrength,
+            AttackRadius = source.AttackRadius,
+            AttackDamage = source.AttackDamage,
+            AttackCooldown = source.AttackCooldown,
+            InitialEnergy = source.InitialEnergy,
+            MaxEnergy = source.MaxEnergy,
+            BaseDrain = source.BaseDrain,
+            MoveCost = source.MoveCost,
+            DeathEnergyThreshold = source.DeathEnergyThreshold,
+            InitialHealth = source.InitialHealth,
+            MaxHealth = source.MaxHealth,
+            HealthRegenRate = source.HealthRegenRate,
+            ReproductionEnergyThreshold = source.ReproductionEnergyThreshold,
+            ReproductionEnergyCost = source.ReproductionEnergyCost,
+            ChildEnergyStart = source.ChildEnergyStart,
+            MutationRate = source.MutationRate,
+            MutationStdDev = source.MutationStdDev,
+            FoodEnergyGain = source.FoodEnergyGain,
+            ForageRadius = source.ForageRadius,
+            AggressionMatrix = source.AggressionMatrix,
+            InitialCapacity = source.InitialCapacity,
+            MaxCapacity = source.MaxCapacity,
+            CompactionInterval = source.CompactionInterval
+        };
+    }
+
+    private static SimConfig BuildCurrentConfig()
+    {
+        var template = _baseConfigTemplate;
+        return new SimConfig
+        {
+            WorldWidth = WindowWidth,
+            WorldHeight = WindowHeight,
+            BoundaryMode = template.BoundaryMode,
+            FixedDeltaTime = template.FixedDeltaTime,
+            MaxSpeed = _maxSpeed,
+            MaxForce = template.MaxForce,
+            Friction = _friction,
+            SpeedModel = template.SpeedModel,
+            GridCellSize = template.GridCellSize,
+            SenseRadius = _senseRadius,
+            SeparationRadius = _separationRadius,
+            FieldOfView = template.FieldOfView,
+            SeparationWeight = _separationWeight,
+            AlignmentWeight = _alignmentWeight,
+            CohesionWeight = _cohesionWeight,
+            WanderStrength = template.WanderStrength,
+            AttackRadius = template.AttackRadius,
+            AttackDamage = template.AttackDamage,
+            AttackCooldown = template.AttackCooldown,
+            InitialEnergy = template.InitialEnergy,
+            MaxEnergy = template.MaxEnergy,
+            BaseDrain = template.BaseDrain,
+            MoveCost = template.MoveCost,
+            DeathEnergyThreshold = template.DeathEnergyThreshold,
+            InitialHealth = template.InitialHealth,
+            MaxHealth = template.MaxHealth,
+            HealthRegenRate = template.HealthRegenRate,
+            ReproductionEnergyThreshold = template.ReproductionEnergyThreshold,
+            ReproductionEnergyCost = template.ReproductionEnergyCost,
+            ChildEnergyStart = template.ChildEnergyStart,
+            MutationRate = template.MutationRate,
+            MutationStdDev = template.MutationStdDev,
+            FoodEnergyGain = template.FoodEnergyGain,
+            ForageRadius = template.ForageRadius,
+            AggressionMatrix = template.AggressionMatrix,
+            InitialCapacity = template.InitialCapacity,
+            MaxCapacity = template.MaxCapacity,
+            CompactionInterval = template.CompactionInterval
+        };
+    }
     {
         // Check if we should run minimal test
         if (args.Length > 0 && args[0] == "--minimal")
@@ -311,28 +459,7 @@ internal static class Program
 
     private static World CreateWorldWithCurrentParams()
     {
-        var config = new SimConfig
-        {
-            WorldWidth = WindowWidth,
-            WorldHeight = WindowHeight,
-            BoundaryMode = BoundaryMode.Wrap,
-            FixedDeltaTime = 1f / 60f,
-
-            // Use current parameter values
-            MaxSpeed = _maxSpeed,
-            Friction = _friction,
-            SenseRadius = _senseRadius,
-            SeparationRadius = _separationRadius,
-            SeparationWeight = _separationWeight,
-            AlignmentWeight = _alignmentWeight,
-            CohesionWeight = _cohesionWeight,
-
-            // Disable combat for flocking demo
-            AttackDamage = 0f,
-            BaseDrain = 0.1f
-        };
-
-        return new World(config, seed: 42);
+        return new World(BuildCurrentConfig(), seed: 42);
     }
 
     private static void ForceSnapshotRefresh(string reason, bool notifyRunner = true)
