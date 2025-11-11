@@ -24,6 +24,8 @@ Use these recipes as starting points when building your own `SimConfig` JSON fil
 - SenseRadius: 110, SeparationRadius: 45
 - Weights: Sep 7.5, Ali 2.2, Coh 0.35
 - Friction: 0.95, WanderStrength: 0.45
+- SeparationCrowdingThreshold: 12 (boost separation when >12 neighbors)
+- SeparationCrowdingBoost: 2.5 (up to 2.5x stronger separation under heavy crowding)
 
 Good general-purpose flocking with noticeable swirls and separation.
 
