@@ -13,5 +13,8 @@
   "CohesionWeight": 1.5,
   "WanderStrength": 0.3,
   "AttackDamage": 0,
-  "BaseDrain": 0.08
+  "BaseDrain": 0.08,
+  "MaxNeighbors": 16,
+  "CollisionAvoidanceRadius": 10,
+  "CollisionAvoidanceBoost": 3
 }
