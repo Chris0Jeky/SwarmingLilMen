@@ -518,36 +518,41 @@ internal static class Program
         }
     }
 
-    private static void SpawnInitialAgents(World world)
+    private static void SpawnInitialAgents(World world, int agentCount)
     {
-        // Spawn agents with moderate spacing for traditional Boids
-        // With SenseRadius=60px and slower speeds, groups need to be closer
+        if (agentCount <= 0)
+            return;
 
         float centerX = WindowWidth * 0.5f;
         float centerY = WindowHeight * 0.5f;
-        float clusterSpacing = 300f; // Moderate spacing for interaction
-        float spawnRadius = 150f;     // Reasonable spawn circles
+        float clusterSpacing = MathF.Max(150f, MathF.Min(WindowWidth, WindowHeight) * 0.2f);
+        float spawnRadius = MathF.Max(80f, MathF.Sqrt(agentCount) * 1.2f);
 
-        // Spawn 100 agents per group (400 total)
-        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, 100, group: 0);
-        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, 100, group: 1);
-        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 2);
-        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, 100, group: 3);
+        int groups = 4;
+        int basePerGroup = agentCount / groups;
+        int remainder = agentCount % groups;
 
-        // Give agents moderate initial velocity (matching new low max speed)
+        int[] groupCounts = new int[groups];
+        for (int g = 0; g < groups; g++)
+        {
+            groupCounts[g] = basePerGroup + (g < remainder ? 1 : 0);
+        }
+
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY - clusterSpacing, spawnRadius, groupCounts[0], group: 0);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY - clusterSpacing, spawnRadius, groupCounts[1], group: 1);
+        world.SpawnAgentsInCircle(centerX - clusterSpacing, centerY + clusterSpacing, spawnRadius, groupCounts[2], group: 2);
+        world.SpawnAgentsInCircle(centerX + clusterSpacing, centerY + clusterSpacing, spawnRadius, groupCounts[3], group: 3);
+
         var rng = world.Rng;
         for (int i = 0; i < world.Count; i++)
         {
             (float vx, float vy) = rng.NextUnitVector();
-            float speed = rng.NextFloat(2f, 4f);  // Small initial speeds for traditional Boids
+            float speed = rng.NextFloat(2f, 4f);
             world.Vx[i] = vx * speed;
             world.Vy[i] = vy * speed;
         }
 
-        Console.WriteLine($"Spawned {world.Count} agents (100 per group, 400 total)");
-        Console.WriteLine($"TRADITIONAL BOIDS: MaxSpeed=6, Friction=0.99");
-        Console.WriteLine($"Weights: Sep=0.05, Ali=0.05, Coh=0.0005 (vs old 300/150/10)");
-        Console.WriteLine($"Expected: Smooth, continuous flocking without equilibrium");
+        Console.WriteLine($"Spawned {agentCount} agents across {groups} clusters.");
     }
 
     private static void HandleInput(World world)
