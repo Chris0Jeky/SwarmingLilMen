@@ -404,6 +404,7 @@ internal static class Program
             {
                 var config = SimConfig.LoadFromJson(_cliOptions.ConfigFile);
                 ApplyBaseConfig(config);
+                WarnIfInvalidConfig(config, _cliOptions.ConfigFile);
                 Console.WriteLine($"Loaded configuration from {_cliOptions.ConfigFile}");
             }
             catch (Exception ex)
@@ -416,6 +417,7 @@ internal static class Program
                  TryGetPreset(_cliOptions.PresetName, out var preset))
         {
             ApplyBaseConfig(preset.Config);
+            WarnIfInvalidConfig(preset.Config, preset.Name);
             Console.WriteLine($"Preset '{preset.Name}' loaded.");
         }
         else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName))
@@ -724,6 +726,7 @@ internal static class Program
     private static void ApplyPreset(Preset preset)
     {
         ApplyBaseConfig(preset.Config);
+        WarnIfInvalidConfig(preset.Config, preset.Name);
         Console.WriteLine($"Applied preset: {preset.Name}");
         Console.WriteLine($"  Description: {preset.Description}");
     }
@@ -1298,6 +1301,15 @@ internal static class Program
         var stats = world.GetStats();
         Console.WriteLine($"Ticks: {ticks}, Elapsed: {sw.Elapsed.TotalSeconds:F2}s ({ticks / sw.Elapsed.TotalSeconds:F1} TPS)");
         Console.WriteLine($"Agents: {stats.AliveAgents}, Avg Speed: {stats.AverageSpeed:F2}");
+    }
+
+    private static void WarnIfInvalidConfig(SimConfig config, string source)
+    {
+        var errors = config.Validate();
+        if (errors.Count == 0)
+            return;
+
+        Console.WriteLine($"[Config Warning] {source}: {string.Join("; ", errors)}");
     }
 
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
