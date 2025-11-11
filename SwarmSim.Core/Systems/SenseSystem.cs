@@ -44,6 +44,11 @@ public sealed class SenseSystem : ISimSystem
     private float[] _cohesionX = null!;
     private float[] _cohesionY = null!;
 
+    // Nearest neighbor info (for collision avoidance)
+    private float[] _nearestDx = null!;
+    private float[] _nearestDy = null!;
+    private float[] _nearestDistSq = null!;
+
     // Temporary buffer for grid queries (stack-allocated during Run)
     private const int MaxNeighborsToCheck = 256;
 
@@ -60,6 +65,9 @@ public sealed class SenseSystem : ISimSystem
         _alignmentVy = new float[capacity];
         _cohesionX = new float[capacity];
         _cohesionY = new float[capacity];
+        _nearestDx = new float[capacity];
+        _nearestDy = new float[capacity];
+        _nearestDistSq = new float[capacity];
     }
 
     /// <summary>
@@ -84,6 +92,13 @@ public sealed class SenseSystem : ISimSystem
     /// </summary>
     public ReadOnlySpan<float> CohesionX => _cohesionX;
     public ReadOnlySpan<float> CohesionY => _cohesionY;
+
+    /// <summary>
+    /// Provides nearest neighbor vectors (for collision avoidance).
+    /// </summary>
+    public ReadOnlySpan<float> NearestNeighborDx => _nearestDx;
+    public ReadOnlySpan<float> NearestNeighborDy => _nearestDy;
+    public ReadOnlySpan<float> NearestNeighborDistSq => _nearestDistSq;
 
     public void Run(World world, float dt)
     {
@@ -112,6 +127,9 @@ public sealed class SenseSystem : ISimSystem
         Array.Clear(_alignmentVy, 0, count);
         Array.Clear(_cohesionX, 0, count);
         Array.Clear(_cohesionY, 0, count);
+        Array.Fill(_nearestDistSq, float.MaxValue, 0, count);
+        Array.Clear(_nearestDx, 0, count);
+        Array.Clear(_nearestDy, 0, count);
 
         // Stack-allocated buffer for neighbor queries
         Span<int> neighbors = stackalloc int[MaxNeighborsToCheck];
@@ -138,6 +156,11 @@ public sealed class SenseSystem : ISimSystem
             float alignmentAccumVy = 0f;
             float cohesionAccumX = 0f;
             float cohesionAccumY = 0f;
+            float nearestDx = 0f;
+            float nearestDy = 0f;
+            float nearestDistSq = float.MaxValue;
+            int processedNeighbors = 0;
+            int maxNeighbors = config.MaxNeighbors <= 0 ? int.MaxValue : config.MaxNeighbors;
 
             // Process each potential neighbor
             for (int n = 0; n < neighborCount && n < MaxNeighborsToCheck; n++)
@@ -171,6 +194,12 @@ public sealed class SenseSystem : ISimSystem
                     continue;
 
                 senseCount++;
+                if (distSq < nearestDistSq)
+                {
+                    nearestDistSq = distSq;
+                    nearestDx = dx;
+                    nearestDy = dy;
+                }
 
                 // Separation: LINEAR repulsion within protected radius
                 if (distSq < separationRadiusSq)
@@ -198,6 +227,10 @@ public sealed class SenseSystem : ISimSystem
                 // Cohesion: sum of neighbor positions
                 cohesionAccumX += x[j];
                 cohesionAccumY += y[j];
+
+                processedNeighbors++;
+                if (processedNeighbors >= maxNeighbors)
+                    break;
             }
 
             // Store aggregates
@@ -208,6 +241,9 @@ public sealed class SenseSystem : ISimSystem
             _alignmentVy[i] = alignmentAccumVy;
             _cohesionX[i] = cohesionAccumX;
             _cohesionY[i] = cohesionAccumY;
+            _nearestDx[i] = nearestDx;
+            _nearestDy[i] = nearestDy;
+            _nearestDistSq[i] = nearestDistSq;
         }
     }
 }
