@@ -6,7 +6,7 @@ namespace SwarmSim.Render;
 /// Simple command-line parser for SwarmSim.Render. Keeps dependencies minimal and
 /// focuses on discoverability (matching DeveloperExperienceImprovementsPlan).
 /// </summary>
-internal sealed class CommandLineOptions
+public sealed class CommandLineOptions
 {
     public bool ShowHelp { get; private set; }
     public bool ShowVersion { get; private set; }
