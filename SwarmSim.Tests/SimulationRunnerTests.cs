@@ -70,6 +70,35 @@ public class SimulationRunnerTests
 
         Assert.Equal(world.TickCount, snapshot.TickCount);
         Assert.Equal(world.Count, snapshot.AgentCount);
+        Assert.True(snapshot.CaptureVersion > 0);
+    }
+
+    [Fact]
+    public void CaptureSnapshot_ProvidesMonotonicVersions()
+    {
+        var world = new World(CreateBasicConfig(), seed: 1);
+        var runner = new SimulationRunner(world);
+
+        var s1 = runner.CaptureSnapshot();
+        var s2 = runner.CaptureSnapshot();
+
+        Assert.True(s2.CaptureVersion > s1.CaptureVersion);
+    }
+
+    [Fact]
+    public void NotifyWorldMutated_BumpsMutationVersion_AndResetsAccumulator()
+    {
+        var world = new World(CreateBasicConfig(), seed: 1);
+        var runner = new SimulationRunner(world);
+
+        runner.Advance(0.0625); // accumulate some time
+        Assert.True(runner.Accumulator > 0);
+
+        runner.NotifyWorldMutated();
+        Assert.Equal(0, runner.Accumulator);
+
+        var snapshot = runner.CaptureSnapshot();
+        Assert.Equal(runner.MutationVersion, snapshot.MutationVersion);
     }
 
     [Fact]
