@@ -41,9 +41,13 @@ public sealed class IntegrateSystem : ISimSystem
 
         float maxSpeed = config.MaxSpeed;
         float friction = config.Friction;
+        var speedModel = config.SpeedModel;
         float worldWidth = config.WorldWidth;
         float worldHeight = config.WorldHeight;
         var boundaryMode = config.BoundaryMode;
+
+        // Determine if friction should be applied based on speed model
+        bool applyFriction = speedModel == SpeedModel.Damped;
 
         for (int i = 0; i < count; i++)
         {
@@ -51,15 +55,20 @@ public sealed class IntegrateSystem : ISimSystem
             if (state[i].HasFlag(AgentState.Dead))
                 continue;
 
-            // Integrate forces into velocity
+            // STEP 1: Integrate steering forces into velocity
+            // (Semi-implicit Euler: update velocity first)
             vx[i] += fx[i] * dt;
             vy[i] += fy[i] * dt;
 
-            // Apply friction
-            vx[i] *= friction;
-            vy[i] *= friction;
+            // STEP 2: Apply friction if using damped model
+            // ConstantSpeed model skips friction (agents maintain momentum)
+            if (applyFriction)
+            {
+                vx[i] *= friction;
+                vy[i] *= friction;
+            }
 
-            // Clamp to max speed
+            // STEP 3: Clamp speed to maxSpeed
             float speed = MathUtils.Length(vx[i], vy[i]);
             if (speed > maxSpeed)
             {
@@ -68,11 +77,12 @@ public sealed class IntegrateSystem : ISimSystem
                 vy[i] *= scale;
             }
 
-            // Integrate velocity into position
+            // STEP 4: Integrate velocity into position
+            // (Semi-implicit: use UPDATED velocity from step 1-3)
             x[i] += vx[i] * dt;
             y[i] += vy[i] * dt;
 
-            // Apply boundary conditions
+            // STEP 5: Apply boundary conditions
             ApplyBoundary(ref x[i], ref y[i], ref vx[i], ref vy[i], boundaryMode, worldWidth, worldHeight);
         }
     }
