@@ -510,11 +510,11 @@ internal static class Program
         int currCount = currSnapshot.AgentCount;
         int prevCount = prevSnapshot.AgentCount;
 
-        // Defensive check: warn if snapshots are severely mismatched
-        if (Math.Abs(currCount - prevCount) > 0)
+        // Defensive check: log significant snapshot mismatches for debugging
+        if (Math.Abs(currCount - prevCount) > 100)
         {
-            // Agent count changed - this is normal when spawning/removing agents
-            // We'll interpolate what we can and draw new agents directly
+            // Large agent count change - log for debugging
+            Console.WriteLine($"⚠️  Large snapshot mismatch: prev={prevCount}, curr={currCount}, delta={currCount - prevCount}");
         }
 
         // Interpolate agents that exist in both snapshots
