@@ -492,6 +492,11 @@ None currently.
 - Created `SimulationRunnerTests` to validate accumulator math, snapshot immutability, and safety caps—laying the groundwork for CI coverage of timestep bugs.
 - Updated PROJECT_STATUS Part B checklist to reflect the new infrastructure; next step is to wire the Raylib front-end to the runner and add interpolation.
 
+### 2025-11-13 (Session 4 - Canonical Boids & UX Polish)
+- Refined boids steering to match classic Reynolds behaviour: limited neighbor samples, explicit collision-avoidance radius/boost, and prioritized steering budgets so separation always fires first.
+- Added new `SimConfig` knobs (`MaxNeighbors`, `CollisionAvoidanceRadius`, `CollisionAvoidanceBoost`) plus crowding-aware separation defaults; updated all presets/config JSON to use these values.
+- Enhanced the renderer overlays (H/F12) to display vision radius, FOV, max neighbors, and documented every parameter in the new `PARAMETER_GUIDE.md`.
+
 ### 2025-11-11 (Session 3 - Part A: Canonical Boids COMPLETE ✅)
 - **Implemented Canonical Steering Behaviors** (Reynolds model):
   - Refactored BehaviorSystem to compute desired velocities, then `steer = clamp(desired - current, maxForce)`
