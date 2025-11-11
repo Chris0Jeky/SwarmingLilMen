@@ -227,16 +227,15 @@ These improvements address fundamental architecture issues discovered during Pha
 **Rationale**: Current implementation couples simulation rate to render rate. Fixed timestep ensures determinism and stability.
 
 - [ ] **Fixed Timestep Loop** (SwarmSim.Core/)
-  - [ ] Add accumulator-based timestep in World.cs
-  - [ ] `while (accumulator >= dt) { Tick(dt); accumulator -= dt; }`
-  - [ ] Add spiral-of-death guard (max steps per frame)
-  - [ ] Make simulation rate independent of render rate
+  - [x] Add accumulator-based runner (`SimulationRunner`) that steps worlds off the render loop
+  - [x] Build-in spiral-of-death guard + accumulator carry-over
+  - [ ] Wire renderer/input loop to runner to make framerate-independent
+  - [ ] Add clock utilities for headless determinism
 
-- [ ] **Snapshot Architecture** (SwarmSim.Core/)
-  - [ ] Create `SimSnapshot` struct with read-only agent data
-  - [ ] `SimSnapshot { float[] PosX, PosY, Heading[], Speed[] }`
-  - [ ] Add `World.CreateSnapshot()` method
-  - [ ] Keep snapshots SoA for cache-friendly rendering
+- [x] **Snapshot Architecture** (SwarmSim.Core/)
+  - [x] Create `SimSnapshot` struct with read-only SoA data
+  - [x] Provide helpers for runner (`CaptureSnapshot`, per-tick callback)
+  - [ ] Thread-safe channel + renderer consumption
 
 - [ ] **Interpolation Support** (SwarmSim.Render/)
   - [ ] Store previous and current snapshots
@@ -385,6 +384,12 @@ None currently.
 ---
 
 ## Recent Changes Log
+
+### 2025-11-12 (Session 3.1 - Simulation Harness & Tests)
+- Introduced `SimulationRunner` (fixed-step accumulator with spiral-of-death guard) to decouple the simulation rate from rendering/event loops.
+- Added immutable `SimSnapshot` DTO and helper APIs so renderers/tests can read consistent SoA data without racing the World arrays.
+- Created `SimulationRunnerTests` to validate accumulator math, snapshot immutability, and safety caps—laying the groundwork for CI coverage of timestep bugs.
+- Updated PROJECT_STATUS Part B checklist to reflect the new infrastructure; next step is to wire the Raylib front-end to the runner and add interpolation.
 
 ### 2025-11-11 (Session 3 - Part A: Canonical Boids COMPLETE ✅)
 - **Implemented Canonical Steering Behaviors** (Reynolds model):
