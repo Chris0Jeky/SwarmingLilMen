@@ -155,10 +155,7 @@ internal static class Program
 
         // Create fixed-timestep simulation runner
         _runner = new SimulationRunner(world);
-
-        // Initialize snapshots for interpolation
-        _currSnapshot = _runner.CaptureSnapshot();
-        _prevSnapshot = _currSnapshot;
+        ForceSnapshotRefresh("initial world", notifyRunner: false);
 
         // Diagnostic tracking
         int frameCount = 0;
@@ -182,10 +179,6 @@ internal static class Program
                 _currSnapshot = _runner.CaptureSnapshot();
             }
 
-            // Calculate interpolation alpha (how far between prev and curr snapshot)
-            // alpha = (time remaining in accumulator) / (fixed timestep)
-            float alpha = (float)(_runner.Accumulator / _runner.FixedDeltaTime);
-
             // Periodic diagnostic output (every 2 seconds)
             frameCount++;
             if (frameCount % 120 == 0) // Every 2 seconds at 60 FPS
@@ -193,8 +186,31 @@ internal static class Program
                 PrintDiagnostics(_world);
             }
 
-            // Render with interpolation
-            RenderInterpolated(_prevSnapshot!, _currSnapshot!, alpha);
+            // Determine interpolation state based on snapshot versions/mutations
+            SimSnapshot? prevSnapshot = _prevSnapshot ?? _currSnapshot;
+            SimSnapshot? currSnapshot = _currSnapshot ?? _prevSnapshot;
+
+            if (currSnapshot == null)
+            {
+                continue;
+            }
+
+            bool canInterpolate = prevSnapshot != null &&
+                                  prevSnapshot.CaptureVersion != currSnapshot.CaptureVersion &&
+                                  prevSnapshot.MutationVersion == currSnapshot.MutationVersion;
+
+            float alpha = 0f;
+            if (canInterpolate)
+            {
+                alpha = (float)Math.Clamp(_runner.Accumulator / _runner.FixedDeltaTime, 0f, 1f);
+            }
+            else
+            {
+                prevSnapshot = currSnapshot;
+            }
+
+            // Render with interpolation (or direct draw when alpha == 0)
+            RenderInterpolated(prevSnapshot!, currSnapshot, alpha);
         }
 
         Raylib.CloseWindow();
@@ -224,6 +240,27 @@ internal static class Program
         };
 
         return new World(config, seed: 42);
+    }
+
+    private static void ForceSnapshotRefresh(string reason, bool notifyRunner = true)
+    {
+        if (_runner == null)
+            return;
+
+        if (notifyRunner)
+        {
+            _runner.NotifyWorldMutated();
+        }
+
+        var snapshot = _runner.CaptureSnapshot();
+        snapshot.DebugAssertConsistent(reason);
+        _currSnapshot = snapshot;
+        _prevSnapshot = snapshot;
+
+        if (!string.IsNullOrWhiteSpace(reason))
+        {
+            Console.WriteLine($"[Snapshots] Refresh ({reason}) → capture {snapshot.CaptureVersion}, mutation {snapshot.MutationVersion}");
+        }
     }
 
     private static void SpawnInitialAgents(World world)
@@ -330,13 +367,7 @@ internal static class Program
             var mousePos = Raylib.GetMousePosition();
             int spawned = world.SpawnAgentsInCircle(mousePos.X, mousePos.Y, 50f, 50, group: 0);
             Console.WriteLine($"Spawned {spawned} agents at mouse position");
-
-            // Immediately update snapshots to prevent blinking/out-of-bounds issues
-            if (_runner != null)
-            {
-                _currSnapshot = _runner.CaptureSnapshot();
-                _prevSnapshot = _currSnapshot; // No interpolation for newly spawned agents
-            }
+            ForceSnapshotRefresh("mouse spawn", notifyRunner: true);
         }
 
         // Right click: Spawn different group
@@ -345,13 +376,7 @@ internal static class Program
             var mousePos = Raylib.GetMousePosition();
             int spawned = world.SpawnAgentsInCircle(mousePos.X, mousePos.Y, 50f, 50, group: 1);
             Console.WriteLine($"Spawned {spawned} agents (group 1) at mouse position");
-
-            // Immediately update snapshots to prevent blinking/out-of-bounds issues
-            if (_runner != null)
-            {
-                _currSnapshot = _runner.CaptureSnapshot();
-                _prevSnapshot = _currSnapshot; // No interpolation for newly spawned agents
-            }
+            ForceSnapshotRefresh("mouse spawn (group1)", notifyRunner: true);
         }
 
         // Space: Spawn random agents
@@ -362,13 +387,7 @@ internal static class Program
                 world.AddRandomAgent(group: (byte)(i % 4));
             }
             Console.WriteLine("Spawned 100 random agents");
-
-            // Immediately update snapshots to prevent blinking/out-of-bounds issues
-            if (_runner != null)
-            {
-                _currSnapshot = _runner.CaptureSnapshot();
-                _prevSnapshot = _currSnapshot; // No interpolation for newly spawned agents
-            }
+            ForceSnapshotRefresh("space spawn", notifyRunner: true);
         }
 
         // R: Reset world
@@ -382,13 +401,7 @@ internal static class Program
             world.CompactDeadAgents();
             SpawnInitialAgents(world);
             Console.WriteLine("World reset");
-
-            // Immediately update snapshots to prevent blinking/out-of-bounds issues
-            if (_runner != null)
-            {
-                _currSnapshot = _runner.CaptureSnapshot();
-                _prevSnapshot = _currSnapshot;
-            }
+            ForceSnapshotRefresh("world reset", notifyRunner: true);
         }
 
         // V: Toggle velocity vectors
@@ -410,6 +423,12 @@ internal static class Program
         {
             _showNeighborConnections = !_showNeighborConnections;
             Console.WriteLine($"Neighbor connections: {(_showNeighborConnections ? "ON" : "OFF")}");
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.F12))
+        {
+            _showDebugOverlay = !_showDebugOverlay;
+            Console.WriteLine($"Debug overlay: {(_showDebugOverlay ? "ON" : "OFF")}");
         }
 
         // C: Export CSV snapshot
@@ -480,8 +499,7 @@ internal static class Program
         _runner = new SimulationRunner(_world);
 
         // Reset snapshots
-        _currSnapshot = _runner.CaptureSnapshot();
-        _prevSnapshot = _currSnapshot;
+        ForceSnapshotRefresh("world recreated", notifyRunner: false);
     }
 
     /// <summary>
