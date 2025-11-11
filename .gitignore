@@ -40,4 +40,3 @@ dist/
 # OS cruft
 .DS_Store
 Thumbs.db
-BOIDS_PROBLEM_ANALYSIS.md
