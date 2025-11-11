@@ -1,3 +1,4 @@
+using System.IO;
 using System.Text.Json;
 
 namespace SwarmSim.Core;
@@ -137,7 +138,7 @@ public sealed class SimConfig
     /// <summary>
     /// Creates an aggression matrix where all groups are neutral.
     /// </summary>
-    private static float[,] NeutralAggressionMatrix(int groupCount)
+    public static float[,] NeutralAggressionMatrix(int groupCount)
     {
         var matrix = new float[groupCount, groupCount];
         // All zeros (neutral)
