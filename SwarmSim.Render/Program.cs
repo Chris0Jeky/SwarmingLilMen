@@ -444,6 +444,13 @@ internal static class Program
                 _world.Vy[idx] = vy;
             }
         }
+
+        // Recreate simulation runner with new world
+        _runner = new SimulationRunner(_world);
+
+        // Reset snapshots
+        _currSnapshot = _runner.CaptureSnapshot();
+        _prevSnapshot = _currSnapshot;
     }
 
     /// <summary>
@@ -518,7 +525,7 @@ internal static class Program
             // Draw neighbor connections (if enabled and agent is tracked)
             if (_showNeighborConnections && _trackedAgents.Contains(i) && _world != null)
             {
-                DrawNeighborConnections(_world, i, x, y);
+                DrawNeighborConnections(_world, i, x, y, color);
             }
         }
     }
