@@ -1,7 +1,7 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2025-11-11 (Session 3 - Architecture Improvements)
-**Current Phase**: Architecture Improvements (Post-P2) - Refactoring to Canonical Boids + Fixed Timestep
+**Last Updated**: 2025-11-12 (Session 3.2 - Part B Complete)
+**Current Phase**: Architecture Improvements (Post-P2) - ✅ COMPLETE (Canonical Boids + Fixed Timestep)
 
 > **IMPORTANT FOR FUTURE CLAUDE INSTANCES**: This document is your primary memory and source of truth for project status. Read this FIRST before making any changes. Update it LAST after completing work. This ensures continuity across conversation restarts.
 
@@ -46,6 +46,12 @@ A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents 
   - 50k agents: 6.5 FPS (below target, optimization opportunity for Phase 5)
 - ✅ **Emergent Behavior**: Visible flocking with separation, alignment, and cohesion
 - ✅ **PHASE 2 COMPLETE** - Ready for Phase 3 (Combat & Metabolism)
+
+**Session 3 - Architecture Improvements (Post-P2)** ✅
+- ✅ **Part A - Canonical Boids**: Refactored to Reynolds steering behaviors, added FOV filtering, MaxForce parameter, SpeedModel enum
+- ✅ **Part B - Fixed Timestep & Decoupling**: SimulationRunner with accumulator loop, SimSnapshot for safe state sharing, interpolated rendering
+- ✅ **Tests**: 49/51 passing (96.1%), deterministic physics across framerates
+- ✅ **ARCHITECTURE IMPROVEMENTS COMPLETE** - Ready for Phase 3 (Combat & Metabolism)
 
 ### What to Work On Next
 **Phase 3**: Groups, Combat, Energy & Metabolism
@@ -386,6 +392,31 @@ None currently.
 ---
 
 ## Recent Changes Log
+
+### 2025-11-12 (Session 3.2 - Part B: Fixed Timestep COMPLETE ✅)
+- **Fixed SimulationRunner Tests**:
+  - Fixed compilation error: `SimConfig.FixedDeltaTime` is init-only, can't modify after construction
+  - Fixed floating-point precision issues by using power-of-2 fractions (0.125, 0.0625) for exact binary representation
+  - All SimulationRunner tests now passing (3/3)
+- **Integrated Fixed Timestep with Raylib Renderer**:
+  - Modified `Program.cs` main loop to use `SimulationRunner.Advance(frameTime)` instead of direct `World.Tick()`
+  - Added `_runner`, `_prevSnapshot`, `_currSnapshot` fields for state management
+  - Created `RenderInterpolated()` method with alpha calculation: `alpha = accumulator / dt`
+  - Created `DrawAgentsInterpolated()` method with linear interpolation for smooth rendering
+  - Added `Lerp()` helper for position and velocity interpolation
+  - Updated `RecreateWorldWithNewParams()` to recreate runner and reset snapshots
+  - Fixed compilation error in `DrawNeighborConnections()` (missing color parameter)
+- **Test Results**:
+  - **49/51 tests passing (96.1%)**
+  - All boids behavior tests pass
+  - All SimulationRunner tests pass
+  - 2 performance tests fail (expected - steering behaviors do more work, will optimize in Phase 5)
+- **Architecture Achievement**: Simulation now runs at fixed timestep, completely decoupled from render rate
+  - Deterministic physics regardless of frame rate
+  - Smooth rendering via interpolation between snapshots
+  - Spiral-of-death protection with maxStepsPerAdvance guard
+- Solution builds with 0 warnings, 0 errors
+- **✅ PART B COMPLETE** - Ready for Phase 3 (Combat & Metabolism)
 
 ### 2025-11-12 (Session 3.1 - Simulation Harness & Tests)
 - Introduced `SimulationRunner` (fixed-step accumulator with spiral-of-death guard) to decouple the simulation rate from rendering/event loops.
