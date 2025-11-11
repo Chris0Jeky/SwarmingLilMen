@@ -150,6 +150,13 @@ internal static class Program
         // Spawn initial agents
         SpawnInitialAgents(world);
 
+        // Create fixed-timestep simulation runner
+        _runner = new SimulationRunner(world);
+
+        // Initialize snapshots for interpolation
+        _currSnapshot = _runner.CaptureSnapshot();
+        _prevSnapshot = _currSnapshot;
+
         // Diagnostic tracking
         int frameCount = 0;
 
@@ -159,8 +166,22 @@ internal static class Program
             // Handle input
             HandleInput(_world);
 
-            // Update simulation (1 tick per frame at 60 Hz)
-            _world.Tick();
+            // Get elapsed time since last frame
+            float frameTime = Raylib.GetFrameTime();
+
+            // Advance simulation using fixed timestep
+            int stepsProcessed = _runner.Advance(frameTime);
+
+            // Update snapshots if simulation stepped
+            if (stepsProcessed > 0)
+            {
+                _prevSnapshot = _currSnapshot;
+                _currSnapshot = _runner.CaptureSnapshot();
+            }
+
+            // Calculate interpolation alpha (how far between prev and curr snapshot)
+            // alpha = (time remaining in accumulator) / (fixed timestep)
+            float alpha = (float)(_runner.Accumulator / _runner.FixedDeltaTime);
 
             // Periodic diagnostic output (every 2 seconds)
             frameCount++;
@@ -169,8 +190,8 @@ internal static class Program
                 PrintDiagnostics(_world);
             }
 
-            // Render
-            Render(_world);
+            // Render with interpolation
+            RenderInterpolated(_prevSnapshot!, _currSnapshot!, alpha);
         }
 
         Raylib.CloseWindow();
