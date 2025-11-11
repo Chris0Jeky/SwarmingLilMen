@@ -927,6 +927,33 @@ internal static class Program
         Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
     }
 
+    private static void DrawDebugOverlay(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha, bool interpolating)
+    {
+        if (_runner == null)
+            return;
+
+        const int panelWidth = 360;
+        const int panelHeight = 120;
+        int x = 10;
+        int y = WindowHeight - panelHeight - 10;
+
+        Raylib.DrawRectangle(x, y, panelWidth, panelHeight, new Color(0, 0, 0, 180));
+
+        int line = 0;
+        void Write(string text, Color color)
+        {
+            DrawText(text, x + 8, y + 8 + line * 16, 14, color);
+            line++;
+        }
+
+        Write($"Prev #{prevSnapshot.CaptureVersion} ({prevSnapshot.AgentCount} agents)", Color.LightGray);
+        Write($"Curr #{currSnapshot.CaptureVersion} ({currSnapshot.AgentCount} agents)", Color.LightGray);
+        Write($"Δ Count: {currSnapshot.AgentCount - prevSnapshot.AgentCount}", Color.Yellow);
+        Write($"Mutation: prev {prevSnapshot.MutationVersion}, curr {currSnapshot.MutationVersion}", Color.SkyBlue);
+        Write($"Alpha: {alpha:F2} | Mode: {(interpolating ? "Interpolating" : "Direct")}", interpolating ? Color.Green : Color.Orange);
+        Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
+    }
+
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
     {
         Raylib.DrawText(text, x, y, fontSize, color);
