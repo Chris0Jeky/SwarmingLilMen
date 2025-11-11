@@ -446,6 +446,88 @@ internal static class Program
         }
     }
 
+    /// <summary>
+    /// Renders the simulation with interpolation between previous and current snapshots.
+    /// </summary>
+    private static void RenderInterpolated(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha)
+    {
+        Raylib.BeginDrawing();
+        Raylib.ClearBackground(Color.Black);
+
+        // Draw agents with interpolation
+        DrawAgentsInterpolated(prevSnapshot, currSnapshot, alpha);
+
+        // Draw UI (uses _world directly for stats)
+        if (_world != null)
+        {
+            DrawUI(_world);
+        }
+
+        Raylib.EndDrawing();
+    }
+
+    /// <summary>
+    /// Draws agents with linear interpolation between previous and current positions.
+    /// </summary>
+    private static void DrawAgentsInterpolated(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha)
+    {
+        int agentCount = currSnapshot.AgentCount;
+
+        for (int i = 0; i < agentCount; i++)
+        {
+            // Interpolate position between prev and curr
+            float x = Lerp(prevSnapshot.PositionsX[i], currSnapshot.PositionsX[i], alpha);
+            float y = Lerp(prevSnapshot.PositionsY[i], currSnapshot.PositionsY[i], alpha);
+
+            byte group = currSnapshot.Groups[i];
+            Color color = GroupColors[group % GroupColors.Length];
+
+            // Draw sense radius (if enabled and not too many agents)
+            if (_showSenseRadius && agentCount < 100 && _world != null)
+            {
+                Raylib.DrawCircleLines((int)x, (int)y, _world.Config.SenseRadius,
+                    new Color(color.R, color.G, color.B, (byte)30));
+            }
+
+            // Draw velocity vector (if enabled)
+            if (_showVelocityVectors)
+            {
+                // Interpolate velocity for smooth vector display
+                float vx = Lerp(prevSnapshot.VelocitiesX[i], currSnapshot.VelocitiesX[i], alpha);
+                float vy = Lerp(prevSnapshot.VelocitiesY[i], currSnapshot.VelocitiesY[i], alpha);
+                float speed = MathF.Sqrt(vx * vx + vy * vy);
+
+                if (speed > 0.1f) // Only draw if moving
+                {
+                    float lineLength = MathF.Min(speed / 3f, 30f);
+                    float dirX = vx / speed;
+                    float dirY = vy / speed;
+
+                    Raylib.DrawLineEx(
+                        new Vector2(x, y),
+                        new Vector2(x + dirX * lineLength, y + dirY * lineLength),
+                        1.5f,
+                        new Color(color.R, color.G, color.B, (byte)150)
+                    );
+                }
+            }
+
+            // Draw agent circle
+            Raylib.DrawCircle((int)x, (int)y, 4f, color);
+
+            // Draw neighbor connections (if enabled and agent is tracked)
+            if (_showNeighborConnections && _trackedAgents.Contains(i) && _world != null)
+            {
+                DrawNeighborConnections(_world, i, x, y);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Linear interpolation helper.
+    /// </summary>
+    private static float Lerp(float a, float b, float t) => a + (b - a) * t;
+
     private static void Render(World world)
     {
         Raylib.BeginDrawing();
