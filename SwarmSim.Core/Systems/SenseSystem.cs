@@ -124,6 +124,8 @@ public sealed class SenseSystem : ISimSystem
 
             float agentX = x[i];
             float agentY = y[i];
+            float agentVx = vx[i];
+            float agentVy = vy[i];
             byte agentGroup = group[i];
 
             // Query 3x3 neighborhood
@@ -161,6 +163,11 @@ public sealed class SenseSystem : ISimSystem
 
                 // Check if within sense radius
                 if (distSq > senseRadiusSq || distSq < 0.0001f) // Avoid division by zero
+                    continue;
+
+                // Check if within field of view (uses velocity as forward direction)
+                // If FOV < 360°, filter neighbors outside vision cone
+                if (!MathUtils.IsWithinFieldOfView(agentVx, agentVy, dx, dy, fieldOfView))
                     continue;
 
                 senseCount++;
