@@ -33,6 +33,8 @@ public sealed class SimConfig
     public float AlignmentWeight { get; init; } = 1.0f;
     public float CohesionWeight { get; init; } = 1.0f;
     public float WanderStrength { get; init; } = 0f; // Random exploration force (0 = disabled)
+    public int SeparationCrowdingThreshold { get; init; } = 12; // Neighbor count before boosting separation
+    public float SeparationCrowdingBoost { get; init; } = 2.5f; // Multiplier for separation weight when very crowded
 
     // ===== Combat =====
     public float AttackRadius { get; init; } = 15f;
