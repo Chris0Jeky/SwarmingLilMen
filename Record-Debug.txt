@@ -1,0 +1,415 @@
+PS C:\Users\jekyt\Desktop\Printer Config\Others\Git\SwarmingLilMen> 
+
+                                                                    dotnet run --project SwarmSim.Render -- --minimal
+INFO: Initializing raylib 5.5
+INFO: Platform backend: DESKTOP (GLFW)
+INFO: Supported raylib modules:
+INFO:     > rcore:..... loaded (mandatory)
+INFO:     > rlgl:...... loaded (mandatory)
+INFO:     > rshapes:... loaded (optional)
+INFO:     > rtextures:. loaded (optional)
+INFO:     > rtext:..... loaded (optional)
+INFO:     > rmodels:... loaded (optional)
+INFO:     > raudio:.... loaded (optional)
+INFO: DISPLAY: Device initialized successfully
+INFO:     > Display size: 2560 x 1440
+INFO:     > Screen size:  1920 x 1080
+INFO:     > Render size:  1920 x 1080
+INFO:     > Viewport offsets: 0, 0
+INFO: GLAD: OpenGL extensions loaded successfully
+INFO: GL: Supported extensions count: 403
+INFO: GL: OpenGL device information:
+INFO:     > Vendor:   NVIDIA Corporation
+INFO:     > Renderer: NVIDIA GeForce RTX 3070/PCIe/SSE2
+INFO:     > Version:  3.3.0 NVIDIA 572.83
+INFO:     > GLSL:     3.30 NVIDIA via Cg compiler
+INFO: GL: VAO extension detected, VAO functions loaded successfully
+INFO: GL: NPOT textures extension detected, full NPOT textures supported
+INFO: GL: DXT compressed textures supported
+INFO: GL: ETC2/EAC compressed textures supported
+INFO: PLATFORM: DESKTOP (GLFW - Win32): Initialized successfully
+INFO: TEXTURE: [ID 1] Texture loaded successfully (1x1 | R8G8B8A8 | 1 mipmaps)
+INFO: TEXTURE: [ID 1] Default texture loaded successfully
+INFO: SHADER: [ID 1] Vertex shader compiled successfully
+INFO: SHADER: [ID 2] Fragment shader compiled successfully
+INFO: SHADER: [ID 3] Program shader loaded successfully
+INFO: SHADER: [ID 3] Default shader loaded successfully
+INFO: RLGL: Render batch vertex buffers loaded successfully in RAM (CPU)
+INFO: RLGL: Render batch vertex buffers loaded successfully in VRAM (GPU)
+INFO: RLGL: Default OpenGL state initialized successfully
+INFO: TEXTURE: [ID 2] Texture loaded successfully (128x128 | GRAY_ALPHA | 1 mipmaps)
+INFO: FONT: Default font loaded successfully (224 glyphs)
+INFO: SYSTEM: Working Directory: C:\Users\jekyt\Desktop\Printer Config\Others\Git\SwarmingLilMen
+INFO: TIMER: Target time per frame: 16.667 milliseconds
+=== MINIMAL BOIDS TEST ===
+Starting with simplest possible scenario
+Press SPACE to advance to next test stage
+Press R to restart current stage
+Press D for detailed debug of current frame
+
+
+=== Stage 0: Two agents, no forces ===
+Spawned 2 agents at distance 500
+[Frame 60] Agents: 2
+  Agent 0: Pos=(711.5,540.0) Vel=(1.11,0.02) Speed=1.11 Force=(0.26,0.39) Mag=0.47
+  Agent 1: Pos=(1208.5,540.0) Vel=(-1.08,-0.02) Speed=1.08 Force=(-0.07,0.07) Mag=0.10
+[Frame 120] Agents: 2
+  Agent 0: Pos=(712.3,540.0) Vel=(0.62,0.04) Speed=0.62 Force=(-0.09,-0.04) Mag=0.10
+  Agent 1: Pos=(1207.7,540.0) Vel=(-0.60,0.00) Speed=0.60 Force=(0.27,-0.32) Mag=0.41
+[Frame 180] Agents: 2
+  Agent 0: Pos=(712.8,540.1) Vel=(0.33,0.02) Speed=0.33 Force=(0.01,-0.06) Mag=0.06
+  Agent 1: Pos=(1207.3,540.0) Vel=(-0.31,-0.03) Speed=0.31 Force=(0.23,-0.31) Mag=0.38
+[Frame 240] Agents: 2
+  Agent 0: Pos=(713.0,540.1) Vel=(0.16,0.03) Speed=0.16 Force=(-0.10,-0.10) Mag=0.14
+  Agent 1: Pos=(1207.0,539.9) Vel=(-0.18,-0.03) Speed=0.18 Force=(-0.16,0.40) Mag=0.43
+[Frame 300] Agents: 2
+  Agent 0: Pos=(713.1,540.1) Vel=(0.10,0.01) Speed=0.10 Force=(-0.00,0.03) Mag=0.03
+  Agent 1: Pos=(1206.9,539.9) Vel=(-0.12,-0.03) Speed=0.12 Force=(-0.39,0.22) Mag=0.45
+
+=== Stage 1: Two agents, manual force ===
+Spawned 2 agents at distance 500
+Adding manual force of 5.0 to agent 0 (rightward)
+[Frame 60] Agents: 2
+  Agent 0: Pos=(711.5,540.0) Vel=(1.09,0.01) Speed=1.09 Force=(-0.11,0.28) Mag=0.30
+  Agent 1: Pos=(1208.5,540.0) Vel=(-1.09,0.02) Speed=1.09 Force=(-0.21,0.09) Mag=0.23
+[Frame 120] Agents: 2
+  Agent 0: Pos=(712.3,540.0) Vel=(0.57,-0.01) Speed=0.58 Force=(-0.23,-0.05) Mag=0.24
+  Agent 1: Pos=(1207.7,540.0) Vel=(-0.61,-0.01) Speed=0.61 Force=(-0.48,-0.08) Mag=0.49
+[Frame 180] Agents: 2
+  Agent 0: Pos=(712.7,540.0) Vel=(0.33,0.01) Speed=0.33 Force=(0.30,0.30) Mag=0.43
+  Agent 1: Pos=(1207.3,540.0) Vel=(-0.34,0.02) Speed=0.34 Force=(-0.31,-0.04) Mag=0.31
+
+=== Stage 2: Two agents, separation only ===
+Spawned 2 agents at distance 500
+[Frame 60] Agents: 2
+  Agent 0: Pos=(711.5,540.0) Vel=(1.07,-0.00) Speed=1.07 Force=(0.24,0.35) Mag=0.43
+  Agent 1: Pos=(1208.5,540.0) Vel=(-1.07,-0.02) Speed=1.07 Force=(-0.06,-0.32) Mag=0.33
+[Frame 120] Agents: 2
+  Agent 0: Pos=(712.3,540.0) Vel=(0.59,-0.03) Speed=0.59 Force=(0.28,0.02) Mag=0.29
+  Agent 1: Pos=(1207.7,540.0) Vel=(-0.57,-0.01) Speed=0.57 Force=(-0.06,-0.04) Mag=0.08
+[Frame 180] Agents: 2
+  Agent 0: Pos=(712.7,539.9) Vel=(0.31,-0.05) Speed=0.31 Force=(0.04,-0.10) Mag=0.11
+  Agent 1: Pos=(1207.3,540.0) Vel=(-0.31,-0.02) Speed=0.31 Force=(0.13,-0.00) Mag=0.13
+[Frame 240] Agents: 2
+  Agent 0: Pos=(713.0,539.9) Vel=(0.16,-0.03) Speed=0.17 Force=(0.16,-0.16) Mag=0.22
+  Agent 1: Pos=(1207.1,540.0) Vel=(-0.18,-0.01) Speed=0.18 Force=(-0.12,0.10) Mag=0.16
+
+=== Stage 3: Three agents, separation only ===
+Spawned 3 agents in triangle formation
+[Frame 60] Agents: 3
+  Agent 0: Pos=(1059.4,540.0) Vel=(-0.46,0.04) Speed=0.46 Force=(-0.22,0.03) Mag=0.22
+  Agent 1: Pos=(910.5,626.1) Vel=(0.43,-0.35) Speed=0.56 Force=(0.18,0.16) Mag=0.24
+  Agent 2: Pos=(909.4,453.0) Vel=(-0.47,-0.32) Speed=0.56 Force=(-0.11,0.17) Mag=0.20
+[Frame 120] Agents: 3
+  Agent 0: Pos=(1059.0,540.1) Vel=(-0.26,0.04) Speed=0.27 Force=(0.13,-0.19) Mag=0.23
+  Agent 1: Pos=(910.9,625.8) Vel=(0.22,-0.21) Speed=0.30 Force=(-0.28,0.10) Mag=0.30
+  Agent 2: Pos=(909.1,452.7) Vel=(-0.25,-0.20) Speed=0.32 Force=(0.01,-0.09) Mag=0.09
+[Frame 180] Agents: 3
+  Agent 0: Pos=(1058.8,540.1) Vel=(-0.14,0.01) Speed=0.14 Force=(0.27,0.28) Mag=0.39
+  Agent 1: Pos=(911.0,625.7) Vel=(0.14,-0.12) Speed=0.19 Force=(-0.29,0.03) Mag=0.29
+  Agent 2: Pos=(908.9,452.6) Vel=(-0.16,-0.11) Speed=0.19 Force=(0.40,0.25) Mag=0.47
+[Frame 240] Agents: 3
+  Agent 0: Pos=(1058.7,540.1) Vel=(-0.07,0.00) Speed=0.07 Force=(0.03,-0.08) Mag=0.09
+  Agent 1: Pos=(911.1,625.6) Vel=(0.09,-0.05) Speed=0.10 Force=(0.21,0.36) Mag=0.42
+  Agent 2: Pos=(908.7,452.5) Vel=(-0.11,-0.04) Speed=0.11 Force=(-0.05,-0.03) Mag=0.06
+
+=== Stage 4: Three agents, alignment only ===
+Spawned 3 agents in triangle formation
+[Frame 60] Agents: 3
+  Agent 0: Pos=(1059.7,540.3) Vel=(-0.21,0.26) Speed=0.33 Force=(-0.12,0.07) Mag=0.14
+  Agent 1: Pos=(910.6,627.1) Vel=(0.44,0.37) Speed=0.57 Force=(0.39,0.28) Mag=0.48
+  Agent 2: Pos=(910.5,453.0) Vel=(0.41,-0.26) Speed=0.49 Force=(-0.12,0.18) Mag=0.22
+[Frame 120] Agents: 3
+  Agent 0: Pos=(1059.5,540.5) Vel=(-0.14,0.14) Speed=0.19 Force=(-0.41,-0.18) Mag=0.44
+  Agent 1: Pos=(910.9,627.4) Vel=(0.26,0.18) Speed=0.31 Force=(0.28,-0.41) Mag=0.50
+  Agent 2: Pos=(910.8,452.9) Vel=(0.19,-0.11) Speed=0.22 Force=(0.07,-0.06) Mag=0.10
+[Frame 180] Agents: 3
+  Agent 0: Pos=(1059.4,540.6) Vel=(-0.08,0.06) Speed=0.10 Force=(0.16,0.29) Mag=0.33
+  Agent 1: Pos=(911.1,627.5) Vel=(0.10,0.07) Speed=0.13 Force=(-0.16,0.24) Mag=0.29
+  Agent 2: Pos=(911.0,452.8) Vel=(0.09,-0.05) Speed=0.11 Force=(0.11,0.00) Mag=0.11
+[Frame 240] Agents: 3
+  Agent 0: Pos=(1059.4,540.6) Vel=(-0.04,0.02) Speed=0.04 Force=(-0.05,0.03) Mag=0.06
+  Agent 1: Pos=(911.2,627.5) Vel=(0.06,0.04) Speed=0.07 Force=(0.01,-0.06) Mag=0.06
+  Agent 2: Pos=(911.0,452.8) Vel=(0.03,0.01) Speed=0.03 Force=(0.47,-0.02) Mag=0.47
+[Frame 300] Agents: 3
+  Agent 0: Pos=(1059.4,540.6) Vel=(0.00,0.00) Speed=0.00 Force=(0.03,-0.19) Mag=0.19
+  Agent 1: Pos=(911.2,627.6) Vel=(0.03,0.05) Speed=0.05 Force=(0.07,-0.40) Mag=0.41
+  Agent 2: Pos=(911.0,452.8) Vel=(0.01,0.02) Speed=0.03 Force=(0.03,0.47) Mag=0.47
+
+=== Stage 5: Three agents, cohesion only ===
+Spawned 3 agents in triangle formation
+[Frame 60] Agents: 3
+  Agent 0: Pos=(1059.3,540.0) Vel=(-0.53,-0.01) Speed=0.53 Force=(0.17,0.22) Mag=0.27
+  Agent 1: Pos=(910.4,626.9) Vel=(0.28,0.20) Speed=0.34 Force=(-0.22,0.14) Mag=0.26
+  Agent 2: Pos=(910.3,452.9) Vel=(0.26,-0.40) Speed=0.48 Force=(0.09,0.04) Mag=0.10
+[Frame 120] Agents: 3
+  Agent 0: Pos=(1058.9,540.0) Vel=(-0.26,0.01) Speed=0.26 Force=(0.32,-0.32) Mag=0.45
+  Agent 1: Pos=(910.6,627.0) Vel=(0.17,0.12) Speed=0.21 Force=(-0.23,-0.10) Mag=0.26
+  Agent 2: Pos=(910.5,452.6) Vel=(0.16,-0.20) Speed=0.26 Force=(-0.05,0.34) Mag=0.34
+[Frame 180] Agents: 3
+  Agent 0: Pos=(1058.7,540.0) Vel=(-0.15,-0.01) Speed=0.15 Force=(0.02,-0.29) Mag=0.29
+  Agent 1: Pos=(910.7,627.1) Vel=(0.10,0.08) Speed=0.13 Force=(0.01,-0.10) Mag=0.10
+  Agent 2: Pos=(910.6,452.4) Vel=(0.06,-0.13) Speed=0.14 Force=(0.15,-0.09) Mag=0.18
+[Frame 240] Agents: 3
+  Agent 0: Pos=(1058.6,540.0) Vel=(-0.05,0.02) Speed=0.06 Force=(0.08,-0.01) Mag=0.09
+  Agent 1: Pos=(910.8,627.1) Vel=(0.06,0.04) Speed=0.07 Force=(-0.03,0.00) Mag=0.03
+  Agent 2: Pos=(910.7,452.3) Vel=(0.02,-0.09) Speed=0.09 Force=(-0.17,0.31) Mag=0.35
+[Frame 300] Agents: 3
+  Agent 0: Pos=(1058.5,540.0) Vel=(-0.02,0.03) Speed=0.03 Force=(0.07,0.08) Mag=0.11
+  Agent 1: Pos=(910.9,627.2) Vel=(0.03,-0.00) Speed=0.03 Force=(0.02,-0.09) Mag=0.10
+  Agent 2: Pos=(910.7,452.3) Vel=(0.03,-0.05) Speed=0.06 Force=(0.38,-0.02) Mag=0.38
+
+=== Stage 6: Three agents, all forces ===
+Spawned 3 agents in triangle formation
+[Frame 60] Agents: 3
+  Agent 0: Pos=(1060.6,540.6) Vel=(0.45,0.48) Speed=0.66 Force=(-0.07,0.23) Mag=0.24
+  Agent 1: Pos=(910.3,627.1) Vel=(0.17,0.34) Speed=0.38 Force=(-0.29,0.15) Mag=0.32
+  Agent 2: Pos=(909.7,453.1) Vel=(-0.20,-0.22) Speed=0.29 Force=(0.24,0.02) Mag=0.24
+[Frame 120] Agents: 3
+  Agent 0: Pos=(1061.0,541.0) Vel=(0.27,0.25) Speed=0.37 Force=(-0.15,-0.12) Mag=0.19
+  Agent 1: Pos=(910.4,627.3) Vel=(0.09,0.18) Speed=0.20 Force=(-0.10,-0.03) Mag=0.10
+  Agent 2: Pos=(909.5,452.9) Vel=(-0.10,-0.13) Speed=0.16 Force=(0.45,0.03) Mag=0.45
+[Frame 180] Agents: 3
+  Agent 0: Pos=(1061.2,541.2) Vel=(0.13,0.16) Speed=0.21 Force=(0.35,0.32) Mag=0.47
+  Agent 1: Pos=(910.5,627.4) Vel=(0.08,0.09) Speed=0.12 Force=(0.11,0.47) Mag=0.48
+  Agent 2: Pos=(909.5,452.9) Vel=(-0.06,-0.06) Speed=0.09 Force=(-0.09,-0.04) Mag=0.10
+[Frame 240] Agents: 3
+  Agent 0: Pos=(1061.3,541.3) Vel=(0.09,0.06) Speed=0.11 Force=(-0.15,-0.23) Mag=0.27
+  Agent 1: Pos=(910.5,627.5) Vel=(0.02,0.03) Speed=0.03 Force=(-0.02,0.01) Mag=0.02
+  Agent 2: Pos=(909.4,452.8) Vel=(0.00,-0.05) Speed=0.05 Force=(0.34,0.10) Mag=0.36
+[Frame 300] Agents: 3
+  Agent 0: Pos=(1061.3,541.4) Vel=(0.05,0.06) Speed=0.07 Force=(0.07,0.39) Mag=0.39
+  Agent 1: Pos=(910.5,627.5) Vel=(0.02,-0.02) Speed=0.03 Force=(0.12,-0.47) Mag=0.48
+  Agent 2: Pos=(909.4,452.8) Vel=(-0.01,-0.02) Speed=0.02 Force=(-0.25,0.07) Mag=0.26
+
+=== Stage 7: Ten agents, all forces ===
+Spawned 10 agents in circle
+[Frame 60] Agents: 10
+  Agent 0: Pos=(933.4,490.6) Vel=(0.60,-0.28) Speed=0.66 Force=(-0.52,-0.38) Mag=0.64
+  Agent 1: Pos=(941.9,433.0) Vel=(-0.29,-0.58) Speed=0.64 Force=(0.92,0.19) Mag=0.94
+  Agent 2: Pos=(875.3,536.8) Vel=(0.12,-0.19) Speed=0.23 Force=(0.20,-0.28) Mag=0.34
+[Frame 120] Agents: 10
+  Agent 0: Pos=(933.7,490.4) Vel=(0.23,-0.14) Speed=0.27 Force=(-0.10,0.18) Mag=0.20
+  Agent 1: Pos=(941.9,432.6) Vel=(0.15,-0.21) Speed=0.26 Force=(0.44,0.07) Mag=0.45
+  Agent 2: Pos=(875.4,536.6) Vel=(0.08,-0.17) Speed=0.18 Force=(0.03,-0.15) Mag=0.15
+[Frame 180] Agents: 10
+  Agent 0: Pos=(933.9,490.3) Vel=(0.12,-0.07) Speed=0.14 Force=(-0.09,0.14) Mag=0.16
+  Agent 1: Pos=(942.1,432.5) Vel=(0.29,-0.09) Speed=0.30 Force=(0.52,0.34) Mag=0.62
+  Agent 2: Pos=(875.5,536.5) Vel=(0.09,-0.10) Speed=0.14 Force=(0.30,-0.04) Mag=0.31
+[Frame 240] Agents: 10
+  Agent 0: Pos=(934.0,490.3) Vel=(0.12,-0.08) Speed=0.15 Force=(0.04,0.07) Mag=0.09
+  Agent 1: Pos=(942.4,432.4) Vel=(0.28,-0.00) Speed=0.28 Force=(0.16,-0.01) Mag=0.16
+  Agent 2: Pos=(875.6,536.4) Vel=(0.07,-0.09) Speed=0.12 Force=(-0.15,0.20) Mag=0.25
+[Frame 300] Agents: 10
+  Agent 0: Pos=(934.1,490.2) Vel=(0.10,-0.05) Speed=0.11 Force=(-0.17,0.12) Mag=0.21
+  Agent 1: Pos=(942.7,432.4) Vel=(0.28,0.02) Speed=0.28 Force=(0.17,0.03) Mag=0.18
+  Agent 2: Pos=(875.6,536.4) Vel=(0.08,-0.06) Speed=0.10 Force=(0.14,-0.02) Mag=0.14
+
+=== Stage 8: Gradual spawn (add 10 every 2 seconds) ===
+Spawned 3 agents in triangle formation
+[Frame 60] Agents: 3
+  Agent 0: Pos=(1059.5,540.0) Vel=(-0.37,0.02) Speed=0.37 Force=(0.02,0.00) Mag=0.02
+  Agent 1: Pos=(909.9,625.9) Vel=(-0.10,-0.49) Speed=0.50 Force=(-0.49,-0.07) Mag=0.49
+  Agent 2: Pos=(909.5,453.6) Vel=(-0.35,0.14) Speed=0.38 Force=(0.14,0.37) Mag=0.40
+[Frame 120] Agents: 3
+  Agent 0: Pos=(1059.2,540.1) Vel=(-0.22,0.03) Speed=0.22 Force=(-0.02,0.01) Mag=0.02
+  Agent 1: Pos=(909.8,625.6) Vel=(-0.04,-0.26) Speed=0.26 Force=(0.39,-0.07) Mag=0.40
+  Agent 2: Pos=(909.2,453.7) Vel=(-0.21,0.06) Speed=0.21 Force=(-0.11,0.16) Mag=0.19
+Added 10 more agents (total: 13)
+[Frame 180] Agents: 13
+  Agent 0: Pos=(1059.1,540.1) Vel=(-0.14,0.01) Speed=0.14 Force=(0.37,-0.08) Mag=0.38
+  Agent 1: Pos=(909.8,625.4) Vel=(0.03,-0.10) Speed=0.10 Force=(0.12,-0.02) Mag=0.12
+  Agent 2: Pos=(909.1,453.7) Vel=(-0.06,0.04) Speed=0.07 Force=(0.21,-0.15) Mag=0.26
+[Frame 240] Agents: 13
+  Agent 0: Pos=(1059.0,540.1) Vel=(-0.10,0.01) Speed=0.10 Force=(0.12,0.23) Mag=0.26
+  Agent 1: Pos=(909.9,625.4) Vel=(-0.00,-0.02) Speed=0.02 Force=(-0.42,-0.02) Mag=0.42
+  Agent 2: Pos=(909.0,453.7) Vel=(-0.06,-0.00) Speed=0.06 Force=(-0.43,0.07) Mag=0.43
+Added 10 more agents (total: 23)
+[Frame 300] Agents: 23
+  Agent 0: Pos=(1058.9,540.1) Vel=(-0.08,-0.00) Speed=0.08 Force=(0.13,0.38) Mag=0.40
+  Agent 1: Pos=(909.8,625.4) Vel=(-0.02,0.00) Speed=0.02 Force=(-0.03,-0.06) Mag=0.07
+  Agent 2: Pos=(909.0,453.7) Vel=(-0.02,-0.04) Speed=0.04 Force=(-0.02,0.15) Mag=0.15
+[Frame 360] Agents: 23
+  Agent 0: Pos=(1058.8,540.1) Vel=(-0.07,0.01) Speed=0.07 Force=(0.06,-0.05) Mag=0.08
+  Agent 1: Pos=(909.8,625.4) Vel=(-0.02,0.00) Speed=0.02 Force=(-0.18,-0.18) Mag=0.25
+  Agent 2: Pos=(909.0,453.7) Vel=(-0.04,-0.06) Speed=0.07 Force=(-0.30,0.29) Mag=0.42
+Added 10 more agents (total: 33)
+[Frame 420] Agents: 33
+  Agent 0: Pos=(1058.7,540.1) Vel=(-0.09,0.00) Speed=0.09 Force=(0.00,0.07) Mag=0.07
+  Agent 1: Pos=(909.9,625.4) Vel=(0.21,0.10) Speed=0.23 Force=(0.16,0.04) Mag=0.16
+  Agent 2: Pos=(908.9,453.6) Vel=(-0.04,-0.05) Speed=0.07 Force=(-0.04,-0.08) Mag=0.09
+[Frame 480] Agents: 33
+  Agent 0: Pos=(1058.7,540.1) Vel=(-0.07,-0.01) Speed=0.08 Force=(-0.33,0.19) Mag=0.38
+  Agent 1: Pos=(910.2,625.6) Vel=(0.31,0.14) Speed=0.34 Force=(0.70,0.12) Mag=0.71
+  Agent 2: Pos=(908.9,453.6) Vel=(-0.05,-0.04) Speed=0.07 Force=(0.11,0.34) Mag=0.36
+Added 10 more agents (total: 43)
+[Frame 540] Agents: 43
+  Agent 0: Pos=(1058.6,540.1) Vel=(-0.07,0.03) Speed=0.07 Force=(-0.24,0.08) Mag=0.26
+  Agent 1: Pos=(910.5,625.7) Vel=(0.32,0.13) Speed=0.35 Force=(0.33,0.00) Mag=0.33
+  Agent 2: Pos=(908.8,453.5) Vel=(-0.03,-0.03) Speed=0.04 Force=(0.08,0.46) Mag=0.47
+[Frame 600] Agents: 43
+  Agent 0: Pos=(1058.5,540.2) Vel=(-0.05,0.03) Speed=0.06 Force=(0.01,-0.01) Mag=0.01
+  Agent 1: Pos=(910.8,625.8) Vel=(0.28,0.12) Speed=0.30 Force=(0.01,0.41) Mag=0.41
+  Agent 2: Pos=(908.8,453.5) Vel=(0.02,-0.03) Speed=0.04 Force=(-0.09,0.03) Mag=0.09
+Added 10 more agents (total: 53)
+[Frame 660] Agents: 53
+  Agent 0: Pos=(1058.4,540.2) Vel=(-0.10,0.04) Speed=0.11 Force=(0.12,-0.34) Mag=0.36
+  Agent 1: Pos=(910.9,625.9) Vel=(-0.08,0.02) Speed=0.08 Force=(0.09,-0.05) Mag=0.10
+  Agent 2: Pos=(908.8,453.5) Vel=(0.01,-0.04) Speed=0.04 Force=(0.04,0.05) Mag=0.06
+[Frame 720] Agents: 53
+  Agent 0: Pos=(1058.3,540.2) Vel=(-0.12,0.05) Speed=0.13 Force=(-0.09,0.09) Mag=0.12
+  Agent 1: Pos=(910.7,625.9) Vel=(-0.24,-0.03) Speed=0.24 Force=(0.22,-0.16) Mag=0.27
+  Agent 2: Pos=(908.9,453.4) Vel=(0.01,-0.01) Speed=0.02 Force=(-0.17,-0.18) Mag=0.25
+Added 10 more agents (total: 63)
+Already at final stage
+[Frame 780] Agents: 63
+  Agent 0: Pos=(1058.2,540.3) Vel=(-0.11,0.06) Speed=0.13 Force=(-0.36,0.37) Mag=0.52
+  Agent 1: Pos=(910.5,625.8) Vel=(-0.15,-0.06) Speed=0.16 Force=(0.25,-0.11) Mag=0.28
+  Agent 2: Pos=(908.9,453.4) Vel=(-0.02,-0.02) Speed=0.03 Force=(0.28,0.25) Mag=0.37
+[Frame 840] Agents: 63
+  Agent 0: Pos=(1058.1,540.4) Vel=(-0.09,0.06) Speed=0.11 Force=(0.17,0.21) Mag=0.27
+  Agent 1: Pos=(910.3,625.8) Vel=(-0.14,-0.07) Speed=0.16 Force=(0.04,-0.04) Mag=0.06
+  Agent 2: Pos=(908.8,453.4) Vel=(-0.01,-0.02) Speed=0.02 Force=(0.39,0.05) Mag=0.39
+Added 10 more agents (total: 73)
+[Frame 900] Agents: 73
+  Agent 0: Pos=(1058.1,540.4) Vel=(-0.06,0.05) Speed=0.08 Force=(0.21,-0.03) Mag=0.21
+  Agent 1: Pos=(910.3,625.7) Vel=(-0.01,-0.06) Speed=0.06 Force=(-0.01,-0.05) Mag=0.06
+  Agent 2: Pos=(908.9,453.4) Vel=(0.01,0.02) Speed=0.03 Force=(-0.06,0.24) Mag=0.24
+Already at final stage
+[Frame 960] Agents: 73
+  Agent 0: Pos=(1058.0,540.5) Vel=(-0.11,0.06) Speed=0.12 Force=(-0.41,0.04) Mag=0.41
+  Agent 1: Pos=(910.3,625.6) Vel=(0.11,-0.08) Speed=0.14 Force=(0.49,-0.21) Mag=0.53
+  Agent 2: Pos=(908.9,453.4) Vel=(-0.01,-0.01) Speed=0.02 Force=(0.02,-0.01) Mag=0.02
+Added 10 more agents (total: 83)
+[Frame 1020] Agents: 83
+  Agent 0: Pos=(1057.8,540.6) Vel=(-0.29,0.13) Speed=0.32 Force=(-0.31,0.49) Mag=0.58
+  Agent 1: Pos=(910.4,625.6) Vel=(0.13,-0.06) Speed=0.14 Force=(0.48,-0.10) Mag=0.49
+  Agent 2: Pos=(908.9,453.4) Vel=(0.02,-0.01) Speed=0.02 Force=(0.05,-0.12) Mag=0.13
+[Frame 1080] Agents: 83
+  Agent 0: Pos=(1057.4,540.7) Vel=(-0.35,0.16) Speed=0.39 Force=(-0.20,0.21) Mag=0.29
+  Agent 1: Pos=(910.6,625.5) Vel=(0.17,-0.03) Speed=0.17 Force=(-0.16,0.27) Mag=0.31
+  Agent 2: Pos=(908.9,453.4) Vel=(0.01,-0.01) Speed=0.01 Force=(-0.36,-0.21) Mag=0.42
+Added 10 more agents (total: 93)
+[Frame 1140] Agents: 93
+  Agent 0: Pos=(1057.1,540.9) Vel=(-0.38,0.19) Speed=0.43 Force=(-0.28,-0.21) Mag=0.35
+  Agent 1: Pos=(910.8,625.5) Vel=(0.16,-0.04) Speed=0.17 Force=(0.04,-0.23) Mag=0.24
+  Agent 2: Pos=(908.9,453.4) Vel=(-0.01,-0.01) Speed=0.01 Force=(-0.28,0.33) Mag=0.43
+
+=== DETAILED DEBUG ===
+Stage: Stage 8: Gradual spawn (add 10 every 2 seconds)
+Config: MaxSpeed=10, Friction=0.99
+Weights: Sep=1, Ali=0.5, Coh=0.1
+
+Agent 0:
+  Position: (1056.78, 541.05)
+  Velocity: (-0.3740, 0.1692) | Speed: 0.4105/10
+  Force:    (0.2471, 0.0816) | Magnitude: 0.2602
+  Neighbors in sense radius: 21
+
+Agent 1:
+  Position: (910.90, 625.48)
+  Velocity: (0.1847, -0.0292) | Speed: 0.1870/10
+  Force:    (0.1903, -0.0808) | Magnitude: 0.2067
+  Neighbors in sense radius: 45
+
+Agent 2:
+  Position: (908.86, 453.39)
+  Velocity: (-0.0147, 0.0026) | Speed: 0.0149/10
+  Force:    (-0.3818, -0.1602) | Magnitude: 0.4140
+  Neighbors in sense radius: 4
+
+Agent 3:
+  Position: (985.86, 532.97)
+  Velocity: (-0.0815, 0.0620) | Speed: 0.1024/10
+  Force:    (0.0842, -0.1079) | Magnitude: 0.1368
+  Neighbors in sense radius: 19
+
+Agent 4:
+  Position: (991.72, 507.11)
+  Velocity: (0.1515, -0.1383) | Speed: 0.2052/10
+  Force:    (-0.1763, 0.1202) | Magnitude: 0.2133
+  Neighbors in sense radius: 20
+
+Agent 5:
+  Position: (966.06, 551.06)
+  Velocity: (-0.0698, 0.2394) | Speed: 0.2494/10
+  Force:    (-0.0942, 0.2414) | Magnitude: 0.2591
+  Neighbors in sense radius: 26
+
+Agent 6:
+  Position: (1013.95, 504.37)
+  Velocity: (0.2120, -0.2584) | Speed: 0.3342/10
+  Force:    (0.3042, 0.0977) | Magnitude: 0.3195
+  Neighbors in sense radius: 16
+
+Agent 7:
+  Position: (1012.99, 523.68)
+  Velocity: (0.1345, 0.3258) | Speed: 0.3525/10
+  Force:    (0.1179, 0.5773) | Magnitude: 0.5892
+  Neighbors in sense radius: 18
+
+Agent 8:
+  Position: (976.03, 510.03)
+  Velocity: (-0.2716, -0.1332) | Speed: 0.3025/10
+  Force:    (-0.1780, -0.0654) | Magnitude: 0.1896
+  Neighbors in sense radius: 20
+
+Agent 9:
+  Position: (998.25, 542.58)
+  Velocity: (0.1195, -0.0191) | Speed: 0.1211/10
+  Force:    (0.0794, 0.0185) | Magnitude: 0.0815
+  Neighbors in sense radius: 22
+
+Agent 10:
+  Position: (1001.37, 560.79)
+  Velocity: (-0.0438, 0.3170) | Speed: 0.3200/10
+  Force:    (-0.3028, 0.0275) | Magnitude: 0.3040
+  Neighbors in sense radius: 25
+
+Agent 11:
+  Position: (994.10, 590.12)
+  Velocity: (-0.0768, -0.0257) | Speed: 0.0810/10
+  Force:    (-0.0581, -0.4029) | Magnitude: 0.4070
+  Neighbors in sense radius: 30
+
+Agent 12:
+  Position: (960.46, 525.36)
+  Velocity: (-0.3070, 0.1180) | Speed: 0.3289/10
+  Force:    (0.1119, 0.2423) | Magnitude: 0.2669
+  Neighbors in sense radius: 20
+
+Agent 13:
+  Position: (817.18, 617.15)
+  Velocity: (-0.0275, 0.1014) | Speed: 0.1051/10
+  Force:    (0.2786, -0.0989) | Magnitude: 0.2957
+  Neighbors in sense radius: 43
+
+Agent 14:
+  Position: (844.90, 614.15)
+  Velocity: (-0.0221, 0.1775) | Speed: 0.1789/10
+  Force:    (-0.1552, 0.2173) | Magnitude: 0.2670
+  Neighbors in sense radius: 46
+
+Agent 15:
+  Position: (803.11, 613.52)
+  Velocity: (-0.4961, 0.1346) | Speed: 0.5141/10
+  Force:    (-0.5234, -0.3024) | Magnitude: 0.6045
+  Neighbors in sense radius: 42
+
+Agent 16:
+  Position: (813.37, 589.63)
+  Velocity: (-0.1829, -0.2399) | Speed: 0.3016/10
+  Force:    (-0.2165, 0.1137) | Magnitude: 0.2446
+  Neighbors in sense radius: 38
+
+Agent 17:
+  Position: (796.69, 594.84)
+  Velocity: (-0.2586, -0.1084) | Speed: 0.2804/10
+  Force:    (0.1522, -0.3634) | Magnitude: 0.3940
+  Neighbors in sense radius: 34
+
+Agent 18:
+  Position: (778.38, 598.93)
+  Velocity: (-0.3115, 0.0441) | Speed: 0.3146/10
+  Force:    (-0.0511, 0.4019) | Magnitude: 0.4051
+  Neighbors in sense radius: 31
