@@ -1,7 +1,8 @@
 using Raylib_cs;
 using SwarmSim.Core;
-using System.Numerics;
+using System.Diagnostics;
 using System.Linq;
+using System.Numerics;
 
 namespace SwarmSim.Render;
 
