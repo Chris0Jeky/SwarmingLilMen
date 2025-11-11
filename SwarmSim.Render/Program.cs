@@ -1135,6 +1135,8 @@ internal static class Program
         DrawText("  [P] Print Config | ESC: Quit", padding, y, 12, Color.LightGray);
         y += lineHeight - 4;
         DrawText("  Hold SHIFT for fine adjustment", padding, y, 12, Color.Gold);
+        y += lineHeight - 4;
+        DrawText($"  [H] Help Overlay [{(_showHelpOverlay ? "ON" : "OFF")}] | [F12] Debug Overlay", padding, y, 12, Color.LightGray);
 
         // === CURRENT VALUES DISPLAY (right side panel) ===
         int rightX = WindowWidth - 300;
