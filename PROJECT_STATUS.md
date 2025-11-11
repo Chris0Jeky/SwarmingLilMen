@@ -264,29 +264,25 @@ These improvements address fundamental architecture issues discovered during Pha
 ---
 
 ### Active TODO – Snapshot & Runner Hardening
-Recent testing surfaced blinking agents and `IndexOutOfRangeException` crashes when snapshot sizes diverge (e.g., after spawning 100 agents per frame). To stabilize the interpolation pipeline and improve debuggability, execute the following tasks in order:
+Recent testing surfaced blinking agents and `IndexOutOfRangeException` crashes when snapshot sizes diverge. Current status:
 
-1. **Runner Mutation Hooks**
-   - Add helper APIs on `SimulationRunner` (e.g., `ResetAccumulator()`, `NotifyWorldMutated()`) that atomically refresh `_prevSnapshot/_currSnapshot`, zero the accumulator, and bump a mutation counter whenever the world is mutated outside `Advance`.
-   - Route every spawn/reset/preset path in the renderer through these helpers instead of manually reassigning snapshots.
+1. **Runner Mutation Hooks** ✅ (2025‑11‑12)
+   - Added `SimulationRunner.ResetAccumulator()` / `NotifyWorldMutated()` plus capture & mutation version tracking.
+   - All spawn/reset/preset paths now route through `ForceSnapshotRefresh`, which triggers these hooks automatically.
 
-2. **Snapshot Contracts & Versioning**
-   - Embed a `CaptureId`/`Version` inside `SimSnapshot` supplied by the runner; store it alongside prev/curr snapshots.
-   - Skip interpolation whenever versions differ (render the current snapshot only) and emit structured logs; add debug-only assertions that `AgentCount` matches the backing array lengths.
+2. **Snapshot Contracts & Versioning** ✅
+   - `SimSnapshot` carries `CaptureVersion`, `MutationVersion`, and debug-only consistency guards; interpolation is skipped when versions differ.
 
-3. **Renderer Safety & Debug HUD**
-   - Clamp draw loops to the actual array lengths (protect against compaction) and guard neighbor overlays so snapshot indices are never fed into `_world` blindly.
-   - Add a togglable HUD (e.g., `F12`) showing prev/curr counts, versions, and accumulator to accelerate troubleshooting.
+3. **Renderer Safety & Debug HUD** ✅
+   - Draw loops clamp to actual array lengths, neighbor overlays guard `_world` indices, and a togglable `F12` overlay surfaces prev/curr counts, versions, alpha, and accumulator metrics.
 
-4. **Automated Regression Tests**
-   - Extend `SimulationRunnerTests` to simulate rapid add/remove cycles and ensure snapshots remain consistent.
-   - Add a renderer-focused unit test (headless) that feeds mismatched synthetic snapshots into the interpolation routine to verify it never throws.
+4. **Automated Regression Tests** ⏳
+   - `SimulationRunnerTests` now cover version monotonicity and mutation resets. Still need renderer-focused tests that feed mismatched synthetic snapshots into the interpolation routine to guarantee it never throws.
 
-5. **Logging & Telemetry**
-   - Emit structured warnings when snapshot deltas exceed a threshold or when mutation hooks trigger a reset.
-   - Optionally add a debug switch to dump problematic snapshots (CSV/JSON) for post-mortem analysis.
+5. **Logging & Telemetry** ⏳
+   - Structured `[Snapshots]` logs describe refresh reasons and large deltas; extend this with an optional snapshot dump (CSV/JSON) for deep dives.
 
-Completing this TODO list will make the snapshot pipeline resilient and turn today’s ad-hoc fixes into an intentional debugging workflow.
+Finishing the remaining tests/logging work will make the snapshot pipeline fully resilient and turn the new debugging workflow into standard practice.
 
 ---
 
