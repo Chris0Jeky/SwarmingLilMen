@@ -108,6 +108,16 @@ Uses uniform grid (linked lists per cell) for O(1) neighbor queries:
 - Seeded RNG (no time-based randomness in core)
 - Stable iteration order
 - Record/replay capability planned
+- Snapshot pipeline uses immutable `SimSnapshot` objects (capture + mutation versions).
+- Renderer only interpolates when snapshot versions match; otherwise it renders the latest snapshot with `alpha = 0`.
+- Any world mutation outside `SimulationRunner.Advance()` must call `SimulationRunner.NotifyWorldMutated()` (see `Program.ForceSnapshotRefresh`) to keep interpolation safe.
+
+### Runtime UX & CLI
+- `SwarmSim.Render` now exposes a CLI (`--help`, `--version`, `--list-presets`, `--preset`, `--config`, `--agent-count`, `--benchmark`, `--minimal`).
+- Presets live in code and JSON examples in `configs/`. `CONFIGURATION_COOKBOOK.md` documents parameter ranges and recipes.
+- In-app overlays:
+  - **H** toggles the interactive help panel (spawning, visualization, parameters).
+  - **F12** toggles the debug overlay (snapshot counts, versions, accumulator/alpha).
 
 ## Performance Requirements
 
