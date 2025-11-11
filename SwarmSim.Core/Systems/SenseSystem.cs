@@ -102,6 +102,7 @@ public sealed class SenseSystem : ISimSystem
         float senseRadiusSq = senseRadius * senseRadius;
         float separationRadius = config.SeparationRadius;
         float separationRadiusSq = separationRadius * separationRadius;
+        float fieldOfView = config.FieldOfView;
 
         // Clear aggregates
         Array.Clear(_neighborCount, 0, count);
