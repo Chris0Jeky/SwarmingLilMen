@@ -1119,6 +1119,10 @@ internal static class Program
         DrawText($"  [N] Neighbors: {(_showNeighborConnections ? "ON" : "OFF")}", padding, y, 12,
             _showNeighborConnections ? Color.Green : Color.Gray);
         y += lineHeight - 2;
+        DrawText($"  Field of View: {_world?.Config.FieldOfView:F0}° | Sense Radius: {_world?.Config.SenseRadius:F0}", padding, y, 12, Color.LightGray);
+        y += lineHeight - 4;
+        DrawText($"  Max Neighbors: {_world?.Config.MaxNeighbors}", padding, y, 12, Color.LightGray);
+        y += lineHeight - 2;
 
         y += 8;
 
