@@ -14,7 +14,7 @@ public sealed class SimConfig
     // ===== Time & Physics =====
     public float FixedDeltaTime { get; init; } = 1f / 120f; // 120 Hz simulation
     public float MaxSpeed { get; init; } = 200f;
-    public float Friction { get; init; } = 0.98f; // Velocity decay per tick
+    public float Friction { get; init; } = 1f; // Velocity decay per tick
 
     // ===== Spatial Grid =====
     public float GridCellSize { get; init; } = 50f; // Should be ≈ SenseRadius

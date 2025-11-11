@@ -25,14 +25,14 @@ internal static class Program
     private static bool _fineAdjustment = false; // Hold shift for fine adjustment
     private static World? _world = null;  // Store reference to world for recreation
 
-    // Parameter values (mutable copies)
-    private static float _separationWeight = 0.05f;
-    private static float _alignmentWeight = 0.05f;
-    private static float _cohesionWeight = 0.0005f;
-    private static float _separationRadius = 15f;
-    private static float _senseRadius = 60f;
-    private static float _maxSpeed = 6f;
-    private static float _friction = 0.99f;
+    // Parameter values (mutable copies) - FIXED FOR PROPER EQUILIBRIUM
+    private static float _separationWeight = 5.0f;    // Was 0.05 (100x stronger)
+    private static float _alignmentWeight = 2.5f;     // Was 0.05 (50x stronger)
+    private static float _cohesionWeight = 0.5f;      // Was 0.0005 (1000x stronger)
+    private static float _separationRadius = 30f;     // Was 15
+    private static float _senseRadius = 100f;         // Was 60
+    private static float _maxSpeed = 10f;             // Was 6
+    private static float _friction = 1f;           // Was 0.99 (CRITICAL FIX!)
 
     // Parameter info for display and adjustment
     private struct AdjustableParameter
@@ -80,21 +80,21 @@ internal static class Program
 
     private static readonly Preset[] Presets =
     [
-        new() { Name = "Traditional Boids",
-            SeparationWeight = 0.05f, AlignmentWeight = 0.05f, CohesionWeight = 0.0005f,
-            SeparationRadius = 15f, SenseRadius = 60f, MaxSpeed = 6f, Friction = 0.99f },
-        new() { Name = "Original (High Forces)",
-            SeparationWeight = 300f, AlignmentWeight = 150f, CohesionWeight = 10f,
-            SeparationRadius = 50f, SenseRadius = 100f, MaxSpeed = 200f, Friction = 0.92f },
-        new() { Name = "Medium Forces",
-            SeparationWeight = 30f, AlignmentWeight = 15f, CohesionWeight = 1f,
-            SeparationRadius = 30f, SenseRadius = 80f, MaxSpeed = 50f, Friction = 0.95f },
-        new() { Name = "Separation Only",
-            SeparationWeight = 1f, AlignmentWeight = 0f, CohesionWeight = 0f,
-            SeparationRadius = 40f, SenseRadius = 100f, MaxSpeed = 20f, Friction = 0.98f },
-        new() { Name = "Alignment Only",
-            SeparationWeight = 0f, AlignmentWeight = 1f, CohesionWeight = 0f,
-            SeparationRadius = 20f, SenseRadius = 100f, MaxSpeed = 20f, Friction = 0.98f },
+        new() { Name = "Balanced (Recommended)",
+            SeparationWeight = 5.0f, AlignmentWeight = 2.5f, CohesionWeight = 0.5f,
+            SeparationRadius = 30f, SenseRadius = 100f, MaxSpeed = 10f, Friction = 0.95f },
+        new() { Name = "Strong Separation",
+            SeparationWeight = 10f, AlignmentWeight = 2.0f, CohesionWeight = 0.3f,
+            SeparationRadius = 40f, SenseRadius = 100f, MaxSpeed = 10f, Friction = 0.95f },
+        new() { Name = "Tight Flocking",
+            SeparationWeight = 3f, AlignmentWeight = 5f, CohesionWeight = 2f,
+            SeparationRadius = 20f, SenseRadius = 80f, MaxSpeed = 10f, Friction = 0.95f },
+        new() { Name = "Fast & Loose",
+            SeparationWeight = 8f, AlignmentWeight = 4f, CohesionWeight = 0.5f,
+            SeparationRadius = 30f, SenseRadius = 120f, MaxSpeed = 15f, Friction = 0.90f },
+        new() { Name = "Slow & Cohesive",
+            SeparationWeight = 2f, AlignmentWeight = 3f, CohesionWeight = 3f,
+            SeparationRadius = 25f, SenseRadius = 80f, MaxSpeed = 5f, Friction = 0.98f },
     ];
 
     // Color palette for groups (16 colors)
