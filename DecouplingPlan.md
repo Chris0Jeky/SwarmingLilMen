@@ -1,3 +1,5 @@
+> **Status (2025-11-12)**: This plan has been implemented and is kept here for historical reference.
+
 Absolutely—this is a classic pattern. For Boids (and most sims) you get the best of both worlds by **running the simulation at a fixed rate** and **rendering whenever you can**. There are two proven ways to do it:
 
 # 1) Single-threaded, decoupled loop (fixed-step sim, variable-rate render)
