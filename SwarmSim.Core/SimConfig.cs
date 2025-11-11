@@ -29,6 +29,7 @@ public sealed class SimConfig
     public float SeparationWeight { get; init; } = 1.5f;
     public float AlignmentWeight { get; init; } = 1.0f;
     public float CohesionWeight { get; init; } = 1.0f;
+    public float WanderStrength { get; init; } = 0f; // Random exploration force (0 = disabled)
 
     // ===== Combat =====
     public float AttackRadius { get; init; } = 15f;
