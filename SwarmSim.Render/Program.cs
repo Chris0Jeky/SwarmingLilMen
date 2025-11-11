@@ -24,6 +24,11 @@ internal static class Program
     private static int _selectedParameter = 0;
     private static bool _fineAdjustment = false; // Hold shift for fine adjustment
     private static World? _world = null;  // Store reference to world for recreation
+    private static SimulationRunner? _runner = null;  // Fixed-timestep runner
+
+    // Interpolation state for smooth rendering
+    private static SimSnapshot? _prevSnapshot = null;
+    private static SimSnapshot? _currSnapshot = null;
 
     // Parameter values (mutable copies) - FIXED FOR PROPER EQUILIBRIUM
     private static float _separationWeight = 5.0f;    // Was 0.05 (100x stronger)
