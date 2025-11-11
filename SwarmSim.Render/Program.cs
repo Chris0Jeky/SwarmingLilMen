@@ -77,35 +77,118 @@ internal static class Program
     ];
 
     // Preset configurations
-    private struct Preset
+    private sealed class Preset
     {
-        public string Name;
-        public float SeparationWeight;
-        public float AlignmentWeight;
-        public float CohesionWeight;
-        public float SeparationRadius;
-        public float SenseRadius;
-        public float MaxSpeed;
-        public float Friction;
+        public required string Id { get; init; }
+        public required string Name { get; init; }
+        public required string Description { get; init; }
+        public required SimConfig Config { get; init; }
     }
 
     private static readonly Preset[] Presets =
     [
-        new() { Name = "Balanced (Recommended)",
-            SeparationWeight = 5.0f, AlignmentWeight = 2.5f, CohesionWeight = 0.5f,
-            SeparationRadius = 30f, SenseRadius = 100f, MaxSpeed = 10f, Friction = 0.95f },
-        new() { Name = "Strong Separation",
-            SeparationWeight = 10f, AlignmentWeight = 2.0f, CohesionWeight = 0.3f,
-            SeparationRadius = 40f, SenseRadius = 100f, MaxSpeed = 10f, Friction = 0.95f },
-        new() { Name = "Tight Flocking",
-            SeparationWeight = 3f, AlignmentWeight = 5f, CohesionWeight = 2f,
-            SeparationRadius = 20f, SenseRadius = 80f, MaxSpeed = 10f, Friction = 0.95f },
-        new() { Name = "Fast & Loose",
-            SeparationWeight = 8f, AlignmentWeight = 4f, CohesionWeight = 0.5f,
-            SeparationRadius = 30f, SenseRadius = 120f, MaxSpeed = 15f, Friction = 0.90f },
-        new() { Name = "Slow & Cohesive",
-            SeparationWeight = 2f, AlignmentWeight = 3f, CohesionWeight = 3f,
-            SeparationRadius = 25f, SenseRadius = 80f, MaxSpeed = 5f, Friction = 0.98f },
+        new Preset
+        {
+            Id = "balanced",
+            Name = "Balanced (Recommended)",
+            Description = "Canonical boids tuning with smooth flocking",
+            Config = new SimConfig
+            {
+                MaxSpeed = 10f,
+                Friction = 0.95f,
+                SenseRadius = 100f,
+                SeparationRadius = 30f,
+                SeparationWeight = 5f,
+                AlignmentWeight = 2.5f,
+                CohesionWeight = 0.5f,
+                MaxForce = 2f,
+                FieldOfView = 270f,
+                WanderStrength = 0.5f,
+                AttackDamage = 0f,
+                BaseDrain = 0.1f,
+                FixedDeltaTime = 1f / 60f
+            }
+        },
+        new Preset
+        {
+            Id = "strong-separation",
+            Name = "Strong Separation",
+            Description = "Agents prioritize personal space, useful for dense scenes",
+            Config = new SimConfig
+            {
+                MaxSpeed = 10f,
+                Friction = 0.95f,
+                SenseRadius = 100f,
+                SeparationRadius = 40f,
+                SeparationWeight = 10f,
+                AlignmentWeight = 2f,
+                CohesionWeight = 0.3f,
+                MaxForce = 2f,
+                FieldOfView = 270f,
+                WanderStrength = 0.5f,
+                FixedDeltaTime = 1f / 60f
+            }
+        },
+        new Preset
+        {
+            Id = "tight-flocking",
+            Name = "Tight Flocking",
+            Description = "Emphasizes cohesion/alignment for ribbon-like formations",
+            Config = new SimConfig
+            {
+                MaxSpeed = 10f,
+                Friction = 0.95f,
+                SenseRadius = 80f,
+                SeparationRadius = 20f,
+                SeparationWeight = 3f,
+                AlignmentWeight = 5f,
+                CohesionWeight = 2f,
+                MaxForce = 2f,
+                FieldOfView = 300f,
+                WanderStrength = 0.25f,
+                FixedDeltaTime = 1f / 60f
+            }
+        },
+        new Preset
+        {
+            Id = "fast-loose",
+            Name = "Fast & Loose",
+            Description = "Higher speed ceiling with lighter cohesion",
+            Config = new SimConfig
+            {
+                MaxSpeed = 15f,
+                Friction = 0.9f,
+                SenseRadius = 120f,
+                SeparationRadius = 30f,
+                SeparationWeight = 8f,
+                AlignmentWeight = 4f,
+                CohesionWeight = 0.5f,
+                MaxForce = 3f,
+                FieldOfView = 270f,
+                WanderStrength = 0.75f,
+                FixedDeltaTime = 1f / 60f
+            }
+        },
+        new Preset
+        {
+            Id = "slow-cohesive",
+            Name = "Slow & Cohesive",
+            Description = "Lower speed with high cohesion for schooling behavior",
+            Config = new SimConfig
+            {
+                MaxSpeed = 5f,
+                Friction = 0.98f,
+                SenseRadius = 80f,
+                SeparationRadius = 25f,
+                SeparationWeight = 2f,
+                AlignmentWeight = 3f,
+                CohesionWeight = 3f,
+                MaxForce = 1.5f,
+                FieldOfView = 270f,
+                WanderStrength = 0.2f,
+                FixedDeltaTime = 1f / 60f
+            }
+        }
     ];
 
     // Color palette for groups (16 colors)
