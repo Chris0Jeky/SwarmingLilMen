@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 namespace SwarmSim.Core;
 
 /// <summary>
@@ -184,6 +186,26 @@ public sealed class SimConfig
             errors.Add("AggressionMatrix must be square");
 
         return errors;
+    }
+
+    public static SimConfig LoadFromJson(string filePath)
+    {
+        if (!File.Exists(filePath))
+            throw new FileNotFoundException("Configuration file not found.", filePath);
+
+        string json = File.ReadAllText(filePath);
+        var options = new JsonSerializerOptions
+        {
+            PropertyNameCaseInsensitive = true,
+            ReadCommentHandling = JsonCommentHandling.Skip,
+            AllowTrailingCommas = true
+        };
+
+        var config = JsonSerializer.Deserialize<SimConfig>(json, options);
+        if (config is null)
+            throw new InvalidOperationException($"Failed to deserialize config file '{filePath}'.");
+
+        return config;
     }
 }
 
