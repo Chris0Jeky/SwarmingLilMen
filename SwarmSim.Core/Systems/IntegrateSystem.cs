@@ -3,22 +3,25 @@ using SwarmSim.Core.Utils;
 namespace SwarmSim.Core.Systems;
 
 /// <summary>
-/// Integrates forces into velocity, then velocity into position.
-/// Applies friction, speed clamping, and boundary conditions.
+/// Integrates forces into velocity, then velocity into position using semi-implicit Euler.
+/// Applies friction (if damped model), speed clamping, and boundary conditions.
 ///
 /// INVARIANTS:
-/// - Reads from: Fx[], Fy[], Vx[], Vy[], X[], Y[], State[]
+/// - Reads from: Fx[], Fy[], Vx[], Vy[], X[], Y[], State[], Config
 /// - Writes to: Vx[], Vy[], X[], Y[]
 /// - Must not allocate memory
-/// - Respects Config.MaxSpeed, Config.Friction, Config.BoundaryMode
+/// - Respects Config.MaxSpeed, Config.MaxForce, Config.Friction, Config.SpeedModel, Config.BoundaryMode
 ///
-/// ALGORITHM:
+/// ALGORITHM (Semi-Implicit Euler):
 /// 1. For each active agent:
-///    - Integrate forces into velocity: V += F * dt
-///    - Apply friction: V *= friction
+///    - Integrate steering into velocity: V += Steering * dt
+///    - Apply friction if SpeedModel.Damped: V *= friction
 ///    - Clamp speed to MaxSpeed
-///    - Integrate velocity into position: P += V * dt
+///    - Integrate velocity into position: P += V * dt (uses UPDATED velocity)
 ///    - Apply boundary conditions (wrap/reflect/clamp)
+///
+/// Semi-implicit Euler (velocity first, then position) is more stable than explicit Euler
+/// for game physics and is the recommended approach by Gaffer on Games.
 /// </summary>
 public sealed class IntegrateSystem : ISimSystem
 {
