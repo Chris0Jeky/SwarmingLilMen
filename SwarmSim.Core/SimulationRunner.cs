@@ -12,6 +12,8 @@ public sealed class SimulationRunner
     private readonly int _maxStepsPerAdvance;
 
     private double _accumulatorSeconds;
+    private long _nextSnapshotVersion = 1;
+    private long _mutationVersion = 0;
 
     /// <summary>
     /// Creates a new runner for the given world.
@@ -44,6 +46,9 @@ public sealed class SimulationRunner
 
     /// <summary>Current accumulated time (seconds) waiting to be simulated.</summary>
     public double Accumulator => _accumulatorSeconds;
+
+    /// <summary>Current mutation version (incremented when the world mutates outside Advance).</summary>
+    public long MutationVersion => _mutationVersion;
 
     /// <summary>
     /// Advances the simulation using elapsed wall time measured in seconds.
@@ -87,17 +92,36 @@ public sealed class SimulationRunner
     {
         StepInternal();
         _accumulatorSeconds = Math.Max(0, _accumulatorSeconds - _fixedDeltaSeconds);
-        return SimSnapshot.FromWorld(_world);
+        return CreateSnapshot();
     }
 
     /// <summary>
     /// Captures the current state without advancing the simulation.
     /// </summary>
-    public SimSnapshot CaptureSnapshot() => SimSnapshot.FromWorld(_world);
+    public SimSnapshot CaptureSnapshot() => CreateSnapshot();
+
+    /// <summary>
+    /// Resets the accumulator (used when mutations invalidate interpolation).
+    /// </summary>
+    public void ResetAccumulator() => _accumulatorSeconds = 0;
+
+    /// <summary>
+    /// Notifies the runner that the world changed outside Advance(), bumping mutation version.
+    /// </summary>
+    public void NotifyWorldMutated()
+    {
+        _mutationVersion++;
+        ResetAccumulator();
+    }
 
     private void StepInternal()
     {
         _world.Tick();
-        _snapshotCallback?.Invoke(SimSnapshot.FromWorld(_world));
+        _snapshotCallback?.Invoke(CreateSnapshot());
+    }
+
+    private SimSnapshot CreateSnapshot()
+    {
+        return SimSnapshot.FromWorld(_world, _nextSnapshotVersion++, _mutationVersion);
     }
 }
