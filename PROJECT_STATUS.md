@@ -286,6 +286,8 @@ Finishing the remaining tests/logging work will make the snapshot pipeline fully
 
 ---
 
+---
+
 ### Phase 3: Groups, Combat, Energy (P3)
 **Goal**: Multiple groups, aggression matrix, combat interactions, metabolism
 
