@@ -77,13 +77,23 @@ Run it:
 dotnet run --project SwarmingLilMen.csproj
 ```
 
-### Option B: Run the Renderer (When Implemented)
+### Option B: Run the Renderer (Interactive)
 
 ```bash
+# Launch with default balanced preset
 dotnet run --project SwarmSim.Render
+
+# List command-line options
+dotnet run --project SwarmSim.Render -- --help
+
+# Start with 5k agents using the fast-loose preset
+dotnet run --project SwarmSim.Render -- --preset fast-loose --agent-count 5000
 ```
 
-**Note**: Rendering is not yet implemented (20% of Phase 0 remaining).
+Tips:
+- Press **H** to toggle the in-app help overlay (shows every control).
+- Press **F12** for the snapshot/debug overlay.
+- See [`CONTROLS.md`](CONTROLS.md) for a quick reference sheet.
 
 ## 5. Explore the Code
 
