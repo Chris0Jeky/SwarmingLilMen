@@ -14,5 +14,8 @@
   "WanderStrength": 0.6,
   "AttackRadius": 20,
   "AttackDamage": 15,
-  "BaseDrain": 0.15
+  "BaseDrain": 0.15,
+  "MaxNeighbors": 16,
+  "CollisionAvoidanceRadius": 14,
+  "CollisionAvoidanceBoost": 4
 }
