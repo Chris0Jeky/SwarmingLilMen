@@ -161,7 +161,12 @@ public class WorldTests
     public void Tick_AppliesFriction()
     {
         // Arrange
-        var config = new SimConfig { Friction = 0.9f, FixedDeltaTime = 1f / 60f };
+        var config = new SimConfig
+        {
+            Friction = 0.9f,
+            SpeedModel = SpeedModel.Damped, // Explicitly use damped model for friction test
+            FixedDeltaTime = 1f / 60f
+        };
         var world = new World(config, seed: 42u);
         int idx = world.AddAgent(100f, 100f);
 
