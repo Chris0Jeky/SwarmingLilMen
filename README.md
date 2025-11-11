@@ -98,6 +98,7 @@ dotnet run --project SwarmSim.Render -- --config configs/warbands.json
 ```
 
 Sample configuration files live in the [`configs/`](configs) directory and demonstrate how to tweak `SimConfig` via JSON.
+For more recipes and parameter guidelines see [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md).
 
 ## 📁 Project Structure
 
