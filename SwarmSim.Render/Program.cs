@@ -686,6 +686,12 @@ internal static class Program
             Console.WriteLine($"Neighbor connections: {(_showNeighborConnections ? "ON" : "OFF")}");
         }
 
+        if (Raylib.IsKeyPressed(KeyboardKey.H))
+        {
+            _showHelpOverlay = !_showHelpOverlay;
+            Console.WriteLine($"Help overlay: {(_showHelpOverlay ? "ON" : "OFF")}");
+        }
+
         if (Raylib.IsKeyPressed(KeyboardKey.F12))
         {
             _showDebugOverlay = !_showDebugOverlay;
@@ -787,6 +793,11 @@ internal static class Program
         if (_showDebugOverlay && _runner != null)
         {
             DrawDebugOverlay(prevSnapshot, currSnapshot, alpha, interpolating);
+        }
+
+        if (_showHelpOverlay)
+        {
+            DrawHelpOverlay();
         }
 
         Raylib.EndDrawing();
