@@ -103,6 +103,55 @@ public static class MathUtils
         => MathF.Atan2(y, x);
 
     /// <summary>
+    /// Calculates the shortest angular difference between two angles in radians.
+    /// Returns a value in [-PI, PI].
+    /// </summary>
+    public static float AngleDifference(float angle1, float angle2)
+    {
+        float diff = angle2 - angle1;
+        // Normalize to [-PI, PI]
+        while (diff > Pi) diff -= TwoPi;
+        while (diff < -Pi) diff += TwoPi;
+        return diff;
+    }
+
+    /// <summary>
+    /// Checks if a target direction is within the field of view cone.
+    /// </summary>
+    /// <param name="forwardX">Forward direction X (heading)</param>
+    /// <param name="forwardY">Forward direction Y (heading)</param>
+    /// <param name="targetX">Target direction X (to neighbor)</param>
+    /// <param name="targetY">Target direction Y (to neighbor)</param>
+    /// <param name="fovDegrees">Field of view in degrees (e.g., 270)</param>
+    /// <returns>True if target is within FOV cone</returns>
+    public static bool IsWithinFieldOfView(
+        float forwardX, float forwardY,
+        float targetX, float targetY,
+        float fovDegrees)
+    {
+        // Full 360° FOV = omnidirectional (no filtering)
+        if (fovDegrees >= 360f)
+            return true;
+
+        // Zero-length vectors can't have a direction
+        if (LengthSquared(forwardX, forwardY) < Epsilon || LengthSquared(targetX, targetY) < Epsilon)
+            return false;
+
+        // Calculate angle difference using dot product (more efficient than atan2)
+        // cos(angle) = dot(a, b) / (|a| * |b|)
+        float dot = Dot(forwardX, forwardY, targetX, targetY);
+        float magProduct = Length(forwardX, forwardY) * Length(targetX, targetY);
+        float cosAngle = dot / magProduct;
+
+        // Convert FOV to radians and get half-angle
+        float halfFovRadians = (fovDegrees * MathF.PI / 180f) * 0.5f;
+        float cosHalfFov = MathF.Cos(halfFovRadians);
+
+        // If cos(angle) >= cos(halfFov), then angle <= halfFov (target is within cone)
+        return cosAngle >= cosHalfFov;
+    }
+
+    /// <summary>
     /// Rotates a vector by angle in radians.
     /// </summary>
     public static (float x, float y) Rotate(float x, float y, float angle)
