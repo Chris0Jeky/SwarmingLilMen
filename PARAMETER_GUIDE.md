@@ -10,11 +10,14 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 
 ## Perception & Separation
 - **SenseRadius** – Max distance for considering neighbors. Large radius (>120) increases neighbor counts, making alignment/cohesion stronger but also more expensive.
-- **SeparationRadius** – Distance within which separation activates. Increase this to prevent following-in-line behaviour.
 - **FieldOfView** – Vision cone in degrees (e.g., 270°). Reduce it to create blind spots and more emergent patterns.
+- **MaxNeighbors** – Hard cap on neighbors contributing to steering. Use 8–16 for classic boids behaviour, higher for smoother large-scale flow.
+- **SeparationRadius** – Distance within which separation activates. Increase this to prevent following-in-line behaviour.
 - **SeparationWeight** – Scales desired separation speed (`maxSpeed * weight`). Higher values push agents apart faster.
 - **SeparationCrowdingThreshold** – Neighbor count that triggers crowding boosts. Lower this if you want separation to react sooner.
 - **SeparationCrowdingBoost** – Maximum multiplier applied to separation when neighbor count exceeds the threshold (e.g., 2.5 = up to 2.5× stronger).
+- **CollisionAvoidanceRadius** – “Emergency” bubble. If a neighbor enters this radius, the agent ignores all other rules and steers directly away.
+- **CollisionAvoidanceBoost** – Multiplier for the emergency steer. Increase it to make close contacts explode apart instantly.
 
 ## Alignment & Cohesion
 - **AlignmentWeight** – Strength of the tendency to match average neighbor velocity. Increasing it forms ribbon-like formations; decreasing it gives more chaotic swirls.
