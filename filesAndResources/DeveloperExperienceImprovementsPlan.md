@@ -20,9 +20,9 @@ The current SwarmingLilMen project lacks discoverability and ease of use:
 
 ## Implementation Phases
 
-### Phase 1: Runtime Help & Discoverability (PRIORITY 1)
+### Phase 1: Runtime Help & Discoverability (PRIORITY 1) ✅ (2025-11-12)
 
-#### 1.1 In-App Help Overlay (H Key)
+#### 1.1 In-App Help Overlay (H Key) ✅
 **Location**: `SwarmSim.Render/Program.cs`
 
 **Design**:
@@ -66,7 +66,7 @@ The current SwarmingLilMen project lacks discoverability and ease of use:
 - Use multi-column layout for readability
 - Show current values of toggle states (V: ON, S: OFF, etc.)
 
-#### 1.2 Startup Banner (Console)
+#### 1.2 Startup Banner (Console) ✅
 **Location**: `SwarmSim.Render/Program.cs` (Main method, before window creation)
 
 **Design**:
@@ -88,7 +88,7 @@ The current SwarmingLilMen project lacks discoverability and ease of use:
 
 ---
 
-### Phase 2: Command-Line Arguments (PRIORITY 2)
+### Phase 2: Command-Line Arguments (PRIORITY 2) ✅
 
 #### 2.1 Argument Parser
 **Location**: New file `SwarmSim.Render/CommandLineArgs.cs`
