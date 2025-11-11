@@ -263,6 +263,33 @@ These improvements address fundamental architecture issues discovered during Pha
 
 ---
 
+### Active TODO – Snapshot & Runner Hardening
+Recent testing surfaced blinking agents and `IndexOutOfRangeException` crashes when snapshot sizes diverge (e.g., after spawning 100 agents per frame). To stabilize the interpolation pipeline and improve debuggability, execute the following tasks in order:
+
+1. **Runner Mutation Hooks**
+   - Add helper APIs on `SimulationRunner` (e.g., `ResetAccumulator()`, `NotifyWorldMutated()`) that atomically refresh `_prevSnapshot/_currSnapshot`, zero the accumulator, and bump a mutation counter whenever the world is mutated outside `Advance`.
+   - Route every spawn/reset/preset path in the renderer through these helpers instead of manually reassigning snapshots.
+
+2. **Snapshot Contracts & Versioning**
+   - Embed a `CaptureId`/`Version` inside `SimSnapshot` supplied by the runner; store it alongside prev/curr snapshots.
+   - Skip interpolation whenever versions differ (render the current snapshot only) and emit structured logs; add debug-only assertions that `AgentCount` matches the backing array lengths.
+
+3. **Renderer Safety & Debug HUD**
+   - Clamp draw loops to the actual array lengths (protect against compaction) and guard neighbor overlays so snapshot indices are never fed into `_world` blindly.
+   - Add a togglable HUD (e.g., `F12`) showing prev/curr counts, versions, and accumulator to accelerate troubleshooting.
+
+4. **Automated Regression Tests**
+   - Extend `SimulationRunnerTests` to simulate rapid add/remove cycles and ensure snapshots remain consistent.
+   - Add a renderer-focused unit test (headless) that feeds mismatched synthetic snapshots into the interpolation routine to verify it never throws.
+
+5. **Logging & Telemetry**
+   - Emit structured warnings when snapshot deltas exceed a threshold or when mutation hooks trigger a reset.
+   - Optionally add a debug switch to dump problematic snapshots (CSV/JSON) for post-mortem analysis.
+
+Completing this TODO list will make the snapshot pipeline resilient and turn today’s ad-hoc fixes into an intentional debugging workflow.
+
+---
+
 ### Phase 3: Groups, Combat, Energy (P3)
 **Goal**: Multiple groups, aggression matrix, combat interactions, metabolism
 
