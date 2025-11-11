@@ -7,6 +7,13 @@ namespace SwarmSim.Render;
 
 internal static class Program
 {
+    private static readonly Version AppVersion = typeof(Program).Assembly.GetName().Version ?? new Version(1, 0, 0, 0);
+    private static SimConfig _baseConfigTemplate = CreateDefaultBaseConfig();
+
+    static Program()
+    {
+        SyncParametersWithConfig(_baseConfigTemplate);
+    }
     // Window settings
     private const int WindowWidth = 1920;
     private const int WindowHeight = 1080;
