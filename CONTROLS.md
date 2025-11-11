@@ -30,4 +30,4 @@
   - `--benchmark` – Run a headless benchmark (no window)
   - `--help`, `--version`, `--list-presets` – Self-documenting flags
 
-The in-app help overlay (press **H**) mirrors this document and displays the current ON/OFF state of the main toggles.
+The in-app help overlay (press **H**) mirrors this document, displays the ON/OFF state of the main toggles, and shows the current vision radius, field-of-view, and max-neighbor settings.
