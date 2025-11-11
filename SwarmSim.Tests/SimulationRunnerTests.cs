@@ -37,8 +37,16 @@ public class SimulationRunnerTests
     [Fact]
     public void Advance_Respects_MaxStepsPerAdvance()
     {
-        var config = CreateBasicConfig();
-        config.FixedDeltaTime = 0.01f;
+        var config = new SimConfig
+        {
+            InitialCapacity = 8,
+            FixedDeltaTime = 0.01f, // Smaller dt to need more steps
+            SenseRadius = 10f,
+            SeparationWeight = 0f,
+            AlignmentWeight = 0f,
+            CohesionWeight = 0f,
+            WanderStrength = 0f
+        };
 
         var world = new World(config, seed: 1);
         var runner = new SimulationRunner(world, maxStepsPerAdvance: 2);
