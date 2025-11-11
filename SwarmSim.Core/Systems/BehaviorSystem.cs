@@ -3,21 +3,27 @@ using SwarmSim.Core.Utils;
 namespace SwarmSim.Core.Systems;
 
 /// <summary>
-/// Applies boids rules (separation, alignment, cohesion) to generate forces.
-/// Uses aggregates computed by SenseSystem to determine desired behavior.
+/// Applies canonical steering behaviors (Reynolds model) to generate steering forces.
+/// Uses aggregates computed by SenseSystem to determine desired velocities.
 ///
 /// INVARIANTS:
-/// - Reads from: X[], Y[], Vx[], Vy[], State[], SenseSystem aggregates
+/// - Reads from: X[], Y[], Vx[], Vy[], State[], SenseSystem aggregates, Config
 /// - Writes to: Fx[], Fy[]
 /// - Must not allocate memory
 /// - Runs after SenseSystem
 ///
-/// ALGORITHM:
+/// ALGORITHM (Canonical Steering Behaviors):
 /// For each agent with neighbors:
-/// 1. Separation: Apply accumulated repulsion force (weighted by SeparationWeight)
-/// 2. Alignment: Steer toward average neighbor velocity (weighted by AlignmentWeight)
-/// 3. Cohesion: Steer toward average neighbor position (weighted by CohesionWeight)
-/// 4. Combine forces and add to Fx[], Fy[]
+/// 1. Separation: Compute desired velocity away from neighbors, steer = clamp(desired - current, maxForce)
+/// 2. Alignment: Compute desired velocity matching neighbors, steer = clamp(desired - current, maxForce)
+/// 3. Cohesion: Compute desired velocity toward center, steer = clamp(desired - current, maxForce)
+/// 4. Sum steering forces and add to Fx[], Fy[]
+///
+/// Steering formulation advantages:
+/// - Predictable force magnitudes (capped by maxForce)
+/// - No force/friction equilibrium pathologies
+/// - Easy to tune (weights scale desired velocity, not raw forces)
+/// - Industry-standard approach from Reynolds' "Steering Behaviors for Autonomous Characters"
 /// </summary>
 public sealed class BehaviorSystem : ISimSystem
 {
@@ -53,11 +59,12 @@ public sealed class BehaviorSystem : ISimSystem
         var cohesionX = _senseSystem.CohesionX;
         var cohesionY = _senseSystem.CohesionY;
 
-        // Weights from config
+        // Parameters from config
+        float maxSpeed = config.MaxSpeed;
+        float maxForce = config.MaxForce;
         float separationWeight = config.SeparationWeight;
         float alignmentWeight = config.AlignmentWeight;
         float cohesionWeight = config.CohesionWeight;
-        float maxSpeed = config.MaxSpeed;
 
         for (int i = 0; i < count; i++)
         {
@@ -71,49 +78,101 @@ public sealed class BehaviorSystem : ISimSystem
             if (neighborCount == 0)
                 continue;
 
+            // Current velocity
+            float currentVx = vx[i];
+            float currentVy = vy[i];
+
+            // Accumulators for total steering force
+            float totalSteeringX = 0f;
+            float totalSteeringY = 0f;
+
+            // === Separation Steering ===
+            // Desired: Move away from neighbors at maxSpeed
+            float sepX = separationX[i];
+            float sepY = separationY[i];
+            float sepMag = MathUtils.Length(sepX, sepY);
+
+            if (sepMag > 0.001f)
+            {
+                // Desired velocity: away from neighbors at (maxSpeed * weight)
+                float desiredSpeed = maxSpeed * separationWeight;
+                float desiredVx = (sepX / sepMag) * desiredSpeed;
+                float desiredVy = (sepY / sepMag) * desiredSpeed;
+
+                // Steering: desired - current, clamped to maxForce
+                float steerX = desiredVx - currentVx;
+                float steerY = desiredVy - currentVy;
+                (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
+
+                totalSteeringX += steerX;
+                totalSteeringY += steerY;
+            }
+
+            // === Alignment Steering ===
+            // Desired: Match average neighbor velocity
             float invNeighbors = 1f / neighborCount;
-
-            // === Separation Force ===
-            // Already accumulated with 1/r^2 weighting by SenseSystem
-            float separationForceX = separationX[i] * separationWeight;
-            float separationForceY = separationY[i] * separationWeight;
-
-            // === Alignment Force ===
-            // Steer toward average neighbor velocity
             float avgVx = alignmentVx[i] * invNeighbors;
             float avgVy = alignmentVy[i] * invNeighbors;
-            float alignmentForceX = (avgVx - vx[i]) * alignmentWeight;
-            float alignmentForceY = (avgVy - vy[i]) * alignmentWeight;
+            float avgMag = MathUtils.Length(avgVx, avgVy);
 
-            // === Cohesion Force ===
-            // Steer toward average neighbor position (center of mass)
+            if (avgMag > 0.001f)
+            {
+                // Desired velocity: match neighbors at (maxSpeed * weight)
+                float desiredSpeed = maxSpeed * alignmentWeight;
+                float desiredVx = (avgVx / avgMag) * desiredSpeed;
+                float desiredVy = (avgVy / avgMag) * desiredSpeed;
+
+                // Steering: desired - current, clamped to maxForce
+                float steerX = desiredVx - currentVx;
+                float steerY = desiredVy - currentVy;
+                (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
+
+                totalSteeringX += steerX;
+                totalSteeringY += steerY;
+            }
+
+            // === Cohesion Steering ===
+            // Desired: Move toward center of mass
             float centerX = cohesionX[i] * invNeighbors;
             float centerY = cohesionY[i] * invNeighbors;
             float toCenterX = centerX - x[i];
             float toCenterY = centerY - y[i];
+            float centerMag = MathUtils.Length(toCenterX, toCenterY);
 
-            // Normalize and scale cohesion force
-            float cohesionDist = MathUtils.Length(toCenterX, toCenterY);
-            float cohesionForceX = 0f;
-            float cohesionForceY = 0f;
-
-            if (cohesionDist > 0.001f) // Avoid division by zero
+            if (centerMag > 0.001f)
             {
-                float cohesionScale = cohesionWeight / cohesionDist;
-                cohesionForceX = toCenterX * cohesionScale;
-                cohesionForceY = toCenterY * cohesionScale;
+                // Desired velocity: toward center at (maxSpeed * weight)
+                float desiredSpeed = maxSpeed * cohesionWeight;
+                float desiredVx = (toCenterX / centerMag) * desiredSpeed;
+                float desiredVy = (toCenterY / centerMag) * desiredSpeed;
+
+                // Steering: desired - current, clamped to maxForce
+                float steerX = desiredVx - currentVx;
+                float steerY = desiredVy - currentVy;
+                (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
+
+                totalSteeringX += steerX;
+                totalSteeringY += steerY;
             }
 
-            // === Combine Forces ===
-            float totalForceX = separationForceX + alignmentForceX + cohesionForceX;
-            float totalForceY = separationForceY + alignmentForceY + cohesionForceY;
-
-            // NO FORCE CLAMPING - Traditional Boids doesn't clamp forces, only speeds
-            // The small weights (0.05 instead of 300) naturally limit force magnitudes
-
-            // Add to force accumulators
-            fx[i] += totalForceX;
-            fy[i] += totalForceY;
+            // Add combined steering force to accumulators
+            fx[i] += totalSteeringX;
+            fy[i] += totalSteeringY;
         }
+    }
+
+    /// <summary>
+    /// Clamps a vector to a maximum magnitude.
+    /// Returns (x, y) with magnitude capped at maxMagnitude.
+    /// </summary>
+    private static (float x, float y) ClampMagnitude(float x, float y, float maxMagnitude)
+    {
+        float mag = MathUtils.Length(x, y);
+        if (mag > maxMagnitude)
+        {
+            float scale = maxMagnitude / mag;
+            return (x * scale, y * scale);
+        }
+        return (x, y);
     }
 }
