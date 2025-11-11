@@ -475,12 +475,24 @@ internal static class Program
 
     /// <summary>
     /// Draws agents with linear interpolation between previous and current positions.
+    /// Handles cases where agent count differs between snapshots (spawning/removal).
     /// </summary>
     private static void DrawAgentsInterpolated(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha)
     {
-        int agentCount = currSnapshot.AgentCount;
+        int currCount = currSnapshot.AgentCount;
+        int prevCount = prevSnapshot.AgentCount;
 
-        for (int i = 0; i < agentCount; i++)
+        // Defensive check: warn if snapshots are severely mismatched
+        if (Math.Abs(currCount - prevCount) > 0)
+        {
+            // Agent count changed - this is normal when spawning/removing agents
+            // We'll interpolate what we can and draw new agents directly
+        }
+
+        // Interpolate agents that exist in both snapshots
+        int interpolateCount = Math.Min(prevCount, currCount);
+
+        for (int i = 0; i < interpolateCount; i++)
         {
             // Interpolate position between prev and curr
             float x = Lerp(prevSnapshot.PositionsX[i], currSnapshot.PositionsX[i], alpha);
@@ -490,7 +502,7 @@ internal static class Program
             Color color = GroupColors[group % GroupColors.Length];
 
             // Draw sense radius (if enabled and not too many agents)
-            if (_showSenseRadius && agentCount < 100 && _world != null)
+            if (_showSenseRadius && currCount < 100 && _world != null)
             {
                 Raylib.DrawCircleLines((int)x, (int)y, _world.Config.SenseRadius,
                     new Color(color.R, color.G, color.B, (byte)30));
@@ -527,6 +539,49 @@ internal static class Program
             {
                 DrawNeighborConnections(_world, i, x, y, color);
             }
+        }
+
+        // Draw newly spawned agents (if currCount > prevCount) without interpolation
+        // Use current snapshot positions directly since they didn't exist in previous snapshot
+        for (int i = interpolateCount; i < currCount; i++)
+        {
+            float x = currSnapshot.PositionsX[i];
+            float y = currSnapshot.PositionsY[i];
+
+            byte group = currSnapshot.Groups[i];
+            Color color = GroupColors[group % GroupColors.Length];
+
+            // Draw sense radius (if enabled and not too many agents)
+            if (_showSenseRadius && currCount < 100 && _world != null)
+            {
+                Raylib.DrawCircleLines((int)x, (int)y, _world.Config.SenseRadius,
+                    new Color(color.R, color.G, color.B, (byte)30));
+            }
+
+            // Draw velocity vector (if enabled)
+            if (_showVelocityVectors)
+            {
+                float vx = currSnapshot.VelocitiesX[i];
+                float vy = currSnapshot.VelocitiesY[i];
+                float speed = MathF.Sqrt(vx * vx + vy * vy);
+
+                if (speed > 0.1f)
+                {
+                    float lineLength = MathF.Min(speed / 3f, 30f);
+                    float dirX = vx / speed;
+                    float dirY = vy / speed;
+
+                    Raylib.DrawLineEx(
+                        new Vector2(x, y),
+                        new Vector2(x + dirX * lineLength, y + dirY * lineLength),
+                        1.5f,
+                        new Color(color.R, color.G, color.B, (byte)150)
+                    );
+                }
+            }
+
+            // Draw agent circle (with slight visual indicator that it's new - brighter)
+            Raylib.DrawCircle((int)x, (int)y, 4f, color);
         }
     }
 
