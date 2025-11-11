@@ -35,6 +35,9 @@ public sealed class SimConfig
     public float WanderStrength { get; init; } = 0f; // Random exploration force (0 = disabled)
     public int SeparationCrowdingThreshold { get; init; } = 12; // Neighbor count before boosting separation
     public float SeparationCrowdingBoost { get; init; } = 2.5f; // Multiplier for separation weight when very crowded
+    public int MaxNeighbors { get; init; } = 16; // cap neighbors contributing to steering
+    public float CollisionAvoidanceRadius { get; init; } = 12f;
+    public float CollisionAvoidanceBoost { get; init; } = 4f;
 
     // ===== Combat =====
     public float AttackRadius { get; init; } = 15f;
