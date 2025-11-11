@@ -133,9 +133,14 @@ public static class MathUtils
         if (fovDegrees >= 360f)
             return true;
 
-        // Zero-length vectors can't have a direction
-        if (LengthSquared(forwardX, forwardY) < Epsilon || LengthSquared(targetX, targetY) < Epsilon)
+        // Zero-length target vector can't have a direction
+        if (LengthSquared(targetX, targetY) < Epsilon)
             return false;
+
+        // If agent has no velocity (zero-length forward), assume omnidirectional (can see in all directions)
+        // This happens when agents are stationary or just spawned
+        if (LengthSquared(forwardX, forwardY) < Epsilon)
+            return true;
 
         // Calculate angle difference using dot product (more efficient than atan2)
         // cos(angle) = dot(a, b) / (|a| * |b|)
