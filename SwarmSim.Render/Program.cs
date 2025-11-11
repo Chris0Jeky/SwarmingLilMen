@@ -537,14 +537,19 @@ internal static class Program
     /// </summary>
     private static void DrawAgentsInterpolated(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha)
     {
-        int currCount = currSnapshot.AgentCount;
-        int prevCount = prevSnapshot.AgentCount;
+        int rawCurrCount = currSnapshot.AgentCount;
+        int rawPrevCount = prevSnapshot.AgentCount;
+        int currCount = GetSafeAgentCount(currSnapshot);
+        int prevCount = GetSafeAgentCount(prevSnapshot);
 
-        // Defensive check: log significant snapshot mismatches for debugging
-        if (Math.Abs(currCount - prevCount) > 100)
+        // Defensive check: log significant snapshot mismatches for debugging (but avoid spamming)
+        if (Math.Abs(rawCurrCount - rawPrevCount) >= 50 &&
+            currSnapshot.CaptureVersion != _lastSnapshotWarningVersion)
         {
-            // Large agent count change - log for debugging
-            Console.WriteLine($"⚠️  Large snapshot mismatch: prev={prevCount}, curr={currCount}, delta={currCount - prevCount}");
+            Console.WriteLine(
+                $"⚠️  Snapshot mismatch: prev={rawPrevCount}, curr={rawCurrCount}, " +
+                $"delta={rawCurrCount - rawPrevCount}, prevMut={prevSnapshot.MutationVersion}, currMut={currSnapshot.MutationVersion}");
+            _lastSnapshotWarningVersion = currSnapshot.CaptureVersion;
         }
 
         // Interpolate agents that exist in both snapshots
@@ -593,7 +598,7 @@ internal static class Program
             Raylib.DrawCircle((int)x, (int)y, 4f, color);
 
             // Draw neighbor connections (if enabled and agent is tracked)
-            if (_showNeighborConnections && _trackedAgents.Contains(i) && _world != null)
+            if (_showNeighborConnections && _world != null && i < _world.Count && _trackedAgents.Contains(i))
             {
                 DrawNeighborConnections(_world, i, x, y, color);
             }
@@ -641,6 +646,17 @@ internal static class Program
             // Draw agent circle (with slight visual indicator that it's new - brighter)
             Raylib.DrawCircle((int)x, (int)y, 4f, color);
         }
+    }
+
+    private static int GetSafeAgentCount(SimSnapshot snapshot)
+    {
+        return Math.Min(
+            snapshot.AgentCount,
+            Math.Min(
+                Math.Min(snapshot.PositionsX.Length, snapshot.PositionsY.Length),
+                Math.Min(
+                    Math.Min(snapshot.VelocitiesX.Length, snapshot.VelocitiesY.Length),
+                    snapshot.Groups.Length)));
     }
 
     /// <summary>
@@ -882,6 +898,33 @@ internal static class Program
             rightY += lineHeight - 4;
             DrawText($"Range: [{param.MinValue:F2} - {param.MaxValue:F2}]", rightX, rightY, 12, Color.Gray);
         }
+    }
+
+    private static void DrawDebugOverlay(SimSnapshot prevSnapshot, SimSnapshot currSnapshot, float alpha, bool interpolating)
+    {
+        if (_runner == null)
+            return;
+
+        const int panelWidth = 360;
+        const int panelHeight = 120;
+        int x = 10;
+        int y = WindowHeight - panelHeight - 10;
+
+        Raylib.DrawRectangle(x, y, panelWidth, panelHeight, new Color(0, 0, 0, 180));
+
+        int line = 0;
+        void Write(string text, Color color)
+        {
+            DrawText(text, x + 8, y + 8 + line * 16, 14, color);
+            line++;
+        }
+
+        Write($"Prev #{prevSnapshot.CaptureVersion} ({prevSnapshot.AgentCount} agents)", Color.LightGray);
+        Write($"Curr #{currSnapshot.CaptureVersion} ({currSnapshot.AgentCount} agents)", Color.LightGray);
+        Write($"Δ Count: {currSnapshot.AgentCount - prevSnapshot.AgentCount}", Color.Yellow);
+        Write($"Mutation: prev {prevSnapshot.MutationVersion}, curr {currSnapshot.MutationVersion}", Color.SkyBlue);
+        Write($"Alpha: {alpha:F2} | Mode: {(interpolating ? "Interpolating" : "Direct")}", interpolating ? Color.Green : Color.Orange);
+        Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
     }
 
     private static void DrawText(string text, int x, int y, int fontSize, Color color)
