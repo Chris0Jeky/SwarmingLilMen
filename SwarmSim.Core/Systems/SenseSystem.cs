@@ -4,10 +4,10 @@ namespace SwarmSim.Core.Systems;
 
 /// <summary>
 /// Queries the spatial grid to find neighbors and computes local aggregates for each agent.
-/// These aggregates are used by BehaviorSystem to compute boids forces.
+/// These aggregates are used by BehaviorSystem to compute boids steering forces.
 ///
 /// INVARIANTS:
-/// - Reads from: X[], Y[], Vx[], Vy[], Group[], State[], Grid
+/// - Reads from: X[], Y[], Vx[], Vy[], Group[], State[], Grid, Config
 /// - Writes to: NeighborCount[], SeparationX[], SeparationY[], AlignmentX[], AlignmentY[], CohesionX[], CohesionY[]
 /// - Must not allocate memory
 /// - Uses World.Grid for spatial queries
@@ -15,12 +15,17 @@ namespace SwarmSim.Core.Systems;
 /// ALGORITHM:
 /// For each agent:
 /// 1. Query 3x3 grid neighborhood
-/// 2. For each neighbor within SenseRadius:
+/// 2. For each neighbor within SenseRadius and FieldOfView:
 ///    - Count neighbors
-///    - Accumulate separation vector (weighted by 1/r^2)
+///    - Accumulate separation vector (linear repulsion, 1/d weighting)
 ///    - Accumulate alignment vector (sum of velocities)
 ///    - Accumulate cohesion center (sum of positions)
 /// 3. Store aggregates for BehaviorSystem to use
+///
+/// FOV (Field of View) filtering:
+/// - Uses agent's velocity as forward direction
+/// - Filters neighbors outside the vision cone (e.g., 270° = can't see directly behind)
+/// - 360° FOV = omnidirectional (no filtering)
 /// </summary>
 public sealed class SenseSystem : ISimSystem
 {
