@@ -659,7 +659,7 @@ internal static class Program
                 world.MarkDead(i);
             }
             world.CompactDeadAgents();
-            SpawnInitialAgents(world);
+            SpawnInitialAgents(world, _initialAgentCount);
             Console.WriteLine("World reset");
             ForceSnapshotRefresh("world reset", notifyRunner: true);
         }
