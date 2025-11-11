@@ -14,7 +14,9 @@ public sealed class SimConfig
     // ===== Time & Physics =====
     public float FixedDeltaTime { get; init; } = 1f / 120f; // 120 Hz simulation
     public float MaxSpeed { get; init; } = 200f;
-    public float Friction { get; init; } = 1f; // Velocity decay per tick
+    public float MaxForce { get; init; } = 5f; // Maximum steering force magnitude
+    public float Friction { get; init; } = 1f; // Velocity decay per tick (1.0 = no friction)
+    public SpeedModel SpeedModel { get; init; } = SpeedModel.ConstantSpeed; // Constant-speed vs damped
 
     // ===== Spatial Grid =====
     public float GridCellSize { get; init; } = 50f; // Should be ≈ SenseRadius
@@ -22,6 +24,7 @@ public sealed class SimConfig
     // ===== Boids Parameters =====
     public float SenseRadius { get; init; } = 50f;
     public float SeparationRadius { get; init; } = 20f;
+    public float FieldOfView { get; init; } = 270f; // Degrees, 360 = omnidirectional
 
     public float SeparationWeight { get; init; } = 1.5f;
     public float AlignmentWeight { get; init; } = 1.0f;
@@ -90,9 +93,14 @@ public sealed class SimConfig
     /// </summary>
     public static SimConfig PeacefulFlocks() => new()
     {
+        MaxSpeed = 10f,
+        MaxForce = 2.0f,
+        SpeedModel = SpeedModel.ConstantSpeed,
+        Friction = 1.0f,
         SeparationWeight = 2.0f,
         AlignmentWeight = 1.5f,
-        CohesionWeight = 1.5f,
+        CohesionWeight = 1.0f,
+        FieldOfView = 270f,
         AttackDamage = 0f, // No combat
         BaseDrain = 0.1f, // Low energy drain
         AggressionMatrix = NeutralAggressionMatrix(4)
@@ -189,4 +197,24 @@ public enum BoundaryMode
 
     /// <summary>Clamp to boundaries (stop at edge)</summary>
     Clamp
+}
+
+/// <summary>
+/// Speed model for agent movement.
+/// </summary>
+public enum SpeedModel
+{
+    /// <summary>
+    /// Constant-speed model: friction = 1.0, agents always move at or near maxSpeed.
+    /// Steering only changes direction, not speed magnitude.
+    /// Simple, canonical boids behavior (like Craig Reynolds' original).
+    /// </summary>
+    ConstantSpeed,
+
+    /// <summary>
+    /// Damped model: friction &lt; 1.0, agents have variable speeds based on forces.
+    /// Equilibrium speed depends on force magnitude and friction.
+    /// More realistic physics, but requires careful tuning.
+    /// </summary>
+    Damped
 }
