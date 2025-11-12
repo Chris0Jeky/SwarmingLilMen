@@ -345,7 +345,7 @@ internal static class Program
             BoundaryMode = template.BoundaryMode,
             FixedDeltaTime = template.FixedDeltaTime,
             MaxSpeed = _maxSpeed,
-            MaxForce = template.MaxForce,
+            MaxForce = _maxForce,
             Friction = _friction,
             SpeedModel = template.SpeedModel,
             GridCellSize = template.GridCellSize,
@@ -442,6 +442,12 @@ internal static class Program
         if (_cliOptions.BenchmarkMode)
         {
             RunBenchmark(_initialAgentCount);
+            return;
+        }
+
+        if (_cliOptions.UseCanonicalMode)
+        {
+            RunCanonicalMode();
             return;
         }
 
