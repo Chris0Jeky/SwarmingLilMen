@@ -16,6 +16,8 @@ public sealed class CanonicalWorldSettings
     public float SeparationPriorityBoost { get; init; } = 2.5f;
     public float WanderStrength { get; init; } = 0.1f;
     public uint Seed { get; init; } = 123456u;
+    public float WhiskerTimeHorizon { get; init; } = 0.4f; // seconds ahead to check
+    public float WhiskerWeight { get; init; } = 1.2f;      // lateral avoidance weight
     public float WorldWidth { get; init; } = 1920f;
     public float WorldHeight { get; init; } = 1080f;
     public float FixedDeltaTime { get; init; } = 1f / 60f;
