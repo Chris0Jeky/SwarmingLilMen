@@ -1,5 +1,8 @@
 using SwarmSim.Core.Utils;
 
+using System;
+using SwarmSim.Core.Utils;
+
 namespace SwarmSim.Core.Canonical;
 
 public sealed class CanonicalWorld
@@ -13,6 +16,7 @@ public sealed class CanonicalWorld
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
+    private ulong _tickCount;
 
     public CanonicalWorld(CanonicalWorldSettings settings, ISpatialIndex spatialIndex)
     {
@@ -41,6 +45,10 @@ public sealed class CanonicalWorld
 
     public RuleInstrumentation Instrumentation => _instrumentation;
 
+    public ulong TickCount => _tickCount;
+
+    public RuleInstrumentation Instrumentation => _instrumentation;
+
     public void AddRule(IRule rule)
     {
         _rules.Add(rule ?? throw new ArgumentNullException(nameof(rule)));
@@ -57,6 +65,16 @@ public sealed class CanonicalWorld
 
         _activeBoids[Count++] = new Boid(position, normalizedVelocity, group);
         return true;
+    }
+
+    public void SetVelocity(int index, Vec2 velocity)
+    {
+        if (index < 0 || index >= Count)
+            return;
+
+        Vec2 normalizedVelocity = velocity.WithLength(Settings.TargetSpeed);
+        var boid = _activeBoids[index];
+        _activeBoids[index] = new Boid(boid.Position, normalizedVelocity, boid.Group);
     }
 
     public void Step(float deltaTime)
@@ -124,6 +142,7 @@ public sealed class CanonicalWorld
         }
 
         SwapBuffers();
+        _tickCount++;
     }
 
     private void SwapBuffers()
@@ -191,6 +210,29 @@ public sealed class CanonicalWorld
         }
 
         return keep;
+    }
+
+    public bool TryGetMetrics(int index, out RuleInstrumentation.Metrics metrics)
+    {
+        return _instrumentation.TryGetMetrics(index, out metrics);
+    }
+
+    public int QueryVisibleNeighbors(int index, Span<int> buffer, Span<float> weights)
+    {
+        if (index < 0 || index >= Count)
+            return 0;
+
+        var boids = _activeBoids.AsSpan(0, Count);
+        int neighborCount = _spatialIndex.QueryNeighbors(boids, index, Settings.SenseRadius, buffer);
+        return FilterByFieldOfView(
+            boids[index].Forward,
+            boids[index].Position,
+            buffer.Slice(0, neighborCount),
+            weights,
+            boids,
+            Settings.FieldOfView,
+            index,
+            out _);
     }
 
     private void InitializeDefaultRules()
