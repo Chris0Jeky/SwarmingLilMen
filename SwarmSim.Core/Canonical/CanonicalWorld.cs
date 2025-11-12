@@ -342,10 +342,74 @@ public sealed class CanonicalWorld
             out _);
     }
 
+    public PerceptionSnapshot CapturePerceptionSnapshot() => _lastPerceptionSnapshot;
+
     private void InitializeDefaultRules()
     {
         AddRule(new SeparationRule(_settings.SeparationWeight, _settings.SeparationRadius));
         AddRule(new AlignmentRule(_settings.AlignmentWeight));
         AddRule(new CohesionRule(_settings.CohesionWeight));
+    }
+
+    private void UpdatePerceptionSnapshot()
+    {
+        var neighborStats = _instrumentation.NeighborCountStats;
+        float avgDistance = _neighborDistanceSamples > 0 ? _neighborDistanceSum / _neighborDistanceSamples : 0f;
+        float minDistance = _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f;
+        float maxDistance = _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f;
+
+        _lastPerceptionSnapshot = new PerceptionSnapshot(
+            _tickCount,
+            Count,
+            neighborStats.Avg,
+            avgDistance,
+            minDistance,
+            maxDistance,
+            _instrumentation.AverageNeighborWeight,
+            _instrumentation.AverageSeparationMagnitude,
+            _instrumentation.AverageAlignmentMagnitude,
+            _instrumentation.AverageCohesionMagnitude,
+            neighborStats);
+    }
+
+    public readonly struct PerceptionSnapshot
+    {
+        public PerceptionSnapshot(
+            ulong tick,
+            int agentCount,
+            float averageNeighborCount,
+            float averageNeighborDistance,
+            float minNeighborDistance,
+            float maxNeighborDistance,
+            float averageNeighborWeight,
+            float averageSeparationMagnitude,
+            float averageAlignmentMagnitude,
+            float averageCohesionMagnitude,
+            (int Min, int Max, float Avg) neighborCountStats)
+        {
+            TickCount = tick;
+            AgentCount = agentCount;
+            AverageNeighborCount = averageNeighborCount;
+            AverageNeighborDistance = averageNeighborDistance;
+            MinNeighborDistance = minNeighborDistance;
+            MaxNeighborDistance = maxNeighborDistance;
+            AverageNeighborWeight = averageNeighborWeight;
+            AverageSeparationMagnitude = averageSeparationMagnitude;
+            AverageAlignmentMagnitude = averageAlignmentMagnitude;
+            AverageCohesionMagnitude = averageCohesionMagnitude;
+            NeighborCountStats = neighborCountStats;
+        }
+
+        public ulong TickCount { get; }
+        public int AgentCount { get; }
+        public float AverageNeighborCount { get; }
+        public float AverageNeighborDistance { get; }
+        public float MinNeighborDistance { get; }
+        public float MaxNeighborDistance { get; }
+        public float AverageNeighborWeight { get; }
+        public float AverageSeparationMagnitude { get; }
+        public float AverageAlignmentMagnitude { get; }
+        public float AverageCohesionMagnitude { get; }
+        public (int Min, int Max, float Avg) NeighborCountStats { get; }
     }
 }
