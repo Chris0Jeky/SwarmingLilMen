@@ -65,15 +65,10 @@ Proposed changes (detailed)
 Implementation plan (phased)
 
 Phase A – Turning and separation smoothing
-- Add `MaxTurnRateDegPerSec` and implement angular-rate limiter in `CanonicalWorld.Step` after steering is computed.
-- Replace direct heading snap with shaped separation: compute away+lateral components; add smooth ramp blending near thresholds.
-- Parameterize `PriorityEnterFactor`, `PriorityExitFactor`, `PriorityHoldTicks`, `PriorityRampInTicks`, `PriorityRampOutTicks`.
-- Optional `SpeedDroopInPriority` (0–0.05).
+- Completed: `MaxTurnRateDegPerSec` limiter, priority hysteresis, and lateral/away blending with ramped separation boosts. Hard snaps were replaced with smooth steering, and the optional speed droop is already enabled when the priority state is active.
 
 Phase B – Diagnostics and overlays
-- HUD: add projection readout (min/mean/max projection onto mean heading) and lateral residuals.
-- Overlay: draw whisker capsule and highlight neighbors inside; show a small arrow for desired lateral direction.
-- Console: every 5s log priority engagement rate and average time in-priority per agent.
+- Completed: Whisker capsule overlay, projection readout, and console logging of the new perception snapshot (distance stats plus `SeparationPriorityTriggered`). Whisker hits and mean-heading projection now appear on-screen.
 
 Phase C – Perception data & tests
 - Extend `PerceptionSnapshot` with per-agent nearest angle and whisker counts.
@@ -114,4 +109,3 @@ Next concrete tasks (for the upcoming implementation pass)
 Appendix – Smoothstep and parameterization
 - `smoothstep(a, b, x) = t^2 * (3 - 2t)` where `t = clamp((x-a)/(b-a), 0, 1)`.
 - Use `r_soft` = 0.6*SeparationRadius, `r_hard` = PriorityEnterFactor*SenseRadius; blend lateral→away as d decreases from `r_soft` to `r_hard`.
-
