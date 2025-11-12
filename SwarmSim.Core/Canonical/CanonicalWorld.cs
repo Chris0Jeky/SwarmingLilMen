@@ -217,6 +217,44 @@ public sealed class CanonicalWorld
         ( _activeBoids, _nextBoids ) = ( _nextBoids, _activeBoids );
     }
 
+    private static bool TryAccumulateSteering(ref Vec2 total, ref float remaining, Vec2 contribution, out float appliedMagnitude)
+    {
+        appliedMagnitude = 0f;
+        if (remaining <= 0f)
+            return false;
+
+        float lengthSq = contribution.LengthSquared;
+        if (lengthSq <= 1e-6f)
+            return false;
+
+        float length = MathF.Sqrt(lengthSq);
+        float spend = MathF.Min(length, remaining);
+        Vec2 normalized = contribution / length;
+        Vec2 clamped = normalized * spend;
+        total += clamped;
+        remaining -= spend;
+        appliedMagnitude = spend;
+        return true;
+    }
+
+    private static (float distanceSum, float minDist, float maxDist) ComputeNeighborDistanceStats(ReadOnlySpan<Boid> boids, Vec2 origin, ReadOnlySpan<int> neighbors)
+    {
+        float sum = 0f;
+        float minDist = float.MaxValue;
+        float maxDist = 0f;
+
+        foreach (int idx in neighbors)
+        {
+            Vec2 delta = boids[idx].Position - origin;
+            float dist = MathF.Sqrt(delta.LengthSquared);
+            sum += dist;
+            minDist = MathF.Min(minDist, dist);
+            maxDist = MathF.Max(maxDist, dist);
+        }
+
+        return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist);
+    }
+
     private static int FilterByFieldOfView(
         Vec2 forward,
         Vec2 origin,
