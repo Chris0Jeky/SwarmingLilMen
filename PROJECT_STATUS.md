@@ -63,9 +63,33 @@ A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents 
 - Target: Multiple groups with combat and survival mechanics
 
 ### Key Files to Reference
-- `filesAndResources/swarming_lil_men_master_plan_v_1.md` - Detailed design document
+- `IMPLEMENTATION_EVOLUTION.md` - **READ THIS FIRST** - Explains the transition from old to new implementation
+- `filesAndResources/swarming_lil_men_master_plan_v_1.md` - Original detailed design document
+- `NewImplementation.md` - TDD roadmap for canonical boids (milestones 0-10)
 - `CLAUDE.md` - Development guidelines and commands
 - This file (`PROJECT_STATUS.md`) - Current status and next steps
+
+### Critical Context: Implementation Pivot
+
+**⚠️ IMPORTANT**: The project underwent a significant architectural transition starting around commit `f5d9dca`. We are migrating from a systems-based SoA approach to a canonical boids implementation. **Two implementations currently coexist**:
+
+1. **Legacy Implementation** (`SwarmSim.Core/World.cs`, `Systems/`):
+   - Structure-of-Arrays (SoA) with systems pipeline
+   - Force-based physics with friction
+   - Two-pass: SenseSystem → BehaviorSystem
+   - **Status**: Working but deprecated, hard to debug
+   - **Run with**: Default renderer (no `--canonical` flag)
+
+2. **Canonical Implementation** (`SwarmSim.Core/Canonical/`):
+   - Immutable `Boid` structs, pluggable `IRule` components
+   - Reynolds steering behaviors (not forces)
+   - Single-pass with per-agent decision-making
+   - **Status**: ~70% complete, needs multi-group + testing
+   - **Run with**: `dotnet run --project SwarmSim.Render --canonical`
+
+**Before Phase 3**: We must complete the canonical implementation (milestones 8-10), add multi-group support, and validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what needs to happen next.
+
+**Recommendation**: All Phase 3+ features should be built on the canonical implementation, not the legacy one.
 
 ---
 
@@ -182,13 +206,42 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ---
 
-### Alternative Phase 2: Canonical Boids Kernel (In progress)
-- **Why**: The legacy BehaviorSystem/World combo became hard to inspect, especially when emergent motion diverged from expectations. Rebuilding the boids kernel from first principles keeps the Reynolds steering trio deterministic, simple to test, and insulated from the SoA world while we verify correctness before swapping it into the renderer.
-- **Approach**: Introduced `SwarmSim.Core.Canonical` with `Vec2`, immutable `Boid`, `RuleContext`, `IRule`, `ISpatialIndex`, `CanonicalWorld`, and instrumentation. `CanonicalWorld` filters neighbors by radius/FOV + falloff weights, runs separation/alignment/cohesion rules that compute desired headings with the new neighbor weights, clamps them to `MaxForce`, and re-normalizes velocities to the configured `TargetSpeed`. `CanonicalBoidsTests` now exercise Vec2 math, perception guards, deterministic stepping, and each steering rule, providing the TDD coverage described in `NewImplementation.md`.
-- **Improvements**: Added instrumentation for neighbor counts, weight sums, and rule magnitudes, plus a `GridSpatialIndex` built on `UniformGrid` to replace the naive lookup without changing flock behavior; the instrumentation data is surfaced in `--canonical` mode so you can see when agents are over-clustered or contributions are tiny.
-- **UX & run-time control**: The canonical renderer now lets you toggle a single-agent interaction overlay (`O`/`Tab`), tweak weights/radii with the existing 1-7 sliders (fine adjustments with SHIFT), and press R/F1–F5 to respawn or load presets; every 5s the console reports the tracked five agents (rotating every 30s) along with neighbor stats, so you get verbose visibility into why collisions still happen.
-- **Next milestones**: Glue this kernel into the renderer/test harness once the rule set is stabilized, add additional perception weighting (e.g., FOV falloff), and replace the legacy `BehaviorSystem` with the new `CanonicalWorld` pipelines.
-- **How to run**: Run the canonical harness via `dotnet test --filter CanonicalBoidsTests` to validate the deterministic stepping. To explore the flock, launch the new single-group renderer with `dotnet run --project SwarmSim.Render --canonical` (press R to respawn, H for controls, Esc to exit). The legacy renderer remains available without the `--canonical` flag if you still need the multi-group experience.
+### Canonical Boids Implementation (Post-P2 Rewrite) ~70% Complete
+> **See `IMPLEMENTATION_EVOLUTION.md` for full technical details on the transition**
+
+- **Status**: In active development, ~70% complete
+- **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
+  - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
+  - Force/friction equilibrium created unpredictable parameter sensitivity
+  - 1/d² separation weighting caused numerical instability
+  - Non-canonical approach made tuning guidance from literature unusable
+- **New approach**: Complete rewrite in `SwarmSim.Core.Canonical` namespace following Reynolds' canonical steering behaviors:
+  - **Immutable data**: `readonly struct Boid`, functional transformations
+  - **Steering not forces**: `steering = clamp(desired - current, MaxForce)`
+  - **Constant speed**: Velocity normalized to TargetSpeed (no friction)
+  - **Single-pass**: All decision-making in one place per agent
+  - **Pluggable rules**: `IRule` interface (SeparationRule, AlignmentRule, CohesionRule)
+  - **FOV weighting**: Neighbors weighted by position in vision cone
+  - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
+- **Completed**: Milestones 0-7 from `NewImplementation.md`
+  - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
+  - All 3 steering rules with 1/d weighting
+  - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
+  - FOV filtering with linear weight falloff
+  - Instrumentation system
+  - 11+ unit tests passing
+- **In Progress**: Milestones 8-10
+  - Boundary testing (wrapping, reflection)
+  - Spatial index equivalence tests
+  - Property tests at scale (polarization, clustering)
+  - Multi-group support
+  - Visualization tools
+- **Not Started**: Full migration, performance validation, Phase 3 features
+- **How to run**:
+  - Tests: `dotnet test --filter CanonicalBoidsTests`
+  - Renderer: `dotnet run --project SwarmSim.Render --canonical` (single-group)
+  - Legacy: `dotnet run --project SwarmSim.Render` (multi-group, deprecated)
+- **Before Phase 3**: Must complete milestones 8-10, add multi-group support, validate performance
 
 ---
 
