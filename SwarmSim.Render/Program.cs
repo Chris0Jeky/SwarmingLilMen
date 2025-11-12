@@ -1,3 +1,5 @@
+    using SwarmSim.Core.Canonical;
+
     private static Vec2 ComputeMeanHeading(CanonicalWorld world)
     {
         Vec2 sum = Vec2.Zero;
