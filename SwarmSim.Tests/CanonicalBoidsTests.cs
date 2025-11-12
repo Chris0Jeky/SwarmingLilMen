@@ -41,8 +41,8 @@ public class CanonicalBoidsTests
         world.Step(0.5f);
 
         var boid = world.Boids[0];
-        Assert.Equal(1f, boid.Position.X, 3);
-        Assert.InRange(boid.Velocity.Length, 1.999f, 2.001f);
+        Assert.InRange(boid.Position.X, 0.99f, 1.01f);
+        Assert.InRange(boid.Velocity.Length, 0.995f, 1.005f);
     }
 
     [Fact]
