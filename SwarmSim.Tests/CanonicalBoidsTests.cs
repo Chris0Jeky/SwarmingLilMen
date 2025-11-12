@@ -169,7 +169,9 @@ public class CanonicalBoidsTests
         var neighborIndices = new[] { 1, 2 };
 
         Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
-        Assert.True(steer.X > 0f, "Steering should pull toward the centroid on the right");
+        Vec2 centroid = (boids[1].Position + boids[2].Position) / 2f;
+        Vec2 toCentroid = centroid - boids[0].Position;
+        Assert.True(Vec2.Dot(steer, toCentroid) > 0f, "Steering should move toward the centroid");
     }
 
     private sealed class NeighborSpyRule : IRule
