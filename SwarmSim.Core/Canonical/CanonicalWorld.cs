@@ -67,7 +67,8 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 int neighborCount = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
-                var neighbors = _neighborScratch.AsSpan(0, neighborCount);
+                int filtered = FilterByFieldOfView(boid.Forward, boid.Position, _neighborScratch.AsSpan(0, neighborCount), current, context.FieldOfViewCos);
+                var neighbors = _neighborScratch.AsSpan(0, filtered);
 
                 foreach (IRule rule in _rules)
                 {
@@ -97,5 +98,40 @@ public sealed class CanonicalWorld
     private void SwapBuffers()
     {
         ( _activeBoids, _nextBoids ) = ( _nextBoids, _activeBoids );
+    }
+
+    private static int FilterByFieldOfView(Vec2 forward, Vec2 origin, Span<int> candidates, ReadOnlySpan<Boid> boids, float fieldOfViewCos)
+    {
+        if (candidates.IsEmpty)
+            return 0;
+
+        bool fullCircle = fieldOfViewCos <= -1f;
+        int keep = 0;
+
+        for (int i = 0; i < candidates.Length; i++)
+        {
+            int index = candidates[i];
+            Vec2 delta = boids[index].Position - origin;
+
+            if (delta.IsNearlyZero())
+            {
+                candidates[keep++] = index;
+                continue;
+            }
+
+            if (fullCircle)
+            {
+                candidates[keep++] = index;
+                continue;
+            }
+
+            Vec2 direction = delta.Normalized;
+            if (Vec2.Dot(forward, direction) >= fieldOfViewCos)
+            {
+                candidates[keep++] = index;
+            }
+        }
+
+        return keep;
     }
 }
