@@ -224,13 +224,15 @@ public sealed class CanonicalWorld
 
         var boids = _activeBoids.AsSpan(0, Count);
         int neighborCount = _spatialIndex.QueryNeighbors(boids, index, Settings.SenseRadius, buffer);
+        float halfAngleRad = (Settings.FieldOfView * MathF.PI / 180f) * 0.5f;
+        float fieldOfViewCos = MathF.Cos(halfAngleRad);
         return FilterByFieldOfView(
             boids[index].Forward,
             boids[index].Position,
             buffer.Slice(0, neighborCount),
             weights,
             boids,
-            Settings.FieldOfView,
+            fieldOfViewCos,
             index,
             out _);
     }
