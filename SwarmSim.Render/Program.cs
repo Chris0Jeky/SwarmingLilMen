@@ -1431,6 +1431,8 @@ internal static class Program
             Raylib.DrawText($"Neighbors avg {neighborStats.Avg:F1} (min {neighborStats.Min}, max {neighborStats.Max})", 10, 88, 14, Color.SkyBlue);
             Raylib.DrawText($"Weights avg {instrumentation.AverageNeighborWeight:F2} | Sep avg {instrumentation.AverageSeparationMagnitude:F2}", 10, 106, 14, Color.SkyBlue);
             Raylib.DrawText($"Align avg {instrumentation.AverageAlignmentMagnitude:F2} | Coh avg {instrumentation.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
+            var perception = canonicalWorld.CapturePerceptionSnapshot();
+            Raylib.DrawText($"Distance avg {perception.AverageNeighborDistance:F1} (min {perception.MinNeighborDistance:F1}, max {perception.MaxNeighborDistance:F1})", 10, 142, 14, Color.SkyBlue);
 
             if (_canonicalOverlayVisible)
             {
