@@ -105,15 +105,19 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 int neighborCount = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
-                int filtered = FilterByFieldOfView(
-                    boid.Forward,
-                    boid.Position,
-                    _neighborScratch.AsSpan(0, neighborCount),
-                    _neighborWeightScratch,
-                    current,
-                    fieldOfViewCos,
-                    i,
-                    out float neighborWeightSum);
+        filterFieldOfViewCos = fieldOfViewCos;
+        float fieldOfViewDegrees = Settings.FieldOfView;
+
+        int filtered = FilterByFieldOfView(
+            boid.Forward,
+            boid.Position,
+            _neighborScratch.AsSpan(0, neighborCount),
+            _neighborWeightScratch,
+            current,
+            fieldOfViewCos,
+            fieldOfViewDegrees,
+            i,
+            out float neighborWeightSum);
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
                 var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
 
@@ -255,6 +259,7 @@ public sealed class CanonicalWorld
         Span<float> weights,
         ReadOnlySpan<Boid> boids,
         float fieldOfViewCos,
+        float fieldOfViewDegrees,
         int selfIndex,
         out float totalWeight)
     {
@@ -294,13 +299,12 @@ public sealed class CanonicalWorld
             }
 
             Vec2 direction = delta.Normalized;
-            float dot = Vec2.Dot(forward, direction);
-            float normalized = (dot - fieldOfViewCos) / range;
-
-            if (normalized <= 0f)
+            if (!MathUtils.IsWithinFieldOfView(forward.X, forward.Y, direction.X, direction.Y, fieldOfViewDegrees))
                 continue;
 
-            float weight = normalized >= 1f ? 1f : normalized;
+            float dot = Vec2.Dot(forward, direction);
+            float normalized = MathUtils.Clamp((dot - fieldOfViewCos) / range, 0f, 1f);
+            float weight = normalized;
             candidates[keep] = index;
             weights[keep] = weight;
             totalWeight += weight;
