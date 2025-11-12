@@ -12,6 +12,9 @@ public sealed class CanonicalWorldSettings
     public float SeparationWeight { get; init; } = 1.5f;
     public float AlignmentWeight { get; init; } = 1f;
     public float CohesionWeight { get; init; } = 1f;
+    public float WorldWidth { get; init; } = 1920f;
+    public float WorldHeight { get; init; } = 1080f;
+    public float FixedDeltaTime { get; init; } = 1f / 60f;
 
     public CanonicalWorldSettings() { }
 }
