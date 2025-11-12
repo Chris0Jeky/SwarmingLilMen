@@ -1,5 +1,6 @@
 using Raylib_cs;
 using SwarmSim.Core;
+using SwarmSim.Core.Canonical;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
