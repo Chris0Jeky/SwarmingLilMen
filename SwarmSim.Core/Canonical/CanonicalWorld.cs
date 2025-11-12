@@ -101,7 +101,11 @@ public sealed class CanonicalWorld
         _maxNeighborDistance = 0f;
         var next = _nextBoids.AsSpan(0, Count);
         float fieldOfViewCos = MathF.Cos((Settings.FieldOfView * MathF.PI / 180f) * 0.5f);
-        float separationPriorityThreshold = MathF.Max(0f, Settings.SeparationPriorityRadiusFactor * Settings.SenseRadius);
+        float separationEnterThreshold = MathF.Max(0f, Settings.SeparationPriorityRadiusFactor * Settings.SenseRadius);
+        float separationExitThreshold = MathF.Max(separationEnterThreshold, Settings.SeparationPriorityExitFactor * Settings.SenseRadius);
+        float rampInTime = Math.Max(Settings.SeparationPriorityRampInTime, 1e-6f);
+        float rampOutTime = Math.Max(Settings.SeparationPriorityRampOutTime, 1e-6f);
+        float holdTime = Math.Max(Settings.SeparationPriorityHoldTime, 0f);
         _separationPriorityTriggered = false;
 
         for (int i = 0; i < Count; i++)
@@ -130,30 +134,23 @@ public sealed class CanonicalWorld
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
                 var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
 
-                // Predictive "whisker" lateral avoidance: steer sideways if a neighbor lies in a capsule ahead.
                 if (filtered > 0 && remainingForce > 0f)
                 {
                     Vec2 forward = boid.Forward;
                     float lookAhead = Settings.TargetSpeed * MathF.Max(0.05f, Settings.WhiskerTimeHorizon);
                     float whiskerRadius = MathF.Max(0.1f, Settings.SeparationRadius);
-                    Vec2 right = new Vec2(forward.Y, -forward.X); // 90° right
+                    Vec2 right = new Vec2(forward.Y, -forward.X);
                     Vec2 whiskerAccum = Vec2.Zero;
 
                     foreach (int idx in neighbors)
                     {
                         Vec2 toN = current[idx].Position - boid.Position;
-                        // Projection along forward
                         float along = Vec2.Dot(forward, toN);
                         if (along <= 0f || along > lookAhead) continue;
-
-                        // Lateral distance from forward ray
                         float lateral = Vec2.Dot(right, toN);
                         float absLat = MathF.Abs(lateral);
                         if (absLat > whiskerRadius) continue;
-
-                        // Side sign
                         float side = lateral >= 0f ? 1f : -1f;
-                        // Closer and nearer ahead -> larger avoidance
                         float gain = (1f - absLat / whiskerRadius) * (1f - along / lookAhead);
                         whiskerAccum += right * (side * gain);
                     }
@@ -179,14 +176,34 @@ public sealed class CanonicalWorld
                     _maxNeighborDistance = MathF.Max(_maxNeighborDistance, maxDistForAgent);
                 }
 
-                float separationBoost = 1f;
-                if (filtered > 0 && separationPriorityThreshold > 0f && minDistForAgent <= separationPriorityThreshold)
+                if (_priorityState[i] && _priorityHoldTimers[i] > 0f)
                 {
-                    float ratio = (separationPriorityThreshold - minDistForAgent) / separationPriorityThreshold;
-                    separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, MathUtils.Clamp(ratio, 0f, 1f));
-                    separationDominant = true;
-                    _separationPriorityTriggered = true;
+                    _priorityHoldTimers[i] -= deltaTime;
                 }
+
+                bool shouldEnterPriority = filtered > 0 && minDistForAgent <= separationEnterThreshold;
+                if (shouldEnterPriority && !_priorityState[i])
+                {
+                    _priorityState[i] = true;
+                    _priorityHoldTimers[i] = holdTime;
+                }
+                else if (_priorityState[i])
+                {
+                    bool shouldExitPriority = (filtered == 0 || minDistForAgent >= separationExitThreshold) && _priorityHoldTimers[i] <= 0f;
+                    if (shouldExitPriority)
+                    {
+                        _priorityState[i] = false;
+                        _priorityHoldTimers[i] = 0f;
+                    }
+                }
+
+                float targetBlend = _priorityState[i] ? 1f : 0f;
+                float maxDelta = _priorityState[i] ? Math.Min(1f, deltaTime / rampInTime) : Math.Min(1f, deltaTime / rampOutTime);
+                _priorityBlend[i] = MathUtils.MoveTowards(_priorityBlend[i], targetBlend, maxDelta);
+                bool priorityActive = _priorityBlend[i] > 0f;
+                _separationPriorityTriggered |= priorityActive;
+                separationDominant = priorityActive;
+                float separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, _priorityBlend[i]);
 
                 var context = new RuleContext(
                     Settings.TargetSpeed,
@@ -227,7 +244,6 @@ public sealed class CanonicalWorld
                     }
                 }
 
-                // Additional custom rules (e.g., tests or instrumentation hooks)
                 for (int ruleIndex = 3; ruleIndex < _rules.Count; ruleIndex++)
                 {
                     _ = _rules[ruleIndex].Compute(i, boid, current, neighbors, neighborWeights, context);
@@ -245,26 +261,27 @@ public sealed class CanonicalWorld
             }
 
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
-            // Near-field override: if separation was dominant for this agent, snap heading directly away from the nearest neighbor.
+            float prioritySpeed = Settings.TargetSpeed * (1f - Settings.SeparationSpeedDroop * _priorityBlend[i]);
             if (separationDominant)
             {
-                // nearestDelta is from neighbor to agent: we computed agentMin using delta = neighbor.pos - agent.pos earlier
-                // Here we ensure a valid away vector
                 float awayLenSq = nearestDelta.LengthSquared;
                 if (awayLenSq > 1e-6f)
                 {
                     Vec2 awayDir = (-nearestDelta).Normalized;
-                    nextVelocity = awayDir.WithLength(Settings.TargetSpeed);
+                    nextVelocity = awayDir.WithLength(prioritySpeed);
                 }
             }
-            if (!nextVelocity.IsNearlyZero())
-            {
-                nextVelocity = nextVelocity.WithLength(Settings.TargetSpeed);
-            }
-            else
-            {
-                nextVelocity = boid.Velocity.WithLength(Settings.TargetSpeed);
-            }
+
+            float allowedSpeed = separationDominant ? prioritySpeed : Settings.TargetSpeed;
+            Vec2 normalizedCurrent = boid.Velocity.IsNearlyZero() ? boid.Forward : boid.Velocity;
+            float currentAngle = MathF.Atan2(normalizedCurrent.Y, normalizedCurrent.X);
+            float desiredAngle = MathF.Atan2(nextVelocity.Y, nextVelocity.X);
+            float deltaAngle = MathUtils.AngleDifference(currentAngle, desiredAngle);
+            float maxTurnRad = Settings.MaxTurnRateDegPerSecond * MathF.PI / 180f * deltaTime;
+            float clampedAngle = MathUtils.Clamp(deltaAngle, -maxTurnRad, maxTurnRad);
+            float finalAngle = currentAngle + clampedAngle;
+            Vec2 limitedDir = new Vec2(MathF.Cos(finalAngle), MathF.Sin(finalAngle));
+            nextVelocity = limitedDir.WithLength(allowedSpeed);
 
             Vec2 nextPosition = boid.Position + nextVelocity * deltaTime;
             (float wrappedX, float wrappedY) = MathUtils.WrapPosition(nextPosition.X, nextPosition.Y, Settings.WorldWidth, Settings.WorldHeight);
