@@ -18,6 +18,9 @@ public sealed class CanonicalWorld
     private readonly bool[] _priorityState;
     private readonly float[] _priorityBlend;
     private readonly float[] _priorityHoldTimers;
+    private readonly float[] _nearestDistances;
+    private readonly float[] _nearestAngles;
+    private readonly int[] _whiskerCounts;
     private ulong _tickCount;
     private float _neighborDistanceSum;
     private int _neighborDistanceSamples;
@@ -42,6 +45,9 @@ public sealed class CanonicalWorld
         _priorityState = new bool[capacity];
         _priorityBlend = new float[capacity];
         _priorityHoldTimers = new float[capacity];
+        _nearestDistances = new float[capacity];
+        _nearestAngles = new float[capacity];
+        _whiskerCounts = new int[capacity];
 
         _spatialIndex.Initialize(capacity);
         _rng = new Rng(settings.Seed);
