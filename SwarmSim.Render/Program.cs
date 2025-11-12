@@ -1459,6 +1459,181 @@ internal static class Program
         Raylib.CloseWindow();
     }
 
+    private static void DrawInteractionOverlay(
+        CanonicalWorld world,
+        CanonicalWorldSettings settings,
+        int[] neighborBuffer,
+        float[] weightBuffer)
+    {
+        if (_overlaySubjectIndex < 0 || _overlaySubjectIndex >= world.Count)
+            return;
+
+        var subject = world.Boids[_overlaySubjectIndex];
+        var center = new Vector2(subject.Position.X, subject.Position.Y);
+        Raylib.DrawCircleLines(center.X, center.Y, settings.SenseRadius, Color.Yellow);
+
+        if (settings.FieldOfView < 360f)
+        {
+            float halfAngle = MathF.PI * settings.FieldOfView / 360f;
+            float baseAngle = MathF.Atan2(subject.Forward.Y, subject.Forward.X);
+            var leftPoint = center + new Vector2(MathF.Cos(baseAngle - halfAngle), MathF.Sin(baseAngle - halfAngle)) * settings.SenseRadius;
+            var rightPoint = center + new Vector2(MathF.Cos(baseAngle + halfAngle), MathF.Sin(baseAngle + halfAngle)) * settings.SenseRadius;
+            Raylib.DrawLineEx(center, leftPoint, 1.5f, Color.Gold);
+            Raylib.DrawLineEx(center, rightPoint, 1.5f, Color.Gold);
+        }
+
+        var forward = new Vector2(subject.Forward.X, subject.Forward.Y);
+        Raylib.DrawLineEx(center, center + forward * settings.SeparationRadius, 1.5f, Color.Cyan);
+
+        int neighborCount = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer);
+        for (int i = 0; i < neighborCount; i++)
+        {
+            int idx = neighborBuffer[i];
+            if (idx < 0 || idx >= world.Count)
+                continue;
+
+            var neighbor = world.Boids[idx];
+            var pos = new Vector2(neighbor.Position.X, neighbor.Position.Y);
+            Raylib.DrawLineEx(center, pos, 1f, Color.Lime);
+            Raylib.DrawCircleV(pos, 3f, Color.Orange);
+        }
+
+        Raylib.DrawCircleV(center, 5f, Color.Yellow);
+    }
+
+    private static bool ProcessCanonicalParameters()
+    {
+        bool changed = false;
+        _fineAdjustment = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
+
+        for (int i = 0; i < Parameters.Length; i++)
+        {
+            var keyCode = KeyboardKey.One + i;
+            if (Raylib.IsKeyPressed(keyCode))
+            {
+                _selectedParameter = i;
+                var param = Parameters[i];
+                float currentValue = param.GetValue();
+                Console.WriteLine($"Selected: {param.Name} = {currentValue:F4}");
+            }
+        }
+
+        bool increase = Raylib.IsKeyPressed(KeyboardKey.Up) ||
+                        Raylib.IsKeyPressed(KeyboardKey.Equal) ||
+                        Raylib.IsKeyPressed(KeyboardKey.KpAdd);
+        bool decrease = Raylib.IsKeyPressed(KeyboardKey.Down) ||
+                        Raylib.IsKeyPressed(KeyboardKey.Minus) ||
+                        Raylib.IsKeyPressed(KeyboardKey.KpSubtract);
+
+        if (increase || decrease)
+        {
+            var param = Parameters[_selectedParameter];
+            float currentValue = param.GetValue();
+            float step = _fineAdjustment ? param.FineStepSize : param.StepSize;
+
+            if (increase)
+                currentValue = Math.Min(currentValue + step, param.MaxValue);
+            else
+                currentValue = Math.Max(currentValue - step, param.MinValue);
+
+            param.SetValue(currentValue);
+            Console.WriteLine($"{param.Name} = {currentValue:F4} (Step: {step:F4})");
+            changed = true;
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.P))
+        {
+            Console.WriteLine("\n=== Current Configuration ===");
+            foreach (var param in Parameters)
+            {
+                Console.WriteLine($"{param.Name}: {param.GetValue():F4}");
+            }
+            Console.WriteLine("=============================\n");
+        }
+
+        if (Raylib.IsKeyPressed(KeyboardKey.F1)) { ApplyPreset(Presets[0]); changed = true; }
+        if (Raylib.IsKeyPressed(KeyboardKey.F2)) { ApplyPreset(Presets[1]); changed = true; }
+        if (Raylib.IsKeyPressed(KeyboardKey.F3)) { ApplyPreset(Presets[2]); changed = true; }
+        if (Raylib.IsKeyPressed(KeyboardKey.F4)) { ApplyPreset(Presets[3]); changed = true; }
+        if (Raylib.IsKeyPressed(KeyboardKey.F5)) { ApplyPreset(Presets[4]); changed = true; }
+
+        return changed;
+    }
+
+    private static void SelectCanonicalTracked(CanonicalWorld world, int[] tracked)
+    {
+        if (tracked.Length == 0)
+            return;
+
+        int count = world.Count;
+        if (count == 0)
+        {
+            for (int i = 0; i < tracked.Length; i++)
+                tracked[i] = -1;
+            return;
+        }
+
+        var used = new HashSet<int>();
+        for (int i = 0; i < tracked.Length; i++)
+        {
+            if (used.Count >= count)
+            {
+                tracked[i] = -1;
+                continue;
+            }
+
+            int candidate;
+            int attempts = 0;
+            do
+            {
+                candidate = _canonicalRandom.Next(count);
+                attempts++;
+            } while (used.Contains(candidate) && attempts < 16);
+
+            used.Add(candidate);
+            tracked[i] = candidate;
+        }
+    }
+
+    private static void LogCanonicalStatus(CanonicalWorld world, float avgSpeed)
+    {
+        var instrumentation = world.Instrumentation;
+        var neighborStats = instrumentation.NeighborCountStats;
+        Console.WriteLine($"[Canonical] Tick {world.TickCount}: AvgSpeed={avgSpeed:F2}, Neighbors avg={neighborStats.Avg:F1} (min {neighborStats.Min}, max {neighborStats.Max}), WeightAvg={instrumentation.AverageNeighborWeight:F2}");
+
+        foreach (int idx in _canonicalTrackedAgents)
+        {
+            if (idx < 0 || idx >= world.Count)
+                continue;
+
+            var boid = world.Boids[idx];
+            if (!instrumentation.TryGetMetrics(idx, out var metrics))
+                continue;
+
+            Console.WriteLine($"  Agent #{idx}: Pos=({boid.Position.X:F1},{boid.Position.Y:F1}) Speed={boid.Velocity.Length:F2} Neighbors={metrics.NeighborCount} WeightSum={metrics.NeighborWeightSum:F2} Sep={metrics.SeparationMagnitude:F2} Align={metrics.AlignmentMagnitude:F2} Coh={metrics.CohesionMagnitude:F2}");
+        }
+    }
+
+    private static CanonicalWorld RecreateCanonicalWorld(CanonicalWorld oldWorld, CanonicalWorldSettings settings)
+    {
+        var snapshots = new List<(Vec2 position, Vec2 velocity)>(oldWorld.Count);
+        foreach (var boid in oldWorld.Boids)
+        {
+            snapshots.Add((boid.Position, boid.Velocity));
+        }
+
+        var newWorld = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        foreach (var (position, velocity) in snapshots)
+        {
+            if (newWorld.TryAddBoid(position, velocity))
+            {
+                newWorld.SetVelocity(newWorld.Count - 1, velocity);
+            }
+        }
+
+        return newWorld;
+    }
+
     private static CanonicalWorldSettings BuildCanonicalWorldSettings()
     {
         var template = BuildCurrentConfig();
