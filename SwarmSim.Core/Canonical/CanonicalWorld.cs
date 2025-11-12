@@ -72,7 +72,7 @@ public sealed class CanonicalWorld
 
                 foreach (IRule rule in _rules)
                 {
-                    steering += rule.Compute(boid, current, neighbors, context);
+                    steering += rule.Compute(i, boid, current, neighbors, context);
                 }
 
                 steering = steering.ClampMagnitude(Settings.MaxForce);
