@@ -16,8 +16,9 @@ public sealed class CanonicalWorld
     private readonly RuleInstrumentation _instrumentation;
     private readonly Rng _rng;
     private ulong _tickCount;
-        private float _neighborDistanceSum;
-        private int _neighborDistanceSamples;
+    private float _neighborDistanceSum;
+    private int _neighborDistanceSamples;
+    private bool _separationPriorityTriggered;
     private float _minNeighborDistance = float.MaxValue;
     private float _maxNeighborDistance;
     private PerceptionSnapshot _lastPerceptionSnapshot;
@@ -95,6 +96,7 @@ public sealed class CanonicalWorld
         var next = _nextBoids.AsSpan(0, Count);
         float fieldOfViewCos = MathF.Cos((Settings.FieldOfView * MathF.PI / 180f) * 0.5f);
         float separationPriorityThreshold = MathF.Max(0f, Settings.SeparationPriorityRadiusFactor * Settings.SenseRadius);
+        _separationPriorityTriggered = false;
 
         bool separationAnyPriority = false;
 
@@ -142,6 +144,7 @@ public sealed class CanonicalWorld
                     float ratio = (separationPriorityThreshold - minDistForAgent) / separationPriorityThreshold;
                     separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, MathUtils.Clamp(ratio, 0f, 1f));
                     separationDominant = true;
+                    _separationPriorityTriggered = true;
                     separationAnyPriority = true;
                 }
 
@@ -381,7 +384,8 @@ public sealed class CanonicalWorld
             _instrumentation.AverageSeparationMagnitude,
             _instrumentation.AverageAlignmentMagnitude,
             _instrumentation.AverageCohesionMagnitude,
-            neighborStats);
+            neighborStats,
+            _separationPriorityTriggered);
     }
 
     public readonly struct PerceptionSnapshot
@@ -397,7 +401,8 @@ public sealed class CanonicalWorld
             float averageSeparationMagnitude,
             float averageAlignmentMagnitude,
             float averageCohesionMagnitude,
-            (int Min, int Max, float Avg) neighborCountStats)
+            (int Min, int Max, float Avg) neighborCountStats,
+            bool separationPriorityTriggered)
         {
             TickCount = tick;
             AgentCount = agentCount;
@@ -410,6 +415,7 @@ public sealed class CanonicalWorld
             AverageAlignmentMagnitude = averageAlignmentMagnitude;
             AverageCohesionMagnitude = averageCohesionMagnitude;
             NeighborCountStats = neighborCountStats;
+            SeparationPriorityTriggered = separationPriorityTriggered;
         }
 
         public ulong TickCount { get; }
@@ -423,5 +429,6 @@ public sealed class CanonicalWorld
         public float AverageAlignmentMagnitude { get; }
         public float AverageCohesionMagnitude { get; }
         public (int Min, int Max, float Avg) NeighborCountStats { get; }
+        public bool SeparationPriorityTriggered { get; }
     }
 }
