@@ -11,6 +11,8 @@ public sealed class CanonicalWorld
     private Boid[] _activeBoids;
     private Boid[] _nextBoids;
     private readonly int[] _neighborScratch;
+    private readonly float[] _neighborWeightScratch;
+    private readonly RuleInstrumentation _instrumentation;
 
     public CanonicalWorld(CanonicalWorldSettings settings, ISpatialIndex spatialIndex)
     {
