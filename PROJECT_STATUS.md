@@ -1,7 +1,7 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2025-11-12 (Session 3.2 - Part B Complete)
-**Current Phase**: Architecture Improvements (Post-P2) - ✅ COMPLETE (Canonical Boids + Fixed Timestep)
+**Last Updated**: 2025-11-12 (Session 3.3 - Canonical Smoothing Complete)
+**Current Phase**: Architecture Improvements (Post-P2) - ✅ COMPLETE (Canonical Boids + Fixed Timestep + Smooth Avoidance)
 
 > **IMPORTANT FOR FUTURE CLAUDE INSTANCES**: This document is your primary memory and source of truth for project status. Read this FIRST before making any changes. Update it LAST after completing work. This ensures continuity across conversation restarts.
 
@@ -206,10 +206,10 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ---
 
-### Canonical Boids Implementation (Post-P2 Rewrite) ~70% Complete
-> **See `IMPLEMENTATION_EVOLUTION.md` for full technical details on the transition**
+### Canonical Boids Implementation (Post-P2 Rewrite) ~85% Complete
+> **See `IMPLEMENTATION_EVOLUTION.md` and `filesAndResources/CanonicalBoids_SmoothingPlan.md` for full technical details**
 
-- **Status**: In active development, ~70% complete
+- **Status**: In active development, ~85% complete (smoothing system complete)
 - **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
   - Force/friction equilibrium created unpredictable parameter sensitivity
@@ -225,13 +225,22 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - **Prioritized separation**: Separation gets the limited acceleration budget whenever anyone encroaches the ~1/3 sense-radius gap
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
-- **Completed**: Milestones 0-7 from `NewImplementation.md`
+- **Completed**: Milestones 0-9 from `NewImplementation.md` + Phase C smoothing improvements
   - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
   - All 3 steering rules with 1/d weighting
   - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
   - FOV filtering with linear weight falloff
-  - Instrumentation system
-  - 11+ unit tests passing
+  - Instrumentation system with per-agent perception data
+  - **Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
+    - Angular rate limiter (MaxTurnRateDegPerSecond) - prevents instant snaps
+    - Priority hysteresis (enter/exit/hold thresholds) - prevents ping-pong
+    - Shaped separation (lateral+away blending with smoothstep) - smooth collision avoidance
+    - Gradual avoidance falloff - steering sharpness increases with proximity
+    - Smooth wander (continuous angle changes) - replaces chaotic randomness
+    - Soft gating for alignment/cohesion during priority - maintains group cohesion
+    - Whisker lookahead visualization (blue circle in overlay)
+  - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
+  - 12 unit tests passing (including new angular limiter and hysteresis tests)
 - **In Progress**: Milestones 8-10
   - Boundary testing (wrapping, reflection)
   - Spatial index equivalence tests
@@ -525,6 +534,40 @@ None currently.
 ---
 
 ## Recent Changes Log
+
+### 2025-11-12 (Session 3.3 - Canonical Smoothing System COMPLETE ✅)
+- **Implemented Complete Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
+  - **Smooth Wander**: Replaced chaotic random jitter with continuous angle changes
+    - Added `WanderRate` parameter (1.5 rad/s) for angle change speed
+    - Each agent maintains persistent `_wanderAngles[]` that evolve smoothly over time
+    - Creates natural, flowing movement instead of jittery random directions
+  - **Gradual Avoidance Falloff**: Replaced sharp threshold activation with smooth ramp
+    - Avoidance influence starts at `SeparationRadius * 2.0` (gentle steering)
+    - Increases quadratically as agents approach `separationEnterThreshold`
+    - Uses distance-based influence: `(rGradualStart - dist) / (rGradualStart - rHard)`
+    - Combined with priority blend for emergency response at close range
+  - **Shaped Separation Blending**: Lateral + away components with smoothstep transition
+    - At medium distance (rSoft): 100% lateral "shoulder past" deflection
+    - At close range (rHard): 100% away direct repulsion
+    - Smoothstep blend between the two zones prevents sharp transitions
+    - Influence capped at 70% to preserve angular rate limiter effectiveness
+  - **Fixed Collision Issues**: Previous version removed snap-away but had no replacement
+    - New shaped avoidance provides strong collision prevention
+    - Maintains smooth turning while ensuring agents don't overlap
+  - **Added Per-Agent Perception Data**: Extended PerceptionSnapshot
+    - `NearestDistances[]` - distance to each agent's nearest neighbor
+    - `NearestAngles[]` - angle to nearest neighbor (degrees, relative to forward)
+    - `WhiskerCounts[]` - neighbors detected in whisker lookahead capsule
+  - **Enhanced Tests**: 12 canonical boids tests passing
+    - Angular rate limiter verification
+    - Priority hysteresis enter/exit logic
+    - Whisker capsule detection
+    - Per-agent perception snapshot data
+- **Identified Blue Circle**: The blue circle in overlay is the **whisker lookahead capsule**
+  - Shows predictive collision detection zone ahead of tracked boid
+  - Radius = `SeparationRadius`, lookahead = `TargetSpeed * WhiskerTimeHorizon`
+- Solution builds with 0 warnings, 0 errors
+- **✅ CANONICAL SMOOTHING COMPLETE** - Agents now have smooth, natural movement with robust collision avoidance
 
 ### 2025-11-12 (Session 3.2 - Part B: Fixed Timestep COMPLETE ✅)
 - **Fixed SimulationRunner Tests**:
