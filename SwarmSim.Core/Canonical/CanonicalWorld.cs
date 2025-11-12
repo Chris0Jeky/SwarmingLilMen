@@ -467,6 +467,13 @@ public sealed class CanonicalWorld
         float minDistance = _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f;
         float maxDistance = _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f;
 
+        float[] nearestDistancesCopy = new float[Count];
+        float[] nearestAnglesCopy = new float[Count];
+        int[] whiskerCountsCopy = new int[Count];
+        Array.Copy(_nearestDistances, nearestDistancesCopy, Count);
+        Array.Copy(_nearestAngles, nearestAnglesCopy, Count);
+        Array.Copy(_whiskerCounts, whiskerCountsCopy, Count);
+
         _lastPerceptionSnapshot = new PerceptionSnapshot(
             _tickCount,
             Count,
@@ -479,7 +486,10 @@ public sealed class CanonicalWorld
             _instrumentation.AverageAlignmentMagnitude,
             _instrumentation.AverageCohesionMagnitude,
             neighborStats,
-            _separationPriorityTriggered);
+            _separationPriorityTriggered,
+            nearestDistancesCopy,
+            nearestAnglesCopy,
+            whiskerCountsCopy);
     }
 
     public readonly struct PerceptionSnapshot
@@ -496,7 +506,10 @@ public sealed class CanonicalWorld
             float averageAlignmentMagnitude,
             float averageCohesionMagnitude,
             (int Min, int Max, float Avg) neighborCountStats,
-            bool separationPriorityTriggered)
+            bool separationPriorityTriggered,
+            float[] nearestDistances,
+            float[] nearestAngles,
+            int[] whiskerCounts)
         {
             TickCount = tick;
             AgentCount = agentCount;
@@ -510,6 +523,9 @@ public sealed class CanonicalWorld
             AverageCohesionMagnitude = averageCohesionMagnitude;
             NeighborCountStats = neighborCountStats;
             SeparationPriorityTriggered = separationPriorityTriggered;
+            NearestDistances = nearestDistances;
+            NearestAngles = nearestAngles;
+            WhiskerCounts = whiskerCounts;
         }
 
         public ulong TickCount { get; }
@@ -524,5 +540,8 @@ public sealed class CanonicalWorld
         public float AverageCohesionMagnitude { get; }
         public (int Min, int Max, float Avg) NeighborCountStats { get; }
         public bool SeparationPriorityTriggered { get; }
+        public float[] NearestDistances { get; }
+        public float[] NearestAngles { get; }
+        public int[] WhiskerCounts { get; }
     }
 }
