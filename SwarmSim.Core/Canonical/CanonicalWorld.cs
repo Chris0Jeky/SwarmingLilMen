@@ -16,8 +16,8 @@ public sealed class CanonicalWorld
     private readonly RuleInstrumentation _instrumentation;
     private readonly Rng _rng;
     private ulong _tickCount;
-    private float _neighborDistanceSum;
-    private int _neighborDistanceSamples;
+        private float _neighborDistanceSum;
+        private int _neighborDistanceSamples;
     private float _minNeighborDistance = float.MaxValue;
     private float _maxNeighborDistance;
     private PerceptionSnapshot _lastPerceptionSnapshot;
@@ -96,11 +96,14 @@ public sealed class CanonicalWorld
         float fieldOfViewCos = MathF.Cos((Settings.FieldOfView * MathF.PI / 180f) * 0.5f);
         float separationPriorityThreshold = MathF.Max(0f, Settings.SeparationPriorityRadiusFactor * Settings.SenseRadius);
 
+        bool separationAnyPriority = false;
+
         for (int i = 0; i < Count; i++)
         {
             Boid boid = current[i];
             Vec2 steering = Vec2.Zero;
             float remainingForce = Settings.MaxForce;
+            bool separationDominant = false;
 
             if (_rules.Count > 0)
             {
@@ -138,6 +141,8 @@ public sealed class CanonicalWorld
                 {
                     float ratio = (separationPriorityThreshold - minDistForAgent) / separationPriorityThreshold;
                     separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, MathUtils.Clamp(ratio, 0f, 1f));
+                    separationDominant = true;
+                    separationAnyPriority = true;
                 }
 
                 var context = new RuleContext(
@@ -158,7 +163,7 @@ public sealed class CanonicalWorld
                     }
                 }
 
-                if (_rules.Count > 1)
+                if (!separationDominant && _rules.Count > 1)
                 {
                     Vec2 alignment = _rules[1].Compute(i, boid, current, neighbors, neighborWeights, context);
                     if (TryAccumulateSteering(ref steering, ref remainingForce, alignment, out float alignMagnitude))
@@ -167,7 +172,7 @@ public sealed class CanonicalWorld
                     }
                 }
 
-                if (_rules.Count > 2)
+                if (!separationDominant && _rules.Count > 2)
                 {
                     Vec2 cohesion = _rules[2].Compute(i, boid, current, neighbors, neighborWeights, context);
                     if (TryAccumulateSteering(ref steering, ref remainingForce, cohesion, out float cohMagnitude))
