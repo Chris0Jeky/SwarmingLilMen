@@ -140,7 +140,7 @@ public class CanonicalBoidsTests
 
         var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
         world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f));
-        world.TryAddBoid(new Vec2(2f, 0f), new Vec2(-1f, 0f));
+        world.TryAddBoid(new Vec2(1.5f, 0f), new Vec2(-1f, 0f));
 
         world.Step(0.1f);
         var snapshot = world.CapturePerceptionSnapshot();
