@@ -13,15 +13,20 @@ public sealed class SeparationRule : IRule
         _radiusSq = _radius * _radius;
     }
 
-    public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
+    public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, ReadOnlySpan<float> neighborWeights, RuleContext context)
     {
         if (neighborIndices.IsEmpty)
             return Vec2.Zero;
 
         Vec2 accumulator = Vec2.Zero;
 
-        foreach (int neighborIndex in neighborIndices)
+        for (int i = 0; i < neighborIndices.Length; i++)
         {
+            int neighborIndex = neighborIndices[i];
+            float weight = neighborWeights.Length > i ? neighborWeights[i] : 1f;
+            if (weight <= 0f)
+                continue;
+
             Vec2 delta = self.Position - boids[neighborIndex].Position;
             float distSq = delta.LengthSquared;
 
@@ -34,7 +39,7 @@ public sealed class SeparationRule : IRule
 
             Vec2 direction = delta / dist;
             float strength = MathF.Max(0f, 1f - dist / _radius);
-            float influence = strength / dist;
+            float influence = strength / dist * weight;
             accumulator += direction * influence;
         }
 
@@ -43,6 +48,8 @@ public sealed class SeparationRule : IRule
 
         Vec2 desired = accumulator.WithLength(context.TargetSpeed * _weight);
         Vec2 steer = desired - self.Velocity;
-        return steer.ClampMagnitude(context.MaxForce);
+        Vec2 clamped = steer.ClampMagnitude(context.MaxForce);
+        context.Instrumentation?.RecordSeparation(selfIndex, clamped.Length);
+        return clamped;
     }
 }
