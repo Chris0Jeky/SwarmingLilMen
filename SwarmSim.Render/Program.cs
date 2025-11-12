@@ -1372,6 +1372,11 @@ internal static class Program
             Raylib.DrawText($"Target: {settings.TargetSpeed:F1} | Avg speed: {avgSpeed:F1}", 10, 32, 14, Color.SkyBlue);
             Raylib.DrawText($"Sense radius: {settings.SenseRadius:F1} | Separation radius: {settings.SeparationRadius:F1}", 10, 52, 14, Color.SkyBlue);
             Raylib.DrawText($"Max force: {settings.MaxForce:F2} | FOV: {settings.FieldOfView:F0}°", 10, 70, 14, Color.SkyBlue);
+            var instrumentation = canonicalWorld.Instrumentation;
+            var neighborStats = instrumentation.NeighborCountStats;
+            Raylib.DrawText($"Neighbors avg {neighborStats.Avg:F1} (min {neighborStats.Min}, max {neighborStats.Max})", 10, 88, 14, Color.SkyBlue);
+            Raylib.DrawText($"Weights avg {instrumentation.AverageNeighborWeight:F2} | Sep avg {instrumentation.AverageSeparationMagnitude:F2}", 10, 106, 14, Color.SkyBlue);
+            Raylib.DrawText($"Align avg {instrumentation.AverageAlignmentMagnitude:F2} | Coh avg {instrumentation.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
 
             if (showHelp)
             {
@@ -1413,7 +1418,9 @@ internal static class Program
 
     private static CanonicalWorld CreateCanonicalWorld(CanonicalWorldSettings settings)
     {
-        var canonicalWorld = new CanonicalWorld(settings, new NaiveSpatialIndex());
+        var canonicalWorld = new CanonicalWorld(
+            settings,
+            new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
         var rng = new Random(42);
         float twoPi = 2f * MathF.PI;
 
