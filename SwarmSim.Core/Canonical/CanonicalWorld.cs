@@ -15,6 +15,9 @@ public sealed class CanonicalWorld
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
     private readonly Rng _rng;
+    private readonly bool[] _priorityState;
+    private readonly float[] _priorityBlend;
+    private readonly float[] _priorityHoldTimers;
     private ulong _tickCount;
     private float _neighborDistanceSum;
     private int _neighborDistanceSamples;
