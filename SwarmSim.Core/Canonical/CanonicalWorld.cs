@@ -126,10 +126,11 @@ public sealed class CanonicalWorld
                 float minDistForAgent = float.MaxValue;
                 float maxDistForAgent = 0f;
                 float distanceSum = 0f;
+                Vec2 nearestDelta = Vec2.Zero;
 
                 if (filtered > 0)
                 {
-                    (distanceSum, minDistForAgent, maxDistForAgent) = ComputeNeighborDistanceStats(current, boid.Position, neighbors);
+                    (distanceSum, minDistForAgent, maxDistForAgent, nearestDelta, _) = ComputeNeighborDistanceStats(current, boid.Position, neighbors);
                     _neighborDistanceSum += distanceSum;
                     _neighborDistanceSamples += filtered;
                     _minNeighborDistance = MathF.Min(_minNeighborDistance, minDistForAgent);
@@ -202,6 +203,18 @@ public sealed class CanonicalWorld
             }
 
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
+            // Near-field override: if separation was dominant for this agent, snap heading directly away from the nearest neighbor.
+            if (remainingForce == 0f && _separationPriorityTriggered)
+            {
+                // nearestDelta is from neighbor to agent: we computed agentMin using delta = neighbor.pos - agent.pos earlier
+                // Here we ensure a valid away vector
+                float awayLenSq = nearestDelta.LengthSquared;
+                if (awayLenSq > 1e-6f)
+                {
+                    Vec2 awayDir = (-nearestDelta).Normalized;
+                    nextVelocity = awayDir.WithLength(Settings.TargetSpeed);
+                }
+            }
             if (!nextVelocity.IsNearlyZero())
             {
                 nextVelocity = nextVelocity.WithLength(Settings.TargetSpeed);
@@ -247,22 +260,29 @@ public sealed class CanonicalWorld
         return true;
     }
 
-    private static (float distanceSum, float minDist, float maxDist) ComputeNeighborDistanceStats(ReadOnlySpan<Boid> boids, Vec2 origin, ReadOnlySpan<int> neighbors)
+    private static (float distanceSum, float minDist, float maxDist, Vec2 nearestDelta, int nearestIdx) ComputeNeighborDistanceStats(ReadOnlySpan<Boid> boids, Vec2 origin, ReadOnlySpan<int> neighbors)
     {
         float sum = 0f;
         float minDist = float.MaxValue;
         float maxDist = 0f;
+        Vec2 nearestDelta = Vec2.Zero;
+        int nearestIdx = -1;
 
         foreach (int idx in neighbors)
         {
             Vec2 delta = boids[idx].Position - origin;
             float dist = MathF.Sqrt(delta.LengthSquared);
             sum += dist;
-            minDist = MathF.Min(minDist, dist);
+            if (dist < minDist)
+            {
+                minDist = dist;
+                nearestDelta = delta;
+                nearestIdx = idx;
+            }
             maxDist = MathF.Max(maxDist, dist);
         }
 
-        return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist);
+        return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist, nearestDelta, nearestIdx);
     }
 
     private static int FilterByFieldOfView(
