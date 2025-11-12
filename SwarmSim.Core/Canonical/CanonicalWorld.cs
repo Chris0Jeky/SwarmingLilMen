@@ -67,16 +67,14 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 int neighborCount = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
-                if (neighborCount > 0)
-                {
-                    var neighbors = _neighborScratch.AsSpan(0, neighborCount);
-                    foreach (IRule rule in _rules)
-                    {
-                        steering += rule.Compute(boid, current, neighbors, context);
-                    }
+                var neighbors = _neighborScratch.AsSpan(0, neighborCount);
 
-                    steering = steering.ClampMagnitude(Settings.MaxForce);
+                foreach (IRule rule in _rules)
+                {
+                    steering += rule.Compute(boid, current, neighbors, context);
                 }
+
+                steering = steering.ClampMagnitude(Settings.MaxForce);
             }
 
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
