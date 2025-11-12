@@ -6,16 +6,17 @@ namespace SwarmSim.Render;
 /// Simple command-line parser for SwarmSim.Render. Keeps dependencies minimal and
 /// focuses on discoverability (matching DeveloperExperienceImprovementsPlan).
 /// </summary>
-public sealed class CommandLineOptions
-{
-    public bool ShowHelp { get; private set; }
-    public bool ShowVersion { get; private set; }
-    public bool ListPresets { get; private set; }
-    public bool BenchmarkMode { get; private set; }
-    public bool RunMinimalTest { get; private set; }
-    public string? PresetName { get; private set; }
-    public string? ConfigFile { get; private set; }
-    public int? AgentCount { get; private set; }
+    public sealed class CommandLineOptions
+    {
+        public bool ShowHelp { get; private set; }
+        public bool ShowVersion { get; private set; }
+        public bool ListPresets { get; private set; }
+        public bool BenchmarkMode { get; private set; }
+        public bool RunMinimalTest { get; private set; }
+        public string? PresetName { get; private set; }
+        public string? ConfigFile { get; private set; }
+        public int? AgentCount { get; private set; }
+        public bool UseCanonicalMode { get; private set; }
 
     public static CommandLineOptions Parse(string[] args)
     {
@@ -45,6 +46,10 @@ public sealed class CommandLineOptions
                 case "--benchmark":
                 case "-b":
                     options.BenchmarkMode = true;
+                    break;
+
+                case "--canonical":
+                    options.UseCanonicalMode = true;
                     break;
 
                 case "--preset":
@@ -95,6 +100,7 @@ public sealed class CommandLineOptions
         sb.AppendLine("  -c, --config FILE         Load configuration from JSON file");
         sb.AppendLine("  -n, --agent-count N       Override initial agent count (default: 400)");
         sb.AppendLine("  -b, --benchmark           Run in headless benchmark mode (no window)");
+        sb.AppendLine("      --canonical           Launch the single-group canonical boids renderer");
         sb.AppendLine("      --minimal             Launch the minimal debugging harness");
         sb.AppendLine();
         sb.AppendLine("Examples:");
