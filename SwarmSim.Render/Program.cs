@@ -1492,7 +1492,7 @@ internal static class Program
         float whiskerRadius = MathF.Max(0.1f, settings.SeparationRadius);
         var lookaheadPoint = center + forward * lookAhead;
         Raylib.DrawLineEx(center, lookaheadPoint, 1.5f, Color.SkyBlue);
-        Raylib.DrawCircleLines(lookaheadPoint.X, lookaheadPoint.Y, whiskerRadius, Color.SkyBlue);
+        Raylib.DrawCircleLines((int)lookaheadPoint.X, (int)lookaheadPoint.Y, whiskerRadius, Color.SkyBlue);
 
         int neighborCount = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer);
         int whiskerHits = 0;
@@ -1505,12 +1505,12 @@ internal static class Program
             var pos = new Vector2(neighbor.Position.X, neighbor.Position.Y);
             Raylib.DrawLineEx(center, pos, 1f, Color.Lime);
 
-            var forwardVec = new Vector2(subject.Forward.X, subject.Forward.Y);
-            var perp = new Vector2(-forwardVec.Y, forwardVec.X);
-            Vec2 delta = new Vector2(neighbor.Position.X - subject.Position.X, neighbor.Position.Y - subject.Position.Y);
+            var forwardVec = new Vec2(subject.Forward.X, subject.Forward.Y);
+            var perp = new Vec2(-forwardVec.Y, forwardVec.X);
+            Vec2 delta = new Vec2(neighbor.Position.X - subject.Position.X, neighbor.Position.Y - subject.Position.Y);
             float along = Vec2.Dot(forwardVec, delta);
-            float lateral = Vec2.Dot(perp, delta);
-            if (along > 0f && along <= lookAhead && MathF.Abs(lateral) <= whiskerRadius)
+            float lateralWhisker = Vec2.Dot(perp, delta);
+            if (along > 0f && along <= lookAhead && MathF.Abs(lateralWhisker) <= whiskerRadius)
             {
                 whiskerHits++;
                 Raylib.DrawCircleV(pos, 4f, Color.Red);
@@ -1525,9 +1525,10 @@ internal static class Program
         Raylib.DrawText($"Whisker hits: {whiskerHits}", 10, WindowHeight - 92, 14, Color.Orange);
 
         Vec2 meanHeading = ComputeMeanHeading(world);
-        Raylib.DrawLineEx(center, center + meanHeading * settings.SenseRadius * 0.3f, 1.5f, Color.Green);
+        var meanHeadingVec = new Vector2(meanHeading.X, meanHeading.Y);
+        Raylib.DrawLineEx(center, center + meanHeadingVec * settings.SenseRadius * 0.3f, 1.5f, Color.Green);
         float projection = Vec2.Dot(subject.Velocity, meanHeading);
-        Vec2 perpHeading = new Vector2(-meanHeading.Y, meanHeading.X);
+        Vec2 perpHeading = new Vec2(-meanHeading.Y, meanHeading.X);
         float lateral = Vec2.Dot(subject.Velocity, perpHeading);
         Raylib.DrawText($"Proj: {projection:F2} | Lat: {MathF.Abs(lateral):F2}", 10, WindowHeight - 110, 14, Color.SkyBlue);
     }
