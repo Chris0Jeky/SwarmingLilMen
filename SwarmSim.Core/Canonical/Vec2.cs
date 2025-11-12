@@ -49,7 +49,7 @@ public readonly struct Vec2
 
     public static Vec2 Lerp(Vec2 a, Vec2 b, float t)
     {
-        t = MathF.Clamp(t, 0f, 1f);
+        t = t < 0f ? 0f : (t > 1f ? 1f : t);
         return new Vec2(a.X + (b.X - a.X) * t, a.Y + (b.Y - a.Y) * t);
     }
 
