@@ -37,6 +37,7 @@ public sealed class CanonicalWorld
         _instrumentation = new RuleInstrumentation(capacity);
 
         _spatialIndex.Initialize(capacity);
+        _rng = new Rng(settings.Seed);
 
         InitializeDefaultRules();
     }
