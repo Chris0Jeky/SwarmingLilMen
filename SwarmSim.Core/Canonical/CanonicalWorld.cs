@@ -176,6 +176,12 @@ public sealed class CanonicalWorld
                     }
                 }
 
+                // Additional custom rules (e.g., tests or instrumentation hooks)
+                for (int ruleIndex = 3; ruleIndex < _rules.Count; ruleIndex++)
+                {
+                    _ = _rules[ruleIndex].Compute(i, boid, current, neighbors, neighborWeights, context);
+                }
+
                 _instrumentation.SetNeighborCount(i, filtered);
                 _instrumentation.SetNeighborWeightSum(i, neighborWeightSum);
             }
