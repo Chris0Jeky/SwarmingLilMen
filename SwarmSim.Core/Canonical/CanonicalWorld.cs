@@ -14,7 +14,13 @@ public sealed class CanonicalWorld
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
+    private readonly Rng _rng;
     private ulong _tickCount;
+    private float _neighborDistanceSum;
+    private int _neighborDistanceSamples;
+    private float _minNeighborDistance = float.MaxValue;
+    private float _maxNeighborDistance;
+    private PerceptionSnapshot _lastPerceptionSnapshot;
 
     public CanonicalWorld(CanonicalWorldSettings settings, ISpatialIndex spatialIndex)
     {
