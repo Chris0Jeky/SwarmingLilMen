@@ -190,10 +190,11 @@ public class CanonicalBoidsTests
         }
     }
 
-    private static RuleContext CreateTestContext() => new(
-        targetSpeed: 1f,
-        maxForce: 0.5f,
-        senseRadius: 10f,
-        fieldOfViewDegrees: 360f,
-        deltaTime: 0.016f);
+        private static RuleContext CreateTestContext() => new(
+            targetSpeed: 1f,
+            maxForce: 0.5f,
+            senseRadius: 10f,
+            fieldOfViewCos: -1f,
+            deltaTime: 0.016f,
+            separationPriorityBoost: 1f);
 }
