@@ -1433,6 +1433,7 @@ internal static class Program
             Raylib.DrawText($"Align avg {instrumentation.AverageAlignmentMagnitude:F2} | Coh avg {instrumentation.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
             var perception = canonicalWorld.CapturePerceptionSnapshot();
             Raylib.DrawText($"Distance avg {perception.AverageNeighborDistance:F1} (min {perception.MinNeighborDistance:F1}, max {perception.MaxNeighborDistance:F1})", 10, 142, 14, Color.SkyBlue);
+            Raylib.DrawText($"Separation priority: {(perception.SeparationPriorityTriggered ? "ACTIVE" : "idle")}", 10, 160, 14, perception.SeparationPriorityTriggered ? Color.Orange : Color.Gray);
 
             if (_canonicalOverlayVisible)
             {
