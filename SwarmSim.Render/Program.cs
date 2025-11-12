@@ -1313,6 +1313,123 @@ internal static class Program
         return true;
     }
 
+    private static void RunCanonicalMode()
+    {
+        Console.WriteLine("Launching canonical single-group simulation.");
+        Raylib.InitWindow(WindowWidth, WindowHeight, $"SwarmingLilMen - Canonical Mode");
+        Raylib.SetTargetFPS(60);
+
+        var settings = BuildCanonicalWorldSettings();
+        var canonicalWorld = CreateCanonicalWorld(settings);
+        float accumulator = 0f;
+        bool showHelp = true;
+
+        while (!Raylib.WindowShouldClose())
+        {
+            if (Raylib.IsKeyPressed(KeyboardKey.R))
+            {
+                canonicalWorld = CreateCanonicalWorld(settings);
+                accumulator = 0f;
+            }
+
+            if (Raylib.IsKeyPressed(KeyboardKey.H))
+            {
+                showHelp = !showHelp;
+            }
+
+            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+            {
+                break;
+            }
+
+            float frameTime = Raylib.GetFrameTime();
+            accumulator += frameTime;
+            while (accumulator >= settings.FixedDeltaTime)
+            {
+                canonicalWorld.Step(settings.FixedDeltaTime);
+                accumulator -= settings.FixedDeltaTime;
+            }
+
+            float speedSum = 0f;
+            foreach (var boid in canonicalWorld.Boids)
+            {
+                speedSum += boid.Velocity.Length;
+            }
+
+            int count = canonicalWorld.Count;
+            float avgSpeed = count > 0 ? speedSum / count : 0f;
+
+            Raylib.BeginDrawing();
+            Raylib.ClearBackground(Color.Black);
+
+            foreach (var boid in canonicalWorld.Boids)
+            {
+                var pos = new Vector2(boid.Position.X, boid.Position.Y);
+                Raylib.DrawCircleV(pos, 3f, Color.Lime);
+            }
+
+            Raylib.DrawText($"Canonical Mode — {count} agents (single group)", 10, 8, 18, Color.Lime);
+            Raylib.DrawText($"Target: {settings.TargetSpeed:F1} | Avg speed: {avgSpeed:F1}", 10, 32, 14, Color.SkyBlue);
+            Raylib.DrawText($"Sense radius: {settings.SenseRadius:F1} | Separation radius: {settings.SeparationRadius:F1}", 10, 52, 14, Color.SkyBlue);
+            Raylib.DrawText($"Max force: {settings.MaxForce:F2} | FOV: {settings.FieldOfView:F0}°", 10, 70, 14, Color.SkyBlue);
+
+            if (showHelp)
+            {
+                Raylib.DrawText("Controls: R=respawn, H=toggle help, Esc=quit", 10, WindowHeight - 36, 14, Color.Gray);
+                Raylib.DrawText("Simple canonical Reynolds steering (single group)", 10, WindowHeight - 20, 12, Color.Gray);
+            }
+            else
+            {
+                Raylib.DrawText("Press H for controls", 10, WindowHeight - 24, 14, Color.Gray);
+            }
+
+            Raylib.DrawFPS(WindowWidth - 90, 10);
+            Raylib.EndDrawing();
+        }
+
+        Raylib.CloseWindow();
+    }
+
+    private static CanonicalWorldSettings BuildCanonicalWorldSettings()
+    {
+        var template = BuildCurrentConfig();
+        return new CanonicalWorldSettings
+        {
+            InitialCapacity = Math.Max(_initialAgentCount * 2, 1024),
+            TargetSpeed = Math.Max(0.01f, _maxSpeed),
+            MaxForce = Math.Max(0.01f, _maxForce),
+            SenseRadius = Math.Max(1f, _senseRadius),
+            SeparationRadius = Math.Max(1f, _separationRadius),
+            SeparationWeight = Math.Max(0f, _separationWeight),
+            AlignmentWeight = Math.Max(0f, _alignmentWeight),
+            CohesionWeight = Math.Max(0f, _cohesionWeight),
+            FieldOfView = template.FieldOfView,
+            WorldWidth = template.WorldWidth,
+            WorldHeight = template.WorldHeight,
+            FixedDeltaTime = template.FixedDeltaTime,
+            MaxNeighbors = template.MaxNeighbors
+        };
+    }
+
+    private static CanonicalWorld CreateCanonicalWorld(CanonicalWorldSettings settings)
+    {
+        var canonicalWorld = new CanonicalWorld(settings, new NaiveSpatialIndex());
+        var rng = new Random(42);
+        float twoPi = 2f * MathF.PI;
+
+        for (int i = 0; i < _initialAgentCount; i++)
+        {
+            float x = (float)rng.NextDouble() * settings.WorldWidth;
+            float y = (float)rng.NextDouble() * settings.WorldHeight;
+            float angle = (float)rng.NextDouble() * twoPi;
+            var direction = new Vec2(MathF.Cos(angle), MathF.Sin(angle));
+            var velocity = direction.WithLength(settings.TargetSpeed);
+            canonicalWorld.TryAddBoid(new Vec2(x, y), velocity);
+        }
+
+        return canonicalWorld;
+    }
+
     private static void RunBenchmark(int agentCount)
     {
         Console.WriteLine("Running headless benchmark...");
