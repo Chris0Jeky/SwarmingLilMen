@@ -172,23 +172,23 @@ public class CanonicalBoidsTests
         Assert.True(steer.X > 0f, "Steering should pull toward the centroid on the right");
     }
 
-        private sealed class NeighborSpyRule : IRule
+    private sealed class NeighborSpyRule : IRule
+    {
+        private readonly Dictionary<int, int> _observed = new();
+
+        public IReadOnlyDictionary<int, int> ObservedNeighborCounts => _observed;
+
+        public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
         {
-            private readonly Dictionary<int, int> _observed = new();
-
-            public IReadOnlyDictionary<int, int> ObservedNeighborCounts => _observed;
-
-            public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
-            {
-                _observed[selfIndex] = neighborIndices.Length;
-                return Vec2.Zero;
-            }
+            _observed[selfIndex] = neighborIndices.Length;
+            return Vec2.Zero;
         }
+    }
 
-        private static RuleContext CreateTestContext() => new(
-            targetSpeed: 1f,
-            maxForce: 0.5f,
-            senseRadius: 10f,
-            fieldOfViewDegrees: 360f,
-            deltaTime: 0.016f);
+    private static RuleContext CreateTestContext() => new(
+        targetSpeed: 1f,
+        maxForce: 0.5f,
+        senseRadius: 10f,
+        fieldOfViewDegrees: 360f,
+        deltaTime: 0.016f);
 }
