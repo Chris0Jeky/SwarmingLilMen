@@ -121,6 +121,7 @@ public sealed class CanonicalWorld
             float remainingForce = Settings.MaxForce;
             bool separationDominant = false;
             Vec2 nearestDelta = Vec2.Zero;
+            int whiskerHitCount = 0;
 
             if (_rules.Count > 0)
             {
@@ -156,6 +157,7 @@ public sealed class CanonicalWorld
                         float lateral = Vec2.Dot(right, toN);
                         float absLat = MathF.Abs(lateral);
                         if (absLat > whiskerRadius) continue;
+                        whiskerHitCount++;
                         float side = lateral >= 0f ? 1f : -1f;
                         float gain = (1f - absLat / whiskerRadius) * (1f - along / lookAhead);
                         whiskerAccum += right * (side * gain);
@@ -169,9 +171,12 @@ public sealed class CanonicalWorld
                     }
                 }
 
+                _whiskerCounts[i] = whiskerHitCount;
+
                 float minDistForAgent = float.MaxValue;
                 float maxDistForAgent = 0f;
                 float distanceSum = 0f;
+                float nearestAngle = 0f;
 
                 if (filtered > 0)
                 {
@@ -180,7 +185,17 @@ public sealed class CanonicalWorld
                     _neighborDistanceSamples += filtered;
                     _minNeighborDistance = MathF.Min(_minNeighborDistance, minDistForAgent);
                     _maxNeighborDistance = MathF.Max(_maxNeighborDistance, maxDistForAgent);
+
+                    if (!nearestDelta.IsNearlyZero())
+                    {
+                        Vec2 toNearest = nearestDelta.Normalized;
+                        float dotProduct = Vec2.Dot(boid.Forward, toNearest);
+                        nearestAngle = MathF.Acos(MathUtils.Clamp(dotProduct, -1f, 1f)) * 180f / MathF.PI;
+                    }
                 }
+
+                _nearestDistances[i] = minDistForAgent;
+                _nearestAngles[i] = nearestAngle;
 
                 if (_priorityState[i] && _priorityHoldTimers[i] > 0f)
                 {
