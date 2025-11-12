@@ -98,8 +98,6 @@ public sealed class CanonicalWorld
         float separationPriorityThreshold = MathF.Max(0f, Settings.SeparationPriorityRadiusFactor * Settings.SenseRadius);
         _separationPriorityTriggered = false;
 
-        bool separationAnyPriority = false;
-
         for (int i = 0; i < Count; i++)
         {
             Boid boid = current[i];
