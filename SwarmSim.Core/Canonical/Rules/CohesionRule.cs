@@ -39,8 +39,6 @@ public sealed class CohesionRule : IRule
 
         Vec2 desired = toCenter.WithLength(context.TargetSpeed * _weight);
         Vec2 steer = desired - self.Velocity;
-        Vec2 clamped = steer.ClampMagnitude(context.MaxForce);
-        context.Instrumentation?.RecordCohesion(selfIndex, clamped.Length);
-        return clamped;
+        return steer;
     }
 }
