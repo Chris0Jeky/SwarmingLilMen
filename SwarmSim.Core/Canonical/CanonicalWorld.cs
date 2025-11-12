@@ -105,10 +105,9 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 int neighborCount = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
-        filterFieldOfViewCos = fieldOfViewCos;
-        float fieldOfViewDegrees = Settings.FieldOfView;
+                float fieldOfViewDegrees = Settings.FieldOfView;
 
-        int filtered = FilterByFieldOfView(
+                int filtered = FilterByFieldOfView(
             boid.Forward,
             boid.Position,
             _neighborScratch.AsSpan(0, neighborCount),
