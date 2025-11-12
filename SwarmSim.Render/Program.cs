@@ -1532,6 +1532,23 @@ internal static class Program
         Raylib.DrawText($"Proj: {projection:F2} | Lat: {MathF.Abs(lateral):F2}", 10, WindowHeight - 110, 14, Color.SkyBlue);
     }
 
+    private static Vec2 ComputeMeanHeading(CanonicalWorld world)
+    {
+        Vec2 sum = Vec2.Zero;
+        foreach (var boid in world.Boids)
+        {
+            if (boid.Velocity.IsNearlyZero())
+                continue;
+
+            sum += boid.Velocity.Normalized;
+        }
+
+        if (sum.IsNearlyZero())
+            return new Vec2(1f, 0f);
+
+        return sum.Normalized;
+    }
+
     private static bool ProcessCanonicalParameters()
     {
         bool changed = false;
