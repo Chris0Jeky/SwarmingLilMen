@@ -288,6 +288,23 @@ public sealed class CanonicalWorld
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
             float prioritySpeed = Settings.TargetSpeed * (1f - Settings.SeparationSpeedDroop * _priorityBlend[i]);
             float allowedSpeed = _priorityBlend[i] > 0f ? prioritySpeed : Settings.TargetSpeed;
+
+            if (_priorityBlend[i] > 0.01f && !nearestDelta.IsNearlyZero())
+            {
+                float nearestDist = MathF.Sqrt(nearestDelta.LengthSquared);
+                float rSoft = Settings.SeparationRadius * 0.6f;
+                float rHard = separationEnterThreshold;
+                Vec2 awayDir = (-nearestDelta).Normalized;
+                Vec2 forward = boid.Forward;
+                Vec2 right = new Vec2(forward.Y, -forward.X);
+                float lateralComponent = Vec2.Dot(awayDir, right);
+                Vec2 lateralDir = right * MathF.Sign(lateralComponent);
+                float blendWeight = MathUtils.SmoothStep(rHard, rSoft, nearestDist);
+                Vec2 shapedAvoidance = Vec2.Lerp(awayDir, lateralDir, blendWeight);
+                float influenceStrength = _priorityBlend[i] * (1f - nearestDist / Settings.SenseRadius);
+                Vec2 biasedVelocity = Vec2.Lerp(nextVelocity, shapedAvoidance.WithLength(allowedSpeed), influenceStrength * 0.8f);
+                nextVelocity = biasedVelocity;
+            }
             Vec2 normalizedCurrent = boid.Velocity.IsNearlyZero() ? boid.Forward : boid.Velocity;
             float currentAngle = MathF.Atan2(normalizedCurrent.Y, normalizedCurrent.X);
             float desiredAngle = MathF.Atan2(nextVelocity.Y, nextVelocity.X);
