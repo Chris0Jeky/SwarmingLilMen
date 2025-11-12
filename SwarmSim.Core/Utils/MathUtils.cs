@@ -173,6 +173,18 @@ public static class MathUtils
         => a + (b - a) * t;
 
     /// <summary>
+    /// Moves a value towards a target by at most maxDelta.
+    /// </summary>
+    public static float MoveTowards(float current, float target, float maxDelta)
+    {
+        float delta = target - current;
+        if (MathF.Abs(delta) <= maxDelta)
+            return target;
+
+        return current + MathF.Sign(delta) * maxDelta;
+    }
+
+    /// <summary>
     /// Clamps value to [min, max].
     /// </summary>
     public static float Clamp(float value, float min, float max)
