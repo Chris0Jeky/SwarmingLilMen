@@ -38,8 +38,6 @@ public sealed class AlignmentRule : IRule
 
         Vec2 desired = averageVelocity.WithLength(context.TargetSpeed * _weight);
         Vec2 steer = desired - self.Velocity;
-        Vec2 clamped = steer.ClampMagnitude(context.MaxForce);
-        context.Instrumentation?.RecordAlignment(selfIndex, clamped.Length);
-        return clamped;
+        return steer;
     }
 }
