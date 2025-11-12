@@ -402,9 +402,67 @@ for each candidate neighbor:
 
 ---
 
+## Smoothing & Collision Avoidance System (Session 3.3)
+
+After implementing the canonical boids foundation, testing revealed collision issues and "bouncy" behavior. A comprehensive smoothing system was designed and implemented following the plan documented in `filesAndResources/CanonicalBoids_SmoothingPlan.md`.
+
+### Problems Identified
+
+1. **Sharp Separation Activation**: Priority mode engaged abruptly at threshold, causing jerky movements
+2. **Chaotic Wander**: Random angle each tick created jittery, unnatural movement
+3. **Missing Collision Avoidance**: Removing the hard "snap-away" left agents with no emergency response
+4. **Hard Priority Gating**: Alignment/cohesion completely off during separation, breaking group cohesion
+
+### Solutions Implemented
+
+**1. Smooth Wander** (`CanonicalWorld.cs:287-294`)
+- Each agent maintains a persistent wander angle that evolves continuously
+- `WanderRate` parameter (1.5 rad/s) controls turn rate
+- Angle changes by small random amounts each tick: `±WanderRate * dt`
+- Creates flowing, natural movement instead of discrete direction changes
+
+**2. Gradual Avoidance Falloff** (`CanonicalWorld.cs:300-322`)
+- Avoidance begins at `rGradualStart = SeparationRadius * 2.0` (gentle)
+- Influence increases quadratically: `distanceRatio²` as agents approach threshold
+- Combines with priority blend at close range for emergency response
+- No sharp activation - steering smoothly intensifies with proximity
+
+**3. Shaped Separation** (`CanonicalWorld.cs:309-320`)
+- Blends two escape directions:
+  - **Lateral**: Perpendicular "shoulder past" deflection (at medium distance)
+  - **Away**: Direct repulsion from nearest neighbor (at close range)
+- Smoothstep transition between zones: `blendWeight = SmoothStep(rHard, rSoft, distance)`
+- Prevents head-on bouncing, creates natural lane-change behavior
+
+**4. Soft Gating** (`CanonicalWorld.cs:229-249`)
+- Alignment/cohesion reduced by 70% during priority (not turned off)
+- `attenuation = 1.0 - (priorityBlend * 0.7)`
+- Agents maintain group awareness while avoiding collisions
+
+**5. Enhanced Perception** (`CanonicalWorld.cs:21-23, 174-198`)
+- Per-agent perception data in snapshot:
+  - `NearestDistances[]` - distance to closest neighbor
+  - `NearestAngles[]` - angular position of nearest neighbor
+  - `WhiskerCounts[]` - neighbors in lookahead capsule
+- Enables data-driven analysis of flocking quality
+
+### Results
+
+- ✅ Smooth, natural movement with continuous direction changes
+- ✅ Robust collision avoidance without "ping-pong" oscillations
+- ✅ Agents shoulder past each other at medium range, repel at close range
+- ✅ Group cohesion maintained even during separation maneuvers
+- ✅ 12 canonical boids tests passing (including new angular limiter and hysteresis tests)
+
+### Visualization
+
+The **blue circle** in the overlay is the **whisker lookahead capsule** - it shows the predictive collision detection zone ahead of the tracked boid (radius = SeparationRadius, lookahead = TargetSpeed * WhiskerTimeHorizon).
+
+---
+
 ## Migration Status
 
-### Completed (Canonical Implementation ~70%)
+### Completed (Canonical Implementation ~85%)
 
 ✅ **Core Infrastructure** (Milestones 0-2):
 - `Vec2` struct with all vector operations
@@ -431,13 +489,26 @@ for each candidate neighbor:
 - Per-rule contribution magnitudes
 - Metrics accessible via `TryGetMetrics()`
 
-✅ **Testing** (Milestones 0-6):
-- `CanonicalBoidsTests` with 11+ unit tests
+✅ **Testing** (Milestones 0-6 + Smoothing):
+- `CanonicalBoidsTests` with 12 unit tests
 - Vec2 math tests
 - Single boid constant speed test
 - FOV filtering tests
 - Determinism tests
 - Per-rule behavior tests (separation, alignment, cohesion)
+- Angular rate limiter tests
+- Priority hysteresis tests
+- Whisker capsule detection tests
+- Per-agent perception snapshot tests
+
+✅ **Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
+- Angular rate limiter (MaxTurnRateDegPerSecond)
+- Priority hysteresis with enter/exit/hold thresholds
+- Shaped separation with lateral+away blending
+- Gradual avoidance falloff (quadratic distance function)
+- Smooth wander with continuous angle evolution
+- Soft gating for alignment/cohesion during priority
+- Enhanced PerceptionSnapshot with per-agent data
 
 ✅ **Renderer Integration** (Partial):
 - `--canonical` flag to use CanonicalWorld
