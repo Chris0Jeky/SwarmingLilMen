@@ -8,6 +8,10 @@ public sealed class CanonicalWorldSettings
     public float SenseRadius { get; init; } = 10f;
     public float FieldOfView { get; init; } = 270f;
     public int MaxNeighbors { get; init; } = 32;
+    public float SeparationRadius { get; init; } = 5f;
+    public float SeparationWeight { get; init; } = 1.5f;
+    public float AlignmentWeight { get; init; } = 1f;
+    public float CohesionWeight { get; init; } = 1f;
 
     public CanonicalWorldSettings() { }
 }
