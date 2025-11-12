@@ -23,6 +23,8 @@ public sealed class CanonicalWorld
         _neighborScratch = new int[maxNeighbors];
 
         _spatialIndex.Initialize(capacity);
+
+        InitializeDefaultRules();
     }
 
     public int Count { get; private set; }
@@ -133,5 +135,12 @@ public sealed class CanonicalWorld
         }
 
         return keep;
+    }
+
+    private void InitializeDefaultRules()
+    {
+        AddRule(new SeparationRule(_settings.SeparationWeight, _settings.SeparationRadius));
+        AddRule(new AlignmentRule(_settings.AlignmentWeight));
+        AddRule(new CohesionRule(_settings.CohesionWeight));
     }
 }
