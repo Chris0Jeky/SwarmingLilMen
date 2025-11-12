@@ -123,14 +123,7 @@ public sealed class CanonicalWorld
 
                 if (filtered > 0)
                 {
-                    foreach (int idx in neighbors)
-                    {
-                        Vec2 delta = current[idx].Position - boid.Position;
-                        float dist = MathF.Sqrt(delta.LengthSquared);
-                        distanceSum += dist;
-                        minDistForAgent = MathF.Min(minDistForAgent, dist);
-                        maxDistForAgent = MathF.Max(maxDistForAgent, dist);
-                    }
+                    (distanceSum, minDistForAgent, maxDistForAgent) = ComputeNeighborDistanceStats(current, boid.Position, neighbors);
                     _neighborDistanceSum += distanceSum;
                     _neighborDistanceSamples += filtered;
                     _minNeighborDistance = MathF.Min(_minNeighborDistance, minDistForAgent);
