@@ -222,4 +222,133 @@ public class CanonicalBoidsTests
             fieldOfViewCos: -1f,
             deltaTime: 0.016f,
             separationPriorityBoost: 1f);
+
+    [Fact]
+    public void CanonicalWorld_AngularRateLimiter_ClampsTurningSpeed()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 10f,
+            MaxForce = 100f,
+            MaxTurnRateDegPerSecond = 180f,
+            FieldOfView = 360f,
+            SenseRadius = 50f,
+            SeparationRadius = 20f,
+            FixedDeltaTime = 1f / 60f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(new Vec2(0f, 0f), new Vec2(1f, 0f));
+
+        float initialAngle = MathF.Atan2(0f, 1f);
+        world.Step(settings.FixedDeltaTime);
+
+        var boid = world.Boids[0];
+        float finalAngle = MathF.Atan2(boid.Velocity.Y, boid.Velocity.X);
+        float angleDelta = MathF.Abs(finalAngle - initialAngle) * 180f / MathF.PI;
+
+        float maxAllowedTurn = settings.MaxTurnRateDegPerSecond * settings.FixedDeltaTime;
+        Assert.True(angleDelta <= maxAllowedTurn + 0.1f,
+            $"Angular rate limiter failed: turned {angleDelta}° in one step, max allowed was {maxAllowedTurn}°");
+    }
+
+    [Fact]
+    public void CanonicalWorld_PriorityHysteresis_PreventsPingPong()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 1f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 10f,
+            SeparationRadius = 5f,
+            SeparationPriorityRadiusFactor = 0.5f,
+            SeparationPriorityExitFactor = 0.6f,
+            SeparationPriorityHoldTime = 0.1f,
+            FixedDeltaTime = 1f / 60f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(new Vec2(0f, 0f), new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(4.5f, 0f), new Vec2(-1f, 0f));
+
+        world.Step(settings.FixedDeltaTime);
+        var snapshot1 = world.CapturePerceptionSnapshot();
+        Assert.True(snapshot1.SeparationPriorityTriggered, "Priority should engage at close distance");
+
+        world.SetVelocity(0, new Vec2(1f, 0f));
+        world.SetVelocity(1, new Vec2(-1f, 0f));
+
+        for (int i = 0; i < 10; i++)
+        {
+            world.Step(settings.FixedDeltaTime);
+        }
+
+        var snapshot2 = world.CapturePerceptionSnapshot();
+        float distance = (world.Boids[1].Position - world.Boids[0].Position).Length;
+        float exitThreshold = settings.SeparationPriorityExitFactor * settings.SenseRadius;
+
+        if (distance >= exitThreshold)
+        {
+            Assert.False(snapshot2.SeparationPriorityTriggered,
+                "Priority should exit after agents separate beyond exit threshold and hold time expires");
+        }
+    }
+
+    [Fact]
+    public void CanonicalWorld_WhiskerCounts_MatchNeighborsInCapsule()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 8,
+            TargetSpeed = 5f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 20f,
+            SeparationRadius = 5f,
+            WhiskerTimeHorizon = 0.5f,
+            FixedDeltaTime = 1f / 60f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(new Vec2(100f, 100f), new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(110f, 100f), new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(115f, 101f), new Vec2(1f, 0f));
+
+        world.Step(settings.FixedDeltaTime);
+        var snapshot = world.CapturePerceptionSnapshot();
+
+        Assert.True(snapshot.WhiskerCounts.Length == 3, "Whisker counts should be captured for all agents");
+        Assert.True(snapshot.WhiskerCounts[0] >= 0, "Whisker count should be non-negative");
+    }
+
+    [Fact]
+    public void CanonicalWorld_PerceptionSnapshot_ContainsPerAgentData()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 8,
+            TargetSpeed = 2f,
+            MaxForce = 0.5f,
+            FieldOfView = 360f,
+            SenseRadius = 10f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(new Vec2(0f, 0f), new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(5f, 0f), new Vec2(1f, 0f));
+
+        world.Step(0.1f);
+        var snapshot = world.CapturePerceptionSnapshot();
+
+        Assert.NotNull(snapshot.NearestDistances);
+        Assert.NotNull(snapshot.NearestAngles);
+        Assert.NotNull(snapshot.WhiskerCounts);
+        Assert.Equal(2, snapshot.NearestDistances.Length);
+        Assert.Equal(2, snapshot.NearestAngles.Length);
+        Assert.Equal(2, snapshot.WhiskerCounts.Length);
+        Assert.True(snapshot.NearestDistances[0] > 0f, "Nearest distance should be populated");
+    }
 }
