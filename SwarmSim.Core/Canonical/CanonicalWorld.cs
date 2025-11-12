@@ -39,6 +39,9 @@ public sealed class CanonicalWorld
         _neighborScratch = new int[maxNeighbors];
         _neighborWeightScratch = new float[maxNeighbors];
         _instrumentation = new RuleInstrumentation(capacity);
+        _priorityState = new bool[capacity];
+        _priorityBlend = new float[capacity];
+        _priorityHoldTimers = new float[capacity];
 
         _spatialIndex.Initialize(capacity);
         _rng = new Rng(settings.Seed);
