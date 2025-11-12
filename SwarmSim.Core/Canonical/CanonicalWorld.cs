@@ -302,8 +302,12 @@ public sealed class CanonicalWorld
                 continue;
 
             float dot = Vec2.Dot(forward, direction);
-            float normalized = MathUtils.Clamp((dot - fieldOfViewCos) / range, 0f, 1f);
-            float weight = normalized;
+            float normalizedRaw = (dot - fieldOfViewCos) / range;
+
+            if (normalizedRaw <= 0f)
+                continue;
+
+            float weight = normalizedRaw >= 1f ? 1f : normalizedRaw;
             candidates[keep] = index;
             weights[keep] = weight;
             totalWeight += weight;
