@@ -335,6 +335,7 @@ public sealed class CanonicalWorld
             weights,
             boids,
             fieldOfViewCos,
+            Settings.FieldOfView,
             index,
             out _);
     }
