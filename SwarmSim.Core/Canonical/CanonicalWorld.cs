@@ -157,9 +157,12 @@ public sealed class CanonicalWorld
                 if (_rules.Count > 0)
                 {
                     Vec2 separation = _rules[0].Compute(i, boid, current, neighbors, neighborWeights, context);
-                    if (TryAccumulateSteering(ref steering, ref remainingForce, separation, out float sepMagnitude))
+                    Vec2 clampedSep = separation.ClampMagnitude(Settings.MaxForce);
+                    if (clampedSep.LengthSquared > 1e-6f)
                     {
-                        _instrumentation.RecordSeparation(i, sepMagnitude);
+                        steering += clampedSep;
+                        remainingForce = 0f;
+                        _instrumentation.RecordSeparation(i, clampedSep.Length);
                     }
                 }
 
