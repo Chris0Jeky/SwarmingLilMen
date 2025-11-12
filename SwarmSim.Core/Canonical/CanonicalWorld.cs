@@ -104,6 +104,7 @@ public sealed class CanonicalWorld
             Vec2 steering = Vec2.Zero;
             float remainingForce = Settings.MaxForce;
             bool separationDominant = false;
+            Vec2 nearestDelta = Vec2.Zero;
 
             if (_rules.Count > 0)
             {
@@ -162,7 +163,6 @@ public sealed class CanonicalWorld
                 float minDistForAgent = float.MaxValue;
                 float maxDistForAgent = 0f;
                 float distanceSum = 0f;
-                Vec2 nearestDelta = Vec2.Zero;
 
                 if (filtered > 0)
                 {
