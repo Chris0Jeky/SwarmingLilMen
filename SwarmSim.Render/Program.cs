@@ -51,6 +51,7 @@ internal static class Program
     private static float _separationRadius = 30f;     // Was 15
     private static float _senseRadius = 100f;         // Was 60
     private static float _maxSpeed = 10f;             // Was 6
+    private static float _maxForce = 2.5f;
     private static float _friction = 1f;           // Was 0.99 (CRITICAL FIX!)
     private static int _initialAgentCount = 400;
 
@@ -81,7 +82,9 @@ internal static class Program
             GetValue = () => _senseRadius, SetValue = v => _senseRadius = v },
         new() { Name = "Max Speed", Key = "6", MinValue = 1f, MaxValue = 500f, StepSize = 10f, FineStepSize = 1f,
             GetValue = () => _maxSpeed, SetValue = v => _maxSpeed = v },
-        new() { Name = "Friction", Key = "7", MinValue = 0.8f, MaxValue = 1.0f, StepSize = 0.01f, FineStepSize = 0.001f,
+        new() { Name = "Max Force", Key = "7", MinValue = 0.1f, MaxValue = 20f, StepSize = 0.1f, FineStepSize = 0.01f,
+            GetValue = () => _maxForce, SetValue = v => _maxForce = v },
+        new() { Name = "Friction", Key = "8", MinValue = 0.8f, MaxValue = 1.0f, StepSize = 0.01f, FineStepSize = 0.001f,
             GetValue = () => _friction, SetValue = v => _friction = v },
     ];
 
@@ -278,6 +281,7 @@ internal static class Program
     private static void SyncParametersWithConfig(SimConfig config)
     {
         _maxSpeed = config.MaxSpeed;
+        _maxForce = config.MaxForce;
         _friction = config.Friction;
         _senseRadius = config.SenseRadius;
         _separationRadius = config.SeparationRadius;
