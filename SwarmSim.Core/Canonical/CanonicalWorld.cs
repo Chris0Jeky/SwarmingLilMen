@@ -47,8 +47,6 @@ public sealed class CanonicalWorld
 
     public ulong TickCount => _tickCount;
 
-    public RuleInstrumentation Instrumentation => _instrumentation;
-
     public void AddRule(IRule rule)
     {
         _rules.Add(rule ?? throw new ArgumentNullException(nameof(rule)));
