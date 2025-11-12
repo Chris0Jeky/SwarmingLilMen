@@ -21,6 +21,7 @@ public sealed class CanonicalWorldSettings
     public float SeparationSpeedDroop { get; init; } = 0.03f;
     public float MaxTurnRateDegPerSecond { get; init; } = 360f;
     public float WanderStrength { get; init; } = 0.1f;
+    public float WanderRate { get; init; } = 1.5f;
     public float WhiskerTimeHorizon { get; init; } = 0.4f;
     public float WhiskerWeight { get; init; } = 1.2f;
     public uint Seed { get; init; } = 123456u;
