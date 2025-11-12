@@ -204,7 +204,7 @@ public sealed class CanonicalWorld
 
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
             // Near-field override: if separation was dominant for this agent, snap heading directly away from the nearest neighbor.
-            if (remainingForce == 0f && _separationPriorityTriggered)
+            if (separationDominant)
             {
                 // nearestDelta is from neighbor to agent: we computed agentMin using delta = neighbor.pos - agent.pos earlier
                 // Here we ensure a valid away vector
