@@ -123,6 +123,42 @@ public sealed class CanonicalWorld
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
                 var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
 
+                // Predictive "whisker" lateral avoidance: steer sideways if a neighbor lies in a capsule ahead.
+                if (filtered > 0 && remainingForce > 0f)
+                {
+                    Vec2 forward = boid.Forward;
+                    float lookAhead = Settings.TargetSpeed * MathF.Max(0.05f, Settings.WhiskerTimeHorizon);
+                    float whiskerRadius = MathF.Max(0.1f, Settings.SeparationRadius);
+                    Vec2 right = new Vec2(forward.Y, -forward.X); // 90° right
+                    Vec2 whiskerAccum = Vec2.Zero;
+
+                    foreach (int idx in neighbors)
+                    {
+                        Vec2 toN = current[idx].Position - boid.Position;
+                        // Projection along forward
+                        float along = Vec2.Dot(forward, toN);
+                        if (along <= 0f || along > lookAhead) continue;
+
+                        // Lateral distance from forward ray
+                        float lateral = Vec2.Dot(right, toN);
+                        float absLat = MathF.Abs(lateral);
+                        if (absLat > whiskerRadius) continue;
+
+                        // Side sign
+                        float side = lateral >= 0f ? 1f : -1f;
+                        // Closer and nearer ahead -> larger avoidance
+                        float gain = (1f - absLat / whiskerRadius) * (1f - along / lookAhead);
+                        whiskerAccum += right * (side * gain);
+                    }
+
+                    if (!whiskerAccum.IsNearlyZero())
+                    {
+                        Vec2 desired = whiskerAccum.WithLength(Settings.TargetSpeed * Settings.WhiskerWeight);
+                        Vec2 steerW = desired - boid.Velocity;
+                        TryAccumulateSteering(ref steering, ref remainingForce, steerW, out _);
+                    }
+                }
+
                 float minDistForAgent = float.MaxValue;
                 float maxDistForAgent = 0f;
                 float distanceSum = 0f;
