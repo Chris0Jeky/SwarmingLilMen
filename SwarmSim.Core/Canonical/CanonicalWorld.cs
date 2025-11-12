@@ -262,17 +262,7 @@ public sealed class CanonicalWorld
 
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
             float prioritySpeed = Settings.TargetSpeed * (1f - Settings.SeparationSpeedDroop * _priorityBlend[i]);
-            if (separationDominant)
-            {
-                float awayLenSq = nearestDelta.LengthSquared;
-                if (awayLenSq > 1e-6f)
-                {
-                    Vec2 awayDir = (-nearestDelta).Normalized;
-                    nextVelocity = awayDir.WithLength(prioritySpeed);
-                }
-            }
-
-            float allowedSpeed = separationDominant ? prioritySpeed : Settings.TargetSpeed;
+            float allowedSpeed = _priorityBlend[i] > 0f ? prioritySpeed : Settings.TargetSpeed;
             Vec2 normalizedCurrent = boid.Velocity.IsNearlyZero() ? boid.Forward : boid.Velocity;
             float currentAngle = MathF.Atan2(normalizedCurrent.Y, normalizedCurrent.X);
             float desiredAngle = MathF.Atan2(nextVelocity.Y, nextVelocity.X);
