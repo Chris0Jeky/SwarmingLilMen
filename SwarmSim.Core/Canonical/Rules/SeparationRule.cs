@@ -46,10 +46,8 @@ public sealed class SeparationRule : IRule
         if (accumulator.IsNearlyZero())
             return Vec2.Zero;
 
-        Vec2 desired = accumulator.WithLength(context.TargetSpeed * _weight);
+        Vec2 desired = accumulator.WithLength(context.TargetSpeed * _weight * context.SeparationPriorityBoost);
         Vec2 steer = desired - self.Velocity;
-        Vec2 clamped = steer.ClampMagnitude(context.MaxForce);
-        context.Instrumentation?.RecordSeparation(selfIndex, clamped.Length);
-        return clamped;
+        return steer;
     }
 }
