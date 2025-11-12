@@ -1,6 +1,7 @@
 using Raylib_cs;
 using SwarmSim.Core;
 using SwarmSim.Core.Canonical;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Numerics;
@@ -38,6 +39,14 @@ internal static class Program
     private static CommandLineOptions _cliOptions = new();
     private static World? _world = null;  // Store reference to world for recreation
     private static SimulationRunner? _runner = null;  // Fixed-timestep runner
+
+    // Canonical mode helpers
+    private const float CanonicalConsoleInterval = 5f;
+    private const float CanonicalSelectionInterval = 30f;
+    private static bool _canonicalOverlayVisible = false;
+    private static int _overlaySubjectIndex = 0;
+    private static readonly int[] _canonicalTrackedAgents = new int[5];
+    private static readonly Random _canonicalRandom = new(314159);
 
     // Interpolation state for smooth rendering
     private static SimSnapshot? _prevSnapshot = null;
