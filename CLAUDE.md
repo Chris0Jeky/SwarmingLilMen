@@ -6,6 +6,17 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 SwarmingLilMen is a high-performance 2D swarm simulation built from first principles in C#/.NET 8.0. The goal is to simulate 50k-100k agents at 60 FPS with emergent behavior from simple rules. This is a data-oriented, performance-critical project focusing on deterministic simulation, zero-allocation hot paths, and extensive observability.
 
+## ⚠️ CRITICAL: Implementation Transition in Progress
+
+**READ `IMPLEMENTATION_EVOLUTION.md` FIRST** before making changes. The project is migrating from a systems-based Structure-of-Arrays approach to a canonical boids implementation. Two implementations currently coexist:
+
+1. **Legacy** (`SwarmSim.Core/World.cs`, `Systems/`): Force-based, two-pass architecture, deprecated but functional
+2. **Canonical** (`SwarmSim.Core/Canonical/`): Reynolds steering behaviors, ~70% complete, future direction
+
+**Golden Rule**: All new Phase 3+ features should be built on the **Canonical** implementation, not the legacy one.
+
+**Current Priority**: Complete canonical implementation milestones 8-10 (testing, multi-group, performance) before Phase 3.
+
 ## Solution Structure
 
 The solution follows a clean multi-project architecture with clear separation of concerns:
