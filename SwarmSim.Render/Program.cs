@@ -1332,12 +1332,33 @@ internal static class Program
         var canonicalWorld = CreateCanonicalWorld(settings);
         float accumulator = 0f;
         bool showHelp = true;
+        float consoleTimer = 0f;
+        float selectionTimer = 0f;
+        SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
+        var neighborBuffer = new int[128];
+        var neighborWeightBuffer = new float[128];
 
         while (!Raylib.WindowShouldClose())
         {
+            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+            {
+                break;
+            }
+
+            bool parametersChanged = ProcessCanonicalParameters();
+            if (parametersChanged)
+            {
+                settings = BuildCanonicalWorldSettings();
+                canonicalWorld = RecreateCanonicalWorld(canonicalWorld, settings);
+                SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
+                _overlaySubjectIndex = 0;
+                accumulator = 0f;
+            }
+
             if (Raylib.IsKeyPressed(KeyboardKey.R))
             {
                 canonicalWorld = CreateCanonicalWorld(settings);
+                SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
                 accumulator = 0f;
             }
 
@@ -1346,9 +1367,14 @@ internal static class Program
                 showHelp = !showHelp;
             }
 
-            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+            if (Raylib.IsKeyPressed(KeyboardKey.O))
             {
-                break;
+                _canonicalOverlayVisible = !_canonicalOverlayVisible;
+            }
+
+            if (Raylib.IsKeyPressed(KeyboardKey.Tab) && canonicalWorld.Count > 0)
+            {
+                _overlaySubjectIndex = (_overlaySubjectIndex + 1) % canonicalWorld.Count;
             }
 
             float frameTime = Raylib.GetFrameTime();
@@ -1368,6 +1394,20 @@ internal static class Program
             int count = canonicalWorld.Count;
             float avgSpeed = count > 0 ? speedSum / count : 0f;
 
+            selectionTimer += frameTime;
+            if (selectionTimer >= CanonicalSelectionInterval)
+            {
+                selectionTimer -= CanonicalSelectionInterval;
+                SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
+            }
+
+            consoleTimer += frameTime;
+            if (consoleTimer >= CanonicalConsoleInterval)
+            {
+                consoleTimer -= CanonicalConsoleInterval;
+                LogCanonicalStatus(canonicalWorld, avgSpeed);
+            }
+
             Raylib.BeginDrawing();
             Raylib.ClearBackground(Color.Black);
 
@@ -1375,6 +1415,11 @@ internal static class Program
             {
                 var pos = new Vector2(boid.Position.X, boid.Position.Y);
                 Raylib.DrawCircleV(pos, 3f, Color.Lime);
+            }
+
+            if (_canonicalOverlayVisible && canonicalWorld.Count > 0 && _overlaySubjectIndex >= 0)
+            {
+                DrawInteractionOverlay(canonicalWorld, settings, neighborBuffer, neighborWeightBuffer);
             }
 
             Raylib.DrawText($"Canonical Mode — {count} agents (single group)", 10, 8, 18, Color.Lime);
@@ -1387,10 +1432,20 @@ internal static class Program
             Raylib.DrawText($"Weights avg {instrumentation.AverageNeighborWeight:F2} | Sep avg {instrumentation.AverageSeparationMagnitude:F2}", 10, 106, 14, Color.SkyBlue);
             Raylib.DrawText($"Align avg {instrumentation.AverageAlignmentMagnitude:F2} | Coh avg {instrumentation.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
 
+            if (_canonicalOverlayVisible)
+            {
+                Raylib.DrawText("O: toggle interactions | Tab: cycle subject", 10, WindowHeight - 68, 14, Color.Gray);
+            }
+            else
+            {
+                Raylib.DrawText("Press O to view interactions", 10, WindowHeight - 68, 14, Color.Gray);
+            }
+
+            Raylib.DrawText("1-7: select params | ↑/↓: adjust | SHIFT: fine", 10, WindowHeight - 48, 12, Color.Gray);
             if (showHelp)
             {
-                Raylib.DrawText("Controls: R=respawn, H=toggle help, Esc=quit", 10, WindowHeight - 36, 14, Color.Gray);
-                Raylib.DrawText("Simple canonical Reynolds steering (single group)", 10, WindowHeight - 20, 12, Color.Gray);
+                Raylib.DrawText("Controls: R=respawn, H=toggle help, Esc=quit", 10, WindowHeight - 32, 14, Color.Gray);
+                Raylib.DrawText("Simple canonical Reynolds steering (single group)", 10, WindowHeight - 16, 12, Color.Gray);
             }
             else
             {
