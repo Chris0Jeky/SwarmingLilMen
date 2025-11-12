@@ -25,6 +25,8 @@ public sealed class CanonicalWorld
 
         int maxNeighbors = Math.Max(settings.MaxNeighbors, 4);
         _neighborScratch = new int[maxNeighbors];
+        _neighborWeightScratch = new float[maxNeighbors];
+        _instrumentation = new RuleInstrumentation(capacity);
 
         _spatialIndex.Initialize(capacity);
 
@@ -62,7 +64,14 @@ public sealed class CanonicalWorld
 
         var current = _activeBoids.AsSpan(0, Count);
         _spatialIndex.Rebuild(current);
-        var context = new RuleContext(Settings.TargetSpeed, Settings.MaxForce, Settings.SenseRadius, Settings.FieldOfView, deltaTime);
+        _instrumentation.Prepare(Count);
+        var context = new RuleContext(
+            Settings.TargetSpeed,
+            Settings.MaxForce,
+            Settings.SenseRadius,
+            Settings.FieldOfView,
+            deltaTime,
+            _instrumentation);
         var next = _nextBoids.AsSpan(0, Count);
 
         for (int i = 0; i < Count; i++)
