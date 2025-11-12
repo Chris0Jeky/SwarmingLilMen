@@ -108,15 +108,15 @@ public sealed class CanonicalWorld
                 float fieldOfViewDegrees = Settings.FieldOfView;
 
                 int filtered = FilterByFieldOfView(
-            boid.Forward,
-            boid.Position,
-            _neighborScratch.AsSpan(0, neighborCount),
-            _neighborWeightScratch,
-            current,
-            fieldOfViewCos,
-            fieldOfViewDegrees,
-            i,
-            out float neighborWeightSum);
+                    boid.Forward,
+                    boid.Position,
+                    _neighborScratch.AsSpan(0, neighborCount),
+                    _neighborWeightScratch,
+                    current,
+                    fieldOfViewCos,
+                    fieldOfViewDegrees,
+                    i,
+                    out float neighborWeightSum);
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
                 var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
 
