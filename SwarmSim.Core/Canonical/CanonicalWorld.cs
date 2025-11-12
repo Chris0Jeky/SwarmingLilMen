@@ -82,13 +82,24 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 int neighborCount = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
-                int filtered = FilterByFieldOfView(boid.Forward, boid.Position, _neighborScratch.AsSpan(0, neighborCount), current, context.FieldOfViewCos);
+                int filtered = FilterByFieldOfView(
+                    boid.Forward,
+                    boid.Position,
+                    _neighborScratch.AsSpan(0, neighborCount),
+                    _neighborWeightScratch,
+                    current,
+                    context.FieldOfViewCos,
+                    out float neighborWeightSum);
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
+                var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
 
                 foreach (IRule rule in _rules)
                 {
-                    steering += rule.Compute(i, boid, current, neighbors, context);
+                    steering += rule.Compute(i, boid, current, neighbors, neighborWeights, context);
                 }
+
+                _instrumentation.SetNeighborCount(i, filtered);
+                _instrumentation.SetNeighborWeightSum(i, neighborWeightSum);
 
                 steering = steering.ClampMagnitude(Settings.MaxForce);
             }
