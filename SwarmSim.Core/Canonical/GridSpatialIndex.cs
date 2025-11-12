@@ -1,3 +1,4 @@
+using System;
 using SwarmSim.Core.Spatial;
 
 namespace SwarmSim.Core.Canonical;
