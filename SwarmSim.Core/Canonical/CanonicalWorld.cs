@@ -39,6 +39,8 @@ public sealed class CanonicalWorld
 
     public CanonicalWorldSettings Settings => _settings;
 
+    public RuleInstrumentation Instrumentation => _instrumentation;
+
     public void AddRule(IRule rule)
     {
         _rules.Add(rule ?? throw new ArgumentNullException(nameof(rule)));
@@ -128,13 +130,22 @@ public sealed class CanonicalWorld
         ( _activeBoids, _nextBoids ) = ( _nextBoids, _activeBoids );
     }
 
-    private static int FilterByFieldOfView(Vec2 forward, Vec2 origin, Span<int> candidates, ReadOnlySpan<Boid> boids, float fieldOfViewCos)
+    private static int FilterByFieldOfView(
+        Vec2 forward,
+        Vec2 origin,
+        Span<int> candidates,
+        Span<float> weights,
+        ReadOnlySpan<Boid> boids,
+        float fieldOfViewCos,
+        out float totalWeight)
     {
-        if (candidates.IsEmpty)
+        totalWeight = 0f;
+        if (candidates.IsEmpty || weights.IsEmpty)
             return 0;
 
         bool fullCircle = fieldOfViewCos <= -1f;
         int keep = 0;
+        float range = MathF.Max(1e-6f, 1f - fieldOfViewCos);
 
         for (int i = 0; i < candidates.Length; i++)
         {
@@ -143,21 +154,34 @@ public sealed class CanonicalWorld
 
             if (delta.IsNearlyZero())
             {
-                candidates[keep++] = index;
+                candidates[keep] = index;
+                weights[keep] = 1f;
+                totalWeight += 1f;
+                keep++;
                 continue;
             }
 
             if (fullCircle)
             {
-                candidates[keep++] = index;
+                candidates[keep] = index;
+                weights[keep] = 1f;
+                totalWeight += 1f;
+                keep++;
                 continue;
             }
 
             Vec2 direction = delta.Normalized;
-            if (Vec2.Dot(forward, direction) >= fieldOfViewCos)
-            {
-                candidates[keep++] = index;
-            }
+            float dot = Vec2.Dot(forward, direction);
+            float normalized = (dot - fieldOfViewCos) / range;
+
+            if (normalized <= 0f)
+                continue;
+
+            float weight = normalized >= 1f ? 1f : normalized;
+            candidates[keep] = index;
+            weights[keep] = weight;
+            totalWeight += weight;
+            keep++;
         }
 
         return keep;
