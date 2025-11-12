@@ -143,7 +143,6 @@ public sealed class CanonicalWorld
                     separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, MathUtils.Clamp(ratio, 0f, 1f));
                     separationDominant = true;
                     _separationPriorityTriggered = true;
-                    separationAnyPriority = true;
                 }
 
                 var context = new RuleContext(
