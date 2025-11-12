@@ -134,8 +134,9 @@ public class CanonicalBoidsTests
         };
         var context = CreateTestContext();
         var neighborIndices = new[] { 1 };
+        var neighborWeights = new[] { 1f };
 
-        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
+        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, neighborWeights, context);
         Assert.True(steer.X < 0f, "Steering should push away from the neighbor");
     }
 
@@ -150,8 +151,9 @@ public class CanonicalBoidsTests
         };
         var context = CreateTestContext();
         var neighborIndices = new[] { 1 };
+        var neighborWeights = new[] { 1f };
 
-        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
+        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, neighborWeights, context);
         Assert.True(steer.Y > 0f, "Steering should encourage upward heading");
     }
 
@@ -167,8 +169,9 @@ public class CanonicalBoidsTests
         };
         var context = CreateTestContext();
         var neighborIndices = new[] { 1, 2 };
+        var neighborWeights = new[] { 1f, 1f };
 
-        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
+        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, neighborWeights, context);
         Vec2 centroid = (boids[1].Position + boids[2].Position) / 2f;
         Vec2 toCentroid = centroid - boids[0].Position;
         Assert.True(Vec2.Dot(steer, toCentroid) > 0f, "Steering should move toward the centroid");
@@ -180,7 +183,7 @@ public class CanonicalBoidsTests
 
         public IReadOnlyDictionary<int, int> ObservedNeighborCounts => _observed;
 
-        public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
+        public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, ReadOnlySpan<float> neighborWeights, RuleContext context)
         {
             _observed[selfIndex] = neighborIndices.Length;
             return Vec2.Zero;
