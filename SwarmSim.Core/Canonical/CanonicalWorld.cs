@@ -226,18 +226,22 @@ public sealed class CanonicalWorld
                     }
                 }
 
-                if (!separationDominant && _rules.Count > 1)
+                if (_rules.Count > 1)
                 {
                     Vec2 alignment = _rules[1].Compute(i, boid, current, neighbors, neighborWeights, context);
+                    float alignmentAttenuation = 1f - (_priorityBlend[i] * 0.7f);
+                    alignment *= alignmentAttenuation;
                     if (TryAccumulateSteering(ref steering, ref remainingForce, alignment, out float alignMagnitude))
                     {
                         _instrumentation.RecordAlignment(i, alignMagnitude);
                     }
                 }
 
-                if (!separationDominant && _rules.Count > 2)
+                if (_rules.Count > 2)
                 {
                     Vec2 cohesion = _rules[2].Compute(i, boid, current, neighbors, neighborWeights, context);
+                    float cohesionAttenuation = 1f - (_priorityBlend[i] * 0.7f);
+                    cohesion *= cohesionAttenuation;
                     if (TryAccumulateSteering(ref steering, ref remainingForce, cohesion, out float cohMagnitude))
                     {
                         _instrumentation.RecordCohesion(i, cohMagnitude);
