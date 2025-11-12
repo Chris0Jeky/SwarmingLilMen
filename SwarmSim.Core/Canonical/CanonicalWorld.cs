@@ -50,13 +50,14 @@ public sealed class CanonicalWorld
         _nearestAngles = new float[capacity];
         _whiskerCounts = new int[capacity];
         _wanderAngles = new float[capacity];
+
+        _rng = new Rng(settings.Seed);
         for (int i = 0; i < capacity; i++)
         {
             _wanderAngles[i] = _rng.NextFloat(0f, MathF.PI * 2f);
         }
 
         _spatialIndex.Initialize(capacity);
-        _rng = new Rng(settings.Seed);
 
         InitializeDefaultRules();
     }
