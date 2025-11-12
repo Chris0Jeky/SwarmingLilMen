@@ -222,6 +222,8 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - **Single-pass**: All decision-making in one place per agent
   - **Pluggable rules**: `IRule` interface (SeparationRule, AlignmentRule, CohesionRule)
   - **FOV weighting**: Neighbors weighted by position in vision cone
+  - **Prioritized separation**: Separation gets the limited acceleration budget whenever anyone encroaches the ~1/3 sense-radius gap
+  - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
 - **Completed**: Milestones 0-7 from `NewImplementation.md`
   - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
