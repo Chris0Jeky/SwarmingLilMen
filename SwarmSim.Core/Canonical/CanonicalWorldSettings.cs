@@ -12,7 +12,7 @@ public sealed class CanonicalWorldSettings
     public float SeparationWeight { get; init; } = 1.5f;
     public float AlignmentWeight { get; init; } = 1f;
     public float CohesionWeight { get; init; } = 1f;
-    public float SeparationPriorityRadiusFactor { get; init; } = 0.33f;
+    public float SeparationPriorityRadiusFactor { get; init; } = 0.20f;
     public float SeparationPriorityExitFactor { get; init; } = 0.45f;
     public float SeparationPriorityBoost { get; init; } = 2.5f;
     public float SeparationPriorityHoldTime { get; init; } = 0.08f;
