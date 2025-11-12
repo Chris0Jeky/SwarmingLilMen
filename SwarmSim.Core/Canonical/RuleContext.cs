@@ -8,23 +8,25 @@ public readonly struct RuleContext
     public float FieldOfViewCos { get; }
     public float FieldOfViewRange { get; }
     public float DeltaTime { get; }
+    public float SeparationPriorityBoost { get; }
     public RuleInstrumentation? Instrumentation { get; }
 
     public RuleContext(
         float targetSpeed,
         float maxForce,
         float senseRadius,
-        float fieldOfViewDegrees,
+        float fieldOfViewCos,
         float deltaTime,
+        float separationPriorityBoost,
         RuleInstrumentation? instrumentation = null)
     {
         TargetSpeed = targetSpeed;
         MaxForce = maxForce;
         SenseRadius = senseRadius;
-        float halfAngleRad = (fieldOfViewDegrees * MathF.PI / 180f) * 0.5f;
-        FieldOfViewCos = MathF.Cos(halfAngleRad);
+        FieldOfViewCos = fieldOfViewCos;
         FieldOfViewRange = 1f - FieldOfViewCos;
         DeltaTime = deltaTime;
+        SeparationPriorityBoost = separationPriorityBoost;
         Instrumentation = instrumentation;
     }
 }
