@@ -1,3 +1,5 @@
+using System;
+
 namespace SwarmSim.Core.Canonical;
 
 public sealed class RuleInstrumentation
@@ -105,6 +107,21 @@ public sealed class RuleInstrumentation
     public float AverageAlignmentMagnitude => ComputeAverage(_alignmentMagnitudes);
     public float AverageCohesionMagnitude => ComputeAverage(_cohesionMagnitudes);
 
+    public bool TryGetMetrics(int index, out Metrics metrics)
+    {
+        metrics = default;
+        if (index < 0 || index >= _activeCount)
+            return false;
+
+        metrics = new Metrics(
+            _neighborCounts[index],
+            _neighborWeightSums[index],
+            _separationMagnitudes[index],
+            _alignmentMagnitudes[index],
+            _cohesionMagnitudes[index]);
+        return true;
+    }
+
     private float ComputeAverage(float[] buffer)
     {
         if (_activeCount == 0)
@@ -117,5 +134,23 @@ public sealed class RuleInstrumentation
         }
 
         return sum / _activeCount;
+    }
+
+    public readonly struct Metrics
+    {
+        public readonly int NeighborCount;
+        public readonly float NeighborWeightSum;
+        public readonly float SeparationMagnitude;
+        public readonly float AlignmentMagnitude;
+        public readonly float CohesionMagnitude;
+
+        public Metrics(int neighborCount, float neighborWeightSum, float separationMagnitude, float alignmentMagnitude, float cohesionMagnitude)
+        {
+            NeighborCount = neighborCount;
+            NeighborWeightSum = neighborWeightSum;
+            SeparationMagnitude = separationMagnitude;
+            AlignmentMagnitude = alignmentMagnitude;
+            CohesionMagnitude = cohesionMagnitude;
+        }
     }
 }
