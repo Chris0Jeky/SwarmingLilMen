@@ -134,7 +134,7 @@ public sealed class CanonicalWorld
                 if (filtered > 0 && separationPriorityThreshold > 0f && minDistForAgent < separationPriorityThreshold)
                 {
                     float ratio = (separationPriorityThreshold - minDistForAgent) / separationPriorityThreshold;
-                    separationBoost = MathF.Lerp(1f, Settings.SeparationPriorityBoost, MathF.Clamp(ratio, 0f, 1f));
+                    separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, MathUtils.Clamp(ratio, 0f, 1f));
                 }
 
                 var context = new RuleContext(
