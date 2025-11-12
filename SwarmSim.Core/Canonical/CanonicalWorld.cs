@@ -91,6 +91,7 @@ public sealed class CanonicalWorld
                     _neighborWeightScratch,
                     current,
                     context.FieldOfViewCos,
+                    i,
                     out float neighborWeightSum);
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
                 var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
@@ -137,6 +138,7 @@ public sealed class CanonicalWorld
         Span<float> weights,
         ReadOnlySpan<Boid> boids,
         float fieldOfViewCos,
+        int selfIndex,
         out float totalWeight)
     {
         totalWeight = 0f;
@@ -150,6 +152,10 @@ public sealed class CanonicalWorld
         for (int i = 0; i < candidates.Length; i++)
         {
             int index = candidates[i];
+            if (index == selfIndex)
+            {
+                continue;
+            }
             Vec2 delta = boids[index].Position - origin;
 
             if (delta.IsNearlyZero())
