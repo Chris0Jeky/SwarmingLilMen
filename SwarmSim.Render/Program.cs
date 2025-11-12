@@ -1470,7 +1470,7 @@ internal static class Program
 
         var subject = world.Boids[_overlaySubjectIndex];
         var center = new Vector2(subject.Position.X, subject.Position.Y);
-        Raylib.DrawCircleLines(center.X, center.Y, settings.SenseRadius, Color.Yellow);
+        Raylib.DrawCircleLines((int)center.X, (int)center.Y, settings.SenseRadius, Color.Yellow);
 
         if (settings.FieldOfView < 360f)
         {
@@ -1483,7 +1483,7 @@ internal static class Program
         }
 
         var forward = new Vector2(subject.Forward.X, subject.Forward.Y);
-        Raylib.DrawLineEx(center, center + forward * settings.SeparationRadius, 1.5f, Color.Cyan);
+        Raylib.DrawLineEx(center, center + forward * settings.SeparationRadius, 1.5f, Color.SkyBlue);
 
         int neighborCount = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer);
         for (int i = 0; i < neighborCount; i++)
