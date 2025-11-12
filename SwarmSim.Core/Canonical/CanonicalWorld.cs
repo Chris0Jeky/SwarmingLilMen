@@ -1,3 +1,5 @@
+using SwarmSim.Core.Utils;
+
 namespace SwarmSim.Core.Canonical;
 
 public sealed class CanonicalWorld
@@ -91,6 +93,8 @@ public sealed class CanonicalWorld
             }
 
             Vec2 nextPosition = boid.Position + nextVelocity * deltaTime;
+            (float wrappedX, float wrappedY) = MathUtils.WrapPosition(nextPosition.X, nextPosition.Y, Settings.WorldWidth, Settings.WorldHeight);
+            nextPosition = new Vec2(wrappedX, wrappedY);
             next[i] = new Boid(nextPosition, nextVelocity, boid.Group);
         }
 
