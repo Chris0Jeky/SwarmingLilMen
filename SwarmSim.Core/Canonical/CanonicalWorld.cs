@@ -137,7 +137,7 @@ public sealed class CanonicalWorld
                 }
 
                 float separationBoost = 1f;
-                if (filtered > 0 && separationPriorityThreshold > 0f && minDistForAgent < separationPriorityThreshold)
+                if (filtered > 0 && separationPriorityThreshold > 0f && minDistForAgent <= separationPriorityThreshold)
                 {
                     float ratio = (separationPriorityThreshold - minDistForAgent) / separationPriorityThreshold;
                     separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, MathUtils.Clamp(ratio, 0f, 1f));
