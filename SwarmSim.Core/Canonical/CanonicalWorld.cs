@@ -21,6 +21,7 @@ public sealed class CanonicalWorld
     private readonly float[] _nearestDistances;
     private readonly float[] _nearestAngles;
     private readonly int[] _whiskerCounts;
+    private readonly float[] _wanderAngles;
     private ulong _tickCount;
     private float _neighborDistanceSum;
     private int _neighborDistanceSamples;
@@ -48,6 +49,11 @@ public sealed class CanonicalWorld
         _nearestDistances = new float[capacity];
         _nearestAngles = new float[capacity];
         _whiskerCounts = new int[capacity];
+        _wanderAngles = new float[capacity];
+        for (int i = 0; i < capacity; i++)
+        {
+            _wanderAngles[i] = _rng.NextFloat(0f, MathF.PI * 2f);
+        }
 
         _spatialIndex.Initialize(capacity);
         _rng = new Rng(settings.Seed);
@@ -280,8 +286,10 @@ public sealed class CanonicalWorld
 
             if (Settings.WanderStrength > 0f && remainingForce > 0f)
             {
-                float jitter = _rng.NextFloat(0f, 2f * MathF.PI);
-                Vec2 wander = new Vec2(MathF.Cos(jitter), MathF.Sin(jitter)) * Settings.WanderStrength * Settings.TargetSpeed;
+                float angleChange = _rng.NextFloat(-1f, 1f) * Settings.WanderRate * deltaTime;
+                _wanderAngles[i] += angleChange;
+                Vec2 wanderDirection = new Vec2(MathF.Cos(_wanderAngles[i]), MathF.Sin(_wanderAngles[i]));
+                Vec2 wander = wanderDirection * Settings.WanderStrength * Settings.TargetSpeed;
                 TryAccumulateSteering(ref steering, ref remainingForce, wander, out _);
             }
 
