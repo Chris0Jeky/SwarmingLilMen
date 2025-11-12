@@ -9,19 +9,29 @@ public sealed class CohesionRule : IRule
         _weight = MathF.Max(weight, 0f);
     }
 
-    public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
+    public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, ReadOnlySpan<float> neighborWeights, RuleContext context)
     {
         if (neighborIndices.IsEmpty)
             return Vec2.Zero;
 
         Vec2 center = Vec2.Zero;
-        foreach (int neighborIndex in neighborIndices)
+        float totalWeight = 0f;
+
+        for (int i = 0; i < neighborIndices.Length; i++)
         {
-            center += boids[neighborIndex].Position;
+            int neighborIndex = neighborIndices[i];
+            float weight = neighborWeights.Length > i ? neighborWeights[i] : 1f;
+            if (weight <= 0f)
+                continue;
+
+            center += boids[neighborIndex].Position * weight;
+            totalWeight += weight;
         }
 
-        float count = neighborIndices.Length;
-        Vec2 averageCenter = center / count;
+        if (totalWeight <= 0f)
+            return Vec2.Zero;
+
+        Vec2 averageCenter = center / totalWeight;
         Vec2 toCenter = averageCenter - self.Position;
 
         if (toCenter.IsNearlyZero())
@@ -29,6 +39,8 @@ public sealed class CohesionRule : IRule
 
         Vec2 desired = toCenter.WithLength(context.TargetSpeed * _weight);
         Vec2 steer = desired - self.Velocity;
-        return steer.ClampMagnitude(context.MaxForce);
+        Vec2 clamped = steer.ClampMagnitude(context.MaxForce);
+        context.Instrumentation?.RecordCohesion(selfIndex, clamped.Length);
+        return clamped;
     }
 }
