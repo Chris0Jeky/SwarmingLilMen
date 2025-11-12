@@ -125,6 +125,30 @@ public class CanonicalBoidsTests
     }
 
     [Fact]
+    public void CanonicalWorld_SeparationPriorityEngagesWhenOvercrowded()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 1f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 6f,
+            SeparationRadius = 3f,
+            SeparationPriorityRadiusFactor = 0.33f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(2f, 0f), new Vec2(-1f, 0f));
+
+        world.Step(0.1f);
+        var snapshot = world.CapturePerceptionSnapshot();
+
+        Assert.True(snapshot.SeparationPriorityTriggered, "Separation priority should engage when neighbors are closer than 1/3 of the sense radius");
+    }
+
+    [Fact]
     public void SeparationRule_RepelsCloseNeighbor()
     {
         var rule = new SeparationRule(weight: 1f, radius: 5f);
