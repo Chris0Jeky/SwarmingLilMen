@@ -123,16 +123,72 @@ public class CanonicalBoidsTests
         }
     }
 
-    private sealed class NeighborSpyRule : IRule
+    [Fact]
+    public void SeparationRule_RepelsCloseNeighbor()
     {
-        private readonly Dictionary<int, int> _observed = new();
-
-        public IReadOnlyDictionary<int, int> ObservedNeighborCounts => _observed;
-
-        public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
+        var rule = new SeparationRule(weight: 1f, radius: 5f);
+        var boids = new[]
         {
-            _observed[selfIndex] = neighborIndices.Length;
-            return Vec2.Zero;
-        }
+            new Boid(Vec2.Zero, new Vec2(1f, 0f)),
+            new Boid(new Vec2(2f, 0f), new Vec2(-1f, 0f))
+        };
+        var context = CreateTestContext();
+        var neighborIndices = new[] { 1 };
+
+        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
+        Assert.True(steer.X < 0f, "Steering should push away from the neighbor");
     }
+
+    [Fact]
+    public void AlignmentRule_MatchesNeighborHeading()
+    {
+        var rule = new AlignmentRule(weight: 1f);
+        var boids = new[]
+        {
+            new Boid(Vec2.Zero, new Vec2(0f, 0f)),
+            new Boid(new Vec2(0f, 0f), new Vec2(0f, 1f))
+        };
+        var context = CreateTestContext();
+        var neighborIndices = new[] { 1 };
+
+        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
+        Assert.True(steer.Y > 0f, "Steering should encourage upward heading");
+    }
+
+    [Fact]
+    public void CohesionRule_PullsTowardGroupCenter()
+    {
+        var rule = new CohesionRule(weight: 1f);
+        var boids = new[]
+        {
+            new Boid(new Vec2(-2f, 0f), new Vec2(1f, 0f)),
+            new Boid(new Vec2(2f, 0f), new Vec2(1f, 0f)),
+            new Boid(new Vec2(2f, 2f), new Vec2(1f, 0f))
+        };
+        var context = CreateTestContext();
+        var neighborIndices = new[] { 1, 2 };
+
+        Vec2 steer = rule.Compute(0, boids[0], boids, neighborIndices, context);
+        Assert.True(steer.X > 0f, "Steering should pull toward the centroid on the right");
+    }
+
+        private sealed class NeighborSpyRule : IRule
+        {
+            private readonly Dictionary<int, int> _observed = new();
+
+            public IReadOnlyDictionary<int, int> ObservedNeighborCounts => _observed;
+
+            public Vec2 Compute(int selfIndex, Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighborIndices, RuleContext context)
+            {
+                _observed[selfIndex] = neighborIndices.Length;
+                return Vec2.Zero;
+            }
+        }
+
+        private static RuleContext CreateTestContext() => new(
+            targetSpeed: 1f,
+            maxForce: 0.5f,
+            senseRadius: 10f,
+            fieldOfViewDegrees: 360f,
+            deltaTime: 0.016f);
 }
