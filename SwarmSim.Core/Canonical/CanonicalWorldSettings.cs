@@ -13,8 +13,16 @@ public sealed class CanonicalWorldSettings
     public float AlignmentWeight { get; init; } = 1f;
     public float CohesionWeight { get; init; } = 1f;
     public float SeparationPriorityRadiusFactor { get; init; } = 0.33f;
+    public float SeparationPriorityExitFactor { get; init; } = 0.45f;
     public float SeparationPriorityBoost { get; init; } = 2.5f;
+    public float SeparationPriorityHoldTime { get; init; } = 0.08f;
+    public float SeparationPriorityRampInTime { get; init; } = 0.08f;
+    public float SeparationPriorityRampOutTime { get; init; } = 0.1f;
+    public float SeparationSpeedDroop { get; init; } = 0.03f;
+    public float MaxTurnRateDegPerSecond { get; init; } = 360f;
     public float WanderStrength { get; init; } = 0.1f;
+    public float WhiskerTimeHorizon { get; init; } = 0.4f;
+    public float WhiskerWeight { get; init; } = 1.2f;
     public uint Seed { get; init; } = 123456u;
     public float WhiskerTimeHorizon { get; init; } = 0.4f; // seconds ahead to check
     public float WhiskerWeight { get; init; } = 1.2f;      // lateral avoidance weight
