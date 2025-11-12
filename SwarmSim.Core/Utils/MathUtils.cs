@@ -241,6 +241,21 @@ public static class MathUtils
     }
 
     /// <summary>
+    /// Smoothstep interpolation between two edges.
+    /// Returns a smooth transition from 0 to 1 as x goes from edge0 to edge1.
+    /// As described in the Canonical Boids smoothing plan:
+    /// smoothstep(a, b, x) = t^2 * (3 - 2t) where t = clamp((x-a)/(b-a), 0, 1)
+    /// </summary>
+    public static float SmoothStep(float edge0, float edge1, float x)
+    {
+        if (edge1 <= edge0)
+            return x >= edge1 ? 1f : 0f;
+
+        float t = Clamp01((x - edge0) / (edge1 - edge0));
+        return t * t * (3f - 2f * t);
+    }
+
+    /// <summary>
     /// Smootherstep interpolation (quintic).
     /// </summary>
     public static float SmootherStep(float t)
