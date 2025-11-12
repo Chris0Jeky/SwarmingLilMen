@@ -35,7 +35,7 @@ public class CanonicalBoidsTests
             SenseRadius = 5f
         };
 
-        var world = new CanonicalWorld(settings, new NaiveSpatialIndex());
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
         world.TryAddBoid(Vec2.Zero, new Vec2(3f, 0f));
 
         world.Step(0.5f);
@@ -57,7 +57,7 @@ public class CanonicalBoidsTests
             SenseRadius = 5f
         };
 
-        var world = new CanonicalWorld(settings, new NaiveSpatialIndex());
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
         var spy = new NeighborSpyRule();
         world.AddRule(spy);
 
@@ -68,7 +68,7 @@ public class CanonicalBoidsTests
         Assert.True(spy.ObservedNeighborCounts.TryGetValue(0, out int behindCount));
         Assert.Equal(0, behindCount);
 
-        var worldAhead = new CanonicalWorld(settings, new NaiveSpatialIndex());
+        var worldAhead = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
         var spyAhead = new NeighborSpyRule();
         worldAhead.AddRule(spyAhead);
 
@@ -94,7 +94,7 @@ public class CanonicalBoidsTests
 
         CanonicalWorld CreateWorld()
         {
-            var world = new CanonicalWorld(settings, new NaiveSpatialIndex());
+            var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
             for (int i = 0; i < 3; i++)
             {
                 var position = new Vec2(i * 2f, i * 1.5f);
