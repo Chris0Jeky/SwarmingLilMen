@@ -14,6 +14,14 @@ A high-performance 2D swarm simulation built from first principles in C#/.NET 8.
 - **Observability**: Metrics, snapshots, profiling, property tests, benchmarks
 - **Extensibility**: Small public API, Structure-of-Arrays internals, modular systems
 
+## 📝 Implementation Note
+
+This project is undergoing an architectural transition from a systems-based force approach to Reynolds' canonical steering behaviors. Two implementations currently exist side-by-side:
+- **Legacy** (default): Force-based SoA systems architecture
+- **Canonical** (`--canonical` flag): Steering behaviors, ~70% complete
+
+For developers: See `IMPLEMENTATION_EVOLUTION.md` for the full story on why we pivoted and what's next. New features should target the canonical implementation.
+
 ## ✨ Features (Planned)
 
 ### Current (Phase 0 - 80% Complete)
