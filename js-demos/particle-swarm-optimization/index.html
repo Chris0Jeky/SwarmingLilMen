@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Particle Swarm Optimization - SwarmingLilMen Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        #canvas {
+            background: #0a1520;
+            cursor: crosshair;
+            flex: 1;
+        }
+
+        .controls {
+            width: 360px;
+            background: rgba(15, 25, 35, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            border-left: 1px solid rgba(100, 200, 255, 0.2);
+        }
+
+        h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #4fc3f7;
+            text-shadow: 0 0 10px rgba(79, 195, 247, 0.5);
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(79, 195, 247, 0.05);
+            border-radius: 8px;
+            border: 1px solid rgba(79, 195, 247, 0.1);
+        }
+
+        .control-group h3 {
+            font-size: 13px;
+            margin-bottom: 12px;
+            color: #81d4fa;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-container:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .value {
+            background: rgba(79, 195, 247, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #4fc3f7;
+            min-width: 60px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(79, 195, 247, 0.6);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #4fc3f7;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 8px rgba(79, 195, 247, 0.6);
+        }
+
+        select {
+            width: 100%;
+            padding: 8px;
+            background: rgba(79, 195, 247, 0.1);
+            color: #e0e0e0;
+            border: 1px solid rgba(79, 195, 247, 0.3);
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        select:focus {
+            outline: none;
+            border-color: #4fc3f7;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #4fc3f7 0%, #0277bd 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(79, 195, 247, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(79, 195, 247, 0.5);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        button.secondary {
+            background: linear-gradient(135deg, #666 0%, #444 100%);
+            box-shadow: 0 4px 12px rgba(100, 100, 100, 0.3);
+        }
+
+        .stats {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.8;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .stats-value {
+            color: #4fc3f7;
+            font-family: monospace;
+        }
+
+        .stats-value.best {
+            color: #66ff66;
+            font-weight: bold;
+        }
+
+        .separator {
+            height: 1px;
+            background: rgba(79, 195, 247, 0.2);
+            margin: 15px 0;
+        }
+
+        .info-box {
+            background: rgba(79, 195, 247, 0.05);
+            border: 1px solid rgba(79, 195, 247, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        .info-box strong {
+            color: #4fc3f7;
+        }
+
+        .convergence-indicator {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(79, 195, 247, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(79, 195, 247, 0.2);
+        }
+
+        .convergence-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .convergence-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0277bd 0%, #4fc3f7 50%, #66ff66 100%);
+            transition: width 0.3s ease;
+        }
+
+        .legend {
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 8px;
+            align-items: center;
+            font-size: 11px;
+            margin-top: 10px;
+        }
+
+        .legend-color {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <h1>Particle Swarm Optimization</h1>
+        <div class="subtitle">Global optimization using swarm intelligence (Kennedy, Eberhart & Shi, 1995)</div>
+
+        <div class="control-group">
+            <h3>Optimization Function</h3>
+            <select id="functionSelect" onchange="changeFunction()">
+                <option value="sphere">Sphere (simple bowl)</option>
+                <option value="rastrigin" selected>Rastrigin (many minima)</option>
+                <option value="ackley">Ackley (nearly flat)</option>
+                <option value="rosenbrock">Rosenbrock (banana valley)</option>
+                <option value="himmelblau">Himmelblau (4 optima)</option>
+            </select>
+        </div>
+
+        <div class="control-group">
+            <h3>Swarm Parameters</h3>
+            <div class="slider-container">
+                <label>
+                    <span>Particle Count</span>
+                    <span class="value" id="particleCountValue">30</span>
+                </label>
+                <input type="range" id="particleCount" min="10" max="100" value="30" step="5">
+            </div>
+            <div class="slider-container">
+                <label>
+                    <span>Inertia Weight (w)</span>
+                    <span class="value" id="inertiaValue">0.7</span>
+                </label>
+                <input type="range" id="inertia" min="0" max="1" value="0.7" step="0.05">
+            </div>
+            <div class="slider-container">
+                <label>
+                    <span>Cognitive (c₁)</span>
+                    <span class="value" id="cognitiveValue">1.5</span>
+                </label>
+                <input type="range" id="cognitive" min="0" max="3" value="1.5" step="0.1">
+            </div>
+            <div class="slider-container">
+                <label>
+                    <span>Social (c₂)</span>
+                    <span class="value" id="socialValue">1.5</span>
+                </label>
+                <input type="range" id="social" min="0" max="3" value="1.5" step="0.1">
+            </div>
+            <div class="slider-container">
+                <label>
+                    <span>Max Velocity</span>
+                    <span class="value" id="maxVelValue">0.2</span>
+                </label>
+                <input type="range" id="maxVel" min="0.05" max="0.5" value="0.2" step="0.05">
+            </div>
+        </div>
+
+        <button onclick="resetSwarm()">Reset Swarm</button>
+        <button class="secondary" onclick="togglePause()" id="pauseBtn">Pause</button>
+
+        <div class="separator"></div>
+
+        <div class="stats">
+            <div class="stats-item">
+                <span>Iterations:</span>
+                <span class="stats-value" id="iterations">0</span>
+            </div>
+            <div class="stats-item">
+                <span>Global Best Fitness:</span>
+                <span class="stats-value best" id="globalBest">--</span>
+            </div>
+            <div class="stats-item">
+                <span>Average Fitness:</span>
+                <span class="stats-value" id="avgFitness">--</span>
+            </div>
+            <div class="stats-item">
+                <span>Active Particles:</span>
+                <span class="stats-value" id="activeParticles">30</span>
+            </div>
+        </div>
+
+        <div class="convergence-indicator">
+            <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px;">
+                <span>Convergence Progress</span>
+                <span class="stats-value" id="convergencePercent">0%</span>
+            </div>
+            <div class="convergence-bar">
+                <div class="convergence-fill" id="convergenceFill" style="width: 0%"></div>
+            </div>
+        </div>
+
+        <div class="legend">
+            <div class="legend-color" style="background: #4fc3f7;"></div>
+            <div>Current particles</div>
+            <div class="legend-color" style="background: #ffa726;"></div>
+            <div>Personal best positions</div>
+            <div class="legend-color" style="background: #66ff66; box-shadow: 0 0 10px #66ff66;"></div>
+            <div>Global best (optimum)</div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="info-box">
+            <strong>How PSO Works:</strong><br>
+            Particles explore the search space with velocity. Each remembers its personal best position and is attracted to the global best found by any particle.
+            Velocity updates balance <em>inertia</em> (current direction), <em>cognitive</em> (personal best), and <em>social</em> (global best) components.
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // TEST FUNCTIONS
+        // ============================================================================
+
+        const testFunctions = {
+            sphere: {
+                name: 'Sphere',
+                bounds: { min: -5, max: 5 },
+                optimum: 0,
+                fn: (x, y) => x*x + y*y
+            },
+            rastrigin: {
+                name: 'Rastrigin',
+                bounds: { min: -5.12, max: 5.12 },
+                optimum: 0,
+                fn: (x, y) => 20 + x*x + y*y - 10*(Math.cos(2*Math.PI*x) + Math.cos(2*Math.PI*y))
+            },
+            ackley: {
+                name: 'Ackley',
+                bounds: { min: -5, max: 5 },
+                optimum: 0,
+                fn: (x, y) => {
+                    const a = 20;
+                    const b = 0.2;
+                    const c = 2 * Math.PI;
+                    return -a * Math.exp(-b * Math.sqrt(0.5 * (x*x + y*y))) -
+                           Math.exp(0.5 * (Math.cos(c*x) + Math.cos(c*y))) + a + Math.E;
+                }
+            },
+            rosenbrock: {
+                name: 'Rosenbrock',
+                bounds: { min: -2, max: 2 },
+                optimum: 0,
+                fn: (x, y) => (1-x)*(1-x) + 100*(y - x*x)*(y - x*x)
+            },
+            himmelblau: {
+                name: 'Himmelblau',
+                bounds: { min: -5, max: 5 },
+                optimum: 0,
+                fn: (x, y) => (x*x + y - 11)*(x*x + y - 11) + (x + y*y - 7)*(x + y*y - 7)
+            }
+        };
+
+        // ============================================================================
+        // PARTICLE CLASS
+        // ============================================================================
+
+        class Particle {
+            constructor(bounds) {
+                // Initialize position randomly
+                this.x = Math.random() * (bounds.max - bounds.min) + bounds.min;
+                this.y = Math.random() * (bounds.max - bounds.min) + bounds.min;
+
+                // Initialize velocity randomly (small)
+                const velRange = (bounds.max - bounds.min) * 0.1;
+                this.vx = (Math.random() - 0.5) * velRange;
+                this.vy = (Math.random() - 0.5) * velRange;
+
+                // Personal best
+                this.pBestX = this.x;
+                this.pBestY = this.y;
+                this.pBestFitness = Infinity;
+
+                // Trail for visualization
+                this.trail = [];
+                this.maxTrailLength = 20;
+            }
+
+            evaluate(fn) {
+                const fitness = fn(this.x, this.y);
+
+                // Update personal best
+                if (fitness < this.pBestFitness) {
+                    this.pBestX = this.x;
+                    this.pBestY = this.y;
+                    this.pBestFitness = fitness;
+                }
+
+                return fitness;
+            }
+
+            update(gBestX, gBestY, w, c1, c2, maxVel, bounds) {
+                // PSO velocity update equation
+                const r1 = Math.random();
+                const r2 = Math.random();
+
+                // Inertia component
+                this.vx = w * this.vx;
+                this.vy = w * this.vy;
+
+                // Cognitive component (personal best)
+                this.vx += c1 * r1 * (this.pBestX - this.x);
+                this.vy += c1 * r1 * (this.pBestY - this.y);
+
+                // Social component (global best)
+                this.vx += c2 * r2 * (gBestX - this.x);
+                this.vy += c2 * r2 * (gBestY - this.y);
+
+                // Clamp velocity
+                const velRange = (bounds.max - bounds.min) * maxVel;
+                this.vx = Math.max(-velRange, Math.min(velRange, this.vx));
+                this.vy = Math.max(-velRange, Math.min(velRange, this.vy));
+
+                // Update position
+                this.x += this.vx;
+                this.y += this.vy;
+
+                // Boundary handling (reflect)
+                if (this.x < bounds.min) {
+                    this.x = bounds.min;
+                    this.vx = -this.vx * 0.5;
+                }
+                if (this.x > bounds.max) {
+                    this.x = bounds.max;
+                    this.vx = -this.vx * 0.5;
+                }
+                if (this.y < bounds.min) {
+                    this.y = bounds.min;
+                    this.vy = -this.vy * 0.5;
+                }
+                if (this.y > bounds.max) {
+                    this.y = bounds.max;
+                    this.vy = -this.vy * 0.5;
+                }
+
+                // Update trail
+                this.trail.push({ x: this.x, y: this.y });
+                if (this.trail.length > this.maxTrailLength) {
+                    this.trail.shift();
+                }
+            }
+        }
+
+        // ============================================================================
+        // GLOBAL STATE
+        // ============================================================================
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+
+        const config = {
+            particleCount: 30,
+            inertia: 0.7,
+            cognitive: 1.5,
+            social: 1.5,
+            maxVel: 0.2,
+            currentFunction: 'rastrigin'
+        };
+
+        let particles = [];
+        let gBestX = 0;
+        let gBestY = 0;
+        let gBestFitness = Infinity;
+        let iterations = 0;
+        let isPaused = false;
+        let fitnessLandscape = null;
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth - 360;
+            canvas.height = window.innerHeight;
+            generateFitnessLandscape();
+        }
+
+        function generateFitnessLandscape() {
+            const resolution = 200;
+            const func = testFunctions[config.currentFunction];
+            const bounds = func.bounds;
+
+            const landscape = ctx.createImageData(resolution, resolution);
+            const data = landscape.data;
+
+            let minFitness = Infinity;
+            let maxFitness = -Infinity;
+
+            // First pass: find min/max for normalization
+            const fitnessValues = [];
+            for (let py = 0; py < resolution; py++) {
+                fitnessValues[py] = [];
+                for (let px = 0; px < resolution; px++) {
+                    const x = (px / resolution) * (bounds.max - bounds.min) + bounds.min;
+                    const y = (py / resolution) * (bounds.max - bounds.min) + bounds.min;
+                    const fitness = func.fn(x, y);
+                    fitnessValues[py][px] = fitness;
+                    minFitness = Math.min(minFitness, fitness);
+                    maxFitness = Math.max(maxFitness, fitness);
+                }
+            }
+
+            // Second pass: normalize and create heatmap
+            for (let py = 0; py < resolution; py++) {
+                for (let px = 0; px < resolution; px++) {
+                    const fitness = fitnessValues[py][px];
+                    const normalized = (fitness - minFitness) / (maxFitness - minFitness);
+
+                    const idx = (py * resolution + px) * 4;
+
+                    // Blue (low fitness/good) to Red (high fitness/bad)
+                    const hue = (1 - normalized) * 240; // 240 = blue, 0 = red
+                    const rgb = hslToRgb(hue / 360, 0.8, 0.3);
+
+                    data[idx] = rgb[0];
+                    data[idx + 1] = rgb[1];
+                    data[idx + 2] = rgb[2];
+                    data[idx + 3] = 255;
+                }
+            }
+
+            fitnessLandscape = landscape;
+        }
+
+        function hslToRgb(h, s, l) {
+            let r, g, b;
+            if (s === 0) {
+                r = g = b = l;
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        function initParticles() {
+            const func = testFunctions[config.currentFunction];
+            particles = [];
+            gBestX = 0;
+            gBestY = 0;
+            gBestFitness = Infinity;
+            iterations = 0;
+
+            for (let i = 0; i < config.particleCount; i++) {
+                const p = new Particle(func.bounds);
+                particles.push(p);
+
+                const fitness = p.evaluate(func.fn);
+                if (fitness < gBestFitness) {
+                    gBestFitness = fitness;
+                    gBestX = p.x;
+                    gBestY = p.y;
+                }
+            }
+        }
+
+        function resetSwarm() {
+            initParticles();
+        }
+
+        function changeFunction() {
+            config.currentFunction = document.getElementById('functionSelect').value;
+            generateFitnessLandscape();
+            initParticles();
+        }
+
+        function togglePause() {
+            isPaused = !isPaused;
+            document.getElementById('pauseBtn').textContent = isPaused ? 'Resume' : 'Pause';
+        }
+
+        // ============================================================================
+        // COORDINATE TRANSFORMATION
+        // ============================================================================
+
+        function worldToScreen(x, y) {
+            const func = testFunctions[config.currentFunction];
+            const bounds = func.bounds;
+            const margin = 20;
+            const usableWidth = canvas.width - 2 * margin;
+            const usableHeight = canvas.height - 2 * margin;
+
+            const screenX = ((x - bounds.min) / (bounds.max - bounds.min)) * usableWidth + margin;
+            const screenY = ((y - bounds.min) / (bounds.max - bounds.min)) * usableHeight + margin;
+
+            return { x: screenX, y: screenY };
+        }
+
+        // ============================================================================
+        // ANIMATION LOOP
+        // ============================================================================
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Clear canvas
+            ctx.fillStyle = '#0a1520';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Draw fitness landscape
+            if (fitnessLandscape) {
+                const margin = 20;
+                const usableWidth = canvas.width - 2 * margin;
+                const usableHeight = canvas.height - 2 * margin;
+                ctx.putImageData(fitnessLandscape, margin, margin);
+            }
+
+            if (!isPaused) {
+                // Update particles
+                const func = testFunctions[config.currentFunction];
+
+                for (let p of particles) {
+                    p.update(
+                        gBestX, gBestY,
+                        config.inertia,
+                        config.cognitive,
+                        config.social,
+                        config.maxVel,
+                        func.bounds
+                    );
+
+                    const fitness = p.evaluate(func.fn);
+                    if (fitness < gBestFitness) {
+                        gBestFitness = fitness;
+                        gBestX = p.x;
+                        gBestY = p.y;
+                    }
+                }
+
+                iterations++;
+            }
+
+            // Draw personal best positions
+            ctx.fillStyle = 'rgba(255, 167, 38, 0.4)';
+            for (let p of particles) {
+                const pos = worldToScreen(p.pBestX, p.pBestY);
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Draw particle trails
+            for (let p of particles) {
+                if (p.trail.length < 2) continue;
+
+                ctx.strokeStyle = 'rgba(79, 195, 247, 0.3)';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+
+                for (let i = 0; i < p.trail.length; i++) {
+                    const pos = worldToScreen(p.trail[i].x, p.trail[i].y);
+                    if (i === 0) {
+                        ctx.moveTo(pos.x, pos.y);
+                    } else {
+                        ctx.lineTo(pos.x, pos.y);
+                    }
+                }
+                ctx.stroke();
+            }
+
+            // Draw particles
+            for (let p of particles) {
+                const pos = worldToScreen(p.x, p.y);
+
+                ctx.fillStyle = '#4fc3f7';
+                ctx.strokeStyle = '#81d4fa';
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.stroke();
+            }
+
+            // Draw global best (highlight!)
+            const gBestPos = worldToScreen(gBestX, gBestY);
+            ctx.fillStyle = '#66ff66';
+            ctx.strokeStyle = '#44dd44';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(gBestPos.x, gBestPos.y, 8, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // Glow effect
+            ctx.shadowBlur = 20;
+            ctx.shadowColor = '#66ff66';
+            ctx.beginPath();
+            ctx.arc(gBestPos.x, gBestPos.y, 8, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+
+            // Update stats
+            const avgFitness = particles.reduce((sum, p) => sum + p.evaluate(testFunctions[config.currentFunction].fn), 0) / particles.length;
+            const optimum = testFunctions[config.currentFunction].optimum;
+            const convergence = Math.max(0, Math.min(100, 100 * (1 - Math.abs(gBestFitness - optimum) / Math.max(1, Math.abs(optimum) + 10))));
+
+            document.getElementById('iterations').textContent = iterations;
+            document.getElementById('globalBest').textContent = gBestFitness.toFixed(6);
+            document.getElementById('avgFitness').textContent = avgFitness.toFixed(6);
+            document.getElementById('activeParticles').textContent = particles.length;
+            document.getElementById('convergencePercent').textContent = convergence.toFixed(1) + '%';
+            document.getElementById('convergenceFill').style.width = convergence + '%';
+        }
+
+        // ============================================================================
+        // UI CONTROLS
+        // ============================================================================
+
+        function setupControls() {
+            // Particle count
+            const particleCountSlider = document.getElementById('particleCount');
+            const particleCountValue = document.getElementById('particleCountValue');
+            particleCountSlider.addEventListener('input', (e) => {
+                config.particleCount = parseInt(e.target.value);
+                particleCountValue.textContent = config.particleCount;
+
+                while (particles.length < config.particleCount) {
+                    const func = testFunctions[config.currentFunction];
+                    const p = new Particle(func.bounds);
+                    particles.push(p);
+                    p.evaluate(func.fn);
+                }
+                while (particles.length > config.particleCount) {
+                    particles.pop();
+                }
+            });
+
+            // Inertia
+            const inertiaSlider = document.getElementById('inertia');
+            const inertiaValue = document.getElementById('inertiaValue');
+            inertiaSlider.addEventListener('input', (e) => {
+                config.inertia = parseFloat(e.target.value);
+                inertiaValue.textContent = config.inertia.toFixed(2);
+            });
+
+            // Cognitive
+            const cognitiveSlider = document.getElementById('cognitive');
+            const cognitiveValue = document.getElementById('cognitiveValue');
+            cognitiveSlider.addEventListener('input', (e) => {
+                config.cognitive = parseFloat(e.target.value);
+                cognitiveValue.textContent = config.cognitive.toFixed(1);
+            });
+
+            // Social
+            const socialSlider = document.getElementById('social');
+            const socialValue = document.getElementById('socialValue');
+            socialSlider.addEventListener('input', (e) => {
+                config.social = parseFloat(e.target.value);
+                socialValue.textContent = config.social.toFixed(1);
+            });
+
+            // Max velocity
+            const maxVelSlider = document.getElementById('maxVel');
+            const maxVelValue = document.getElementById('maxVelValue');
+            maxVelSlider.addEventListener('input', (e) => {
+                config.maxVel = parseFloat(e.target.value);
+                maxVelValue.textContent = config.maxVel.toFixed(2);
+            });
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        setupControls();
+        initParticles();
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>
