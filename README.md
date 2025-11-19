@@ -112,6 +112,37 @@ For recipes see [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) and for
 - [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) explains every major field (vision, weights, collision avoidance, etc.) and how changing it affects behaviour.
 - [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) provides ready-made recipes (balanced, peaceful, warbands) you can copy and modify.
 
+## 🌐 JavaScript Demos
+
+For quick prototyping, demonstrations, and learning, we provide standalone browser-based implementations:
+
+### [Boids Basic Demo](js-demos/boids-basic/)
+A beautiful, interactive implementation of Reynolds' Boids algorithm that runs directly in your browser:
+- ✨ Real-time parameter adjustment with sliders
+- 🎨 Motion trails and debug visualization
+- 🎯 Multiple behavioral presets (chaotic, tight flocks, flowing)
+- 🖱️ Click to spawn boids interactively
+- 📦 No dependencies, just open `index.html`
+
+**Quick start:**
+```bash
+# Just open in your browser
+open js-demos/boids-basic/index.html
+
+# Or serve with a local server
+cd js-demos/boids-basic
+python3 -m http.server 8000
+# Visit http://localhost:8000
+```
+
+These demos are perfect for:
+- **Quick iteration**: Test parameters without recompiling C#
+- **Demonstrations**: Easy to share, no installation needed
+- **Learning**: Clean, commented code showing core algorithms
+- **Prototyping**: Experiment before implementing in C#
+
+See [`js-demos/README.md`](js-demos/README.md) for more demos and details.
+
 ## 📁 Project Structure
 
 ```
@@ -121,10 +152,13 @@ SwarmingLilMen/
 │   ├── AgentState.cs       # Behavioral state flags
 │   ├── SimConfig.cs        # Configuration system
 │   ├── World.cs            # Main simulation with SoA data
+│   ├── Canonical/          # New canonical boids implementation
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Render/        # Raylib-cs visualization
 ├── SwarmSim.Tests/         # xUnit test suite
 ├── SwarmSim.Benchmarks/    # BenchmarkDotNet performance tests
+├── js-demos/               # Browser-based standalone demos
+│   └── boids-basic/        # Interactive boids simulation
 ├── filesAndResources/      # Documentation and scripts
 ├── configs/                # JSON configuration presets
 ├── CLAUDE.md               # AI assistant guidelines
