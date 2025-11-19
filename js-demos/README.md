@@ -24,6 +24,16 @@ An interactive demonstration of the Vicsek model showing phase transitions in ac
 
 **[Launch Demo](./self-propelled-particles/index.html)**
 
+### [Ant Colony Optimization](./ant-colony-optimization/)
+An interactive demonstration of stigmergy-based pathfinding (Dorigo, 1992):
+- Click to place food sources, drag to draw walls/obstacles
+- Watch pheromone trails form and evaporate in real-time
+- See emergent path optimization through positive feedback
+- Adjust evaporation rate, deposit amount, and colony size
+- Demonstrates indirect communication and swarm intelligence
+
+**[Launch Demo](./ant-colony-optimization/index.html)**
+
 ---
 
 ## Purpose
@@ -72,7 +82,6 @@ Planned standalone implementations:
 - [ ] **Obstacle Avoidance**: Steering around static/dynamic obstacles
 - [ ] **Flow Fields**: Following vector fields
 - [ ] **Particle Life**: Chemistry-inspired attraction/repulsion matrix
-- [ ] **Ant Colony**: Pheromone trails and emergent pathfinding
 - [ ] **Kuramoto Model**: Phase-coupled oscillators (firefly synchronization)
 
 ## Contributing

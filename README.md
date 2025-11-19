@@ -130,14 +130,22 @@ An interactive demonstration of phase transitions in active matter:
 - 🎨 Multiple visualization modes (arrows, trails, density heatmap)
 - 🎓 Educational tool for statistical mechanics
 
+### [Ant Colony Optimization](js-demos/ant-colony-optimization/)
+Stigmergy-based pathfinding with pheromone trails (Dorigo, 1992):
+- 🐜 Click to place food, drag to draw walls/obstacles
+- 💫 Watch pheromone trails form, evaporate, and converge to optimal paths
+- 🧪 Experiment with evaporation rate, deposit amount, exploration
+- 🏆 See emergent optimization through positive feedback loops
+
 **Quick start:**
 ```bash
 # Just open in your browser
 open js-demos/boids-basic/index.html
 open js-demos/self-propelled-particles/index.html
+open js-demos/ant-colony-optimization/index.html
 
 # Or serve with a local server
-cd js-demos/boids-basic  # or self-propelled-particles
+cd js-demos/ant-colony-optimization  # or boids-basic, or self-propelled-particles
 python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
@@ -166,7 +174,8 @@ SwarmingLilMen/
 ├── SwarmSim.Benchmarks/    # BenchmarkDotNet performance tests
 ├── js-demos/               # Browser-based standalone demos
 │   ├── boids-basic/        # Interactive boids simulation
-│   └── self-propelled-particles/  # Vicsek model (phase transitions)
+│   ├── self-propelled-particles/  # Vicsek model (phase transitions)
+│   └── ant-colony-optimization/   # ACO pathfinding (stigmergy)
 ├── filesAndResources/      # Documentation and scripts
 ├── configs/                # JSON configuration presets
 ├── CLAUDE.md               # AI assistant guidelines
