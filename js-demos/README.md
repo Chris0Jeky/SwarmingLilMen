@@ -82,7 +82,6 @@ Planned standalone implementations:
 - [ ] **Obstacle Avoidance**: Steering around static/dynamic obstacles
 - [ ] **Flow Fields**: Following vector fields
 - [ ] **Particle Life**: Chemistry-inspired attraction/repulsion matrix
-- [ ] **Ant Colony**: Pheromone trails and emergent pathfinding
 - [ ] **Kuramoto Model**: Phase-coupled oscillators (firefly synchronization)
 
 ## Contributing

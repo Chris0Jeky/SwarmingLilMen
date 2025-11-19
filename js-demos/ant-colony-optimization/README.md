@@ -2,8 +2,6 @@
 
 An interactive browser-based demonstration of **Ant Colony Optimization** (Dorigo, 1992), showcasing stigmergy-based pathfinding and emergent route optimization through pheromone trails.
 
-![ACO Demo](../../docs/aco-demo-screenshot.png)
-
 ## Features
 
 - **Interactive environment building**: Click to place food, drag to draw walls

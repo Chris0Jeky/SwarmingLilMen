@@ -478,8 +478,8 @@
                     this.angle + sensorAngle
                 ];
 
-                let maxStrength = 0;
-                let bestAngle = this.angle;
+                const readings = [];
+                let totalWeight = 0;
 
                 for (let angle of sensors) {
                     const sensorX = this.x + Math.cos(angle) * sensorDistance;
@@ -490,14 +490,27 @@
 
                     if (gridX >= 0 && gridX < grid.cols && gridY >= 0 && gridY < grid.rows) {
                         const strength = grid.data[gridY][gridX];
-                        if (strength > maxStrength) {
-                            maxStrength = strength;
-                            bestAngle = angle;
-                        }
+                        const weight = strength > 0 ? Math.pow(strength, config.alpha) : 0;
+
+                        readings.push({ strength, angle, weight });
+                        totalWeight += weight;
                     }
                 }
 
-                return { strength: maxStrength, angle: bestAngle };
+                if (totalWeight <= 0) {
+                    return { strength: 0, angle: this.angle };
+                }
+
+                // Roulette-wheel selection so low alpha increases exploration
+                let choice = Math.random() * totalWeight;
+                for (const reading of readings) {
+                    choice -= reading.weight;
+                    if (choice <= 0) {
+                        return reading;
+                    }
+                }
+
+                return readings[readings.length - 1];
             }
 
             isWall(x, y, walls) {
