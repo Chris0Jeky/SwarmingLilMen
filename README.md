@@ -137,15 +137,24 @@ Stigmergy-based pathfinding with pheromone trails (Dorigo, 1992):
 - 🧪 Experiment with evaporation rate, deposit amount, exploration
 - 🏆 See emergent optimization through positive feedback loops
 
+### [Particle Swarm Optimization](js-demos/particle-swarm-optimization/)
+Global optimization using velocity-based swarm search (Kennedy, Eberhart & Shi, 1995):
+- 🎯 Five benchmark functions with beautiful fitness landscape visualization
+- 🌊 Watch particles surf the optimization surface with momentum
+- ⚡ Adjust inertia weight, cognitive/social coefficients in real-time
+- 📈 Track convergence progress and global best solution
+- 🧬 Demonstrates continuous optimization (vs ACO's discrete paths)
+
 **Quick start:**
 ```bash
 # Just open in your browser
 open js-demos/boids-basic/index.html
 open js-demos/self-propelled-particles/index.html
 open js-demos/ant-colony-optimization/index.html
+open js-demos/particle-swarm-optimization/index.html
 
 # Or serve with a local server
-cd js-demos/ant-colony-optimization  # or boids-basic, or self-propelled-particles
+cd js-demos/particle-swarm-optimization  # or any other demo
 python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
@@ -175,7 +184,8 @@ SwarmingLilMen/
 ├── js-demos/               # Browser-based standalone demos
 │   ├── boids-basic/        # Interactive boids simulation
 │   ├── self-propelled-particles/  # Vicsek model (phase transitions)
-│   └── ant-colony-optimization/   # ACO pathfinding (stigmergy)
+│   ├── ant-colony-optimization/   # ACO pathfinding (stigmergy)
+│   └── particle-swarm-optimization/ # PSO (continuous optimization)
 ├── filesAndResources/      # Documentation and scripts
 ├── configs/                # JSON configuration presets
 ├── CLAUDE.md               # AI assistant guidelines

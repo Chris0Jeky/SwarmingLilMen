@@ -34,6 +34,17 @@ An interactive demonstration of stigmergy-based pathfinding (Dorigo, 1992):
 
 **[Launch Demo](./ant-colony-optimization/index.html)**
 
+### [Particle Swarm Optimization](./particle-swarm-optimization/)
+Global optimization through velocity-based swarm search (Kennedy, Eberhart & Shi, 1995):
+- Five classic test functions (Rastrigin, Ackley, Rosenbrock, Himmelblau, Sphere)
+- Beautiful fitness landscape visualization with heatmap
+- Watch particles converge to optimal solutions
+- Adjust inertia weight, cognitive/social coefficients, max velocity
+- Real-time convergence tracking and statistics
+- Demonstrates continuous optimization vs ACO's discrete optimization
+
+**[Launch Demo](./particle-swarm-optimization/index.html)**
+
 ---
 
 ## Purpose
