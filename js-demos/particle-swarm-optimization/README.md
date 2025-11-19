@@ -2,8 +2,6 @@
 
 An interactive browser-based demonstration of **Particle Swarm Optimization** (Kennedy, Eberhart & Shi, 1995), a global optimization algorithm inspired by the social behavior of bird flocking and fish schooling.
 
-![PSO Demo](../../docs/pso-demo-screenshot.png)
-
 ## Features
 
 - **Multiple test functions**: Sphere, Rastrigin, Ackley, Rosenbrock, Himmelblau
