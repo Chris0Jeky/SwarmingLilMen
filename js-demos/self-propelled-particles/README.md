@@ -2,8 +2,6 @@
 
 An interactive browser-based demonstration of the **Vicsek model**, showcasing emergent collective motion and order-disorder phase transitions in active matter systems.
 
-![SPP Demo](../../docs/spp-demo-screenshot.png)
-
 ## Features
 
 - **Real-time phase transitions**: Watch ordered/disordered transitions as you adjust noise
