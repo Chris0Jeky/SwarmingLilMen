@@ -117,20 +117,27 @@ For recipes see [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) and for
 For quick prototyping, demonstrations, and learning, we provide standalone browser-based implementations:
 
 ### [Boids Basic Demo](js-demos/boids-basic/)
-A beautiful, interactive implementation of Reynolds' Boids algorithm that runs directly in your browser:
+A beautiful, interactive implementation of Reynolds' Boids algorithm:
 - ✨ Real-time parameter adjustment with sliders
 - 🎨 Motion trails and debug visualization
 - 🎯 Multiple behavioral presets (chaotic, tight flocks, flowing)
 - 🖱️ Click to spawn boids interactively
-- 📦 No dependencies, just open `index.html`
+
+### [Self-Propelled Particles (Vicsek Model)](js-demos/self-propelled-particles/)
+An interactive demonstration of phase transitions in active matter:
+- 🔬 Watch order-disorder phase transitions in real-time
+- 📊 Live order parameter tracking (measure of collective alignment)
+- 🎨 Multiple visualization modes (arrows, trails, density heatmap)
+- 🎓 Educational tool for statistical mechanics
 
 **Quick start:**
 ```bash
 # Just open in your browser
 open js-demos/boids-basic/index.html
+open js-demos/self-propelled-particles/index.html
 
 # Or serve with a local server
-cd js-demos/boids-basic
+cd js-demos/boids-basic  # or self-propelled-particles
 python3 -m http.server 8000
 # Visit http://localhost:8000
 ```
@@ -141,7 +148,7 @@ These demos are perfect for:
 - **Learning**: Clean, commented code showing core algorithms
 - **Prototyping**: Experiment before implementing in C#
 
-See [`js-demos/README.md`](js-demos/README.md) for more demos and details.
+See [`js-demos/README.md`](js-demos/README.md) for all available demos and details.
 
 ## 📁 Project Structure
 
@@ -158,7 +165,8 @@ SwarmingLilMen/
 ├── SwarmSim.Tests/         # xUnit test suite
 ├── SwarmSim.Benchmarks/    # BenchmarkDotNet performance tests
 ├── js-demos/               # Browser-based standalone demos
-│   └── boids-basic/        # Interactive boids simulation
+│   ├── boids-basic/        # Interactive boids simulation
+│   └── self-propelled-particles/  # Vicsek model (phase transitions)
 ├── filesAndResources/      # Documentation and scripts
 ├── configs/                # JSON configuration presets
 ├── CLAUDE.md               # AI assistant guidelines

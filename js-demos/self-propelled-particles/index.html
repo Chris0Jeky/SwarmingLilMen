@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Self-Propelled Particles (Vicsek Model) - SwarmingLilMen Demo</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: #e0e0e0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+        }
+
+        #canvas {
+            background: #0a0e14;
+            cursor: crosshair;
+            flex: 1;
+        }
+
+        .controls {
+            width: 340px;
+            background: rgba(20, 25, 35, 0.95);
+            padding: 20px;
+            overflow-y: auto;
+            box-shadow: -5px 0 20px rgba(0, 0, 0, 0.5);
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        h1 {
+            font-size: 18px;
+            margin-bottom: 5px;
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .subtitle {
+            font-size: 11px;
+            color: #888;
+            margin-bottom: 15px;
+            line-height: 1.4;
+        }
+
+        .control-group {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .control-group h3 {
+            font-size: 13px;
+            margin-bottom: 12px;
+            color: #ff9999;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .slider-container {
+            margin-bottom: 15px;
+        }
+
+        .slider-container:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+            font-size: 12px;
+            color: #bbb;
+        }
+
+        .value {
+            background: rgba(255, 107, 107, 0.2);
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            color: #ff6b6b;
+            min-width: 50px;
+            text-align: right;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            border-radius: 2px;
+            background: rgba(255, 255, 255, 0.1);
+            outline: none;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.6);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #ff6b6b;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 8px rgba(255, 107, 107, 0.6);
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 10px;
+            background: linear-gradient(135deg, #ff6b6b 0%, #c92a2a 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: all 0.3s;
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.3);
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(255, 107, 107, 0.5);
+        }
+
+        button:active {
+            transform: translateY(0);
+        }
+
+        .radio-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .radio-container {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+
+        .radio-container:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .radio-container input[type="radio"] {
+            margin-right: 8px;
+            cursor: pointer;
+        }
+
+        .radio-container label {
+            cursor: pointer;
+            margin: 0;
+            font-size: 12px;
+        }
+
+        .stats {
+            font-size: 11px;
+            color: #888;
+            line-height: 1.6;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+
+        .stats-value {
+            color: #ff6b6b;
+            font-family: monospace;
+        }
+
+        .order-indicator {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 6px;
+            border: 1px solid rgba(255, 107, 107, 0.2);
+        }
+
+        .order-bar {
+            width: 100%;
+            height: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+
+        .order-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #c92a2a 0%, #ff6b6b 50%, #51cf66 100%);
+            transition: width 0.3s ease;
+        }
+
+        .separator {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 15px 0;
+        }
+
+        .preset-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .preset-buttons button {
+            margin-bottom: 0;
+            font-size: 11px;
+            padding: 8px;
+        }
+
+        .info-box {
+            background: rgba(255, 107, 107, 0.05);
+            border: 1px solid rgba(255, 107, 107, 0.2);
+            border-radius: 6px;
+            padding: 12px;
+            font-size: 11px;
+            line-height: 1.5;
+            color: #ccc;
+        }
+
+        .info-box strong {
+            color: #ff6b6b;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+
+    <div class="controls">
+        <h1>Self-Propelled Particles</h1>
+        <div class="subtitle">Vicsek model demonstrating collective motion and phase transitions in active matter</div>
+
+        <div class="control-group">
+            <h3>Presets</h3>
+            <div class="preset-buttons">
+                <button onclick="applyPreset('ordered')">Ordered</button>
+                <button onclick="applyPreset('critical')">Critical</button>
+                <button onclick="applyPreset('disordered')">Disordered</button>
+                <button onclick="applyPreset('bands')">Bands</button>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Phase Transition</h3>
+            <div class="slider-container">
+                <label>
+                    <span>Noise η (eta)</span>
+                    <span class="value" id="noiseValue">0.20</span>
+                </label>
+                <input type="range" id="noise" min="0" max="1" value="0.20" step="0.01">
+                <div style="font-size: 10px; color: #666; margin-top: 4px;">
+                    Low: Ordered phase • High: Disordered phase
+                </div>
+            </div>
+            <div class="order-indicator">
+                <div style="display: flex; justify-content: space-between; font-size: 10px; margin-bottom: 4px;">
+                    <span>Order Parameter φ</span>
+                    <span class="stats-value" id="orderParam">0.00</span>
+                </div>
+                <div class="order-bar">
+                    <div class="order-fill" id="orderFill" style="width: 0%"></div>
+                </div>
+                <div style="font-size: 9px; color: #666; margin-top: 4px; text-align: center;">
+                    0.0 = random • 1.0 = aligned
+                </div>
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Population</h3>
+            <div class="slider-container">
+                <label>
+                    <span>Particle Count</span>
+                    <span class="value" id="countValue">400</span>
+                </label>
+                <input type="range" id="count" min="100" max="2000" value="400" step="50">
+            </div>
+            <div class="slider-container">
+                <label>
+                    <span>Speed</span>
+                    <span class="value" id="speedValue">2.0</span>
+                </label>
+                <input type="range" id="speed" min="0.5" max="5" value="2.0" step="0.1">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Interaction</h3>
+            <div class="slider-container">
+                <label>
+                    <span>Interaction Radius</span>
+                    <span class="value" id="radiusValue">30</span>
+                </label>
+                <input type="range" id="radius" min="10" max="100" value="30" step="5">
+            </div>
+        </div>
+
+        <div class="control-group">
+            <h3>Visualization</h3>
+            <div class="radio-group">
+                <div class="radio-container">
+                    <input type="radio" id="viz-arrows" name="visualization" value="arrows" checked>
+                    <label for="viz-arrows">Arrows (velocity direction)</label>
+                </div>
+                <div class="radio-container">
+                    <input type="radio" id="viz-dots" name="visualization" value="dots">
+                    <label for="viz-dots">Dots (simple particles)</label>
+                </div>
+                <div class="radio-container">
+                    <input type="radio" id="viz-trails" name="visualization" value="trails">
+                    <label for="viz-trails">Motion trails</label>
+                </div>
+                <div class="radio-container">
+                    <input type="radio" id="viz-heatmap" name="visualization" value="heatmap">
+                    <label for="viz-heatmap">Density heatmap</label>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="resetParticles()">Reset Simulation</button>
+
+        <div class="separator"></div>
+
+        <div class="stats">
+            <div class="stats-item">
+                <span>FPS:</span>
+                <span class="stats-value" id="fps">60</span>
+            </div>
+            <div class="stats-item">
+                <span>Active Particles:</span>
+                <span class="stats-value" id="activeCount">400</span>
+            </div>
+            <div class="stats-item">
+                <span>Avg Neighbors:</span>
+                <span class="stats-value" id="avgNeighbors">0</span>
+            </div>
+        </div>
+
+        <div class="separator"></div>
+
+        <div class="info-box">
+            <strong>About the Vicsek Model:</strong><br>
+            Self-propelled particles move at constant speed and align with neighbors within a radius, plus random noise.
+            At low noise (η < 0.2), particles spontaneously align. At high noise (η > 0.4), motion is random.
+            The phase transition occurs around η ≈ 0.2-0.4 depending on density.
+        </div>
+    </div>
+
+    <script>
+        // ============================================================================
+        // PARTICLE CLASS (Vicsek Model)
+        // ============================================================================
+
+        class Particle {
+            constructor(x, y, angle) {
+                this.x = x;
+                this.y = y;
+                this.angle = angle;
+
+                // Visual properties
+                this.hue = 0; // Will be set based on angle
+            }
+
+            // Vicsek model update: align with neighbors + noise
+            update(particles, speed, radius, noise) {
+                // Find neighbors within radius
+                let sumSin = 0;
+                let sumCos = 0;
+                let neighborCount = 0;
+
+                for (let other of particles) {
+                    if (other === this) continue;
+
+                    const dx = other.x - this.x;
+                    const dy = other.y - this.y;
+
+                    // Handle toroidal wrapping for distance calculation
+                    const wrappedDx = Math.abs(dx) > canvas.width / 2 ?
+                        dx - Math.sign(dx) * canvas.width : dx;
+                    const wrappedDy = Math.abs(dy) > canvas.height / 2 ?
+                        dy - Math.sign(dy) * canvas.height : dy;
+
+                    const distSq = wrappedDx * wrappedDx + wrappedDy * wrappedDy;
+
+                    if (distSq < radius * radius) {
+                        sumSin += Math.sin(other.angle);
+                        sumCos += Math.cos(other.angle);
+                        neighborCount++;
+                    }
+                }
+
+                // Update neighbor count for stats
+                this.neighborCount = neighborCount;
+
+                // Calculate average angle of neighbors (including self)
+                sumSin += Math.sin(this.angle);
+                sumCos += Math.cos(this.angle);
+
+                const avgAngle = Math.atan2(sumSin, sumCos);
+
+                // Add noise (uniformly distributed in [-noise/2, noise/2])
+                const eta = (Math.random() - 0.5) * noise;
+
+                // Update angle
+                this.angle = avgAngle + eta;
+
+                // Move at constant speed
+                this.x += speed * Math.cos(this.angle);
+                this.y += speed * Math.sin(this.angle);
+
+                // Periodic boundary conditions (toroidal world)
+                if (this.x < 0) this.x += canvas.width;
+                if (this.x > canvas.width) this.x -= canvas.width;
+                if (this.y < 0) this.y += canvas.height;
+                if (this.y > canvas.height) this.y -= canvas.height;
+
+                // Update color based on angle
+                this.hue = ((this.angle + Math.PI) / (2 * Math.PI)) * 360;
+            }
+
+            draw(ctx, mode) {
+                if (mode === 'arrows') {
+                    this.drawArrow(ctx);
+                } else if (mode === 'dots') {
+                    this.drawDot(ctx);
+                }
+                // Trails mode is handled by canvas fade effect
+            }
+
+            drawArrow(ctx) {
+                const size = 8;
+                const angle = this.angle;
+
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(angle);
+
+                // Arrow body
+                ctx.fillStyle = `hsl(${this.hue}, 80%, 60%)`;
+                ctx.beginPath();
+                ctx.moveTo(size, 0);
+                ctx.lineTo(-size, size / 2.5);
+                ctx.lineTo(-size * 0.5, 0);
+                ctx.lineTo(-size, -size / 2.5);
+                ctx.closePath();
+                ctx.fill();
+
+                // Subtle outline
+                ctx.strokeStyle = `hsl(${this.hue}, 80%, 80%)`;
+                ctx.lineWidth = 0.5;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+
+            drawDot(ctx) {
+                ctx.fillStyle = `hsl(${this.hue}, 80%, 60%)`;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // ============================================================================
+        // CONFIGURATION & STATE
+        // ============================================================================
+
+        const config = {
+            particleCount: 400,
+            speed: 2.0,
+            radius: 30,
+            noise: 0.20,
+            visualizationMode: 'arrows'
+        };
+
+        const presets = {
+            ordered: {
+                noise: 0.05,
+                radius: 30,
+                speed: 2.0,
+                particleCount: 400
+            },
+            critical: {
+                noise: 0.25,
+                radius: 30,
+                speed: 2.0,
+                particleCount: 400
+            },
+            disordered: {
+                noise: 0.8,
+                radius: 30,
+                speed: 2.0,
+                particleCount: 400
+            },
+            bands: {
+                noise: 0.15,
+                radius: 50,
+                speed: 2.5,
+                particleCount: 800
+            }
+        };
+
+        // ============================================================================
+        // CANVAS & RENDERING
+        // ============================================================================
+
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        let particles = [];
+        let lastTime = 0;
+        let fps = 60;
+        let orderParameter = 0;
+        let densityGrid = null;
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth - 340;
+            canvas.height = window.innerHeight;
+
+            // Reinitialize density grid
+            const gridSize = 20;
+            const cols = Math.ceil(canvas.width / gridSize);
+            const rows = Math.ceil(canvas.height / gridSize);
+            densityGrid = Array(rows).fill(0).map(() => Array(cols).fill(0));
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < config.particleCount; i++) {
+                particles.push(new Particle(
+                    Math.random() * canvas.width,
+                    Math.random() * canvas.height,
+                    Math.random() * 2 * Math.PI
+                ));
+            }
+        }
+
+        function resetParticles() {
+            initParticles();
+        }
+
+        // ============================================================================
+        // ORDER PARAMETER CALCULATION
+        // ============================================================================
+
+        function calculateOrderParameter() {
+            if (particles.length === 0) return 0;
+
+            let sumSin = 0;
+            let sumCos = 0;
+
+            for (let p of particles) {
+                sumSin += Math.sin(p.angle);
+                sumCos += Math.cos(p.angle);
+            }
+
+            const avgSin = sumSin / particles.length;
+            const avgCos = sumCos / particles.length;
+
+            // Order parameter φ = |⟨v⟩| where v is the unit velocity vector
+            return Math.sqrt(avgSin * avgSin + avgCos * avgCos);
+        }
+
+        // ============================================================================
+        // DENSITY HEATMAP
+        // ============================================================================
+
+        function updateDensityGrid() {
+            const gridSize = 20;
+            const cols = densityGrid[0].length;
+            const rows = densityGrid.length;
+
+            // Reset grid
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    densityGrid[i][j] = 0;
+                }
+            }
+
+            // Count particles in each cell
+            for (let p of particles) {
+                const col = Math.floor(p.x / gridSize);
+                const row = Math.floor(p.y / gridSize);
+                if (row >= 0 && row < rows && col >= 0 && col < cols) {
+                    densityGrid[row][col]++;
+                }
+            }
+        }
+
+        function drawDensityHeatmap() {
+            const gridSize = 20;
+            const cols = densityGrid[0].length;
+            const rows = densityGrid.length;
+
+            // Find max density for normalization
+            let maxDensity = 1;
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    maxDensity = Math.max(maxDensity, densityGrid[i][j]);
+                }
+            }
+
+            // Draw heatmap
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const density = densityGrid[i][j];
+                    if (density > 0) {
+                        const normalized = density / maxDensity;
+                        const alpha = normalized * 0.8;
+                        ctx.fillStyle = `rgba(255, 107, 107, ${alpha})`;
+                        ctx.fillRect(j * gridSize, i * gridSize, gridSize, gridSize);
+                    }
+                }
+            }
+        }
+
+        // ============================================================================
+        // ANIMATION LOOP
+        // ============================================================================
+
+        function animate(currentTime) {
+            requestAnimationFrame(animate);
+
+            // Calculate FPS
+            const deltaTime = currentTime - lastTime;
+            lastTime = currentTime;
+            fps = Math.round(1000 / deltaTime);
+
+            const mode = config.visualizationMode;
+
+            // Clear canvas or apply fade effect
+            if (mode === 'trails') {
+                ctx.fillStyle = 'rgba(10, 14, 20, 0.1)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            } else if (mode === 'heatmap') {
+                ctx.fillStyle = '#0a0e14';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                updateDensityGrid();
+                drawDensityHeatmap();
+            } else {
+                ctx.fillStyle = '#0a0e14';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            // Update particles
+            for (let p of particles) {
+                p.update(particles, config.speed, config.radius, config.noise);
+            }
+
+            // Draw particles (skip in heatmap mode)
+            if (mode !== 'heatmap') {
+                for (let p of particles) {
+                    p.draw(ctx, mode === 'trails' ? 'dots' : mode);
+                }
+            }
+
+            // Calculate order parameter
+            orderParameter = calculateOrderParameter();
+
+            // Calculate average neighbors
+            let totalNeighbors = 0;
+            for (let p of particles) {
+                totalNeighbors += p.neighborCount || 0;
+            }
+            const avgNeighbors = particles.length > 0 ?
+                (totalNeighbors / particles.length).toFixed(1) : 0;
+
+            // Update UI
+            document.getElementById('fps').textContent = fps;
+            document.getElementById('activeCount').textContent = particles.length;
+            document.getElementById('avgNeighbors').textContent = avgNeighbors;
+            document.getElementById('orderParam').textContent = orderParameter.toFixed(3);
+            document.getElementById('orderFill').style.width = (orderParameter * 100) + '%';
+        }
+
+        // ============================================================================
+        // UI CONTROLS
+        // ============================================================================
+
+        function setupControls() {
+            // Particle count
+            const countSlider = document.getElementById('count');
+            const countValue = document.getElementById('countValue');
+            countSlider.addEventListener('input', (e) => {
+                config.particleCount = parseInt(e.target.value);
+                countValue.textContent = config.particleCount;
+
+                // Adjust particle count
+                while (particles.length < config.particleCount) {
+                    particles.push(new Particle(
+                        Math.random() * canvas.width,
+                        Math.random() * canvas.height,
+                        Math.random() * 2 * Math.PI
+                    ));
+                }
+                while (particles.length > config.particleCount) {
+                    particles.pop();
+                }
+            });
+
+            // Speed
+            const speedSlider = document.getElementById('speed');
+            const speedValue = document.getElementById('speedValue');
+            speedSlider.addEventListener('input', (e) => {
+                config.speed = parseFloat(e.target.value);
+                speedValue.textContent = config.speed.toFixed(1);
+            });
+
+            // Radius
+            const radiusSlider = document.getElementById('radius');
+            const radiusValue = document.getElementById('radiusValue');
+            radiusSlider.addEventListener('input', (e) => {
+                config.radius = parseFloat(e.target.value);
+                radiusValue.textContent = config.radius.toFixed(0);
+            });
+
+            // Noise (the key parameter for phase transition!)
+            const noiseSlider = document.getElementById('noise');
+            const noiseValue = document.getElementById('noiseValue');
+            noiseSlider.addEventListener('input', (e) => {
+                config.noise = parseFloat(e.target.value);
+                noiseValue.textContent = config.noise.toFixed(2);
+            });
+
+            // Visualization mode
+            const vizRadios = document.querySelectorAll('input[name="visualization"]');
+            vizRadios.forEach(radio => {
+                radio.addEventListener('change', (e) => {
+                    config.visualizationMode = e.target.value;
+                });
+            });
+        }
+
+        function applyPreset(presetName) {
+            const preset = presets[presetName];
+            if (!preset) return;
+
+            // Update config
+            Object.assign(config, preset);
+
+            // Update UI sliders
+            document.getElementById('noise').value = preset.noise;
+            document.getElementById('noiseValue').textContent = preset.noise.toFixed(2);
+
+            document.getElementById('radius').value = preset.radius;
+            document.getElementById('radiusValue').textContent = preset.radius.toFixed(0);
+
+            document.getElementById('speed').value = preset.speed;
+            document.getElementById('speedValue').textContent = preset.speed.toFixed(1);
+
+            document.getElementById('count').value = preset.particleCount;
+            document.getElementById('countValue').textContent = preset.particleCount;
+
+            // Reset particles
+            resetParticles();
+        }
+
+        // ============================================================================
+        // INITIALIZATION
+        // ============================================================================
+
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        setupControls();
+        initParticles();
+        requestAnimationFrame(animate);
+
+        // Click to add particles with local alignment
+        canvas.addEventListener('click', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+
+            // Add 20 particles with random angles
+            for (let i = 0; i < 20; i++) {
+                particles.push(new Particle(
+                    x + (Math.random() - 0.5) * 50,
+                    y + (Math.random() - 0.5) * 50,
+                    Math.random() * 2 * Math.PI
+                ));
+            }
+        });
+    </script>
+</body>
+</html>

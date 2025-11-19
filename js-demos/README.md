@@ -14,6 +14,16 @@ A beautiful implementation of Craig Reynolds' Boids algorithm with:
 
 **[Launch Demo](./boids-basic/index.html)**
 
+### [Self-Propelled Particles (Vicsek Model)](./self-propelled-particles/)
+An interactive demonstration of the Vicsek model showing phase transitions in active matter:
+- Real-time order-disorder phase transitions
+- Order parameter tracking and visualization
+- Multiple visualization modes (arrows, dots, trails, density heatmap)
+- Explore critical noise levels and collective motion
+- Educational tool for statistical mechanics and emergent behavior
+
+**[Launch Demo](./self-propelled-particles/index.html)**
+
 ---
 
 ## Purpose
@@ -63,6 +73,7 @@ Planned standalone implementations:
 - [ ] **Flow Fields**: Following vector fields
 - [ ] **Particle Life**: Chemistry-inspired attraction/repulsion matrix
 - [ ] **Ant Colony**: Pheromone trails and emergent pathfinding
+- [ ] **Kuramoto Model**: Phase-coupled oscillators (firefly synchronization)
 
 ## Contributing
 
