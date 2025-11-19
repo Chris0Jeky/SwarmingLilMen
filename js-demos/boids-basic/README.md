@@ -2,8 +2,6 @@
 
 A beautiful, interactive browser-based implementation of Craig Reynolds' Boids algorithm, demonstrating emergent flocking behavior from simple steering rules.
 
-![Boids Demo](../../docs/boids-demo-screenshot.png)
-
 ## Features
 
 - **Real-time steering behaviors**: Separation, Alignment, and Cohesion
