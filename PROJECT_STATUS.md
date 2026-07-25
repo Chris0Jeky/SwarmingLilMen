@@ -1,6 +1,6 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2026-07-25 (Wave 1 deterministic seed and kinematic-hash repair)
+**Last Updated**: 2026-07-25 (Wave 1 toroidal spatial-index contract and equivalence proof)
 **Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
 > **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
@@ -28,19 +28,18 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **80 passed, 0 failed, 0 skipped**
-  in 9 seconds of test execution on 2026-07-25.
-- Unfiltered Release solution test: **84 passed, 0 failed, 0 skipped** in 31 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **92 passed, 0 failed, 0 skipped**
+  in 10 seconds of test execution on 2026-07-25.
+- Unfiltered Release solution test: **96 passed, 0 failed, 0 skipped** in 36 seconds of test
   execution, confirming the full suite remains under one minute.
-- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 19.87 seconds.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 39.05 seconds.
   Command after the Release build:
-  `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
-  The measured figures remained in the same broad range as the preceding 0.272 / 14.23 / 291.80 /
-  0.153 baseline; all four were lower in this one local fully optimized-JIT sample:
-  - 1k legacy agents: 0.172 ms/tick (5,801 operations/second)
-  - 10k legacy agents: 8.839 ms/tick (113.1 operations/second)
-  - 50k legacy agents: 162.815 ms/tick (6.14 operations/second)
-  - 50k grid rebuild: 0.102 ms
+  `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=normal"`.
+  This one local fully optimized-JIT sample measured:
+  - 1k legacy agents: 0.246 ms/tick (4,070 operations/second)
+  - 10k legacy agents: 16.031 ms/tick (62.38 operations/second)
+  - 50k legacy agents: 319.845 ms/tick (3.13 operations/second; reported target not met)
+  - 50k grid rebuild: 0.149 ms
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the
@@ -48,16 +47,21 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **58.20%
-  line / 40.84% branch overall**; `SwarmSim.Core` is 84.14% line / 73.79% branch and
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **60.43%
+  line / 44.58% branch overall**; `SwarmSim.Core` is 86.35% line / 76.62% branch and
   `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
-  Core scaffolding and the three steering-rule implementations exist. The perception contract is
-  incomplete (#18), composition violates its total `MaxForce` bound (#19), and rule dispatch is
-  positional: later rules are discarded and qualifying separation starves alignment, cohesion,
-  and wander, including wander-angle updates (#27).
+  Core scaffolding and the three steering-rule implementations exist. Canonical `ISpatialIndex` now
+  specifies initialized/rebuilt, self-excluding, inclusive circular toroidal queries with ascending
+  lowest-index truncation and caller-visible status; Grid and Naive matched in 200 deterministic
+  randomized scenarios plus seam/corner/dense/one-cell cases and a 200-tick no-wander trajectory.
+  Minimum-image deltas now cover FOV, whiskers, neighbor statistics, separation, and cohesion.
+  The full Release suite passes after correcting a priority-hysteresis test setup that had depended
+  on the pre-contract seam behavior. Composition violates its total `MaxForce` bound (#19), and
+  rule dispatch is positional: later rules are discarded and qualifying separation starves
+  alignment, cohesion, and wander, including wander-angle updates (#27).
   Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
   kernel-resolved arbitration.
   Canonical construction now rejects unsafe turn, wander, whisker, and separation-priority control
@@ -87,6 +91,10 @@
   the initial FNV-1a kinematic diagnostic remained `E4DF43EE92B466D4`, while the 500-tick diagnostic
   changed from `559B9F9DDD9A26DC` to `1902D36DF3FE793A`. These are before/after diagnostics, not
   golden fixtures.
+  The toroidal perception repair left that same default initial diagnostic at
+  `E4DF43EE92B466D4` and changed the 500-tick diagnostic from `1902D36DF3FE793A` to
+  `DB22BC4124AF0A96`, as seam-adjacent neighbors now influence steering. No behavior retuning was
+  included; these values remain diagnostics rather than golden fixtures.
   Wander-enabled canonical construction currently retains one `Rng`/`System.Random` object per
   boid; it adds no tick-time allocations in the measured probe but is a setup/GC scale risk owned by
   the broader RNG-stream work in #26.
@@ -105,11 +113,12 @@
   Docs-only source correction is tracked in
   [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
   this reconciliation.
-- Test inventory: 84 xUnit facts across 10 test files, including four explicitly categorized
-  performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
-  renderer automation, coverage gate, or absolute-throughput gate currently exists.
+- Test inventory: 96 xUnit facts across 11 test files, including four explicitly categorized
+  performance measurements and a zero-allocation steady-state assertion for both canonical spatial
+  query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
+  gate, or absolute-throughput gate currently exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,951 lines and
-  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 680 lines.
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 714 lines.
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
   in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
   project adapter/settings. The adapter audit marker matches released floor 1.6.5. In a fresh
@@ -393,9 +402,9 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     - Whisker lookahead visualization (blue circle in overlay)
   - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
   - 12 unit tests passing (including new angular limiter and hysteresis tests)
-- **Milestone 2 partial**: grid neighbor queries do not enforce radius/self-exclusion, and neither
-  index/rule path applies toroidal neighbor deltas; #18 owns the full contract, equivalence, and
-  trajectory evidence
+- **Milestone 2 complete**: canonical grid and naive queries enforce radius/self-exclusion and
+  minimum-image deltas are used through the perception and built-in rule paths, with deterministic
+  equivalence, bounded-result, trajectory, and steady-state allocation evidence.
 - **Milestone 6 partial**: the composition path exists, but whisker plus separation can exceed the
   total `MaxForce` budget (#19); positional slots, discarded later rules, and separation starvation
   of alignment, cohesion, and wander remain tracked in #27

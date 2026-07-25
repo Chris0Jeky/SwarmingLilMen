@@ -3,9 +3,9 @@
 > [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state; this checklist defines remaining canonical readiness work.
 
-**Last Updated**: 2026-07-25 (verified-state reconciliation)
-**Current Status**: Core scaffolding and steering-rule implementations exist; perception,
-composition, and instrumentation UX are partial; milestones 8-10 remain incomplete
+**Last Updated**: 2026-07-25 (toroidal spatial-index contract and equivalence proof)
+**Current Status**: Core scaffolding, steering rules, and the perception contract exist;
+composition and instrumentation UX are partial, and milestones 8-10 remain incomplete
 
 > This document outlines the concrete steps needed to complete the canonical boids implementation before starting Phase 3 (Combat & Metabolism).
 
@@ -14,10 +14,10 @@ composition, and instrumentation UX are partial; milestones 8-10 remain incomple
 ## Overview
 
 Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a
-solid, debuggable foundation. The perception contract violates its radius/self/wrap requirements,
-milestone 6 violates its total `MaxForce` bound, and milestone 7 does not meet its full UX/test
-acceptance. Milestones 8-10, multi-group semantics, and canonical performance evidence remain
-incomplete.
+solid, debuggable foundation. The perception contract now enforces its radius/self/wrap
+requirements; milestone 6 still violates its total `MaxForce` bound, and milestone 7 does not meet
+its full UX/test acceptance. Milestones 8-10, multi-group semantics, and canonical performance
+evidence remain incomplete.
 
 **Estimated Effort**: 1-2 weeks of focused development
 
@@ -32,10 +32,13 @@ These are the remaining milestones from `archive/NewImplementation.md` that must
 - [x] Single boid motion with constant speed
 - [ ] Long-horizon seeded and golden acceptance, tracked in #17 and #21
 
-### 🔄 Milestone 2: Perception (PARTIAL)
+### ✅ Milestone 2: Perception (COMPLETE)
 - [x] Field-of-view filtering with weights
-- [ ] Enforce radius filtering, self-exclusion, and toroidal wrap consistently across spatial
-  indexes; tracked in [issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)
+- [x] Canonical Grid and Naive indexes enforce inclusive radius filtering, self-exclusion, and
+  toroidal minimum-image distance with deterministic capped-result status; focused equivalence tests
+  cover seams, corners, coincident agents, one/two-cell worlds, dense truncation, and 200 randomized scenarios.
+- [x] FOV, whiskers, neighbor statistics, separation, and cohesion use the same toroidal
+  minimum-image displacement; the full Release suite passes.
 
 ### ✅ Steering Rule Implementations (Milestones 3-5)
 - [x] Separation rule (1/d weighting, linear falloff)
@@ -96,41 +99,19 @@ epic #10's ordered Wave 0/Wave 1 execution.
 ### 🔄 Milestone 9: Spatial Index Equivalence (IN PROGRESS)
 **Goal**: Same behavior, faster performance
 
-- [ ] **Property Test: Grid vs Naive**
-  ```csharp
-  [Theory]
-  [InlineData(10, 42)]
-  [InlineData(100, 123)]
-  [InlineData(1000, 456)]
-  public void SpatialIndex_GridMatchesNaive_RandomScenarios(int agentCount, int seed)
-  {
-      // Generate random agent positions
-      // Query neighbors with both NaiveSpatialIndex and GridSpatialIndex
-      // Assert neighbor sets are identical (within FP tolerance)
-  }
-  ```
-  - Test at 10, 100, 1k agents
-  - Test various density configurations (sparse, dense, clustered)
-  - Verify neighbor sets match exactly (order doesn't matter)
-  - Use multiple random seeds
+- [x] **Deterministic Grid vs Naive equivalence**: 200 randomized scenarios plus direct radius,
+  self, coincident, seam, corner, dense-truncation, and one/two-cell cases pass. A no-wander,
+  200-tick 12-agent canonical trajectory matched positions and velocities within `1e-4`.
+- [x] **Edge cases and bounded output**: inclusive radius boundaries, zero-radius coincident agents,
+  all agents in one cell, wrapped one/two-cell worlds, randomized distributions, and deterministic
+  truncation are covered.
+- [x] **Steady-state allocation proof**: both direct query implementations report zero
+  current-thread allocations after tiered-compilation warm-up.
+- [ ] **Canonical performance comparison**: no grid-over-naive speedup is claimed. Canonical
+  BenchmarkDotNet and `MemoryDiagnoser` coverage remain tracked in
+  [issue #20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20).
 
-- [ ] **Performance Comparison**
-  ```csharp
-  [Fact]
-  public void SpatialIndex_GridIsFasterThanNaive()
-  {
-      // Benchmark both implementations at 1k, 10k agents
-      // Expect O(n) vs O(n²) behavior
-      // Grid should be 10x+ faster at 10k agents
-  }
-  ```
-
-- [ ] **Edge Case Tests**
-  - All agents in one grid cell
-  - Agents uniformly distributed across grid
-  - Agents at grid cell boundaries
-
-**Exit Criteria**: Grid and Naive produce identical results for all test cases; performance improvement validated
+**Exit Criteria**: Behavioral equivalence is verified; performance improvement remains unverified.
 
 ---
 
