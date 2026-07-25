@@ -94,7 +94,7 @@ public sealed class CanonicalWorld
         return true;
     }
 
-    private static uint DeriveWanderSeed(uint seed, int agentIndex)
+    internal static uint DeriveWanderSeed(uint seed, int agentIndex)
     {
         uint value = seed + 0x9E3779B9u * ((uint)agentIndex + 1u);
         value = (value ^ (value >> 16)) * 0x85EBCA6Bu;

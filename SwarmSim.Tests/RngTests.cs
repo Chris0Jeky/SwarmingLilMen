@@ -136,12 +136,18 @@ public class RngTests
     }
 
     [Fact]
-    public void Constructor_EnforcesSupportedExternalSeedRange()
+    public void Construction_EnforcesPublicRangeAndPreservesDerivedMapping()
     {
         Assert.Equal(0u, new Rng(0u).Seed);
         Assert.Equal(Rng.MaxSupportedSeed, new Rng(Rng.MaxSupportedSeed).Seed);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => new Rng(Rng.MaxSupportedSeed + 1u));
         Assert.Throws<ArgumentOutOfRangeException>(() => new Rng(uint.MaxValue));
+
+        const uint derivedSeed = 3_948_730_756u;
+        Rng derived = Rng.CreateFromDerivedSeed(derivedSeed);
+        var establishedMapping = new Random(unchecked((int)derivedSeed));
+        Assert.Equal(derivedSeed, derived.Seed);
+        Assert.Equal(establishedMapping.Next(), derived.Next());
     }
 }
