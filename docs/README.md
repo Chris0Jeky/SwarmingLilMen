@@ -22,11 +22,14 @@ ordering authority. Historical documents are context, not proof.
 > provides no process isolation, resource quotas, filesystem/network capability restrictions, or
 > protection from a malicious or buggy extension. Scenario/config input is data-only today by
 > design, not by an enforced security guarantee, and in-process policies have the host process's
-> full authority. Before any untrusted
-> code, community mod, or untrusted IPC learner can run, the dedicated containment workstream in
-> [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) must pass its threat-model,
-> least-authority, resource-limit, schema-validation, authenticated-transport, and adversarial-test
-> gates. Issue #44 is an unscheduled prerequisite marker with no owner or timeline.
+> full authority. Before any untrusted code, community mod, or untrusted IPC learner can run, the
+> dedicated containment workstream in
+> [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) must pass its separate-process,
+> no-ambient-authority, resource-limit, size-bounded-schema, authenticated-loopback-transport,
+> threat-model, and adversarial-test gates. Until those gates pass, no product name, flag, package,
+> API, or product-facing documentation may imply containment. The formal T1 authority label in
+> agent-control files is outside product terminology and does not assert security isolation.
+> Issue #44 is an unscheduled prerequisite marker with no owner or timeline.
 
 The direct prerequisites for deferred resources, communication, institutions, markets, networks,
 N-IPD, IPC learners, and policy distillation are listed in the

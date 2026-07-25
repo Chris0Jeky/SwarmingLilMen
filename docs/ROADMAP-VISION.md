@@ -34,7 +34,8 @@
 > requires a separate OS process, no ambient authority, CPU/memory/output/wall-clock limits,
 > validated size-bounded schemas, authenticated local-only transport, a dedicated threat model,
 > and adversarial fail-closed tests. Until that workstream passes, no product name, flag, package,
-> API, or documentation may imply containment.
+> API, or product-facing documentation may imply containment. The formal T1 authority label in
+> agent-control files is outside product terminology and does not assert security isolation.
 
 Issue #44 is an unscheduled prerequisite marker with no owner or timeline. It is a stop condition,
 not queued implementation work.
@@ -44,18 +45,22 @@ not queued implementation work.
 Every primitive below remains speculative until the shared kernel has carried boids, Vicsek, and
 ACO without foundation-specific kernel edits beyond #30's declared generic field phase
 ([#29](https://github.com/Chris0Jeky/SwarmingLilMen/issues/29) and
-[#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)); the frozen browser demos do not
+[#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)); the independent browser demos do not
 satisfy that gate. The global proof does not replace each primitive's direct prerequisite:
+
+In this table, #27's bounded contract means per-agent observations and tagged policy intents. Its
+kernel resolver arbitrates only steering-policy forces; institution, market, and payoff resolvers
+remain module-owned.
 
 | Deferred primitive | Kernel prerequisite before implementation |
 | --- | --- |
-| Resources | Module-owned field/resource storage through stable space and Observation/Intent seams, with deterministic update cadence; ACO's pheromone field in #30 is the proof case. |
+| Resources | #30 adds the generic kernel field seam; the ACO module owns pheromone state and deterministic update cadence through stable space and Observation/Intent seams. ACO is the proof case, with no pheromone-specific kernel branch. |
 | Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
 | Institutions | Module-owned durable state and a versioned event contract; institutional intents use #27's bounded contract, while the module owns deterministic arbitration. No institution-specific kernel branch. |
 | Markets | Resource/inventory ownership, order intents using #27's bounded contract, a module-owned deterministic market resolver, and metrics registered through #24's probe contract; no market-specific kernel branch. |
 | Networks | The query-contract discipline established by #18, widened to a pluggable graph topology/edge store only when a real post-#30 consumer proves the need, without kernel conditionals. |
 | N-IPD | Deterministic scheduling/RNG, observations/intents using #27's bounded contract, a module-owned deterministic payoff resolver, and cooperation/payoff metrics registered through #24's probe contract; pairwise/neighborhood variants remain module configuration. |
-| IPC learners | The Raylib-free runner (#23), versioned reset/episode/reward and Observation/Intent protocols, bounded DTOs, backpressure, and replay; untrusted execution additionally requires #44. |
+| IPC learners | The Raylib-free runner (#23), versioned reset/episode/reward and Observation/Intent protocols, bounded DTOs, backpressure, replay, and authenticated loopback-only transport for every learner connection; untrusted execution additionally requires #44's separate-process, no-ambient-authority, resource-limit, threat-model, and adversarial-test gates. |
 | Policy distillation | The Observation/Intent contract from #27, an explicitly designed versioned `(observation, intent, reward, next-observation)` trace schema and capture path, and round-trip validation through the experiment spine (#23-#24). The trace work remains unscheduled; section 10 is blocked on these contracts, not on distillation algorithms. |
 
 ---
@@ -176,7 +181,8 @@ SwarmSim.sln
 
 ## 7) Scenario Definition & DSL
 - **JSON/DSL** describing: world size/space, agent archetypes, initializers, payoff/game rules, schedules, metrics to log.
-- Inline expressions for randomization (e.g., `speed ~ Normal(1,0.1)`).
+- Typed random-distribution declarations (for example, `speed ~ Normal(1,0.1)`) parsed as bounded
+  data through a fixed allowlist; never evaluate a general-purpose expression or host-language code.
 - Reusable **presets** (Warbands, Rapid Evolution, Pairwise vs Neighbourhood N‑IPD, Market Shock, Resource Scarcity).
 - Headless **SimRunner** loads scenario → runs batches → dumps artefacts.
 
@@ -230,6 +236,8 @@ SwarmSim.sln
 
 ## 12) Extension Trust & Authoring
 - Scenario authoring is data-only in shipped builds as a design choice, not an enforcement boundary.
+- Future authoring syntax remains a fixed, size-bounded declarative grammar; general expression
+  evaluators or dynamic code are untrusted extension paths blocked by #44.
 - Development C# hooks are trusted in-process code with the host process's full authority; #44
   blocks any future untrusted extension path.
 - AOT‑friendly plugin model: registration via attributes + source generators; fallback reflection in dev.

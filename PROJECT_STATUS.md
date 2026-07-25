@@ -89,12 +89,15 @@
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
   in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
   project adapter/settings. Codex hook activation still requires fresh-session `/hooks` trust.
-- Extension trust: product-facing docs now use **modeling boundary** / **interaction surface** for
-  simulation concepts and **playground** for the app. Data-only scenario input is a design choice,
-  not a security guarantee; in-process extensions have full host authority. Future untrusted code
-  is blocked on the dedicated containment prerequisite in
+- Extension trust: the product term is retired. **Modeling boundary** / **interaction surface** are
+  reserved for simulation concepts, the aspirational package sketch uses **Playground**, and the
+  shipped app remains `SwarmSim.Render`. Data-only scenario input is a current design fact, not a
+  security guarantee; in-process extensions have full host authority. Future untrusted code is
+  blocked on the dedicated containment prerequisite in
   [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44), an unscheduled marker with no
-  owner or timeline.
+  owner or timeline. Until its gates pass, no product name, flag, package, API, or product-facing
+  documentation may imply containment. The formal T1 authority label in agent-control files is an
+  intentional non-product exception and does not claim containment.
 
 ---
 
@@ -680,7 +683,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 6. **Documentation drift**: high-traffic entrypoints are reconciled. The explicitly historical
    sections below intentionally preserve obsolete phase, performance, and next-session claims; the
    historical-context banner above them is the liveness boundary.
-7. [ ] **Untrusted-extension prerequisite**: no untrusted extension code may run until
+7. **Untrusted-extension prerequisite**: no untrusted extension code may run until
    [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) delivers a separate process,
    least-authority filesystem/network access, resource and wall-clock limits, bounded validated
    schemas, authenticated local-only transport, a dedicated threat model, and adversarial
