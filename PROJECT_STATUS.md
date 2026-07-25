@@ -155,7 +155,8 @@ verified block above records what is actually measured.
 
 1. **Legacy Implementation** (`SwarmSim.Core/World.cs`, `Systems/`):
    - Structure-of-Arrays (SoA) with systems pipeline
-   - Force-based physics with friction
+   - Force-based integration with selectable speed models; the current renderer/presets use
+     `ConstantSpeed` (no damping, upper cap only), while `Damped` applies friction
    - Two-pass: SenseSystem → BehaviorSystem
    - **Status**: Working but deprecated, hard to debug
    - **Run with**: Default renderer (no `--canonical` flag)
@@ -299,7 +300,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   canonical performance evidence remain incomplete
 - **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
-  - Force/friction equilibrium created unpredictable parameter sensitivity
+  - Earlier `Damped`-mode force/friction equilibrium created unpredictable parameter sensitivity
   - Early inverse-square separation was replaced by the current bounded linear radial falloff;
     separation still participates in the opaque aggregate/force pipeline
   - Non-canonical approach made tuning guidance from literature unusable

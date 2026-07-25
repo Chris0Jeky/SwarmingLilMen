@@ -30,8 +30,9 @@ Use `--agent-count N` to override the initial legacy count. Run `--help` for the
 - Separation, alignment, cohesion, optional wander, and integration are the active systems;
   combat, metabolism, reproduction, and lifecycle behavior are not implemented
   (`SwarmSim.Core/World.cs:122-144`).
-- Wrap, reflect, and clamp boundary modes are configuration options. Do not assume wrap mode for
-  every preset (`SwarmSim.Core/Systems/IntegrateSystem.cs:7-23`).
+- Every registered renderer preset and bundled JSON example currently uses the inherited `Wrap`
+  default. `Reflect` and `Clamp` remain available to custom configurations and other callers
+  (`SwarmSim.Core/SimConfig.cs:15,221-230`; `SwarmSim.Render/Program.cs:110-215`; `configs/*.json`).
 
 Legacy runs with `WanderStrength = 0` have a seeded, fixed-timestep path. Wander-enabled legacy
 runs are not currently reproducible from the world seed because `WanderSystem` seeds itself from
@@ -42,16 +43,16 @@ tests are tracked in [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/is
 
 Press **H** in either renderer for a partial in-app quick reference. The maintained complete
 reference is
-[`CONTROLS.md`](CONTROLS.md); highlights include spawning with mouse/Space, **R** reset, **V/S/N**
-visualization toggles, **F1-F5** presets, **C** CSV export, and **F12** snapshot/debug information
+[`CONTROLS.md`](CONTROLS.md). Legacy highlights include spawning with mouse/Space, **R** reset,
+**V/S/N** visualization toggles, **F1-F5** presets, **C** CSV export, and **F12** snapshot/debug information
 (`SwarmSim.Render/Program.cs:637-739,1244-1277`).
 
 Runtime parameter/help labels currently advertise `1-7` even though input accepts **1-8**, and the
 canonical panel omits several active controls; executable synchronization is tracked in
 [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 
-The canonical path has separate controls: **R** reset, **H** help, **O** metrics overlay, **Tab**
-tracked-boid selection, parameter keys, and **F1-F5** presets
+The canonical path has separate controls: **R** reset, **H** help, **O** selected-boid interaction
+overlay, **Tab** tracked-boid selection, parameter keys, and **F1-F5** presets
 (`SwarmSim.Render/Program.cs:1343-1379,1556-1607`).
 
 ## Performance Interpretation

@@ -59,8 +59,10 @@ World (SoA arrays) → Systems Pipeline → Per-Tick Updates
 3. **Force-Based Physics**:
    - Boids rules generated **forces** (not steering)
    - Forces accumulated in scratch buffers
-   - Integration: `v += F*dt; v *= friction; x += v*dt`
-   - Relied on force/friction equilibrium for speed control
+   - Integration: `v += F*dt`; `Damped` then applies `v *= friction`; both speed models upper-clamp
+     to `MaxSpeed`; then `x += v*dt`
+   - The current renderer and presets select `ConstantSpeed`, which skips damping; earlier
+     `Damped` tuning relied on force/friction equilibrium for speed control
 
 4. **Separation Weighting**:
    - The current legacy `SenseSystem` accumulates normalized away directions with bounded linear
@@ -98,15 +100,17 @@ The two-pass architecture made it extremely difficult to trace behavior:
 - **No single place** to inspect the full decision-making process
 - Aggregate arrays (`SeparationX[]`, etc.) were opaque intermediate state
 
-### 2. **Force-Friction Equilibrium Pathologies**
+### 2. **Damped-Mode Force-Friction Equilibrium Pathologies**
 
-The force-based approach created tuning nightmares:
-- **Problem**: Agents needed to reach equilibrium speeds through force/friction balance
+Earlier `Damped`-mode tuning created tuning nightmares:
+- **Problem**: Agents needed to reach equilibrium speeds through force/friction balance in that
+  mode
 - **Symptom**: Setting friction < 1.0 caused agents to "get stuck" in low-speed states
 - **Root Cause**: The earlier prototype's separation/clamping and continuous damping could leave
   too little effective acceleration after `dt`; the current legacy separation has since changed to
   bounded linear radial falloff
-- **Bandaid Fix**: Setting friction = 1.0 "worked" but eliminated natural speed variation
+- **Bandaid Fix**: Setting friction = 1.0 in the earlier damped configuration "worked" but
+  eliminated natural speed variation
 
 `MakingBoidsBetter.md` preserves the investigation of that earlier inverse-square variant; it is
 historical design context rather than a description of the current `SenseSystem`.
@@ -115,7 +119,8 @@ historical design context rather than a description of the current `SenseSystem`
 
 The force-based model was extremely sensitive to parameter tuning:
 - Small changes in weights could cause dramatic behavioral shifts
-- Separation weight vs. friction vs. maxSpeed all interacted in non-obvious ways
+- Separation weight vs. friction vs. maxSpeed all interacted in non-obvious ways when damping was
+  enabled
 - Hard to predict the effect of changing one parameter
 - No "standard" parameter ranges from literature
 
@@ -123,7 +128,8 @@ The force-based model was extremely sensitive to parameter tuning:
 
 The implementation diverged from Reynolds' original steering behaviors:
 - **Reynolds' approach**: Compute *desired velocity* → steer toward it with bounded force
-- **Old approach**: Compute raw forces → hope friction creates equilibrium
+- **Earlier damped approach**: Compute raw forces → hope friction creates equilibrium
+- **Current legacy renderer**: Compute raw forces → skip friction → upper-clamp to `MaxSpeed`
 - This made it impossible to reference standard boids literature for tuning guidance
 
 ### 5. **Testing Challenges**
@@ -347,16 +353,30 @@ return steer;
 
 ### Integration
 
-**Old**:
+**Old** (legacy integrator, simplified):
 ```csharp
 // Forces accumulated in Fx[], Fy[]
 vx[i] += Fx[i] * dt;
 vy[i] += Fy[i] * dt;
-vx[i] *= friction;  // Speed control via damping
-vy[i] *= friction;
+if (speedModel == SpeedModel.Damped)
+{
+    vx[i] *= friction;
+    vy[i] *= friction;
+}
+float speed = MathUtils.Length(vx[i], vy[i]);
+if (speed > maxSpeed)
+{
+    float scale = maxSpeed / speed;
+    vx[i] *= scale;
+    vy[i] *= scale;
+}
 x[i] += vx[i] * dt;
 y[i] += vy[i] * dt;
 ```
+
+The current renderer and all registered presets select `SpeedModel.ConstantSpeed`; despite the
+name, that legacy branch skips friction and only clamps velocity when it exceeds `MaxSpeed`
+(`SwarmSim.Core/Systems/IntegrateSystem.cs:42-78`; `SwarmSim.Render/Program.cs:110-215,240-260`).
 
 **New**:
 ```csharp
@@ -372,7 +392,9 @@ nextPosition = WrapToroidally(nextPosition);
 ```
 
 **Key Differences**:
-1. **Speed control**: Old used friction; new normalizes directly to an allowed speed
+1. **Speed control**: Legacy `Damped` applies friction before the speed cap, while the active
+   legacy `ConstantSpeed` configuration skips friction and applies only the cap; canonical
+   normalizes directly to an allowed speed
 2. **Priority droop**: Allowed speed can fall below `TargetSpeed` by the configured droop while
    priority blending is active (3% at the current default and full blend)
 3. **Shaping and turn limit**: Nearest-neighbor avoidance can bias velocity before the angular-rate
@@ -822,14 +844,16 @@ Key commits in the transition:
 
 ## Conclusion
 
-The transition from the systems-based SoA approach to the canonical boids implementation represents a **necessary course correction**. The old implementation, while architecturally sound on paper, proved extremely difficult to debug and tune in practice. The force-based physics model created parameter sensitivity issues that made emergent behavior unpredictable.
+The transition from the systems-based SoA approach to the canonical boids implementation represents a **necessary course correction**. The old implementation, while architecturally sound on paper, proved extremely difficult to debug and tune in practice. Its raw-force pipeline, especially the earlier `Damped` force/friction tuning, created parameter sensitivity issues that made emergent behavior unpredictable.
 
 The new canonical implementation, while less "architecturally pure", is:
 - **Easier to understand**: One clear place to see decision-making
-- **Easier to test**: Isolated, composable rules
+- **Easier to test**: Individual rule implementations are isolated, although world-level
+  composition remains positional and incomplete ([issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27))
 - **Easier to debug**: Rich instrumentation and metrics
 - **Easier to tune**: Canonical steering parameters with known ranges
-- **True to literature**: Follows Reynolds' proven formulations
+- **Literature-based direction**: Uses Reynolds-style formulations, with current deviations and
+  incomplete contracts tracked above
 
 **Current Status**: Core infrastructure and rule implementations exist. Seeded reproducibility,
 perception semantics, force-budget enforcement, milestone 7 UX/test acceptance, readiness
