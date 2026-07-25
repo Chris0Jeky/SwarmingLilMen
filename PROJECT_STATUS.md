@@ -48,8 +48,8 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.81%
-  line / 39.98% branch overall**; `SwarmSim.Core` is 83.86% line / 72.95% branch and
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **58.20%
+  line / 40.84% branch overall**; `SwarmSim.Core` is 84.14% line / 73.79% branch and
   `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
@@ -60,6 +60,9 @@
   and wander, including wander-angle updates (#27).
   Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
   kernel-resolved arbitration.
+  Canonical construction now rejects unsafe turn, wander, whisker, and separation-priority control
+  values mapped by this wave; comprehensive validation of the older base geometry/time/rule fields
+  remains tracked in #48.
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
 - Reproducibility: legacy wander consumes the world's configured RNG; canonical construction maps
@@ -106,7 +109,7 @@
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,951 lines and
-  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 593 lines.
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 680 lines.
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
   in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
   project adapter/settings. The adapter audit marker matches released floor 1.6.5. In a fresh

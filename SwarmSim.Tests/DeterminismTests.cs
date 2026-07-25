@@ -97,6 +97,33 @@ public sealed class DeterminismTests
         var nonFiniteTurnRate = new CanonicalWorldSettings { MaxTurnRateDegPerSecond = float.NaN };
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteTurnRate));
 
+        var negativeWanderStrength = new CanonicalWorldSettings { WanderStrength = -1f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativeWanderStrength));
+
+        var nonFiniteWanderStrength = new CanonicalWorldSettings { WanderStrength = float.PositiveInfinity };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteWanderStrength));
+
+        var negativeWanderRate = new CanonicalWorldSettings { WanderRate = -1f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativeWanderRate));
+
+        var nonFiniteWanderRate = new CanonicalWorldSettings { WanderRate = float.NaN };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteWanderRate));
+
+        var negativeWhiskerWeight = new CanonicalWorldSettings { WhiskerWeight = -1f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativeWhiskerWeight));
+
+        var nonFiniteWhiskerWeight = new CanonicalWorldSettings { WhiskerWeight = float.PositiveInfinity };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteWhiskerWeight));
+
+        var nonFiniteWhiskerTime = new CanonicalWorldSettings { WhiskerTimeHorizon = float.NaN };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteWhiskerTime));
+
+        var nonFinitePriorityRadius = new CanonicalWorldSettings { SeparationPriorityRadiusFactor = float.NaN };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFinitePriorityRadius));
+
+        var nonFinitePriorityExit = new CanonicalWorldSettings { SeparationPriorityExitFactor = float.NegativeInfinity };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFinitePriorityExit));
+
         var negativePriorityBoost = new CanonicalWorldSettings { SeparationPriorityBoost = -1f };
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativePriorityBoost));
 
@@ -120,6 +147,21 @@ public sealed class DeterminismTests
 
         var nonFiniteRampOutTime = new CanonicalWorldSettings { SeparationPriorityRampOutTime = float.NegativeInfinity };
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteRampOutTime));
+
+        var finiteClampedControls = new CanonicalWorldSettings
+        {
+            WhiskerTimeHorizon = -1f,
+            SeparationPriorityRadiusFactor = -1f,
+            SeparationPriorityExitFactor = -1f,
+            SeparationPriorityHoldTime = -1f,
+            SeparationPriorityRampInTime = -1f,
+            SeparationPriorityRampOutTime = -1f
+        };
+        CanonicalWorld clampedWorld = CreateCanonicalWorld(finiteClampedControls);
+        Assert.True(clampedWorld.TryAddBoid(new Vec2(10f, 10f), new Vec2(1f, 0f)));
+        clampedWorld.Step(1f / 60f);
+        Assert.True(float.IsFinite(clampedWorld.Boids[0].Position.X));
+        Assert.True(float.IsFinite(clampedWorld.Boids[0].Position.Y));
     }
 
     [Fact]

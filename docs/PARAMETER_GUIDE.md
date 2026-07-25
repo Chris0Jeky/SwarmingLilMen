@@ -30,17 +30,21 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 - **CohesionWeight** – Pull toward the local center of mass. Too high relative to separation creates clumps; a value around 1/10th of separation is typical.
 
 ## Wander & Noise
-- **WanderStrength** – Random steering magnitude; the default is `0` (disabled). Use small explicit
-  values (0.1–0.5) to keep agents from freezing. Higher values break up synchronized lines.
-- **WanderRate** – Canonical wander-angle change limit in radians per second. It has no effect
-  while `WanderStrength` is zero.
+- **WanderStrength** – Finite, non-negative random steering magnitude; the default is `0`
+  (disabled). Use small explicit values (0.1–0.5) to keep agents from freezing. Higher values break
+  up synchronized lines.
+- **WanderRate** – Finite, non-negative canonical wander-angle change limit in radians per second.
+  It has no effect while `WanderStrength` is zero.
 
 ## Canonical Smoothing
 - **MaxTurnRateDegPerSecond** – Finite, non-negative canonical heading-change limit; `0` prevents
   heading changes, while negative and non-finite values are rejected by canonical construction.
-- **WhiskerTimeHorizon / WhiskerWeight** – Predictive collision lookahead and steering weight.
+- **WhiskerTimeHorizon / WhiskerWeight** – Predictive collision lookahead and steering weight. Both
+  must be finite; weight must be non-negative, while a finite horizon below `0.05` uses the existing
+  `0.05`-second minimum.
 - **SeparationPriorityRadiusFactor / SeparationPriorityExitFactor** – Entry and hysteresis-exit
-  radii as fractions of `SenseRadius`.
+  radii as finite fractions of `SenseRadius`; finite negative values retain the existing effective
+  zero-threshold clamp.
 - **SeparationPriorityBoost / SeparationPriorityHoldTime** – Strength and minimum duration of
   canonical separation priority. The boost must be finite and non-negative, and hold time must be
   finite.

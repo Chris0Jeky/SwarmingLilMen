@@ -42,6 +42,48 @@ public sealed class CanonicalWorld
                 settings.MaxTurnRateDegPerSecond,
                 "MaxTurnRateDegPerSecond must be finite and non-negative.");
         }
+        if (!float.IsFinite(settings.WanderStrength) || settings.WanderStrength < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WanderStrength,
+                "WanderStrength must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.WanderRate) || settings.WanderRate < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WanderRate,
+                "WanderRate must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.WhiskerTimeHorizon))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WhiskerTimeHorizon,
+                "WhiskerTimeHorizon must be finite.");
+        }
+        if (!float.IsFinite(settings.WhiskerWeight) || settings.WhiskerWeight < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WhiskerWeight,
+                "WhiskerWeight must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityRadiusFactor))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityRadiusFactor,
+                "SeparationPriorityRadiusFactor must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityExitFactor))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityExitFactor,
+                "SeparationPriorityExitFactor must be finite.");
+        }
         if (!float.IsFinite(settings.SeparationPriorityBoost) || settings.SeparationPriorityBoost < 0f)
         {
             throw new ArgumentOutOfRangeException(
