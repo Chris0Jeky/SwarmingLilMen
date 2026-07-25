@@ -28,18 +28,18 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **92 passed, 0 failed, 0 skipped**
-  in 10 seconds of test execution on 2026-07-25.
-- Unfiltered Release solution test: **96 passed, 0 failed, 0 skipped** in 36 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **94 passed, 0 failed, 0 skipped**
+  in 5 seconds of test execution on 2026-07-25.
+- Unfiltered Release solution test: **98 passed, 0 failed, 0 skipped** in 21 seconds of test
   execution, confirming the full suite remains under one minute.
-- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 39.05 seconds.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 25.41 seconds.
   Command after the Release build:
   `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=normal"`.
   This one local fully optimized-JIT sample measured:
-  - 1k legacy agents: 0.246 ms/tick (4,070 operations/second)
-  - 10k legacy agents: 16.031 ms/tick (62.38 operations/second)
-  - 50k legacy agents: 319.845 ms/tick (3.13 operations/second; reported target not met)
-  - 50k grid rebuild: 0.149 ms
+  - 1k legacy agents: 0.206 ms/tick (4,845 operations/second)
+  - 10k legacy agents: 10.074 ms/tick (99.27 operations/second)
+  - 50k legacy agents: 209.278 ms/tick (4.78 operations/second; reported target not met)
+  - 50k grid rebuild: 0.108 ms
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the
@@ -47,17 +47,23 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **60.43%
-  line / 44.58% branch overall**; `SwarmSim.Core` is 86.35% line / 76.62% branch and
-  `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
+- A separate reported-only Release diagnostic initialized identical 1,000-agent canonical Grid and
+  Naive worlds, warmed each for 50 ticks, then alternated 100 measured ticks. This one sample
+  measured 1.213 ms/tick for Grid and 27.155 ms/tick for Naive (22.40x); the temporary harness was
+  removed. This is not a benchmark distribution, scale curve, or replacement for #20.
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **60.37%
+  line / 44.61% branch overall**; `SwarmSim.Core` is 86.46% line / 76.76% branch and
+  `SwarmSim.Render` is 29.81% line / 12.70% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
   Core scaffolding and the three steering-rule implementations exist. Canonical `ISpatialIndex` now
   specifies initialized/rebuilt, self-excluding, inclusive circular toroidal queries with ascending
   lowest-index truncation and caller-visible status; Grid and Naive matched in 200 deterministic
-  randomized scenarios plus seam/corner/dense/one-cell cases and a 200-tick no-wander trajectory.
+  randomized scenarios plus seam/corner/dense/one-cell, partial-terminal-cell, and unwrapped-input
+  cases and a 200-tick no-wander trajectory.
   Minimum-image deltas now cover FOV, whiskers, neighbor statistics, separation, and cohesion.
+  The renderer overlay uses the same deltas for links/hit classification and labels capped queries.
   The full Release suite passes after correcting a priority-hysteresis test setup that had depended
   on the pre-contract seam behavior. Composition violates its total `MaxForce` bound (#19), and
   rule dispatch is positional: later rules are discarded and qualifying separation starves
@@ -113,11 +119,11 @@
   Docs-only source correction is tracked in
   [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
   this reconciliation.
-- Test inventory: 96 xUnit facts across 11 test files, including four explicitly categorized
+- Test inventory: 98 xUnit facts across 11 test files, including four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
-- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,951 lines and
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,970 lines and
   `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 714 lines.
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
   in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex

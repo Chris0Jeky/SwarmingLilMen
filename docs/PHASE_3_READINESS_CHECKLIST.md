@@ -36,7 +36,8 @@ These are the remaining milestones from `archive/NewImplementation.md` that must
 - [x] Field-of-view filtering with weights
 - [x] Canonical Grid and Naive indexes enforce inclusive radius filtering, self-exclusion, and
   toroidal minimum-image distance with deterministic capped-result status; focused equivalence tests
-  cover seams, corners, coincident agents, one/two-cell worlds, dense truncation, and 200 randomized scenarios.
+  cover seams, corners, coincident agents, one/two-cell worlds, partial terminal cells, unwrapped
+  input positions, dense truncation, and 200 randomized scenarios.
 - [x] FOV, whiskers, neighbor statistics, separation, and cohesion use the same toroidal
   minimum-image displacement; the full Release suite passes.
 
@@ -103,12 +104,14 @@ epic #10's ordered Wave 0/Wave 1 execution.
   self, coincident, seam, corner, dense-truncation, and one/two-cell cases pass. A no-wander,
   200-tick 12-agent canonical trajectory matched positions and velocities within `1e-4`.
 - [x] **Edge cases and bounded output**: inclusive radius boundaries, zero-radius coincident agents,
-  all agents in one cell, wrapped one/two-cell worlds, randomized distributions, and deterministic
-  truncation are covered.
+  all agents in one cell, wrapped one/two-cell worlds, partial terminal cells, unwrapped positions,
+  randomized distributions, and deterministic truncation are covered.
 - [x] **Steady-state allocation proof**: both direct query implementations report zero
   current-thread allocations after tiered-compilation warm-up.
-- [ ] **Canonical performance comparison**: no grid-over-naive speedup is claimed. Canonical
-  BenchmarkDotNet and `MemoryDiagnoser` coverage remain tracked in
+- [ ] **Canonical performance validation**: one reported-only 1,000-agent Release diagnostic
+  measured Grid at 1.213 ms/tick and Naive at 27.155 ms/tick (22.40x) after matched warm-up, but no
+  distribution or scale claim follows from one sample. Canonical BenchmarkDotNet and
+  `MemoryDiagnoser` coverage remain tracked in
   [issue #20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20).
 
 **Exit Criteria**: Behavioral equivalence is verified; performance improvement remains unverified.
