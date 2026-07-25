@@ -11,6 +11,7 @@ namespace SwarmSim.Tests;
 public class PerformanceTests
 {
     private const int WarmupTicks = 10;
+    private const int WarmupGridRebuilds = 10;
 
     [Fact]
     [Trait("Category", "Performance")]
@@ -18,9 +19,10 @@ public class PerformanceTests
     {
         const int referenceAgents = 1_000;
         const int scenarioAgents = 50_000;
+        const int measuredTicks = 100;
         // Dense fixed-area neighbor searches degrade per agent at larger populations. This 40x
         // allowance remains a meaningful regression ceiling while leaving headroom over the
-        // 2026-07-25 same-run normalized factor of 23.02x.
+        // 2026-07-25 same-run per-agent degradation factor of 23.77x.
         const double maxPerAgentDegradation = 40.0;
         const double reportedTargetMilliseconds = 16.67;
 
@@ -32,8 +34,8 @@ public class PerformanceTests
             CohesionWeight = 1.5f
         };
 
-        double referenceMilliseconds = MeasureTicks(referenceAgents, 1_000, CreateConfig);
-        double scenarioMilliseconds = MeasureTicks(scenarioAgents, 100, CreateConfig);
+        double referenceMilliseconds = MeasureTicks(referenceAgents, measuredTicks, CreateConfig);
+        double scenarioMilliseconds = MeasureTicks(scenarioAgents, measuredTicks, CreateConfig);
         double maximumScenarioMilliseconds = ReportResult(
             "legacy_world_tick",
             referenceAgents,
@@ -55,13 +57,16 @@ public class PerformanceTests
     {
         const int referenceAgents = 500;
         const int scenarioAgents = 1_000;
+        const int measuredTicks = 1_000;
+        // The 4x allowance leaves headroom over the 2026-07-25 same-run per-agent
+        // degradation factor of 1.29x while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 4.0;
         const double reportedTargetMilliseconds = 1.0;
 
         static SimConfig CreateConfig(int agentCount) => new() { InitialCapacity = agentCount };
 
-        double referenceMilliseconds = MeasureTicks(referenceAgents, 2_000, CreateConfig);
-        double scenarioMilliseconds = MeasureTicks(scenarioAgents, 1_000, CreateConfig);
+        double referenceMilliseconds = MeasureTicks(referenceAgents, measuredTicks, CreateConfig);
+        double scenarioMilliseconds = MeasureTicks(scenarioAgents, measuredTicks, CreateConfig);
         double maximumScenarioMilliseconds = ReportResult(
             "legacy_world_tick",
             referenceAgents,
@@ -83,13 +88,16 @@ public class PerformanceTests
     {
         const int referenceAgents = 1_000;
         const int scenarioAgents = 10_000;
+        const int measuredTicks = 100;
+        // The 8x allowance leaves headroom over the 2026-07-25 same-run per-agent
+        // degradation factor of 2.82x while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 8.0;
         const double reportedTargetMilliseconds = 16.67;
 
         static SimConfig CreateConfig(int agentCount) => new() { InitialCapacity = agentCount };
 
-        double referenceMilliseconds = MeasureTicks(referenceAgents, 1_000, CreateConfig);
-        double scenarioMilliseconds = MeasureTicks(scenarioAgents, 100, CreateConfig);
+        double referenceMilliseconds = MeasureTicks(referenceAgents, measuredTicks, CreateConfig);
+        double scenarioMilliseconds = MeasureTicks(scenarioAgents, measuredTicks, CreateConfig);
         double maximumScenarioMilliseconds = ReportResult(
             "legacy_world_tick",
             referenceAgents,
@@ -111,11 +119,14 @@ public class PerformanceTests
     {
         const int referenceAgents = 5_000;
         const int scenarioAgents = 50_000;
+        const int measuredRebuilds = 100;
+        // The 2.5x allowance leaves headroom over the 2026-07-25 same-run per-agent
+        // degradation factor of 0.36x while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 2.5;
         const double reportedTargetMilliseconds = 2.0;
 
-        double referenceMilliseconds = MeasureGridRebuilds(referenceAgents, 1_000);
-        double scenarioMilliseconds = MeasureGridRebuilds(scenarioAgents, 100);
+        double referenceMilliseconds = MeasureGridRebuilds(referenceAgents, measuredRebuilds);
+        double scenarioMilliseconds = MeasureGridRebuilds(scenarioAgents, measuredRebuilds);
         double maximumScenarioMilliseconds = ReportResult(
             "uniform_grid_rebuild",
             referenceAgents,
@@ -165,6 +176,11 @@ public class PerformanceTests
             world.AddRandomAgent();
         }
 
+        for (int i = 0; i < WarmupGridRebuilds; i++)
+        {
+            world.Grid.Rebuild(world.X, world.Y, world.Count);
+        }
+
         var stopwatch = Stopwatch.StartNew();
         for (int i = 0; i < measuredRebuilds; i++)
         {
@@ -199,7 +215,10 @@ public class PerformanceTests
             ScenarioOperationsPerSecond = 1000.0 / scenarioMilliseconds,
             AgentScale = agentScale,
             ObservedTimeScale = scenarioMilliseconds / referenceMilliseconds,
+            ObservedPerAgentDegradation =
+                (scenarioMilliseconds / referenceMilliseconds) / agentScale,
             MaximumTimeScale = maximumTimeScale,
+            MaximumPerAgentDegradation = maxPerAgentDegradation,
             ReportedTargetMillisecondsPerOperation = reportedTargetMilliseconds,
             ReportedTargetMet = scenarioMilliseconds <= reportedTargetMilliseconds
         }));

@@ -20,21 +20,22 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- Default Release solution test (`Category!=Performance`): **64 passed, 0 failed, 0 skipped**
-  in 158 ms of test execution (4.4 seconds command wall time) on 2026-07-25.
-- Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 22.06 seconds of test
-  execution (25.1 seconds command wall time), confirming the full suite remains under one minute.
-- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 23.47 seconds.
+- CI-filtered Release solution test (`Category!=Performance`): **64 passed, 0 failed, 0 skipped**
+  in 49 ms of test execution (3.3 seconds command wall time) on 2026-07-25.
+- Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 20 seconds of test
+  execution (23.4 seconds command wall time), confirming the full suite remains under one minute.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 20.84 seconds.
   The measured figures remained in the same broad range as the preceding 0.272 / 14.23 / 291.80 /
   0.153 baseline; the 1k sample was slower and the other three were faster:
-  - 1k legacy agents: 0.380 ms/tick (2,631 operations/second)
-  - 10k legacy agents: 10.032 ms/tick (99.7 operations/second)
-  - 50k legacy agents: 188.369 ms/tick (5.31 operations/second)
-  - 50k grid rebuild: 0.094 ms
+  - 1k legacy agents: 0.332 ms/tick (3,015 operations/second)
+  - 10k legacy agents: 9.662 ms/tick (103.5 operations/second)
+  - 50k legacy agents: 170.530 ms/tick (5.86 operations/second)
+  - 50k grid rebuild: 0.075 ms
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
-  measurements gate generous machine-relative scaling envelopes and emit JSON records; absolute
-  throughput targets remain reported-only. A green default or performance-category run therefore
-  does **not** prove the 50k/60 FPS headline objective.
+  measurements compare matching operation horizons after warmup, gate generous machine-relative
+  scaling envelopes, and emit JSON records; absolute throughput targets remain reported-only. A
+  green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
+  objective.
 - Coverage report (`XPlat Code Coverage`, Release): **41.81% line / 35.44% branch overall**;
   `SwarmSim.Core` is 80.79% line-covered and `SwarmSim.Render` is 1.77% line-covered. The
   instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
