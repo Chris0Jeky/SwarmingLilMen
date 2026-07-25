@@ -467,11 +467,10 @@ dotnet publish SwarmSim.Render -c Release -r win-x64 \
 ### 2. Profiling Tools
 **Action Required**: If using Rider Community, profiling tools (dotTrace, dotMemory) are not available. Upgrade to Rider Ultimate or use alternative profilers.
 
-### 3. GitHub Actions (Optional)
-**Action Required**: If you want CI/CD:
-1. Push repository to GitHub
-2. Copy `.github/workflows/ci.yml` from PublishScript.md
-3. GitHub Actions will run automatically on push
+### 3. GitHub Actions
+GitHub Actions runs the repository's Release build and test gate on Windows and Linux for pushes
+and pull requests targeting `main`. The pull-request gate excludes `PerformanceTests`; run those
+separately in Release when changing performance-sensitive code.
 
 ### 4. Publish Profiles (Optional)
 **Action Required**: To use Rider's "Publish..." UI:

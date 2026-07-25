@@ -224,7 +224,11 @@ dotnet publish SwarmSim.Render -p:PublishProfile=AOT-win-x64
 
 # 3) GitHub Actions workflow — `.github/workflows/ci.yml`
 
-This runs on **Windows** and **Linux**; does restore/build/test (+ coverage), a short **BenchmarkDotNet** run, and publishes **JIT + R2R** on both OSes, plus **NativeAOT on Windows** (where toolchain is preinstalled). All outputs get uploaded as artifacts.
+> **Superseded:** This historical workflow example is not the repository CI definition. The active,
+> maintained Release build/test gate is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml);
+> do not copy the block below into the repository.
+
+This example runs on **Windows** and **Linux**; does restore/build/test (+ coverage), a short **BenchmarkDotNet** run, and publishes **JIT + R2R** on both OSes, plus **NativeAOT on Windows** (where toolchain is preinstalled). All outputs get uploaded as artifacts.
 
 ```yaml
 name: ci
