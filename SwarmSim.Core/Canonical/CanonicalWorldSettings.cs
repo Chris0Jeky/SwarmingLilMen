@@ -24,6 +24,10 @@ public sealed class CanonicalWorldSettings
     public float WanderRate { get; init; } = 1.5f;
     public float WhiskerTimeHorizon { get; init; } = 0.4f;
     public float WhiskerWeight { get; init; } = 1.2f;
+    /// <summary>
+    /// External deterministic seed. Supported values are 0 through
+    /// <see cref="SwarmSim.Core.Utils.Rng.MaxSupportedSeed"/>, inclusive.
+    /// </summary>
     public uint Seed { get; init; } = 123456u;
     public float WorldWidth { get; init; } = 1920f;
     public float WorldHeight { get; init; } = 1080f;

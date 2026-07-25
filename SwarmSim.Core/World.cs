@@ -71,13 +71,13 @@ public sealed class World
     public World(SimConfig config, uint seed)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
-        Rng = new Rng(seed);
 
         // Validate configuration
         var errors = config.Validate();
         if (errors.Count > 0)
             throw new ArgumentException($"Invalid config: {string.Join(", ", errors)}");
 
+        Rng = new Rng(seed);
         Initialize(config.InitialCapacity);
     }
 

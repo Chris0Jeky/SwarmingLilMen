@@ -31,7 +31,8 @@ Good general-purpose flocking with noticeable swirls and separation.
 
 All bundled JSON files inherit `Seed: 42` unless they explicitly override it. The balanced file's
 authored `WanderStrength: 0.45` therefore remains deterministic for a matching .NET 8 binary,
-platform, timestep, and input sequence. Omit `WanderStrength` to use the disabled default.
+platform, timestep, and input sequence. Supported external seed values are `0` through
+`2147483647`; larger JSON values are rejected. Omit `WanderStrength` to use the disabled default.
 
 ### Peaceful Flocks (configs/peaceful.json)
 - Emphasizes cohesion/alignment, higher friction (0.98) for mellow motion.

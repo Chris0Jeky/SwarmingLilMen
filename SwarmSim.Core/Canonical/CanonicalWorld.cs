@@ -34,6 +34,7 @@ public sealed class CanonicalWorld
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
+        Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
 
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];
@@ -84,7 +85,7 @@ public sealed class CanonicalWorld
         int index = Count;
         if (Settings.WanderStrength > 0f)
         {
-            var wanderRng = new Rng(DeriveWanderSeed(Settings.Seed, index));
+            Rng wanderRng = Rng.CreateFromDerivedSeed(DeriveWanderSeed(Settings.Seed, index));
             _wanderRngs[index] = wanderRng;
             _wanderAngles[index] = wanderRng.NextFloat(0f, MathF.PI * 2f);
         }

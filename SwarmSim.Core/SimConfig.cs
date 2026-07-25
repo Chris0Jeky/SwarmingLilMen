@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core;
 
@@ -10,7 +11,10 @@ namespace SwarmSim.Core;
 public sealed class SimConfig
 {
     // ===== World Parameters =====
-    /// <summary>Seed shared by deterministic construction paths.</summary>
+    /// <summary>
+    /// Seed shared by deterministic construction paths. Supported values are 0 through
+    /// <see cref="Rng.MaxSupportedSeed"/>, inclusive.
+    /// </summary>
     public uint Seed { get; init; } = 42u;
 
     public float WorldWidth { get; init; } = 1920f;
@@ -209,6 +213,8 @@ public sealed class SimConfig
     {
         var errors = new List<string>();
 
+        if (Seed > Rng.MaxSupportedSeed)
+            errors.Add($"Seed must be between 0 and {Rng.MaxSupportedSeed}, inclusive");
         if (WorldWidth <= 0) errors.Add("WorldWidth must be positive");
         if (WorldHeight <= 0) errors.Add("WorldHeight must be positive");
         if (FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
