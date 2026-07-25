@@ -1,4 +1,8 @@
-﻿Awesome—here’s a drop-in set of scripts + CI that will:
+﻿Historical publishing reference—here’s a set of scripts and a superseded CI example that will:
+
+> **Historical artifact (2025):** the publishing examples below are preserved for reference. The
+> workflow example is superseded by the maintained [repository CI](../.github/workflows/ci.yml)
+> and must not be copied over it.
 
 * publish **three flavors** of your app: **JIT** (framework-dependent), **R2R** (ReadyToRun), **NativeAOT** (self-contained),
 * run **tests** (with coverage) and **benchmarks** (short CI-friendly run),
@@ -9,9 +13,10 @@ I’ll give you:
 1. repo additions (folders + files)
 2. local **PowerShell** and **bash** publish scripts
 3. three **Publish Profiles** (`.pubxml`) you can use from Rider or CLI
-4. a **GitHub Actions** workflow that builds/tests/benches and publishes all three variants
+4. a historical **GitHub Actions** workflow example that builds/tests/benches and publishes all
+   three variants
 
-You can paste these verbatim and commit.
+The local publishing examples can be adapted; do not paste the workflow block over the active gate.
 
 ---
 
@@ -32,7 +37,7 @@ SwarmSim.sln
   publish.ps1
   publish.sh
 .github/workflows
-  ci.yml
+  ci.yml  # active repository gate; the example later in this file is superseded
 ```
 
 > Assumes your entrypoint app is **SwarmSim.Render**. If not, replace project paths accordingly.

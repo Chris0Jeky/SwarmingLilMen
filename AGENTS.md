@@ -89,7 +89,9 @@ BenchmarkDotNet runs are separate evidence; ordinary unit-test success does not 
 - Legacy and canonical behavior/configuration can drift because both remain live.
 - GitHub Actions supplies Release build and non-performance test checks on ubuntu and windows.
   With no branch-protection ruleset, the exact-head CI and independent-review merge gates remain
-  process-enforced; coverage, performance, and renderer evidence are separate.
+  process-enforced. Pull-request jobs validate GitHub's head/base merge ref; incorporate the latest
+  `main` before merge, and use `workflow_dispatch` when an exact branch-head rerun is needed.
+  Coverage, performance, and renderer evidence are separate.
 - README/status history contains stale milestone and performance claims. The verified-state section
   at the top of `PROJECT_STATUS.md` wins until broader documentation is reconciled.
 

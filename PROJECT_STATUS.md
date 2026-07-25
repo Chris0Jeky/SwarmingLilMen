@@ -14,7 +14,8 @@
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
   workflow supplies Release build/test checks (excluding `PerformanceTests`) on ubuntu and windows
   for pushes and pull requests targeting `main`. No branch-protection ruleset exists, so merge
-  gating remains process-enforced.
+  gating remains process-enforced. Pull-request jobs test GitHub's head/base merge ref;
+  `workflow_dispatch` is available for an exact branch-head rerun.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
@@ -826,8 +827,8 @@ audited on 2026-07-25.
 2. Define and test canonical multi-group semantics before adding combat/metabolism.
 3. Add canonical BenchmarkDotNet cases and a real allocation measurement; decide whether timing
    thresholds should gate CI or remain explicitly observational.
-4. Add a minimal GitHub Actions workflow for Release build/test once the desired performance gate
-   policy is settled.
+4. Keep pull-request CI current with the latest `main`; use the manual workflow trigger when exact
+   branch-head evidence is required. Performance remains separate and observational.
 5. Consolidate README and historical status claims against the verified-state section.
 
 **Remember**: Do not start Phase 3 on the legacy path by default, and do not claim the headline
