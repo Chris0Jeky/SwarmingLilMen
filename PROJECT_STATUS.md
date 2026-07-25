@@ -57,6 +57,8 @@
   incomplete (#18), composition violates its total `MaxForce` bound (#19), and rule dispatch is
   positional: later rules are discarded and qualifying separation starves alignment, cohesion,
   and wander, including wander-angle updates (#27).
+  Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
+  kernel-resolved arbitration.
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
 - Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
@@ -87,6 +89,17 @@
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
   in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
   project adapter/settings. Codex hook activation still requires fresh-session `/hooks` trust.
+- Extension trust: the product term **sandbox** is retired. **Modeling boundary** / **interaction
+  surface** are reserved for simulation concepts, the aspirational package sketch uses
+  **Playground**, and the shipped app remains `SwarmSim.Render`. Data-only scenario input is a
+  current design fact, not a security guarantee; in-process extensions have full host authority.
+  Future untrusted code is blocked on the dedicated containment prerequisite in
+  [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44), an unscheduled marker with no
+  owner or timeline. Until its gates pass, no product name, flag, package, API, or product-facing
+  documentation may imply containment. The formal T1 authority label in agent-control files is an
+  intentional non-product exception and does not claim containment. Any future IPC endpoint must
+  bind to loopback and authenticate peers by default; remote exposure requires a separate threat
+  model and explicit design decision.
 
 ---
 
@@ -128,7 +141,7 @@ verified block above records what is actually measured.
 - ✅ **World Integration**: Updated systems pipeline (Sense → Behavior → Integrate)
 - ✅ **Tests**: 8 new boids behavior tests (43 total, all passing)
   - Separation, alignment, cohesion verified individually
-  - Group isolation, speed limits, determinism confirmed
+  - Cross-group non-interaction, speed limits, determinism confirmed
 - ✅ **Performance Results** (Release mode):
   - **10k agents: 129 FPS** ✅ (exceeds 60 FPS target)
   - **1k agents: 8,555 FPS** ✅
@@ -174,7 +187,7 @@ verified block above records what is actually measured.
    - **Run with**: Default renderer (no `--canonical` flag)
 
 2. **Canonical Implementation** (`SwarmSim.Core/Canonical/`):
-   - Immutable `Boid` structs and isolated `IRule` implementations
+   - Immutable `Boid` structs and independent `IRule` implementations
    - Reynolds-style steering rules with positional, incomplete world-level composition (#27)
    - Single-pass with per-agent decision-making
    - **Status**: core and rule implementations exist; perception, composition enforcement,
@@ -319,10 +332,10 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - Earlier `Damped`-mode force/friction equilibrium created unpredictable parameter sensitivity
   - Early inverse-square separation was replaced by the current bounded linear radial falloff;
     separation still participates in the opaque aggregate/force pipeline
-  - Aggregate-coupled rule calculations made standard tuning guidance and isolated diagnosis hard
+  - Aggregate-coupled rule calculations made standard tuning guidance and single-rule diagnosis hard
 - **New approach**: Complete rewrite in `SwarmSim.Core.Canonical` namespace following Reynolds' canonical steering behaviors:
   - **Immutable data**: `readonly struct Boid`, functional transformations
-  - **Isolated steering rules**: rules return `desired - current`; the caller clamps and arbitrates
+  - **Independent steering rules**: rules return `desired - current`; the caller clamps and arbitrates
     contributions, with current composition defects tracked in #19 and #27
   - **Direct speed control**: velocity is normalized without friction to `TargetSpeed` or the
     priority-adjusted allowed speed (up to 3% lower at the current default)
@@ -363,7 +376,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
   rule-toggle acceptance tests remain open in #40
 - **Milestones 3-6 acceptance partial**: direct rule tests exist, but the roadmap's multi-tick
-  behavioral/isolation/stability scenarios remain open in #41
+  behavioral/single-rule/stability scenarios remain open in #41
 - **In Progress**: Milestones 8-10
   - Boundary testing (wrapping, reflection)
   - Spatial index equivalence tests
@@ -388,7 +401,7 @@ These improvements address fundamental architecture issues discovered during Pha
 #### Part A: Canonical Boids Implementation (PRIORITY 1) - ✅ COMPLETE
 **Historical rationale (before the completed refactor)**: The implementation used raw forces,
 which caused parameter-tuning issues. `BehaviorSystem` now computes bounded `desired - current`
-steering; the separate canonical path further isolates rules.
+steering; the separate canonical path further separates rules.
 
 - [x] **Refactor to Steering Behaviors** (SwarmSim.Core/Systems/)
   - [x] Changed BehaviorSystem to compute desired velocities (not raw forces)
@@ -672,6 +685,11 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 6. **Documentation drift**: high-traffic entrypoints are reconciled. The explicitly historical
    sections below intentionally preserve obsolete phase, performance, and next-session claims; the
    historical-context banner above them is the liveness boundary.
+7. **Untrusted-extension prerequisite**: no untrusted extension code may run until
+   [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) delivers a separate process,
+   least-authority filesystem/network access, resource and wall-clock limits, bounded validated
+   schemas, authenticated local-only transport, a dedicated threat model, and adversarial
+   fail-closed evidence. This marker is unscheduled and has no owner or timeline.
 
 ---
 

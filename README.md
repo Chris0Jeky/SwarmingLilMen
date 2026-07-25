@@ -24,7 +24,7 @@ below are goals, not achieved throughput claims.
 ## 📝 Implementation Note
 
 This project is undergoing an architectural transition from an aggregate-driven systems approach
-to isolated, Reynolds-style steering rules. Two implementations currently exist side-by-side:
+to independently testable, Reynolds-style steering rules. Two implementations currently exist side-by-side:
 - **Legacy** (default): Aggregate-driven SoA steering systems architecture
 - **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
   exist, but the perception contract, force-budget enforcement, and instrumentation UX remain
@@ -242,6 +242,7 @@ SwarmingLilMen/
 │   ├── PARAMETER_GUIDE.md
 │   ├── PHASE_3_READINESS_CHECKLIST.md
 │   ├── QUICKSTART.md
+│   ├── README.md             # Documentation index
 │   ├── RENDERER_GUIDE.md
 │   ├── ROADMAP-VISION.md
 │   ├── SIMULATION_MECHANICS_EXPLAINED.md
@@ -432,7 +433,7 @@ dotnet build
 - [CLAUDE.md](CLAUDE.md) - Guidelines for AI assistants
 - [PROJECT_STATUS.md](PROJECT_STATUS.md) - Implementation tracker and roadmap
 - [Roadmap vision](docs/ROADMAP-VISION.md) - Aspirational reference; epic #10 is the executable plan
-- [Live guides](docs/) - Controls, configuration, renderer, mechanics, and readiness documentation
+- [Documentation index](docs/README.md) - Live guides, security non-goal, extension posture, and archive routing
 - [Historical publishing reference](docs/archive/PublishScript.md) - Superseded distribution examples
 
 ## 🛠️ Technology Stack
