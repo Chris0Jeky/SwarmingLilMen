@@ -25,7 +25,7 @@ throughput. On each simulation step, every agent goes through this pipeline:
 
 ### 1. Force Accumulation Phase
 ```
-Forces start at (0, 0) each frame
+Forces start at (0, 0) each simulation step
 ↓
 Systems add forces:
 - BehaviorSystem adds: separation + alignment + cohesion
@@ -55,10 +55,10 @@ position += velocity * dt
 
 ### Key Insight: **Timestep (dt)**
 - dt = 1/60 = 0.0167 seconds
-- This is the "integration step" - how much real time passes per frame
-- Forces are multiplied by dt, so a force of 100 adds `100 × 0.0167 = 1.67` to velocity per frame
-- **Smaller dt = smoother motion but forces have less impact per frame**
-- **Larger dt = choppier motion but forces have more impact per frame**
+- This is the integration step: how much simulated time advances per update
+- Forces are multiplied by dt, so a force of 100 adds `100 × 0.0167 = 1.67` to velocity per step
+- A smaller dt produces smaller per-step changes and more updates per simulated second
+- A larger dt produces larger per-step changes and can reduce numerical fidelity
 
 ---
 
@@ -154,7 +154,7 @@ For each neighbor within senseRadius:
 
 **How it works**:
 ```
-Each frame:
+Each simulation step:
   1. Generate random angle
   2. Calculate force in that direction
   3. Scale by wanderStrength
@@ -182,7 +182,7 @@ velocity = velocity * friction (each simulation step)
 ```
 
 - **Value Range**: 0.0 to 1.0
-- **Meaning**: What fraction of velocity is retained each frame
+- **Meaning**: What fraction of velocity is retained each simulation step
 
 | Friction | Effect | Unforced retention after 60 steps | Use Case |
 |----------|--------|---------------------|----------|
@@ -192,7 +192,8 @@ velocity = velocity * friction (each simulation step)
 | 0.90 | Medium | 0.18% retained (lose 99.82%) | High drag, slow motion |
 | 0.85 | Heavy | 0.006% retained | Extreme drag, forces must constantly push |
 
-**Key Formula**: After 1 second (60 frames), velocity is multiplied by `friction^60`
+**Key Formula**: After 1 second (60 simulation steps), unforced velocity is multiplied by
+`friction^60`
 
 **Examples**:
 - **Friction = 1.0 (No Damping)**: Agent accelerates once and coasts forever (no velocity loss)
@@ -214,14 +215,15 @@ if (|velocity| > maxSpeed) {
 ```
 
 - **Value Range**: Any positive number (typically 5-20)
-- **Meaning**: Maximum velocity magnitude (pixels per frame)
+- **Meaning**: Maximum velocity magnitude in world-position units per second (pixels per second in
+  the renderer's current coordinate mapping)
 
-| MaxSpeed | Pixels/Frame | Pixels/Second | Effect |
-|----------|--------------|---------------|--------|
-| 5 | 5 | 300 | Slow, gentle motion |
-| 10 | 10 | 600 | Moderate, natural pace |
-| 20 | 20 | 1200 | Fast, dynamic |
-| 50 | 50 | 3000 | Very fast, chaotic |
+| MaxSpeed (units/second) | Displacement per 1/60 step | Relative effect |
+|-------------------------|--------------------------------|-----------------|
+| 5 | 0.083 | Slowest of these examples |
+| 10 | 0.167 | Moderate relative pace |
+| 20 | 0.333 | Faster motion |
+| 50 | 0.833 | Fastest of these examples |
 
 **Impact**:
 - Too low: Sluggish, can't escape danger or explore quickly
@@ -230,10 +232,10 @@ if (|velocity| > maxSpeed) {
 
 #### **Timestep (dt)**
 - **Fixed at**: 1/60 = 0.0167 seconds
-- **Impact**: Determines how much forces affect velocity per frame
+- **Impact**: Determines each simulation step's velocity and position change
   - `velocity += force * dt`
-  - Larger dt = forces have bigger impact
-  - Smaller dt = smoother but forces need to be larger
+  - `position += velocity * dt`
+  - Renderer frame rate does not change the fixed simulation dt
 
 ---
 
