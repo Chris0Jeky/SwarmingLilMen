@@ -435,7 +435,8 @@ Once all above tasks are complete, decide on migration strategy:
 > excludes the ordered #17-#21 correctness/performance/fixture work and dependency-gated #40/#41,
 > so it is not a current end-to-end forecast.
 
-**Current critical path**: epic #10's ordered #17-#21 gates. Multi-group and dependency-gated
+**Canonical-readiness subset after Wave 0**: epic #10's ordered #17-#21 gates. The full overnight
+queue still begins with Wave 0 issues #11-#16. Multi-group and dependency-gated
 acceptance/instrumentation backlog (#40 and #41) remains outside the current overnight scope.
 
 ---
@@ -479,3 +480,4 @@ When starting work on Phase 3 readiness:
 6. Profile performance after each milestone
 
 Do not select work by apparent speed; the epic's dependency order is authoritative.
+The #11-#16 Wave 0 gates precede this checklist's #17-#21 canonical behavior/fixture subset.
