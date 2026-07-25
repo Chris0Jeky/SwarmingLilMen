@@ -167,13 +167,18 @@ CanonicalWorld
   └─ Step() method:
       1. Rebuild spatial index
       2. For each boid:
-          a. Query neighbors (radius + FOV filtering)
+          a. Query broad-phase candidates; apply FOV filtering
           b. Run all rules → accumulate steering
-          c. Clamp total steering to MaxForce
+          c. Apply the priority steering budget
           d. Integrate: v += steer*dt; normalize to TargetSpeed
           e. Integrate: x += v*dt; wrap boundaries
       3. Double-buffer swap
 ```
+
+This is the intended flow. The current grid index leaves radius candidates unfiltered
+([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)), and the current whisker plus
+separation path can exceed the intended `MaxForce` budget
+([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)).
 
 ### Key Characteristics
 
@@ -217,9 +222,10 @@ CanonicalWorld
    - Rules can be enabled/disabled/reordered
    - Clear input/output contract
 
-4. **FOV-Weighted Neighbors**:
-   - Neighbors filtered by radius (spatial index)
-   - Then filtered by field-of-view cone
+4. **FOV-Weighted Neighbor Candidates**:
+   - The intended spatial-index contract filters by radius; the current grid implementation does
+     not yet honor that argument ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18))
+   - Candidates are then filtered by field-of-view cone
    - **Weighted by position in FOV**: neighbors at edge of vision have less influence
    - `neighborWeights[]` passed to each rule
 
@@ -562,7 +568,6 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 - Replace legacy World/Systems with Canonical implementation
 
 ❌ **Advanced Features**:
-- Wander behavior (optional random exploration)
 - Obstacle avoidance
 - Boundary reflection (currently only wrapping)
 
