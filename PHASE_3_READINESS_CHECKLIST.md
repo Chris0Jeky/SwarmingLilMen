@@ -186,17 +186,21 @@ epic #10's ordered Wave 0/Wave 1 execution.
   }
   ```
 
-- [ ] **Property Test: Speed Limits**
+- [ ] **Property Tests: Speed Semantics** ([issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41))
   ```csharp
-  [Theory]
-  [InlineData(1.0f)]
-  [InlineData(5.0f)]
-  [InlineData(10.0f)]
-  public void PropertyTest_SpeedAlwaysAtTarget(float targetSpeed)
+  [Fact]
+  public void PropertyTest_ClassicComposition_SpeedStaysAtTarget()
   {
-      // Random scenario, all rules enabled
+      // Named classic-Reynolds composition from #27; priority/droop disabled
       // Run for 100 ticks
       // Assert: all agents have |velocity| = targetSpeed (± epsilon)
+  }
+
+  [Fact]
+  public void PropertyTest_DefaultPriority_SpeedMatchesAllowedSpeed()
+  {
+      // Default composition with priority activation and configured SeparationSpeedDroop
+      // Assert: speed matches the blend-adjusted allowed speed, remains finite, and never stalls
   }
   ```
 

@@ -72,7 +72,9 @@ Tips:
 - Press **H** for the partial in-app quick reference; use [`CONTROLS.md`](CONTROLS.md) for the
   complete list (runtime overlay drift is tracked in
   [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39)).
-- Press **F12** for the snapshot/debug overlay.
+- Legacy renderer only: press **F12** for the snapshot/debug overlay.
+- Canonical renderer only: press **O** for the interaction overlay and **Tab** to cycle the tracked
+  boid.
 - See [`CONTROLS.md`](CONTROLS.md) for the complete reference sheet.
 - For parameter explanations see [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md).
 
