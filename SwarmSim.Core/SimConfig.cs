@@ -220,6 +220,7 @@ public sealed class SimConfig
         if (FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
         if (MaxSpeed <= 0) errors.Add("MaxSpeed must be positive");
         if (MaxForce <= 0) errors.Add("MaxForce must be positive");
+        if (MaxTurnRateDegPerSecond < 0) errors.Add("MaxTurnRateDegPerSecond must be non-negative");
         if (GridCellSize <= 0) errors.Add("GridCellSize must be positive");
         if (SenseRadius <= 0) errors.Add("SenseRadius must be positive");
         if (FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");

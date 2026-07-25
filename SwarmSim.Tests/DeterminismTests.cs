@@ -72,14 +72,22 @@ public sealed class DeterminismTests
 
     [Fact]
     [Trait("Category", "Determinism")]
-    public void WorldFactories_RejectUnsupportedExternalSeeds()
+    public void WorldFactories_RejectInvalidDeterminismInputs()
     {
         uint unsupportedSeed = Rng.MaxSupportedSeed + 1u;
 
         Assert.Throws<ArgumentOutOfRangeException>(() => new World(new SimConfig(), unsupportedSeed));
 
+        var mismatchedConfig = new SimConfig { Seed = 7u };
+        ArgumentException mismatch = Assert.Throws<ArgumentException>(
+            () => new World(mismatchedConfig, seed: 8u));
+        Assert.Equal("seed", mismatch.ParamName);
+
         CanonicalWorldSettings settings = CreateCanonicalSettings(capacity: 8, seed: unsupportedSeed);
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(settings));
+
+        var negativeTurnRate = new CanonicalWorldSettings { MaxTurnRateDegPerSecond = -1f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativeTurnRate));
     }
 
     [Fact]
@@ -237,7 +245,7 @@ public sealed class DeterminismTests
     {
         var first = new World(new SimConfig(), seed: 42u);
         var matching = new World(new SimConfig(), seed: 42u);
-        var different = new World(new SimConfig(), seed: 43u);
+        var different = new World(new SimConfig { Seed = 43u }, seed: 43u);
         bool observedDifferentSeed = false;
 
         for (int i = 0; i < 8; i++)

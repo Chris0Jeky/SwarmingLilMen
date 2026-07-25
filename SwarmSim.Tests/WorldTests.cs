@@ -233,7 +233,7 @@ public class WorldTests
     {
         // Arrange
         const uint seed = 12345u;
-        var config = new SimConfig();
+        var config = new SimConfig { Seed = seed };
 
         var world1 = new World(config, seed);
         var world2 = new World(config, seed);

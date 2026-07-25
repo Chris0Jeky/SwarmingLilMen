@@ -35,6 +35,13 @@ public sealed class CanonicalWorld
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
         Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
+        if (settings.MaxTurnRateDegPerSecond < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.MaxTurnRateDegPerSecond,
+                "MaxTurnRateDegPerSecond must be non-negative.");
+        }
 
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];

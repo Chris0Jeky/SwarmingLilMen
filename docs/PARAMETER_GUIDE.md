@@ -6,7 +6,8 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 - **Seed** – Controls deterministic legacy and canonical construction. Reusing a seed reproduces
   a trajectory only when the .NET binary/runtime, platform, configuration, timestep, and ordered
   input events also match; it is not a cross-platform promise. Supported external values are
-  `0` through `2147483647`; larger values are rejected.
+  `0` through `2147483647`; larger values are rejected. The legacy `World` compatibility argument
+  must match `SimConfig.Seed`, preventing two advertised seed sources from drifting.
 - **MaxSpeed** – Upper bound on velocity magnitude. Higher values create more energetic movement but require higher `MaxForce` (or stronger weights) to turn quickly. Keep `MaxForce ≥ MaxSpeed * 0.2` for responsive steering.
 - **MaxForce** – Steering budget per tick. A larger value lets agents change direction faster. Too low relative to `MaxSpeed` yields “train” formations; too high can cause jitter.
 - **Friction** – Velocity damping after applying steering. Values near `0.90–0.98` simulate drag. `1.0` keeps constant speed (only appropriate when steering budgets are high).
@@ -34,7 +35,8 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
   while `WanderStrength` is zero.
 
 ## Canonical Smoothing
-- **MaxTurnRateDegPerSecond** – Canonical heading-change limit.
+- **MaxTurnRateDegPerSecond** – Non-negative canonical heading-change limit; `0` prevents heading
+  changes, while negative values are rejected.
 - **WhiskerTimeHorizon / WhiskerWeight** – Predictive collision lookahead and steering weight.
 - **SeparationPriorityRadiusFactor / SeparationPriorityExitFactor** – Entry and hysteresis-exit
   radii as fractions of `SenseRadius`.

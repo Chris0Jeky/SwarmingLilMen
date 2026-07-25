@@ -68,6 +68,17 @@ public sealed class World
     /// <summary>
     /// Creates a new world with the given configuration.
     /// </summary>
+    /// <param name="config">The complete world configuration.</param>
+    /// <param name="seed">
+    /// The deterministic seed, which must match <see cref="SimConfig.Seed"/>.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the configuration is invalid or <paramref name="seed"/> differs from
+    /// <see cref="SimConfig.Seed"/>.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="seed"/> is outside the supported range.
+    /// </exception>
     public World(SimConfig config, uint seed)
     {
         Config = config ?? throw new ArgumentNullException(nameof(config));
@@ -77,7 +88,15 @@ public sealed class World
         if (errors.Count > 0)
             throw new ArgumentException($"Invalid config: {string.Join(", ", errors)}");
 
-        Rng = new Rng(seed);
+        Rng.ValidateExternalSeed(seed, nameof(seed));
+        if (seed != config.Seed)
+        {
+            throw new ArgumentException(
+                $"Seed {seed} must match config.Seed {config.Seed}.",
+                nameof(seed));
+        }
+
+        Rng = new Rng(config.Seed);
         Initialize(config.InitialCapacity);
     }
 

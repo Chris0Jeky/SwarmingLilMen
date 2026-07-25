@@ -48,8 +48,8 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.27%
-  line / 38.90% branch overall**; `SwarmSim.Core` is 83.45% line / 71.85% branch and
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.42%
+  line / 39.20% branch overall**; `SwarmSim.Core` is 83.56% line / 72.16% branch and
   `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
@@ -66,8 +66,9 @@
   `SimConfig.Seed` and the canonical steering settings, and each wander-enabled boid receives an
   index-derived stream at successful spawn. The supported `--minimal` legacy harness also samples
   velocities and staged spawn positions from `World.Rng`, not process-global randomness. External
-  seeds are limited to `0..2147483647`; the established internal full-width derived-stream mapping
-  remains unchanged pending #26. Exact
+  seeds are limited to `0..2147483647`; the legacy `World` compatibility argument must equal
+  `SimConfig.Seed`, so configuration and runtime state cannot advertise different seed sources.
+  The established internal full-width derived-stream mapping remains unchanged pending #26. Exact
   ordered kinematic hashes cover both paths for 500 ticks, and two fresh processes running
   `configs/balanced.json` produced the same 600-tick SHA-256 kinematic hash
   (`DAF60518...5BB770F6`). The version-1 hash covers agent count plus ordered X/Y/Vx/Vy bits; it
