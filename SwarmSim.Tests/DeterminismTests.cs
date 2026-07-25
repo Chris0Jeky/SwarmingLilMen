@@ -36,9 +36,9 @@ public sealed class DeterminismTests
         Advance(first, TickCount);
         Advance(second, TickCount);
 
-        string firstHash = SimulationStateHash.Compute(first);
-        string secondHash = SimulationStateHash.Compute(second);
-        _output.WriteLine($"LEGACY_STATE_HASH={firstHash}");
+        string firstHash = SimulationKinematicHash.Compute(first);
+        string secondHash = SimulationKinematicHash.Compute(second);
+        _output.WriteLine($"LEGACY_KINEMATIC_HASH={firstHash}");
         Assert.Equal(firstHash, secondHash);
     }
 
@@ -57,12 +57,12 @@ public sealed class DeterminismTests
         Advance(first, TickCount);
         Advance(second, TickCount);
 
-        string firstHash = SimulationStateHash.Compute(first);
-        _output.WriteLine($"CANONICAL_WANDER_HASH={firstHash}");
+        string firstHash = SimulationKinematicHash.Compute(first);
+        _output.WriteLine($"CANONICAL_WANDER_KINEMATIC_HASH={firstHash}");
         Assert.Equal("7B321E70A7368223276A74696C54ED5AC603D03D62BC4B0B5A3F121EC0B59A50", firstHash);
         Assert.Equal(
             firstHash,
-            SimulationStateHash.Compute(second));
+            SimulationKinematicHash.Compute(second));
     }
 
     [Fact]
@@ -79,6 +79,33 @@ public sealed class DeterminismTests
 
     [Fact]
     [Trait("Category", "Determinism")]
+    public void KinematicHash_ExcludesNonKinematicAgentState()
+    {
+        var legacyFirst = new World(new SimConfig(), seed: 42u);
+        var legacySecond = new World(new SimConfig(), seed: 42u);
+        int firstIndex = legacyFirst.AddAgent(10f, 20f, group: 0);
+        int secondIndex = legacySecond.AddAgent(10f, 20f, group: 3);
+        legacyFirst.Energy[firstIndex] = 10f;
+        legacySecond.Energy[secondIndex] = 90f;
+        legacySecond.State[secondIndex] = AgentState.Hunting;
+
+        Assert.Equal(
+            SimulationKinematicHash.Compute(legacyFirst),
+            SimulationKinematicHash.Compute(legacySecond));
+
+        CanonicalWorldSettings settings = CreateCanonicalSettings(capacity: 2, seed: 42u);
+        CanonicalWorld canonicalFirst = CreateCanonicalWorld(settings);
+        CanonicalWorld canonicalSecond = CreateCanonicalWorld(settings);
+        Assert.True(canonicalFirst.TryAddBoid(new Vec2(10f, 20f), new Vec2(1f, 0f), group: 0));
+        Assert.True(canonicalSecond.TryAddBoid(new Vec2(10f, 20f), new Vec2(1f, 0f), group: 3));
+
+        Assert.Equal(
+            SimulationKinematicHash.Compute(canonicalFirst),
+            SimulationKinematicHash.Compute(canonicalSecond));
+    }
+
+    [Fact]
+    [Trait("Category", "Determinism")]
     public void CanonicalWorld_DifferentSeeds_ProduceDifferentTrajectoryHashes()
     {
         CanonicalWorld first = CreateCanonicalWorld(CreateCanonicalSettings(capacity: 8, seed: 123u));
@@ -90,8 +117,8 @@ public sealed class DeterminismTests
         Advance(second, TickCount);
 
         Assert.NotEqual(
-            SimulationStateHash.Compute(first),
-            SimulationStateHash.Compute(second));
+            SimulationKinematicHash.Compute(first),
+            SimulationKinematicHash.Compute(second));
     }
 
     [Fact]
@@ -125,8 +152,8 @@ public sealed class DeterminismTests
         Advance(large, TickCount);
 
         Assert.Equal(
-            SimulationStateHash.Compute(small),
-            SimulationStateHash.Compute(large));
+            SimulationKinematicHash.Compute(small),
+            SimulationKinematicHash.Compute(large));
     }
 
     [Fact]
@@ -217,17 +244,17 @@ public sealed class DeterminismTests
         CanonicalWorld matching = RenderProgram.CreateCanonicalWorld(matchingSettings, agentCount: 32);
         CanonicalWorld different = RenderProgram.CreateCanonicalWorld(differentSettings, agentCount: 32);
 
-        string initialHash = SimulationStateHash.Compute(first);
-        Assert.Equal(initialHash, SimulationStateHash.Compute(matching));
-        Assert.NotEqual(initialHash, SimulationStateHash.Compute(different));
+        string initialHash = SimulationKinematicHash.Compute(first);
+        Assert.Equal(initialHash, SimulationKinematicHash.Compute(matching));
+        Assert.NotEqual(initialHash, SimulationKinematicHash.Compute(different));
 
         Advance(first, TickCount);
         Advance(matching, TickCount);
         Advance(different, TickCount);
 
-        string trajectoryHash = SimulationStateHash.Compute(first);
-        Assert.Equal(trajectoryHash, SimulationStateHash.Compute(matching));
-        Assert.NotEqual(trajectoryHash, SimulationStateHash.Compute(different));
+        string trajectoryHash = SimulationKinematicHash.Compute(first);
+        Assert.Equal(trajectoryHash, SimulationKinematicHash.Compute(matching));
+        Assert.NotEqual(trajectoryHash, SimulationKinematicHash.Compute(different));
     }
 
     [Fact]
@@ -255,9 +282,9 @@ public sealed class DeterminismTests
             initialAgentCount: 64);
         CanonicalWorld world = RenderProgram.CreateCanonicalWorld(settings, agentCount: 64);
 
-        _output.WriteLine($"CANONICAL_DEFAULT_INITIAL_HASH_AFTER={SimulationStateHash.Compute(world)}");
+        _output.WriteLine($"CANONICAL_DEFAULT_INITIAL_KINEMATIC_HASH_AFTER={SimulationKinematicHash.Compute(world)}");
         Advance(world, TickCount);
-        _output.WriteLine($"CANONICAL_DEFAULT_FINAL_HASH_AFTER={SimulationStateHash.Compute(world)}");
+        _output.WriteLine($"CANONICAL_DEFAULT_FINAL_KINEMATIC_HASH_AFTER={SimulationKinematicHash.Compute(world)}");
 
         Assert.Equal(0f, settings.WanderStrength);
     }
@@ -269,7 +296,7 @@ public sealed class DeterminismTests
         string firstHash = await RunHeadlessBalancedBenchmark();
         string secondHash = await RunHeadlessBalancedBenchmark();
 
-        _output.WriteLine($"HEADLESS_STATE_HASH={firstHash}");
+        _output.WriteLine($"HEADLESS_KINEMATIC_HASH={firstHash}");
         Assert.Equal(firstHash, secondHash);
     }
 
@@ -380,10 +407,10 @@ public sealed class DeterminismTests
             process.ExitCode == 0,
             $"Headless renderer exited {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
         string[] hashLines = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Where(line => line.StartsWith("StateHash: ", StringComparison.Ordinal))
+            .Where(line => line.StartsWith("KinematicHash: ", StringComparison.Ordinal))
             .ToArray();
         string hashLine = Assert.Single(hashLines);
-        string hash = hashLine["StateHash: ".Length..];
+        string hash = hashLine["KinematicHash: ".Length..];
         Assert.Matches("^[0-9A-F]{64}$", hash);
         return hash;
     }

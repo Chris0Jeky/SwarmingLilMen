@@ -1795,7 +1795,7 @@ internal static class Program
         var stats = world.GetStats();
         Console.WriteLine($"Ticks: {ticks}, Elapsed: {sw.Elapsed.TotalSeconds:F2}s ({ticks / sw.Elapsed.TotalSeconds:F1} TPS)");
         Console.WriteLine($"Agents: {stats.AliveAgents}, Avg Speed: {stats.AverageSpeed:F2}");
-        Console.WriteLine($"StateHash: {SimulationStateHash.Compute(world)}");
+        Console.WriteLine($"KinematicHash: {SimulationKinematicHash.Compute(world)}");
     }
 
     private static void WarnIfInvalidConfig(SimConfig config, string source)

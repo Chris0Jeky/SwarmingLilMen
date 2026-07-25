@@ -5,15 +5,17 @@ using SwarmSim.Core.Canonical;
 namespace SwarmSim.Core.Diagnostics;
 
 /// <summary>
-/// Computes a version-1 diagnostic hash over logical simulation state in stable field order.
+/// Computes a version-1 diagnostic hash over ordered agent kinematics.
 /// </summary>
 /// <remarks>
 /// Version 1 hashes the logical agent count followed by the exact IEEE-754 bits of ordered
-/// X, Y, Vx, and Vy components. It intentionally excludes capacity and scratch state.
+/// X, Y, Vx, and Vy components. It is not a whole-world state fingerprint: configuration,
+/// clocks, RNG and wander state, groups, lifecycle and resource state, genomes, capacity, and
+/// scratch state are intentionally excluded.
 /// </remarks>
-public static class SimulationStateHash
+public static class SimulationKinematicHash
 {
-    /// <summary>Computes the version-1 hash for a legacy world.</summary>
+    /// <summary>Computes the version-1 ordered kinematic hash for a legacy world.</summary>
     public static string Compute(World world)
     {
         ArgumentNullException.ThrowIfNull(world);
@@ -32,7 +34,7 @@ public static class SimulationStateHash
         return Convert.ToHexString(hash.GetHashAndReset());
     }
 
-    /// <summary>Computes the version-1 hash for a canonical world.</summary>
+    /// <summary>Computes the version-1 ordered kinematic hash for a canonical world.</summary>
     public static string Compute(CanonicalWorld world)
     {
         ArgumentNullException.ThrowIfNull(world);

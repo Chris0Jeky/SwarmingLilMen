@@ -16,9 +16,10 @@ below are goals, not achieved throughput claims.
 
 - **Emergence over scripts**: Few simple, composable rules → rich macro patterns
 - **Performance target (unmet)**: 50k-100k agents at 60 FPS interactive; 1M+ headless
-- **Determinism**: Fixed-timestep legacy and canonical paths reproduce exact state for a matching
-  .NET 8 binary, platform, seed, configuration, timestep, and ordered input sequence; record/replay
-  and cross-platform measurement remain roadmap work
+- **Determinism**: Fixed-timestep legacy and canonical paths reproduce ordered agent positions and
+  velocities for a matching .NET 8 binary, platform, supported seed, configuration, timestep, and
+  ordered input sequence; broader state, record/replay, and cross-platform measurement remain
+  roadmap work
 - **Observability**: Metrics, snapshots, profiling, property tests, benchmarks
 - **Extensibility**: Small public API, Structure-of-Arrays internals, modular systems
 
@@ -38,13 +39,13 @@ should target the canonical implementation.
 ## ✨ Current Capabilities
 
 - ✅ Data-oriented design with Structure of Arrays (SoA) layout
-- ✅ Fixed-timestep seeded legacy and canonical paths have exact 500-tick state-hash coverage,
-  including wander-enabled and two-process headless checks on the same platform/runtime
+- ✅ Fixed-timestep seeded legacy and canonical paths have exact 500-tick ordered-kinematic-hash
+  coverage, including wander-enabled and two-process headless checks on the same platform/runtime
 - ✅ Agent-genome data structures and mutation API
 - ✅ Configurable simulation parameters with presets
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
-- ✅ 79-test xUnit inventory; the 75 non-performance facts form the hosted CI gate
+- ✅ 83-test xUnit inventory; the 79 non-performance facts form the hosted CI gate
 
 ### Remaining Direction
 - **Canonical readiness**: The perception/spatial-index contract (#18), force-budget enforcement
