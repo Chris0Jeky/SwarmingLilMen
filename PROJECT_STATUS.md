@@ -48,8 +48,8 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.62%
-  line / 39.69% branch overall**; `SwarmSim.Core` is 83.71% line / 72.66% branch and
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.81%
+  line / 39.98% branch overall**; `SwarmSim.Core` is 83.86% line / 72.95% branch and
   `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark

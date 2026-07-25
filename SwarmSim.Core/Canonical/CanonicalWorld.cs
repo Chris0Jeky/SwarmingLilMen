@@ -58,6 +58,27 @@ public sealed class CanonicalWorld
                 settings.SeparationSpeedDroop,
                 "SeparationSpeedDroop must be finite and between 0 and 1, inclusive.");
         }
+        if (!float.IsFinite(settings.SeparationPriorityHoldTime))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityHoldTime,
+                "SeparationPriorityHoldTime must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityRampInTime))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityRampInTime,
+                "SeparationPriorityRampInTime must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityRampOutTime))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityRampOutTime,
+                "SeparationPriorityRampOutTime must be finite.");
+        }
 
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];
