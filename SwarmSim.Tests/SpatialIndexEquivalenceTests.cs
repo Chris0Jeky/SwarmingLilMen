@@ -118,10 +118,13 @@ public sealed class SpatialIndexEquivalenceTests
         var gridResults = new int[boids.Length];
         var naiveResults = new int[boids.Length];
 
-        for (int i = 0; i < 32; i++)
+        // Cross the tiered-compilation threshold before measuring so one-time runtime work is not
+        // mistaken for a steady-state query allocation.
+        for (int i = 0; i < 4_096; i++)
         {
-            _ = grid.QueryNeighbors(boids, i, 25f, gridResults);
-            _ = naive.QueryNeighbors(boids, i, 25f, naiveResults);
+            int selfIndex = i % boids.Length;
+            _ = grid.QueryNeighbors(boids, selfIndex, 25f, gridResults);
+            _ = naive.QueryNeighbors(boids, selfIndex, 25f, naiveResults);
         }
 
         int observedNeighbors = 0;
