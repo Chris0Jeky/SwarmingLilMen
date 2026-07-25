@@ -112,7 +112,8 @@ var custom = new SimConfig
 {
     WorldWidth = 800f,
     WorldHeight = 600f,
-    MaxSpeed = 100f,
+    MaxSpeed = 10f,  // world-position units per second
+    MaxForce = 2.5f,
     SenseRadius = 40f,
     SeparationWeight = 2.0f,
     // ... many more options
@@ -124,8 +125,9 @@ var custom = new SimConfig
 Try changing these in SimConfig:
 
 **Physics**:
-- `MaxSpeed` - How fast agents can move (50-500)
-- `Friction` - Velocity decay per tick (0.9-1.0) when `SpeedModel` is `Damped`
+- `MaxSpeed` - Velocity cap in world-position units per second; current renderer presets use 5-15
+- `Friction` - Velocity-retention multiplier per simulation step (0.9-1.0), used only by
+  `SpeedModel.Damped`
 - `BoundaryMode` - Wrap, Reflect, or Clamp
 
 **Active legacy behavior**:

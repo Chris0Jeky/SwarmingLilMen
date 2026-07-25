@@ -298,7 +298,8 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
   - Current comparison seed: legacy timing-test sample captured 2026-07-25 with:
 
     ```powershell
-    dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --filter "Category=Performance" --logger "console;verbosity=detailed"
+    dotnet build SwarmingLilMen.sln --configuration Release
+    dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
     ```
 
     | Agents | Legacy sample (ms/tick) | Canonical | Speedup |

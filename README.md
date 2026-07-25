@@ -123,6 +123,11 @@ Available presets:
   slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
 
+> **Known help defect:** `peaceful` and `warbands` in the verbatim help text are JSON configuration
+> names, not registered `--preset` IDs. Use one of the five IDs under **Available presets**, or load
+> `configs/peaceful.json` / `configs/warbands.json` with `--config`. The executable help correction
+> is tracked in [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+
 Example:
 ```bash
 dotnet run --project SwarmSim.Render -- --preset fast-loose --agent-count 5000
@@ -263,10 +268,10 @@ while (true)
 // Peaceful flocking behavior
 var peaceful = SimConfig.PeacefulFlocks();
 
-// Warbands-flavoured group settings; combat itself is not implemented yet
+// Warbands-flavoured group settings; combat remains future Phase 3 behavior
 var combat = SimConfig.Warbands();
 
-// High mutation settings; reproduction/evolution systems are not implemented yet
+// High mutation settings; reproduction/evolution remains future Phase 4 behavior
 var evolution = SimConfig.RapidEvolution();
 
 // Or customize everything
@@ -274,7 +279,8 @@ var custom = new SimConfig
 {
     WorldWidth = 1920f,
     WorldHeight = 1080f,
-    MaxSpeed = 150f,
+    MaxSpeed = 10f,  // world-position units per second
+    MaxForce = 2.5f,
     SenseRadius = 60f,
     // ... 30+ parameters available
 };
@@ -318,7 +324,7 @@ Genome[] Genomes;          // Genetics
 
 ### Systems Pipeline
 The active legacy path rebuilds the uniform grid, then runs these systems in sequence each tick
-(`SwarmSim.Core/World.cs:299-317`):
+(`SwarmSim.Core/World.cs:119-137,294-320`):
 1. **SenseSystem** - Query same-group neighbors and aggregate boids inputs
 2. **BehaviorSystem** - Convert separation, alignment, and cohesion inputs to steering
 3. **WanderSystem** - Optional wander contribution
@@ -339,7 +345,8 @@ agents**. Both are targets; neither is currently verified. The latest comparable
 was captured on 2026-07-25 with:
 
 ```bash
-dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --filter "Category=Performance" --logger "console;verbosity=detailed"
+dotnet build SwarmingLilMen.sln --configuration Release
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
 | Evidence | Result | Interpretation |

@@ -31,6 +31,8 @@
 - Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 19 seconds of test
   execution (22.0 seconds command wall time), confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 19.87 seconds.
+  Command after the Release build:
+  `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
   The measured figures remained in the same broad range as the preceding 0.272 / 14.23 / 291.80 /
   0.153 baseline; all four were lower in this one local fully optimized-JIT sample:
   - 1k legacy agents: 0.172 ms/tick (5,801 operations/second)
@@ -49,6 +51,10 @@
   instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
+- CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
+  `--preset` examples; only the five IDs printed under **Available presets** are registered. The
+  executable help/test correction is tracked in
+  [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
 - Test inventory: 68 xUnit facts across 9 test files, including four explicitly categorized
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
@@ -76,7 +82,7 @@ verified block above records what is actually measured.
 **Session 1 - Foundation (originally P0)** ✅
 - Solution structure, build system, core data structures
 - World class with SoA layout, Rng, MathUtils
-- Original 21-test snapshot, Raylib rendering, full documentation
+- Original test snapshot (21 facts), Raylib rendering, full documentation
 - **Foundation Complete**
 
 **Session 2 - Phase 1 (Spatial Grid & Basic Movement)** ✅
@@ -194,7 +200,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - [x] **Basic Tests** (SwarmSim.Tests/)
   - [x] `RngTests.cs` - 8 tests covering determinism, distributions, shuffling
   - [x] `WorldTests.cs` - 13 tests covering agents, boundaries, determinism
-  - [x] **Original 21-test suite passing**
+  - [x] **Original suite passing (21 facts)**
 
 - [x] **Minimal Render** (SwarmSim.Render/) ✅ COMPLETE
   - [x] Program.cs - Full Raylib implementation with window, world, render loop
@@ -285,7 +291,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - **Prioritized separation**: Separation gets the limited acceleration budget whenever anyone encroaches the ~1/3 sense-radius gap
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
-- **Completed**: Milestones 0-9 from `NewImplementation.md` + Phase C smoothing improvements
+- **Completed**: Milestones 0-7 from `NewImplementation.md` + Phase C smoothing improvements
   - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
   - All 3 steering rules with 1/d weighting
   - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
@@ -310,7 +316,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - **Not Started**: Full migration, performance validation, Phase 3 features
 - **How to run**:
   - Tests: `dotnet test --filter CanonicalBoidsTests`
-  - Renderer: `dotnet run --project SwarmSim.Render --canonical` (single-group)
+  - Renderer: `dotnet run --project SwarmSim.Render -- --canonical` (single-group)
   - Legacy: `dotnet run --project SwarmSim.Render` (multi-group, deprecated)
 - **Before Phase 3**: Must complete milestones 8-10, add multi-group support, validate performance
 
@@ -767,7 +773,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - Rng.cs with Gaussian, unit vectors, circle sampling, shuffle
   - MathUtils.cs with full 2D vector operations
   - World.cs with 13 SoA arrays, agent lifecycle, boundary modes
-- **Created 21 passing tests** verifying determinism and core functionality
+- **Created a passing 21-fact suite** verifying determinism and core functionality
 - **Implemented Raylib rendering**:
   - Full visualization with 1920x1080 window
   - 16-color palette for agent groups
