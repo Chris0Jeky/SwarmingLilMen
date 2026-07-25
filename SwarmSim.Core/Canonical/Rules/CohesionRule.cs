@@ -14,7 +14,7 @@ public sealed class CohesionRule : IRule
         if (neighborIndices.IsEmpty)
             return Vec2.Zero;
 
-        Vec2 center = Vec2.Zero;
+        Vec2 toCenter = Vec2.Zero;
         float totalWeight = 0f;
 
         for (int i = 0; i < neighborIndices.Length; i++)
@@ -24,15 +24,14 @@ public sealed class CohesionRule : IRule
             if (weight <= 0f)
                 continue;
 
-            center += boids[neighborIndex].Position * weight;
+            toCenter += context.MinimumImageDelta(self.Position, boids[neighborIndex].Position) * weight;
             totalWeight += weight;
         }
 
         if (totalWeight <= 0f)
             return Vec2.Zero;
 
-        Vec2 averageCenter = center / totalWeight;
-        Vec2 toCenter = averageCenter - self.Position;
+        toCenter /= totalWeight;
 
         if (toCenter.IsNearlyZero())
             return Vec2.Zero;

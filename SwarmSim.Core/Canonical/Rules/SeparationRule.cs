@@ -27,7 +27,7 @@ public sealed class SeparationRule : IRule
             if (weight <= 0f)
                 continue;
 
-            Vec2 delta = self.Position - boids[neighborIndex].Position;
+            Vec2 delta = context.MinimumImageDelta(boids[neighborIndex].Position, self.Position);
             float distSq = delta.LengthSquared;
 
             if (distSq <= 0f || distSq > _radiusSq)

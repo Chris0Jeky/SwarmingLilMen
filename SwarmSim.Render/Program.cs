@@ -1522,7 +1522,7 @@ internal static class Program
         Raylib.DrawLineEx(center, lookaheadPoint, 1.5f, Color.SkyBlue);
         Raylib.DrawCircleLines((int)lookaheadPoint.X, (int)lookaheadPoint.Y, whiskerRadius, Color.SkyBlue);
 
-        int neighborCount = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer);
+        int neighborCount = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer).Count;
         int whiskerHits = 0;
         foreach (int idx in neighborBuffer.AsSpan(0, neighborCount))
         {

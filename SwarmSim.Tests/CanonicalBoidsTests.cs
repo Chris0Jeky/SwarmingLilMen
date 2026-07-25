@@ -267,13 +267,15 @@ public class CanonicalBoidsTests
             SeparationPriorityRadiusFactor = 0.5f,
             SeparationPriorityExitFactor = 0.6f,
             SeparationPriorityHoldTime = 0.1f,
+            AlignmentWeight = 0f,
+            CohesionWeight = 0f,
             WanderStrength = 0f,
             FixedDeltaTime = 1f / 60f
         };
 
         var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
-        world.TryAddBoid(new Vec2(0f, 0f), new Vec2(1f, 0f));
-        world.TryAddBoid(new Vec2(4.5f, 0f), new Vec2(-1f, 0f));
+        world.TryAddBoid(new Vec2(100f, 100f), new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(104.5f, 100f), new Vec2(-1f, 0f));
 
         world.Step(settings.FixedDeltaTime);
         var snapshot1 = world.CapturePerceptionSnapshot();
@@ -282,8 +284,8 @@ public class CanonicalBoidsTests
         world.SetVelocity(0, new Vec2(1f, 0f));
         world.SetVelocity(1, new Vec2(-1f, 0f));
 
-        // Allow both the hold timer and the 0.1-second default ramp-out to complete.
-        for (int i = 0; i < 20; i++)
+        // Allow the agents to cross the exit threshold, then complete the hold and ramp-out.
+        for (int i = 0; i < 90; i++)
         {
             world.Step(settings.FixedDeltaTime);
         }

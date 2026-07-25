@@ -231,7 +231,8 @@ public sealed class CanonicalWorld
 
             if (_rules.Count > 0)
             {
-                int neighborCount = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
+                SpatialQueryResult query = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
+                int neighborCount = query.Count;
                 float fieldOfViewDegrees = Settings.FieldOfView;
 
                 int filtered = FilterByFieldOfView(
@@ -243,6 +244,8 @@ public sealed class CanonicalWorld
                     fieldOfViewCos,
                     fieldOfViewDegrees,
                     i,
+                    Settings.WorldWidth,
+                    Settings.WorldHeight,
                     out float neighborWeightSum);
                 var neighbors = _neighborScratch.AsSpan(0, filtered);
                 var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
@@ -257,7 +260,7 @@ public sealed class CanonicalWorld
 
                     foreach (int idx in neighbors)
                     {
-                        Vec2 toN = current[idx].Position - boid.Position;
+                        Vec2 toN = Vec2.MinimumImageDelta(boid.Position, current[idx].Position, Settings.WorldWidth, Settings.WorldHeight);
                         float along = Vec2.Dot(forward, toN);
                         if (along <= 0f || along > lookAhead) continue;
                         float lateral = Vec2.Dot(right, toN);
@@ -286,7 +289,12 @@ public sealed class CanonicalWorld
 
                 if (filtered > 0)
                 {
-                    (distanceSum, minDistForAgent, maxDistForAgent, nearestDelta, _) = ComputeNeighborDistanceStats(current, boid.Position, neighbors);
+                    (distanceSum, minDistForAgent, maxDistForAgent, nearestDelta, _) = ComputeNeighborDistanceStats(
+                        current,
+                        boid.Position,
+                        neighbors,
+                        Settings.WorldWidth,
+                        Settings.WorldHeight);
                     _neighborDistanceSum += distanceSum;
                     _neighborDistanceSamples += filtered;
                     _minNeighborDistance = MathF.Min(_minNeighborDistance, minDistForAgent);
@@ -339,7 +347,9 @@ public sealed class CanonicalWorld
                     fieldOfViewCos,
                     deltaTime,
                     separationBoost,
-                    _instrumentation);
+                    _instrumentation,
+                    Settings.WorldWidth,
+                    Settings.WorldHeight);
 
                 if (_rules.Count > 0)
                 {
@@ -467,7 +477,12 @@ public sealed class CanonicalWorld
         return true;
     }
 
-    private static (float distanceSum, float minDist, float maxDist, Vec2 nearestDelta, int nearestIdx) ComputeNeighborDistanceStats(ReadOnlySpan<Boid> boids, Vec2 origin, ReadOnlySpan<int> neighbors)
+    private static (float distanceSum, float minDist, float maxDist, Vec2 nearestDelta, int nearestIdx) ComputeNeighborDistanceStats(
+        ReadOnlySpan<Boid> boids,
+        Vec2 origin,
+        ReadOnlySpan<int> neighbors,
+        float worldWidth,
+        float worldHeight)
     {
         float sum = 0f;
         float minDist = float.MaxValue;
@@ -477,7 +492,7 @@ public sealed class CanonicalWorld
 
         foreach (int idx in neighbors)
         {
-            Vec2 delta = boids[idx].Position - origin;
+            Vec2 delta = Vec2.MinimumImageDelta(origin, boids[idx].Position, worldWidth, worldHeight);
             float dist = MathF.Sqrt(delta.LengthSquared);
             sum += dist;
             if (dist < minDist)
@@ -501,6 +516,8 @@ public sealed class CanonicalWorld
         float fieldOfViewCos,
         float fieldOfViewDegrees,
         int selfIndex,
+        float worldWidth,
+        float worldHeight,
         out float totalWeight)
     {
         totalWeight = 0f;
@@ -518,7 +535,7 @@ public sealed class CanonicalWorld
             {
                 continue;
             }
-            Vec2 delta = boids[index].Position - origin;
+            Vec2 delta = Vec2.MinimumImageDelta(origin, boids[index].Position, worldWidth, worldHeight);
 
             if (delta.IsNearlyZero())
             {
@@ -563,25 +580,42 @@ public sealed class CanonicalWorld
         return _instrumentation.TryGetMetrics(index, out metrics);
     }
 
-    public int QueryVisibleNeighbors(int index, Span<int> buffer, Span<float> weights)
+    /// <summary>
+    /// Rebuilds the spatial index for the current state and returns field-of-view-filtered neighbors.
+    /// </summary>
+    /// <param name="index">Boid whose visible neighborhood is queried.</param>
+    /// <param name="buffer">Caller-owned neighbor-index buffer.</param>
+    /// <param name="weights">Caller-owned field-of-view weight buffer.</param>
+    /// <returns>The visible count and whether the bounded spatial query omitted candidates.</returns>
+    public SpatialQueryResult QueryVisibleNeighbors(int index, Span<int> buffer, Span<float> weights)
     {
         if (index < 0 || index >= Count)
-            return 0;
+            return new SpatialQueryResult(0, false);
 
         var boids = _activeBoids.AsSpan(0, Count);
-        int neighborCount = _spatialIndex.QueryNeighbors(boids, index, Settings.SenseRadius, buffer);
+        int outputCapacity = Math.Min(buffer.Length, weights.Length);
+        _spatialIndex.Rebuild(boids);
+        SpatialQueryResult query = _spatialIndex.QueryNeighbors(
+            boids,
+            index,
+            Settings.SenseRadius,
+            buffer.Slice(0, outputCapacity));
+        int neighborCount = query.Count;
         float halfAngleRad = (Settings.FieldOfView * MathF.PI / 180f) * 0.5f;
         float fieldOfViewCos = MathF.Cos(halfAngleRad);
-        return FilterByFieldOfView(
+        int visibleCount = FilterByFieldOfView(
             boids[index].Forward,
             boids[index].Position,
             buffer.Slice(0, neighborCount),
-            weights,
+            weights.Slice(0, outputCapacity),
             boids,
             fieldOfViewCos,
             Settings.FieldOfView,
             index,
+            Settings.WorldWidth,
+            Settings.WorldHeight,
             out _);
+        return new SpatialQueryResult(visibleCount, query.IsTruncated);
     }
 
     public PerceptionSnapshot CapturePerceptionSnapshot() => _lastPerceptionSnapshot;

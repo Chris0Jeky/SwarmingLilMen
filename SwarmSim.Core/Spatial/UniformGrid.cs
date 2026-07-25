@@ -189,6 +189,77 @@ public sealed class UniformGrid
     }
 
     /// <summary>
+    /// Queries a toroidal circular neighborhood for the canonical boids path without allocating.
+    /// The legacy <see cref="Query3x3(float, float, Span{int}, int)"/> behavior is intentionally unchanged.
+    /// </summary>
+    /// <param name="x">Query X position.</param>
+    /// <param name="y">Query Y position.</param>
+    /// <param name="radius">Finite, non-negative query radius.</param>
+    /// <param name="selfIndex">Index excluded from results.</param>
+    /// <param name="xPositions">Current X positions.</param>
+    /// <param name="yPositions">Current Y positions.</param>
+    /// <param name="count">Number of active positions.</param>
+    /// <param name="buffer">Caller-owned output buffer.</param>
+    /// <param name="truncated">Set when qualifying agents do not fit in <paramref name="buffer"/>.</param>
+    /// <returns>The number of indices written, sorted ascending by index.</returns>
+    internal int QueryRadiusToroidal(
+        float x,
+        float y,
+        float radius,
+        int selfIndex,
+        ReadOnlySpan<float> xPositions,
+        ReadOnlySpan<float> yPositions,
+        int count,
+        Span<int> buffer,
+        out bool truncated)
+    {
+        if (!float.IsFinite(radius) || radius < 0f)
+            throw new ArgumentOutOfRangeException(nameof(radius), "Radius must be finite and non-negative.");
+
+        if (count < 0 || count > xPositions.Length || count > yPositions.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count must fit both position spans.");
+
+        int activeCount = count;
+        float radiusSquared = radius * radius;
+        int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
+        int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
+        int colReach = GetCellReach(radius, Cols);
+        int rowReach = GetCellReach(radius, Rows);
+        bool scanAllCols = colReach * 2 + 1 >= Cols;
+        bool scanAllRows = rowReach * 2 + 1 >= Rows;
+        int colCount = scanAllCols ? Cols : colReach * 2 + 1;
+        int rowCount = scanAllRows ? Rows : rowReach * 2 + 1;
+        int written = 0;
+        truncated = false;
+
+        for (int rowOffset = 0; rowOffset < rowCount; rowOffset++)
+        {
+            int row = scanAllRows ? rowOffset : WrapCell(centerRow - rowReach + rowOffset, Rows);
+            for (int colOffset = 0; colOffset < colCount; colOffset++)
+            {
+                int col = scanAllCols ? colOffset : WrapCell(centerCol - colReach + colOffset, Cols);
+                int agentIndex = _head[col + row * Cols];
+                while (agentIndex != -1)
+                {
+                    if (agentIndex != selfIndex && agentIndex < activeCount)
+                    {
+                        float dx = MathUtils.MinimumImageDelta(xPositions[agentIndex] - x, _worldWidth);
+                        float dy = MathUtils.MinimumImageDelta(yPositions[agentIndex] - y, _worldHeight);
+                        if (dx * dx + dy * dy <= radiusSquared)
+                        {
+                            InsertSortedBounded(buffer, ref written, agentIndex, ref truncated);
+                        }
+                    }
+
+                    agentIndex = _next[agentIndex];
+                }
+            }
+        }
+
+        return written;
+    }
+
+    /// <summary>
     /// Gets the cell index for the given world position.
     /// </summary>
     private int GetCellIndex(float x, float y)
@@ -201,6 +272,50 @@ public sealed class UniformGrid
         row = Math.Clamp(row, 0, Rows - 1);
 
         return col + row * Cols;
+    }
+
+    private int GetCellReach(float radius, int cellCount)
+    {
+        if (radius >= cellCount * CellSize)
+            return cellCount;
+
+        // Include one guard cell because floating-point division can classify a point lying just
+        // below a cell edge into the next cell while it remains within the inclusive radius.
+        return Math.Min(cellCount, (int)MathF.Ceiling(radius / CellSize) + 1);
+    }
+
+    private static int WrapCell(int value, int length)
+    {
+        int wrapped = value % length;
+        return wrapped < 0 ? wrapped + length : wrapped;
+    }
+
+    private static void InsertSortedBounded(Span<int> buffer, ref int written, int candidate, ref bool truncated)
+    {
+        if (written < buffer.Length)
+        {
+            int insertAt = written;
+            while (insertAt > 0 && buffer[insertAt - 1] > candidate)
+            {
+                buffer[insertAt] = buffer[insertAt - 1];
+                insertAt--;
+            }
+            buffer[insertAt] = candidate;
+            written++;
+            return;
+        }
+
+        truncated = true;
+        if (buffer.IsEmpty || candidate >= buffer[written - 1])
+            return;
+
+        int replaceAt = written - 1;
+        while (replaceAt > 0 && buffer[replaceAt - 1] > candidate)
+        {
+            buffer[replaceAt] = buffer[replaceAt - 1];
+            replaceAt--;
+        }
+        buffer[replaceAt] = candidate;
     }
 
     /// <summary>

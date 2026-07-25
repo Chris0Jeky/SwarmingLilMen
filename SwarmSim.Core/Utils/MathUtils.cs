@@ -208,6 +208,23 @@ public static class MathUtils
     }
 
     /// <summary>
+    /// Wraps a signed displacement to the minimum-image interval for a periodic extent.
+    /// </summary>
+    /// <param name="delta">Signed displacement before wrapping.</param>
+    /// <param name="extent">Positive periodic extent.</param>
+    /// <returns>The equivalent displacement in the interval [-extent/2, extent/2].</returns>
+    internal static float MinimumImageDelta(float delta, float extent)
+    {
+        float wrapped = delta % extent;
+        float halfExtent = extent * 0.5f;
+        if (wrapped > halfExtent)
+            return wrapped - extent;
+        if (wrapped < -halfExtent)
+            return wrapped + extent;
+        return wrapped;
+    }
+
+    /// <summary>
     /// Wraps coordinates to [0, width) and [0, height) for toroidal world.
     /// </summary>
     public static (float x, float y) WrapPosition(float x, float y, float width, float height)
