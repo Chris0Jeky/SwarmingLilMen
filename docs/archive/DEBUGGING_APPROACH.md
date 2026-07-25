@@ -10,7 +10,7 @@ The boids simulation shows **binary behavior**: agents either instantly hit maxi
 ## Debugging Strategy
 
 ### 1. Minimal Test Program
-Run the minimal test to isolate issues:
+Run the minimal test to narrow issues:
 ```bash
 dotnet run --project SwarmSim.Render -- --minimal
 ```
@@ -45,7 +45,7 @@ This provides 9 progressive test stages:
 - Speed should increase smoothly until hitting max
 
 #### Stage 2-5: Individual Forces
-- Test each boids component in isolation
+- Test each boids component separately
 - Forces should produce smooth, predictable motion
 - No binary on/off behavior
 

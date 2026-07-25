@@ -49,7 +49,7 @@ These are the remaining milestones from `archive/NewImplementation.md` that must
 - [x] Compose separation, alignment, cohesion, whisker, and wander contributions
 - [ ] Enforce the total steering bound of `MaxForce`; whisker plus separation can currently
   overspend it, tracked in [issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)
-- [ ] Verify named-rule isolation, classic-mode constant speed, and combined no-NaN/no-stuck
+- [ ] Verify named-rule independence, classic-mode constant speed, and combined no-NaN/no-stuck
   stability after #27; tracked in #41
 
 ### 🔄 Milestone 7: Instrumentation & UX (PARTIAL)
@@ -262,7 +262,7 @@ The canonical implementation currently supports only single-group flocking. Phas
   }
   ```
 
-**Exit Criteria**: Two groups can coexist with independent flocking behaviors; tests validate group isolation
+**Exit Criteria**: Two groups can coexist with independent flocking behaviors; tests validate group separation
 
 ---
 

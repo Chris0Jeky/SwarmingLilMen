@@ -1,0 +1,37 @@
+# Documentation Index
+
+[`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation
+state. [Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) is the executable plan and
+ordering authority. Historical documents are context, not proof.
+
+## Live Guides
+
+- [`QUICKSTART.md`](QUICKSTART.md) - five-minute setup and first run
+- [`CONTROLS.md`](CONTROLS.md) - renderer controls and runtime parameter editor
+- [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) - configuration field effects and ranges
+- [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) - scenario recipes
+- [`RENDERER_GUIDE.md`](RENDERER_GUIDE.md) - legacy and canonical renderer behavior
+- [`SIMULATION_MECHANICS_EXPLAINED.md`](SIMULATION_MECHANICS_EXPLAINED.md) - simulation mechanics
+- [`PHASE_3_READINESS_CHECKLIST.md`](PHASE_3_READINESS_CHECKLIST.md) - canonical-readiness evidence
+- [`ROADMAP-VISION.md`](ROADMAP-VISION.md) - aspirational reference and explicit deferral boundary
+
+## Security non-goal
+
+> **Security non-goal:** The product term **sandbox** is retired. A **modeling boundary** or
+> **interaction surface** describes simulation behavior, not security isolation. The engine
+> provides no process isolation, resource quotas, filesystem/network capability restrictions, or
+> protection from a malicious or buggy extension. Scenario/config input is data-only today by
+> design, and in-process policies have the host process's full authority. Before any untrusted
+> code, community mod, or untrusted IPC learner can run, the dedicated containment workstream in
+> [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) must pass its threat-model,
+> least-authority, resource-limit, schema-validation, authenticated-transport, and adversarial-test
+> gates.
+
+The direct prerequisites for deferred resources, communication, institutions, markets, networks,
+N-IPD, IPC learners, and policy distillation are listed in the
+[`ROADMAP-VISION.md` deferral boundary](ROADMAP-VISION.md#deferral-boundary).
+
+## Historical Archive
+
+Files under [`archive/`](archive/) open with dated banners. They preserve provenance and may contain
+superseded plans, paths, or implementation claims; use the live sources above for current guidance.

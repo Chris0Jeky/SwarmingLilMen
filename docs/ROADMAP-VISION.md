@@ -21,6 +21,39 @@
 7. **Interoperability**: clean DTOs + IPC (CSV/Parquet, gRPC/WebSocket) for notebooks/ML.
 8. **Policy extraction**: distil learned behaviour to **interpretable** forms (BT/FSM/DT).
 
+### Security non-goal
+
+> **Security non-goal:** The product term **sandbox** is retired. A **modeling boundary** or
+> **interaction surface** describes how entities, policies, environments, resources,
+> communication, and institutions interact inside a simulation; it is not security isolation.
+> The engine provides no process isolation, resource quotas, filesystem/network capability
+> restrictions, or protection from a malicious or buggy extension. Scenario/config input is
+> data-only today by design, not by an enforced security guarantee, and any in-process policy has
+> the host process's full authority. Before untrusted policy code, community mods, or an untrusted
+> external learner can run, [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44)
+> requires a separate OS process, no ambient authority, CPU/memory/output/wall-clock limits,
+> validated size-bounded schemas, authenticated local-only transport, a dedicated threat model,
+> and adversarial fail-closed tests. Until that workstream passes, no product name, flag, package,
+> API, or documentation may imply containment.
+
+### Deferral boundary
+
+Every primitive below remains speculative until the shared kernel has carried boids, Vicsek, and
+ACO without kernel edits ([#29](https://github.com/Chris0Jeky/SwarmingLilMen/issues/29) and
+[#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)); the frozen browser demos do not
+satisfy that gate. The global proof does not replace each primitive's direct prerequisite:
+
+| Deferred primitive | Kernel prerequisite before implementation |
+| --- | --- |
+| Resources | Module-owned field/resource storage through stable space and Observation/Intent seams, with deterministic update cadence; ACO's pheromone field in #30 is the proof case. |
+| Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
+| Institutions | Module-owned durable state plus generic intents, arbitration, and events from #27; no institution-specific kernel branch. |
+| Markets | Resource/inventory ownership, order intents, deterministic resolution through #27, and registered metrics from #24; no market-specific kernel branch. |
+| Networks | The query-contract discipline established by #18, widened to a pluggable graph topology/edge store only when a real post-#30 consumer proves the need, without kernel conditionals. |
+| N-IPD | Deterministic scheduling/RNG, #27 observations/intents and generic payoff resolution, plus #24 cooperation/payoff metrics; pairwise/neighborhood variants remain module configuration. |
+| IPC learners | The Raylib-free runner (#23), versioned reset/episode/reward and Observation/Intent protocols, bounded DTOs, backpressure, and replay; untrusted execution additionally requires #44. |
+| Policy distillation | Stable Observation/Intent traces from #27, a versioned `(observation, intent, reward, next-observation)` schema, and round-trip validation through the experiment spine (#23-#24). Section 10 is blocked on those contracts, not on distillation algorithms. |
+
 ---
 
 ## 1) Scope & Capabilities
@@ -50,7 +83,7 @@ SwarmSim.sln
   /Render.ImGui        // (optional) Dear ImGui overlay for inspectors
   /Render.Godot3D      // (later) 3D renderer adapter
   /Apps.SimRunner      // CLI/headless runner + batch/experiments
-  /Apps.Sandbox        // interactive sandbox app using a renderer
+  /Apps.Playground     // interactive playground app using a renderer
   /Tests               // unit, property, integration
   /Benchmarks          // BDN microbenches for hot loops & regressions
 ```
@@ -168,6 +201,10 @@ SwarmSim.sln
 ---
 
 ## 10) Policy Extraction (“Reasoning Systems”)
+> **Speculative and deferred:** this section cannot begin until #27 supplies a stable
+> Observation/Intent contract and #23-#24 supply versioned traces. Choosing a distillation
+> algorithm is not the current blocker.
+
 1) **Trace capture**: (obs, action, reward, next‑obs) + derived features (last k votes, opponent fingerprints).
 2) **Distillation**:
    - *Interpretable*: decision trees, rule lists, **Finite State Machines** (from discretised memory), **Behaviour Trees** (hand‑tuned nodes auto‑param’d).
@@ -186,8 +223,10 @@ SwarmSim.sln
 
 ---
 
-## 12) Security & Modding Considerations
-- Sandbox scenarios: no dynamic code by default in shipped build; DSL only. Dev build supports C# hooks.
+## 12) Extension Trust & Authoring
+- Scenario authoring is data-only in shipped builds as a design choice, not an enforcement boundary.
+- Development C# hooks are trusted in-process code with the host process's full authority; #44
+  blocks any future untrusted extension path.
 - AOT‑friendly plugin model: registration via attributes + source generators; fallback reflection in dev.
 
 ---
@@ -309,7 +348,7 @@ SwarmSim.sln
 
 ## 19) Documentation & UX
 - Docs site with: Concepts (Spaces, Systems, Modules), How‑tos (create scenario, add policy, external learner), API refs, Samples.
-- Tweakable overlays + hot reload of scenario config in Sandbox.
+- Tweakable overlays + hot reload of scenario config in the Playground app.
 - Experiment notebooks (Python) reading Parquet.
 
 ---
