@@ -52,9 +52,13 @@ In this table, #27's bounded contract means per-agent observations and tagged po
 kernel resolver arbitrates only steering-policy forces; institution, market, and payoff resolvers
 remain module-owned.
 
+Every IPC endpoint, including metrics/events, notebook tooling, and learner bridges, must bind to
+loopback and authenticate peers by default. Remote exposure requires a separate threat model and
+explicit design decision.
+
 | Deferred primitive | Kernel prerequisite before implementation |
 | --- | --- |
-| Resources | #30 adds the generic kernel field seam; the ACO module owns pheromone state and deterministic update cadence through stable space and Observation/Intent seams. ACO is the proof case, with no pheromone-specific kernel branch. |
+| Resources | #30 adds the generic kernel field seam. Each resource-owning module owns its field state and deterministic update cadence through stable space and Observation/Intent seams; the ACO module's pheromone state is the proof case. No resource-specific kernel branch. |
 | Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
 | Institutions | Module-owned durable state and a versioned event contract; institutional intents use #27's bounded contract, while the module owns deterministic arbitration. No institution-specific kernel branch. |
 | Markets | Resource/inventory ownership, order intents using #27's bounded contract, a module-owned deterministic market resolver, and metrics registered through #24's probe contract; no market-specific kernel branch. |

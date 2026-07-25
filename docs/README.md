@@ -31,6 +31,10 @@ ordering authority. Historical documents are context, not proof.
 > agent-control files is outside product terminology and does not assert security isolation.
 > Issue #44 is an unscheduled prerequisite marker with no owner or timeline.
 
+Any future IPC endpoint, including metrics/events, notebook tooling, and learner bridges, must bind
+to loopback and authenticate peers by default. Remote exposure requires a separate threat model and
+explicit design decision.
+
 The direct prerequisites for deferred resources, communication, institutions, markets, networks,
 N-IPD, IPC learners, and policy distillation are listed in the
 [`ROADMAP-VISION.md` deferral boundary](ROADMAP-VISION.md#deferral-boundary).
