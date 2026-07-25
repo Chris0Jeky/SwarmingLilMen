@@ -432,8 +432,8 @@ Once all above tasks are complete, decide on migration strategy:
 | **Total** | **13-14 days** | |
 
 > **Planning boundary:** The table above is a historical estimate for its listed tasks. Its total
-> excludes the ordered #17-#21 correctness/performance/fixture work and dependency-gated #40/#41,
-> so it is not a current end-to-end forecast.
+> does not estimate issue-level scope, gates, reviews, or merge time for epic #10's full ordered
+> #11-#21 run or dependency-gated #40/#41, so it is not a current end-to-end forecast.
 
 **Canonical-readiness subset after Wave 0**: epic #10's ordered #17-#21 gates. The full overnight
 queue still begins with Wave 0 issues #11-#16. Multi-group and dependency-gated
