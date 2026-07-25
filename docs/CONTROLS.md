@@ -1,6 +1,6 @@
 # SwarmingLilMen Controls & Shortcuts
 
-> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and renderer state.
 
 The legacy and canonical renderers share parameter/preset controls but expose different world and
@@ -24,6 +24,22 @@ other renderer unless it also appears under **Shared Controls**.
 
 Keys **1–7** affect both renderer paths. Key **8** changes `Friction`, which is used only by the
 legacy `SpeedModel.Damped` path; canonical settings do not consume friction.
+
+| Key | Parameter | Range | Normal step | Fine step |
+| --- | --- | ---: | ---: | ---: |
+| 1 | Separation weight | 0–500 | 10 | 0.01 |
+| 2 | Alignment weight | 0–500 | 10 | 0.01 |
+| 3 | Cohesion weight | 0–10 | 0.1 | 0.0001 |
+| 4 | Separation radius | 5–200 | 5 | 1 |
+| 5 | Sense radius | 10–300 | 10 | 2 |
+| 6 | Max speed | 1–500 | 10 | 1 |
+| 7 | Max force | 0.1–20 | 0.1 | 0.01 |
+| 8 | Friction | 0.8–1.0 | 0.01 | 0.001 |
+
+Changing a value rebuilds the current world configuration while preserving agent positions and
+velocities. The adjustment applies on the next simulation tick. Press **P** to print the resulting
+configuration. The earlier parameter-editor narrative is retained as a dated historical source in
+[`archive/DYNAMIC_PARAMETERS.md`](archive/DYNAMIC_PARAMETERS.md).
 
 ## Legacy Renderer Only
 

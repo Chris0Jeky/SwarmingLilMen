@@ -1,6 +1,6 @@
 # SwarmingLilMen Renderer Guide
 
-> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state.
 
 ## Choose the Renderer Path

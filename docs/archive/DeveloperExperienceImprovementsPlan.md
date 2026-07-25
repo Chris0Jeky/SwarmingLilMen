@@ -1,3 +1,6 @@
+> **Historical archive (2026-07-25):** This implementation plan is preserved for context, not live
+> status. See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
+
 # Developer Experience Improvements - Implementation Plan
 
 **Created**: 2025-11-12

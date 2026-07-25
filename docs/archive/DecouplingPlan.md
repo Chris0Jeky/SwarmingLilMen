@@ -1,4 +1,5 @@
-> **Status (2025-11-12)**: This plan has been implemented and is kept here for historical reference.
+> **Historical archive (2026-07-25):** This implemented plan is preserved for context, not live
+> status. See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
 
 Absolutely—this is a classic pattern. For Boids (and most sims) you get the best of both worlds by **running the simulation at a fixed rate** and **rendering whenever you can**. There are two proven ways to do it:
 

@@ -1,6 +1,6 @@
 # Phase 3 Readiness Checklist
 
-> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state; this checklist defines remaining canonical readiness work.
 
 **Last Updated**: 2026-07-25 (verified-state reconciliation)
@@ -25,7 +25,7 @@ incomplete.
 
 ## Critical Path: Resolve Correctness Gaps and Complete Readiness
 
-These are the remaining milestones from `NewImplementation.md` that must be completed:
+These are the remaining milestones from `archive/NewImplementation.md` that must be completed:
 
 ### ✅ Core Scaffolding and Single-Boid Path (Milestones 0-1)
 - [x] Core scaffolding (Vec2, Boid, World, Rng, interfaces)
@@ -445,7 +445,7 @@ acceptance/instrumentation backlog (#40 and #41) remains outside the current ove
 
 Phase 3 readiness achieved when:
 
-1. [ ] All milestones 0-10 from `NewImplementation.md` complete
+1. [ ] All milestones 0-10 from `archive/NewImplementation.md` complete
 2. [ ] Multi-group support implemented and tested
 3. [ ] Performance validated (10k agents @ 60+ FPS)
 4. [ ] Zero allocations in hot path confirmed
@@ -461,10 +461,10 @@ At that point, we have a **solid, debuggable, performant foundation** for Phase 
 
 ## References
 
-- `IMPLEMENTATION_EVOLUTION.md` - Why we pivoted and technical details
-- `NewImplementation.md` - Original TDD roadmap with milestones
-- `PROJECT_STATUS.md` - Current implementation status
-- `CLAUDE.md` - Development guidelines
+- `archive/IMPLEMENTATION_EVOLUTION.md` - Why we pivoted and technical details
+- `archive/NewImplementation.md` - Original TDD roadmap with milestones
+- `../PROJECT_STATUS.md` - Current implementation status
+- `../CLAUDE.md` - Development guidelines
 
 ---
 
@@ -472,7 +472,7 @@ At that point, we have a **solid, debuggable, performant foundation** for Phase 
 
 When starting work on Phase 3 readiness:
 
-1. ✅ Read `IMPLEMENTATION_EVOLUTION.md` to understand context
+1. ✅ Read `archive/IMPLEMENTATION_EVOLUTION.md` to understand context
 2. ✅ Read this document to understand what needs doing
 3. Resume the first unmerged issue in epic #10's ordered #11-#21 queue
 4. Update `PROJECT_STATUS.md` as you complete tasks

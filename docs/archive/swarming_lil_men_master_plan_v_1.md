@@ -1,3 +1,6 @@
+> **Historical archive (2026-07-25):** This original master plan is preserved for context, not live
+> status. See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
+
 # SwarmingLilMen – Master Plan (v1.0)
 
 *A 2D, bacteria‑like emergent world built from first principles in C#/.NET with a data‑oriented core.*
@@ -243,4 +246,3 @@ Each experiment: hypothesis → setup → metrics → acceptance criteria → no
 ---
 
 **This is the living source of truth.** Update as subsystems land (Systems, Config, Perf baselines, Experiments).
-

@@ -30,7 +30,9 @@ to isolated, Reynolds-style steering rules. Two implementations currently exist 
   exist, but the perception contract, force-budget enforcement, and instrumentation UX remain
   partial; milestones 8-10 and multi-group semantics are also incomplete
 
-For developers: See `IMPLEMENTATION_EVOLUTION.md` for the full story on why we pivoted and what's next. New features should target the canonical implementation.
+For developers: See [`docs/archive/IMPLEMENTATION_EVOLUTION.md`](docs/archive/IMPLEMENTATION_EVOLUTION.md)
+for the preserved story of the pivot and `PROJECT_STATUS.md` for current evidence. New features
+should target the canonical implementation.
 
 ## ✨ Current Capabilities
 
@@ -93,13 +95,13 @@ dotnet run --project SwarmSim.Benchmarks -c Release
 ```
 
 While the renderer is running:
-- Press **H** to toggle the partial in-app help overlay; use [`CONTROLS.md`](CONTROLS.md) for the
+- Press **H** to toggle the partial in-app help overlay; use [`docs/CONTROLS.md`](docs/CONTROLS.md) for the
   complete list. Runtime overlay drift is tracked in
   [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 - Legacy renderer: press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
 - Canonical renderer: press **O** to toggle the interaction overlay and **Tab** to cycle the tracked
   boid.
-- See [`CONTROLS.md`](CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
+- See [`docs/CONTROLS.md`](docs/CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
 
 ### Command-Line Options
 SwarmSim.Render now accepts a lightweight CLI so you can start with presets or external configs without modifying code:
@@ -153,11 +155,12 @@ dotnet run --project SwarmSim.Render -- --config configs/warbands.json
 ```
 
 Sample configuration files live in the [`configs/`](configs) directory and demonstrate how to tweak `SimConfig` via JSON.
-For recipes see [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) and for parameter effects see [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md).
+For recipes see [`docs/CONFIGURATION_COOKBOOK.md`](docs/CONFIGURATION_COOKBOOK.md) and for parameter
+effects see [`docs/PARAMETER_GUIDE.md`](docs/PARAMETER_GUIDE.md).
 
 ### Understanding Parameters
-- [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) explains every major field (vision, weights, collision avoidance, etc.) and how changing it affects behaviour.
-- [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) provides ready-made recipes (balanced, peaceful, warbands) you can copy and modify.
+- [`docs/PARAMETER_GUIDE.md`](docs/PARAMETER_GUIDE.md) explains every major field (vision, weights, collision avoidance, etc.) and how changing it affects behaviour.
+- [`docs/CONFIGURATION_COOKBOOK.md`](docs/CONFIGURATION_COOKBOOK.md) provides ready-made recipes (balanced, peaceful, warbands) you can copy and modify.
 
 ## 🌐 JavaScript Demos
 
@@ -233,11 +236,12 @@ SwarmingLilMen/
 │   ├── self-propelled-particles/  # Vicsek model (phase transitions)
 │   ├── ant-colony-optimization/   # ACO pathfinding (stigmergy)
 │   └── particle-swarm-optimization/ # PSO (continuous optimization)
-├── filesAndResources/      # Documentation and scripts
+├── docs/                  # Live guides, roadmap vision, and dated archive
+│   ├── CONTROLS.md         # Keyboard/mouse reference
+│   ├── PARAMETER_GUIDE.md  # Detailed explanation of SimConfig fields
+│   └── archive/            # Historical plans and narratives
 ├── configs/                # JSON configuration presets
 ├── CLAUDE.md               # AI assistant guidelines
-├── CONTROLS.md             # Keyboard/mouse reference
-├── PARAMETER_GUIDE.md      # Detailed explanation of SimConfig fields
 ├── PROJECT_STATUS.md       # Implementation tracker
 └── README.md               # This file
 ```
@@ -418,8 +422,9 @@ dotnet build
 
 - [CLAUDE.md](CLAUDE.md) - Guidelines for AI assistants
 - [PROJECT_STATUS.md](PROJECT_STATUS.md) - Implementation tracker and roadmap
-- [Master Plan](filesAndResources/swarming_lil_men_master_plan_v_1.md) - Detailed design document
-- [Publish Scripts](filesAndResources/PublishScript.md) - Distribution and CI/CD setup
+- [Roadmap vision](docs/ROADMAP-VISION.md) - Aspirational reference; epic #10 is the executable plan
+- [Live guides](docs/) - Controls, configuration, renderer, mechanics, and readiness documentation
+- [Historical publishing reference](docs/archive/PublishScript.md) - Superseded distribution examples
 
 ## 🛠️ Technology Stack
 

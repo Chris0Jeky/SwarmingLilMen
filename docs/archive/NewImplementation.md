@@ -1,3 +1,6 @@
+> **Historical archive (2026-07-25):** This milestone plan is preserved for context, not live
+> status. See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
+
 # high-level model (what we’re building)
 
 * **Agent model:** each boid has `pos`, `vel` (constant speed magnitude), and computes a *steering acceleration* each tick from rules (separation, alignment, cohesion). This is classic Reynolds steering, designed to compose linearly and clamp safely. ([Red3D][1])

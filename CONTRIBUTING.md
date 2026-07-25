@@ -424,7 +424,7 @@ float invLen = 1f / len;  // Avoid division in tight loop
 
 ## Publishing Builds
 
-See [filesAndResources/PublishScript.md](filesAndResources/PublishScript.md) for detailed publishing instructions.
+See the [historical publishing reference](docs/archive/PublishScript.md) for the preserved publishing examples.
 
 ### Quick Publish (Local)
 

@@ -1,3 +1,7 @@
+> **Aspirational reference (2026-07-25): ~15% built.** The
+> [epic #10 checklist](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) is the executable plan
+> and source of sequencing authority; this document is not the plan of record.
+
 # Emergence Engine – Masterplan & Expansion Roadmap (v1)
 
 *A modular, data‑oriented engine for massive agent systems, social dilemmas (incl. N‑IPD), economy & ecology sims, and exportable “reasoning systems”; built in C#/.NET, headless‑first with pluggable renderers (2D→3D), deterministic core, and research‑grade observability.*
@@ -320,4 +324,3 @@ SwarmSim.sln
 
 ### Closing
 This plan aims to balance **engineering discipline** (determinism, testing, perf) with **scientific flexibility** (scenario DSL, experiments, policy extraction). Build **headless first**, keep **interfaces narrow and stable**, and let renderers/tools evolve around a strong kernel. Iterate via the experiments backlog and lock in reproducible baselines as the system grows.
-

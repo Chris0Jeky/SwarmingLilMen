@@ -1,4 +1,5 @@
-> **Status (2025-11-12)**: Steering refactor completed; this document remains as a design reference.
+> **Historical archive (2026-07-25):** This completed steering investigation is preserved for
+> context, not live status. See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
 
 Great prompt, and yes—setting friction to 1 “unblocked” things, but it’s a symptom fix, not the root. Here’s how your write-up stacks up against the consensus, plus a concrete path to make your boids kernel solid and extensible.
 

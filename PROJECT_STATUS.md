@@ -21,7 +21,9 @@
   previously committed debug capture remains in Git history; no history rewrite was performed.
 - Documentation entrypoints now point back to this verified-state section and distinguish the
   unmet performance objective from the dated legacy-core sample. Older phase/session prose remains
-  explicitly historical pending the dedicated archive pass in issue #15.
+  under dated banners in `docs/archive/`. The root contains the five named Markdown entrypoints plus
+  `LICENSE`; live guides are under `docs/`, and `docs/ROADMAP-VISION.md` is explicitly aspirational
+  while epic #10 remains the executable plan.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
@@ -150,9 +152,11 @@ verified block above records what is actually measured.
 - Target: Multiple groups with combat and survival mechanics
 
 ### Key Files to Reference
-- `IMPLEMENTATION_EVOLUTION.md` - **READ THIS FIRST** - Explains the transition from old to new implementation
-- `filesAndResources/swarming_lil_men_master_plan_v_1.md` - Original detailed design document
-- `NewImplementation.md` - TDD roadmap for canonical boids (milestones 0-10)
+- `docs/PHASE_3_READINESS_CHECKLIST.md` - Current canonical-readiness checklist
+- `docs/ROADMAP-VISION.md` - Aspirational engine vision; epic #10 is the executable plan
+- `docs/archive/IMPLEMENTATION_EVOLUTION.md` - Historical explanation of the implementation pivot
+- `docs/archive/NewImplementation.md` - Historical TDD roadmap for canonical boids (milestones 0-10)
+- `docs/archive/swarming_lil_men_master_plan_v_1.md` - Original detailed design document
 - `CLAUDE.md` - Development guidelines and commands
 - This file (`PROJECT_STATUS.md`) - Current status and next steps
 
@@ -180,8 +184,8 @@ verified block above records what is actually measured.
 
 **Before Phase 3**: We must resolve seeded reproducibility, perception, and composition defects;
 complete milestone 7's UX/test acceptance and milestones 8-10; add multi-group support; and
-validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what
-needs to happen next.
+validate performance. See `docs/archive/IMPLEMENTATION_EVOLUTION.md` for the preserved pivot
+narrative and what needs to happen next.
 
 **Recommendation**: All Phase 3+ features should be built on the canonical implementation, not the legacy one.
 
@@ -244,7 +248,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - [x] **Documentation**
   - [x] README.md - Project overview
   - [x] CONTRIBUTING.md - Developer guide with IDE setup
-  - [x] QUICKSTART.md - 5-minute guide
+  - [x] `docs/QUICKSTART.md` - 5-minute guide
 
 **Exit Criteria**: ✅ Can create World with 1000 agents, render them as dots, window runs at 60 FPS
 
@@ -304,7 +308,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 ---
 
 ### Canonical Boids Implementation (Post-P2 Rewrite)
-> **See `IMPLEMENTATION_EVOLUTION.md` and `filesAndResources/CanonicalBoids_SmoothingPlan.md` for full technical details**
+> **See `docs/archive/IMPLEMENTATION_EVOLUTION.md` and `docs/archive/CanonicalBoids_SmoothingPlan.md` for full technical details**
 
 - **Status**: In active development; core scaffolding and rule implementations exist, but
   perception, composition, instrumentation UX, milestones 8-10, multi-group semantics, and
@@ -417,7 +421,7 @@ steering; the separate canonical path further isolates rules.
   - [x] Updated tests to use SpeedModel.Damped when testing friction
   - [x] 2 performance tests fail (expected - steering does more work, will optimize in Phase 5)
 
-**References**: `MakingBoidsBetter.md`, Reynolds' steering behaviors paper
+**References**: `docs/archive/MakingBoidsBetter.md`, Reynolds' steering behaviors paper
 
 **Status**: ✅ **PART A COMPLETE** - Canonical steering behaviors implemented and tested. Performance optimization deferred to Phase 5.
 
@@ -451,7 +455,7 @@ steering; the separate canonical path further isolates rules.
   - [ ] Render thread consumes latest snapshots
   - [ ] Non-blocking, frame dropping when renderer is slow
 
-**References**: `DecouplingPlan.md`, Gaffer on Games "Fix Your Timestep"
+**References**: `docs/archive/DecouplingPlan.md`, Gaffer on Games "Fix Your Timestep"
 
 **Status**: ✅ **PART B COMPLETE** - Fixed timestep with interpolation fully integrated. Simulation now runs independently of render rate.
 
@@ -489,7 +493,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
    - [x] Add `--help` flag to SwarmSim.Render showing all command-line options
    - [x] Add in-app help overlay (H key); current text is partial/stale and tracked in issue #39
    - [x] Add configuration file examples for common use cases (`configs/` folder)
-   - [x] Document all keyboard shortcuts with grouping (`CONTROLS.md` is the complete reference)
+   - [x] Document all keyboard shortcuts with grouping (`docs/CONTROLS.md` is the complete reference)
 
 2. **Command-Line Interface** ✅
    - [x] Add command-line preset selection; stale help examples are tracked in issue #38
@@ -500,14 +504,14 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 3. **Documentation Consolidation** ⏳
    - [x] Update README.md with current capabilities and feature status (CLI, help overlay, configs)
-   - [x] Consolidate QUICKSTART.md with practical examples (running presets, tweaking parameters)
-   - [x] Remove or archive outdated documentation (DecouplingPlan.md, MakingBoidsBetter.md marked as historical reference)
-   - [x] Create CONTROLS.md reference guide with all keyboard/mouse interactions
+   - [x] Consolidate `docs/QUICKSTART.md` with practical examples (running presets, tweaking parameters)
+   - [x] Archive outdated documentation (`docs/archive/DecouplingPlan.md`, `docs/archive/MakingBoidsBetter.md`)
+   - [x] Create `docs/CONTROLS.md` reference guide with all keyboard/mouse interactions
    - [x] Update CLAUDE.md with recent architectural decisions (snapshots, versioning, CLI)
 
 4. **Configuration Discovery** ⏳
    - [x] Create `configs/` directory with example JSON files for each preset
-   - [x] Document SimConfig parameter ranges and their effects (`CONFIGURATION_COOKBOOK.md`)
+   - [x] Document SimConfig parameter ranges and their effects (`docs/CONFIGURATION_COOKBOOK.md`)
    - [x] Add validation messages that explain why a config is invalid (warnings on load)
    - [x] Create "Configuration Cookbook" with recipes for common scenarios
 
@@ -611,7 +615,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 ### Before Starting Work
 1. **Read this file completely** - Understand current phase and status
 2. **Check CLAUDE.md** - Refresh on build commands and architecture
-3. **Review master plan** - Reference filesAndResources/swarming_lil_men_master_plan_v_1.md for details
+3. **Review roadmap vision** - Reference `docs/ROADMAP-VISION.md` as aspirational context; use epic #10 for execution
 4. **Use TodoWrite** - Create task list for your session
 5. **Build and test** - Ensure solution builds before making changes
 
@@ -741,7 +745,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 ### 2025-11-13 (Session 4 - Canonical Boids & UX Polish)
 - Refined boids steering to match classic Reynolds behaviour: limited neighbor samples, explicit collision-avoidance radius/boost, and prioritized steering budgets so separation always fires first.
 - Added new `SimConfig` knobs (`MaxNeighbors`, `CollisionAvoidanceRadius`, `CollisionAvoidanceBoost`) plus crowding-aware separation defaults; updated all presets/config JSON to use these values.
-- Enhanced the renderer overlays (H/F12) to display vision radius, FOV, max neighbors, and documented every parameter in the new `PARAMETER_GUIDE.md`.
+- Enhanced the renderer overlays (H/F12) to display vision radius, FOV, max neighbors, and documented every parameter in `docs/PARAMETER_GUIDE.md`.
 
 ### 2025-11-11 (Session 3 - Part A: Canonical Boids COMPLETE ✅)
 - **Implemented Canonical Steering Behaviors** (Reynolds model):
@@ -767,7 +771,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - All boids behavior tests pass
   - Determinism tests pass (updated for floating-point tolerance)
   - 2 performance tests fail (steering does ~40% more work, expected, will optimize in Phase 5)
-- **Documentation**: Created `SIMULATION_MECHANICS_EXPLAINED.md` with detailed parameter guide
+- **Documentation**: Created `docs/SIMULATION_MECHANICS_EXPLAINED.md` with detailed parameter guide
 - Solution builds with 0 warnings, 0 errors
 - **✅ PART A COMPLETE** - Ready for Part B (Fixed Timestep) or Phase 3 (Combat)
 
@@ -779,7 +783,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - The pre-refactor raw-force/damped approach caused parameter-tuning pathologies
   - Simulation coupled to render rate (not deterministic across framerates)
   - Industry-standard approaches (Reynolds steering, Gaffer fixed timestep) will provide solid foundation
-- **References**: Added `DecouplingPlan.md` and `MakingBoidsBetter.md` as design documents
+- **References**: Added `docs/archive/DecouplingPlan.md` and `docs/archive/MakingBoidsBetter.md` as design documents
 - **Next Steps**: Implement Part A (Canonical Boids) first, then Part B (Fixed Timestep)
 - Updated PROJECT_STATUS.md to reflect new priority tasks
 
@@ -841,7 +845,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 - **Created comprehensive documentation**:
   - README.md - Project overview, quick start, features, usage examples
   - CONTRIBUTING.md - Developer setup, IDE configuration, workflow, performance guidelines
-  - QUICKSTART.md - 5-minute getting started guide
+  - `docs/QUICKSTART.md` - 5-minute getting started guide
   - PublishScript.md analysis and explanation
 - Solution builds with 0 warnings, 0 errors
 - **✅ FOUNDATION COMPLETE** - Ready to move to Phase 1
@@ -876,8 +880,9 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 ## External Resources
 
 ### Documentation
-- Master Plan: `filesAndResources/swarming_lil_men_master_plan_v_1.md`
-- Publish Scripts: `filesAndResources/PublishScript.md`
+- Roadmap vision: `docs/ROADMAP-VISION.md`
+- Historical master plan: `docs/archive/swarming_lil_men_master_plan_v_1.md`
+- Historical publish scripts: `docs/archive/PublishScript.md`
 - Claude Guidelines: `CLAUDE.md`
 
 ### Dependencies
