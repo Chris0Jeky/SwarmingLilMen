@@ -259,9 +259,9 @@ internal static class MinimalTest
             int idx = _world.AddAgent(x, y, 0);
             if (idx >= 0)
             {
-                // Small random velocity
-                _world.Vx[idx] = (float)(Random.Shared.NextDouble() - 0.5) * 2f;
-                _world.Vy[idx] = (float)(Random.Shared.NextDouble() - 0.5) * 2f;
+                // Small seeded velocity
+                _world.Vx[idx] = NextCenteredSample(_world, halfRange: 1f);
+                _world.Vy[idx] = NextCenteredSample(_world, halfRange: 1f);
             }
         }
 
@@ -280,8 +280,8 @@ internal static class MinimalTest
         // Give random velocities
         for (int i = 0; i < _world.Count; i++)
         {
-            _world.Vx[i] = (float)(Random.Shared.NextDouble() - 0.5) * 4f;
-            _world.Vy[i] = (float)(Random.Shared.NextDouble() - 0.5) * 4f;
+            _world.Vx[i] = NextCenteredSample(_world, halfRange: 2f);
+            _world.Vy[i] = NextCenteredSample(_world, halfRange: 2f);
         }
 
         Console.WriteLine("Spawned 10 agents in circle");
@@ -298,8 +298,8 @@ internal static class MinimalTest
             if (_frameCount - _lastSpawnFrame > 120 && _world.Count < 100) // Every 2 seconds
             {
                 _lastSpawnFrame = _frameCount;
-                float x = WindowWidth / 2f + (float)(Random.Shared.NextDouble() - 0.5) * 400;
-                float y = WindowHeight / 2f + (float)(Random.Shared.NextDouble() - 0.5) * 400;
+                float x = WindowWidth / 2f + NextCenteredSample(_world, halfRange: 200f);
+                float y = WindowHeight / 2f + NextCenteredSample(_world, halfRange: 200f);
                 _world.SpawnAgentsInCircle(x, y, 50f, 10, 0);
                 Console.WriteLine($"Added 10 more agents (total: {_world.Count})");
             }
@@ -310,6 +310,12 @@ internal static class MinimalTest
         {
             _world.Fx[0] += 5.0f;
         }
+    }
+
+    internal static float NextCenteredSample(World world, float halfRange)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        return world.Rng.NextFloat(-halfRange, halfRange);
     }
 
     private static void PrintStageDiagnostics()

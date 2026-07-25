@@ -3,6 +3,7 @@ using SwarmSim.Core;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Utils;
+using MinimalTestProgram = SwarmSim.Render.MinimalTest;
 using RenderProgram = SwarmSim.Render.Program;
 using Xunit.Abstractions;
 
@@ -228,6 +229,32 @@ public sealed class DeterminismTests
         Assert.Equal(config.SeparationPriorityRampInTime, settings.SeparationPriorityRampInTime);
         Assert.Equal(config.SeparationPriorityRampOutTime, settings.SeparationPriorityRampOutTime);
         Assert.Equal(config.SeparationSpeedDroop, settings.SeparationSpeedDroop);
+    }
+
+    [Fact]
+    [Trait("Category", "Determinism")]
+    public void MinimalHarnessRandomSamples_AreWorldSeeded()
+    {
+        var first = new World(new SimConfig(), seed: 42u);
+        var matching = new World(new SimConfig(), seed: 42u);
+        var different = new World(new SimConfig(), seed: 43u);
+        bool observedDifferentSeed = false;
+
+        for (int i = 0; i < 8; i++)
+        {
+            float firstSample = MinimalTestProgram.NextCenteredSample(first, halfRange: 200f);
+            float matchingSample = MinimalTestProgram.NextCenteredSample(matching, halfRange: 200f);
+            float differentSample = MinimalTestProgram.NextCenteredSample(different, halfRange: 200f);
+
+            Assert.Equal(
+                BitConverter.SingleToUInt32Bits(firstSample),
+                BitConverter.SingleToUInt32Bits(matchingSample));
+            observedDifferentSeed |= BitConverter.SingleToUInt32Bits(firstSample)
+                != BitConverter.SingleToUInt32Bits(differentSample);
+            Assert.InRange(firstSample, -200f, 200f);
+        }
+
+        Assert.True(observedDifferentSeed);
     }
 
     [Fact]

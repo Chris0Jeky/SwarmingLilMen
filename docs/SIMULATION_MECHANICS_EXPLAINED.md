@@ -166,9 +166,10 @@ Each simulation step:
 - **5.0**: Chaotic, random walk dominates
 
 Legacy wander consumes the world's configured RNG, while canonical wander uses deterministic
-per-agent streams derived from `SimConfig.Seed`. Matching same-platform/runtime runs therefore
-reproduce wander-enabled trajectories exactly when configuration, timestep, and ordered input
-events also match. External seeds are limited to `0` through `2147483647`; the internal derived
+per-agent streams derived from `SimConfig.Seed`; the `--minimal` legacy harness also samples
+velocities and staged spawn positions from the world RNG. Matching same-platform/runtime runs
+therefore reproduce wander-enabled trajectories exactly when configuration, timestep, and ordered
+input events also match. External seeds are limited to `0` through `2147483647`; the internal derived
 streams preserve their established full-width mapping. Cross-platform/runtime identity is not
 claimed.
 

@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **79 passed, 0 failed, 0 skipped**
-  in 7 seconds of test execution on 2026-07-25.
-- Unfiltered Release solution test: **83 passed, 0 failed, 0 skipped** in 34 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **80 passed, 0 failed, 0 skipped**
+  in 9 seconds of test execution on 2026-07-25.
+- Unfiltered Release solution test: **84 passed, 0 failed, 0 skipped** in 31 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 19.87 seconds.
   Command after the Release build:
@@ -48,9 +48,9 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.25%
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **57.27%
   line / 38.90% branch overall**; `SwarmSim.Core` is 83.45% line / 71.85% branch and
-  `SwarmSim.Render` is 29.97% line / 12.77% branch. The instrumented timing tests are intentionally
+  `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
@@ -64,8 +64,10 @@
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
 - Reproducibility: legacy wander consumes the world's configured RNG; canonical construction maps
   `SimConfig.Seed` and the canonical steering settings, and each wander-enabled boid receives an
-  index-derived stream at successful spawn. External seeds are limited to `0..2147483647`; the
-  established internal full-width derived-stream mapping remains unchanged pending #26. Exact
+  index-derived stream at successful spawn. The supported `--minimal` legacy harness also samples
+  velocities and staged spawn positions from `World.Rng`, not process-global randomness. External
+  seeds are limited to `0..2147483647`; the established internal full-width derived-stream mapping
+  remains unchanged pending #26. Exact
   ordered kinematic hashes cover both paths for 500 ticks, and two fresh processes running
   `configs/balanced.json` produced the same 600-tick SHA-256 kinematic hash
   (`DAF60518...5BB770F6`). The version-1 hash covers agent count plus ordered X/Y/Vx/Vy bits; it
@@ -98,7 +100,7 @@
   Docs-only source correction is tracked in
   [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
   this reconciliation.
-- Test inventory: 83 xUnit facts across 10 test files, including four explicitly categorized
+- Test inventory: 84 xUnit facts across 10 test files, including four explicitly categorized
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,951 lines and

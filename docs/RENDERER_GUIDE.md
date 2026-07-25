@@ -35,8 +35,10 @@ Use `--agent-count N` to override the initial legacy count. Run `--help` for the
   (`SwarmSim.Core/SimConfig.cs:15,221-230`; `SwarmSim.Render/Program.cs:110-217`; `configs/*.json`).
 
 Legacy wander now consumes the world's configured RNG, and canonical initialization plus
-per-agent wander streams derive from `SimConfig.Seed`. For the same .NET 8 binary, platform,
-configuration, timestep, and input sequence, both paths have exact 500-tick ordered-kinematic-hash
+per-agent wander streams derive from `SimConfig.Seed`. The supported `--minimal` harness likewise
+uses `World.Rng` for random velocities and staged spawn positions. For the same .NET 8 binary,
+platform, configuration, timestep, and input sequence, both paths have exact 500-tick
+ordered-kinematic-hash
 coverage; the bundled balanced configuration is also exercised in two separate headless processes.
 The hash covers agent count plus ordered X/Y/Vx/Vy bits, not configuration, clocks, RNG/wander
 state, groups, lifecycle/resources, or genomes. This is not a cross-platform/runtime guarantee, and

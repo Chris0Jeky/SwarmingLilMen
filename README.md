@@ -45,7 +45,7 @@ should target the canonical implementation.
 - ✅ Configurable simulation parameters with presets
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
-- ✅ 83-test xUnit inventory; the 79 non-performance facts form the hosted CI gate
+- ✅ 84-test xUnit inventory; the 80 non-performance facts form the hosted CI gate
 
 ### Remaining Direction
 - **Canonical readiness**: The perception/spatial-index contract (#18), force-budget enforcement
