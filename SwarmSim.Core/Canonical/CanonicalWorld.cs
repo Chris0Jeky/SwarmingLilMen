@@ -14,7 +14,7 @@ public sealed class CanonicalWorld
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
-    private readonly Rng _rng;
+    private readonly Rng?[] _wanderRngs;
     private readonly bool[] _priorityState;
     private readonly float[] _priorityBlend;
     private readonly float[] _priorityHoldTimers;
@@ -50,12 +50,7 @@ public sealed class CanonicalWorld
         _nearestAngles = new float[capacity];
         _whiskerCounts = new int[capacity];
         _wanderAngles = new float[capacity];
-
-        _rng = new Rng(settings.Seed);
-        for (int i = 0; i < capacity; i++)
-        {
-            _wanderAngles[i] = _rng.NextFloat(0f, MathF.PI * 2f);
-        }
+        _wanderRngs = new Rng?[capacity];
 
         _spatialIndex.Initialize(capacity);
 
@@ -86,8 +81,25 @@ public sealed class CanonicalWorld
             ? new Vec2(1f, 0f).WithLength(Settings.TargetSpeed)
             : velocity.WithLength(Settings.TargetSpeed);
 
-        _activeBoids[Count++] = new Boid(position, normalizedVelocity, group);
+        int index = Count;
+        if (Settings.WanderStrength > 0f)
+        {
+            var wanderRng = new Rng(DeriveWanderSeed(Settings.Seed, index));
+            _wanderRngs[index] = wanderRng;
+            _wanderAngles[index] = wanderRng.NextFloat(0f, MathF.PI * 2f);
+        }
+        _activeBoids[index] = new Boid(position, normalizedVelocity, group);
+        Count = index + 1;
         return true;
+    }
+
+    private static uint DeriveWanderSeed(uint seed, int agentIndex)
+    {
+        uint value = seed + 0x9E3779B9u * ((uint)agentIndex + 1u);
+        value = (value ^ (value >> 16)) * 0x85EBCA6Bu;
+        value = (value ^ (value >> 13)) * 0xC2B2AE35u;
+        value ^= value >> 16;
+        return value;
     }
 
     public void SetVelocity(int index, Vec2 velocity)
@@ -287,7 +299,8 @@ public sealed class CanonicalWorld
 
             if (Settings.WanderStrength > 0f && remainingForce > 0f)
             {
-                float angleChange = _rng.NextFloat(-1f, 1f) * Settings.WanderRate * deltaTime;
+                Rng wanderRng = _wanderRngs[i]!;
+                float angleChange = wanderRng.NextFloat(-1f, 1f) * Settings.WanderRate * deltaTime;
                 _wanderAngles[i] += angleChange;
                 Vec2 wanderDirection = new Vec2(MathF.Cos(_wanderAngles[i]), MathF.Sin(_wanderAngles[i]));
                 Vec2 wander = wanderDirection * Settings.WanderStrength * Settings.TargetSpeed;

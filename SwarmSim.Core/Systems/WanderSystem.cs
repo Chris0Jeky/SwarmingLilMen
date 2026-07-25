@@ -1,5 +1,3 @@
-using SwarmSim.Core.Utils;
-
 namespace SwarmSim.Core.Systems;
 
 /// <summary>
@@ -13,13 +11,11 @@ namespace SwarmSim.Core.Systems;
 /// </summary>
 public sealed class WanderSystem : ISimSystem
 {
-    private float _wanderStrength;
-    private Rng _rng;
+    private readonly float _wanderStrength;
 
     public WanderSystem(float wanderStrength = 20f)
     {
         _wanderStrength = wanderStrength;
-        _rng = new Rng((uint)System.DateTime.Now.Ticks);
     }
 
     public void Run(World world, float dt)
@@ -28,6 +24,7 @@ public sealed class WanderSystem : ISimSystem
         var fx = world.Fx;
         var fy = world.Fy;
         var state = world.State;
+        var rng = world.Rng;
 
         for (int i = 0; i < count; i++)
         {
@@ -36,8 +33,8 @@ public sealed class WanderSystem : ISimSystem
                 continue;
 
             // Add small random force
-            (float wx, float wy) = _rng.NextUnitVector();
-            float wanderMag = _rng.NextFloat(0, _wanderStrength);
+            (float wx, float wy) = rng.NextUnitVector();
+            float wanderMag = rng.NextFloat(0, _wanderStrength);
 
             fx[i] += wx * wanderMag;
             fy[i] += wy * wanderMag;

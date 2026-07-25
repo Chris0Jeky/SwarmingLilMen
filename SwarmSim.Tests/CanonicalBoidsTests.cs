@@ -267,6 +267,7 @@ public class CanonicalBoidsTests
             SeparationPriorityRadiusFactor = 0.5f,
             SeparationPriorityExitFactor = 0.6f,
             SeparationPriorityHoldTime = 0.1f,
+            WanderStrength = 0f,
             FixedDeltaTime = 1f / 60f
         };
 
@@ -281,7 +282,8 @@ public class CanonicalBoidsTests
         world.SetVelocity(0, new Vec2(1f, 0f));
         world.SetVelocity(1, new Vec2(-1f, 0f));
 
-        for (int i = 0; i < 10; i++)
+        // Allow both the hold timer and the 0.1-second default ramp-out to complete.
+        for (int i = 0; i < 20; i++)
         {
             world.Step(settings.FixedDeltaTime);
         }
@@ -290,11 +292,9 @@ public class CanonicalBoidsTests
         float distance = (world.Boids[1].Position - world.Boids[0].Position).Length;
         float exitThreshold = settings.SeparationPriorityExitFactor * settings.SenseRadius;
 
-        if (distance >= exitThreshold)
-        {
-            Assert.False(snapshot2.SeparationPriorityTriggered,
-                "Priority should exit after agents separate beyond exit threshold and hold time expires");
-        }
+        Assert.True(distance >= exitThreshold, "Agents should separate beyond the priority exit threshold");
+        Assert.False(snapshot2.SeparationPriorityTriggered,
+            "Priority should exit after agents separate beyond exit threshold and hold/ramp-out times expire");
     }
 
     [Fact]

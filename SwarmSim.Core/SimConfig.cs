@@ -10,6 +10,9 @@ namespace SwarmSim.Core;
 public sealed class SimConfig
 {
     // ===== World Parameters =====
+    /// <summary>Seed shared by deterministic construction paths.</summary>
+    public uint Seed { get; init; } = 42u;
+
     public float WorldWidth { get; init; } = 1920f;
     public float WorldHeight { get; init; } = 1080f;
     public BoundaryMode BoundaryMode { get; init; } = BoundaryMode.Wrap;
@@ -33,6 +36,39 @@ public sealed class SimConfig
     public float AlignmentWeight { get; init; } = 1.0f;
     public float CohesionWeight { get; init; } = 1.0f;
     public float WanderStrength { get; init; } = 0f; // Random exploration force (0 = disabled)
+    /// <summary>Maximum canonical wander-angle change, in radians per second.</summary>
+    public float WanderRate { get; init; } = 1.5f;
+
+    /// <summary>Maximum canonical heading change, in degrees per second.</summary>
+    public float MaxTurnRateDegPerSecond { get; init; } = 360f;
+
+    /// <summary>Canonical predictive-collision lookahead, in seconds.</summary>
+    public float WhiskerTimeHorizon { get; init; } = 0.4f;
+
+    /// <summary>Canonical predictive-collision steering weight.</summary>
+    public float WhiskerWeight { get; init; } = 1.2f;
+
+    /// <summary>Canonical separation-priority entry radius as a fraction of SenseRadius.</summary>
+    public float SeparationPriorityRadiusFactor { get; init; } = 0.20f;
+
+    /// <summary>Canonical separation-priority exit radius as a fraction of SenseRadius.</summary>
+    public float SeparationPriorityExitFactor { get; init; } = 0.45f;
+
+    /// <summary>Canonical steering multiplier while separation priority is active.</summary>
+    public float SeparationPriorityBoost { get; init; } = 2.5f;
+
+    /// <summary>Minimum canonical separation-priority hold time, in seconds.</summary>
+    public float SeparationPriorityHoldTime { get; init; } = 0.08f;
+
+    /// <summary>Canonical separation-priority ramp-in time, in seconds.</summary>
+    public float SeparationPriorityRampInTime { get; init; } = 0.08f;
+
+    /// <summary>Canonical separation-priority ramp-out time, in seconds.</summary>
+    public float SeparationPriorityRampOutTime { get; init; } = 0.1f;
+
+    /// <summary>Canonical target-speed reduction while separation priority is active.</summary>
+    public float SeparationSpeedDroop { get; init; } = 0.03f;
+
     public int SeparationCrowdingThreshold { get; init; } = 12; // Neighbor count before boosting separation
     public float SeparationCrowdingBoost { get; init; } = 2.5f; // Multiplier for separation weight when very crowded
     public int MaxNeighbors { get; init; } = 16; // cap neighbors contributing to steering
