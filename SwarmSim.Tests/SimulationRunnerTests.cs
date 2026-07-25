@@ -8,6 +8,7 @@ public class SimulationRunnerTests
 {
     private static SimConfig CreateBasicConfig() => new()
     {
+        Seed = 1u,
         InitialCapacity = 8,
         FixedDeltaTime = 0.125f, // Use power-of-2 fraction for exact binary representation
         SenseRadius = 10f,
@@ -39,6 +40,7 @@ public class SimulationRunnerTests
     {
         var config = new SimConfig
         {
+            Seed = 1u,
             InitialCapacity = 8,
             FixedDeltaTime = 0.0625f, // Use power-of-2 fraction (1/16)
             SenseRadius = 10f,

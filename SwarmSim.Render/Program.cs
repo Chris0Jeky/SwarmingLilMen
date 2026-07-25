@@ -1,6 +1,8 @@
 using Raylib_cs;
 using SwarmSim.Core;
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Diagnostics;
+using SwarmSim.Core.Utils;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -237,8 +239,9 @@ internal static class Program
         Color.Maroon      // Group 15
     ];
 
-    private static SimConfig CreateDefaultBaseConfig() => new()
+    internal static SimConfig CreateDefaultBaseConfig() => new()
     {
+        Seed = 42u,
         WorldWidth = WindowWidth,
         WorldHeight = WindowHeight,
         BoundaryMode = BoundaryMode.Wrap,
@@ -254,7 +257,7 @@ internal static class Program
         SeparationWeight = 7.5f,
         AlignmentWeight = 2.2f,
         CohesionWeight = 0.35f,
-        WanderStrength = 0.45f,
+        WanderStrength = 0f,
         MaxNeighbors = 16,
         CollisionAvoidanceRadius = 12f,
         CollisionAvoidanceBoost = 4f,
@@ -304,6 +307,7 @@ internal static class Program
     {
         return new SimConfig
         {
+            Seed = source.Seed,
             WorldWidth = source.WorldWidth,
             WorldHeight = source.WorldHeight,
             BoundaryMode = source.BoundaryMode,
@@ -320,6 +324,17 @@ internal static class Program
             AlignmentWeight = source.AlignmentWeight,
             CohesionWeight = source.CohesionWeight,
             WanderStrength = source.WanderStrength,
+            WanderRate = source.WanderRate,
+            MaxTurnRateDegPerSecond = source.MaxTurnRateDegPerSecond,
+            WhiskerTimeHorizon = source.WhiskerTimeHorizon,
+            WhiskerWeight = source.WhiskerWeight,
+            SeparationPriorityRadiusFactor = source.SeparationPriorityRadiusFactor,
+            SeparationPriorityExitFactor = source.SeparationPriorityExitFactor,
+            SeparationPriorityBoost = source.SeparationPriorityBoost,
+            SeparationPriorityHoldTime = source.SeparationPriorityHoldTime,
+            SeparationPriorityRampInTime = source.SeparationPriorityRampInTime,
+            SeparationPriorityRampOutTime = source.SeparationPriorityRampOutTime,
+            SeparationSpeedDroop = source.SeparationSpeedDroop,
             AttackRadius = source.AttackRadius,
             AttackDamage = source.AttackDamage,
             AttackCooldown = source.AttackCooldown,
@@ -350,6 +365,7 @@ internal static class Program
         var template = _baseConfigTemplate;
         return new SimConfig
         {
+            Seed = template.Seed,
             WorldWidth = WindowWidth,
             WorldHeight = WindowHeight,
             BoundaryMode = template.BoundaryMode,
@@ -366,6 +382,17 @@ internal static class Program
             AlignmentWeight = _alignmentWeight,
             CohesionWeight = _cohesionWeight,
             WanderStrength = template.WanderStrength,
+            WanderRate = template.WanderRate,
+            MaxTurnRateDegPerSecond = template.MaxTurnRateDegPerSecond,
+            WhiskerTimeHorizon = template.WhiskerTimeHorizon,
+            WhiskerWeight = template.WhiskerWeight,
+            SeparationPriorityRadiusFactor = template.SeparationPriorityRadiusFactor,
+            SeparationPriorityExitFactor = template.SeparationPriorityExitFactor,
+            SeparationPriorityBoost = template.SeparationPriorityBoost,
+            SeparationPriorityHoldTime = template.SeparationPriorityHoldTime,
+            SeparationPriorityRampInTime = template.SeparationPriorityRampInTime,
+            SeparationPriorityRampOutTime = template.SeparationPriorityRampOutTime,
+            SeparationSpeedDroop = template.SeparationSpeedDroop,
             AttackRadius = template.AttackRadius,
             AttackDamage = template.AttackDamage,
             AttackCooldown = template.AttackCooldown,
@@ -525,7 +552,8 @@ internal static class Program
 
     private static World CreateWorldWithCurrentParams()
     {
-        return new World(BuildCurrentConfig(), seed: 42);
+        SimConfig config = BuildCurrentConfig();
+        return new World(config);
     }
 
     private static void ForceSnapshotRefresh(string reason, bool notifyRunner = true)
@@ -1329,7 +1357,7 @@ internal static class Program
         Raylib.SetTargetFPS(60);
 
         var settings = BuildCanonicalWorldSettings();
-        var canonicalWorld = CreateCanonicalWorld(settings);
+        var canonicalWorld = CreateCanonicalWorld(settings, _initialAgentCount);
         float accumulator = 0f;
         bool showHelp = true;
         float consoleTimer = 0f;
@@ -1357,7 +1385,7 @@ internal static class Program
 
             if (Raylib.IsKeyPressed(KeyboardKey.R))
             {
-                canonicalWorld = CreateCanonicalWorld(settings);
+                canonicalWorld = CreateCanonicalWorld(settings, _initialAgentCount);
                 SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
                 accumulator = 0f;
             }
@@ -1685,38 +1713,63 @@ internal static class Program
 
     private static CanonicalWorldSettings BuildCanonicalWorldSettings()
     {
-        var template = BuildCurrentConfig();
+        return BuildCanonicalWorldSettings(BuildCurrentConfig(), _initialAgentCount);
+    }
+
+    internal static CanonicalWorldSettings BuildCanonicalWorldSettings(
+        SimConfig config,
+        int initialAgentCount)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+
         return new CanonicalWorldSettings
         {
-            InitialCapacity = Math.Max(_initialAgentCount * 2, 1024),
-            TargetSpeed = Math.Max(0.01f, _maxSpeed),
-            MaxForce = Math.Max(0.01f, _maxForce),
-            SenseRadius = Math.Max(1f, _senseRadius),
-            SeparationRadius = Math.Max(1f, _separationRadius),
-            SeparationWeight = Math.Max(0f, _separationWeight),
-            AlignmentWeight = Math.Max(0f, _alignmentWeight),
-            CohesionWeight = Math.Max(0f, _cohesionWeight),
-            FieldOfView = template.FieldOfView,
-            WorldWidth = template.WorldWidth,
-            WorldHeight = template.WorldHeight,
-            FixedDeltaTime = template.FixedDeltaTime,
-            MaxNeighbors = template.MaxNeighbors
+            InitialCapacity = Math.Max(initialAgentCount * 2, 1024),
+            TargetSpeed = Math.Max(0.01f, config.MaxSpeed),
+            MaxForce = Math.Max(0.01f, config.MaxForce),
+            SenseRadius = Math.Max(1f, config.SenseRadius),
+            SeparationRadius = Math.Max(1f, config.SeparationRadius),
+            SeparationWeight = Math.Max(0f, config.SeparationWeight),
+            AlignmentWeight = Math.Max(0f, config.AlignmentWeight),
+            CohesionWeight = Math.Max(0f, config.CohesionWeight),
+            FieldOfView = config.FieldOfView,
+            WorldWidth = config.WorldWidth,
+            WorldHeight = config.WorldHeight,
+            FixedDeltaTime = config.FixedDeltaTime,
+            MaxNeighbors = config.MaxNeighbors,
+            WanderStrength = config.WanderStrength,
+            WanderRate = config.WanderRate,
+            MaxTurnRateDegPerSecond = config.MaxTurnRateDegPerSecond,
+            WhiskerTimeHorizon = config.WhiskerTimeHorizon,
+            WhiskerWeight = config.WhiskerWeight,
+            SeparationPriorityRadiusFactor = config.SeparationPriorityRadiusFactor,
+            SeparationPriorityExitFactor = config.SeparationPriorityExitFactor,
+            SeparationPriorityBoost = config.SeparationPriorityBoost,
+            SeparationPriorityHoldTime = config.SeparationPriorityHoldTime,
+            SeparationPriorityRampInTime = config.SeparationPriorityRampInTime,
+            SeparationPriorityRampOutTime = config.SeparationPriorityRampOutTime,
+            SeparationSpeedDroop = config.SeparationSpeedDroop,
+            Seed = config.Seed
         };
     }
 
-    private static CanonicalWorld CreateCanonicalWorld(CanonicalWorldSettings settings)
+    internal static CanonicalWorld CreateCanonicalWorld(
+        CanonicalWorldSettings settings,
+        int agentCount)
     {
+        ArgumentNullException.ThrowIfNull(settings);
+
         var canonicalWorld = new CanonicalWorld(
             settings,
             new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
-        var rng = new Random(42);
+        var rng = new Rng(settings.Seed);
         float twoPi = 2f * MathF.PI;
 
-        for (int i = 0; i < _initialAgentCount; i++)
+        for (int i = 0; i < agentCount; i++)
         {
-            float x = (float)rng.NextDouble() * settings.WorldWidth;
-            float y = (float)rng.NextDouble() * settings.WorldHeight;
-            float angle = (float)rng.NextDouble() * twoPi;
+            float x = rng.NextFloat(0f, settings.WorldWidth);
+            float y = rng.NextFloat(0f, settings.WorldHeight);
+            float angle = rng.NextFloat(0f, twoPi);
             var direction = new Vec2(MathF.Cos(angle), MathF.Sin(angle));
             var velocity = direction.WithLength(settings.TargetSpeed);
             canonicalWorld.TryAddBoid(new Vec2(x, y), velocity);
@@ -1728,7 +1781,8 @@ internal static class Program
     private static void RunBenchmark(int agentCount)
     {
         Console.WriteLine("Running headless benchmark...");
-        var world = new World(BuildCurrentConfig(), seed: 42);
+        SimConfig config = BuildCurrentConfig();
+        var world = new World(config);
         SpawnInitialAgents(world, agentCount);
         var runner = new SimulationRunner(world);
         const int ticks = 600;
@@ -1741,6 +1795,7 @@ internal static class Program
         var stats = world.GetStats();
         Console.WriteLine($"Ticks: {ticks}, Elapsed: {sw.Elapsed.TotalSeconds:F2}s ({ticks / sw.Elapsed.TotalSeconds:F1} TPS)");
         Console.WriteLine($"Agents: {stats.AliveAgents}, Avg Speed: {stats.AverageSpeed:F2}");
+        Console.WriteLine($"KinematicHash: {SimulationKinematicHash.Compute(world)}");
     }
 
     private static void WarnIfInvalidConfig(SimConfig config, string source)

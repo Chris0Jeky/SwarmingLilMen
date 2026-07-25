@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core;
 
@@ -10,6 +11,18 @@ namespace SwarmSim.Core;
 public sealed class SimConfig
 {
     // ===== World Parameters =====
+    private uint _seed = 42u;
+
+    /// <summary>
+    /// Seed shared by deterministic construction paths. Supported values are 0 through
+    /// <see cref="Rng.MaxSupportedSeed"/>, inclusive.
+    /// </summary>
+    public uint Seed
+    {
+        get => _seed;
+        init => _seed = value;
+    }
+
     public float WorldWidth { get; init; } = 1920f;
     public float WorldHeight { get; init; } = 1080f;
     public BoundaryMode BoundaryMode { get; init; } = BoundaryMode.Wrap;
@@ -33,6 +46,39 @@ public sealed class SimConfig
     public float AlignmentWeight { get; init; } = 1.0f;
     public float CohesionWeight { get; init; } = 1.0f;
     public float WanderStrength { get; init; } = 0f; // Random exploration force (0 = disabled)
+    /// <summary>Maximum canonical wander-angle change, in radians per second.</summary>
+    public float WanderRate { get; init; } = 1.5f;
+
+    /// <summary>Maximum canonical heading change, in degrees per second.</summary>
+    public float MaxTurnRateDegPerSecond { get; init; } = 360f;
+
+    /// <summary>Canonical predictive-collision lookahead, in seconds.</summary>
+    public float WhiskerTimeHorizon { get; init; } = 0.4f;
+
+    /// <summary>Canonical predictive-collision steering weight.</summary>
+    public float WhiskerWeight { get; init; } = 1.2f;
+
+    /// <summary>Canonical separation-priority entry radius as a fraction of SenseRadius.</summary>
+    public float SeparationPriorityRadiusFactor { get; init; } = 0.20f;
+
+    /// <summary>Canonical separation-priority exit radius as a fraction of SenseRadius.</summary>
+    public float SeparationPriorityExitFactor { get; init; } = 0.45f;
+
+    /// <summary>Canonical steering multiplier while separation priority is active.</summary>
+    public float SeparationPriorityBoost { get; init; } = 2.5f;
+
+    /// <summary>Minimum canonical separation-priority hold time, in seconds.</summary>
+    public float SeparationPriorityHoldTime { get; init; } = 0.08f;
+
+    /// <summary>Canonical separation-priority ramp-in time, in seconds.</summary>
+    public float SeparationPriorityRampInTime { get; init; } = 0.08f;
+
+    /// <summary>Canonical separation-priority ramp-out time, in seconds.</summary>
+    public float SeparationPriorityRampOutTime { get; init; } = 0.1f;
+
+    /// <summary>Canonical target-speed reduction while separation priority is active.</summary>
+    public float SeparationSpeedDroop { get; init; } = 0.03f;
+
     public int SeparationCrowdingThreshold { get; init; } = 12; // Neighbor count before boosting separation
     public float SeparationCrowdingBoost { get; init; } = 2.5f; // Multiplier for separation weight when very crowded
     public int MaxNeighbors { get; init; } = 16; // cap neighbors contributing to steering
@@ -173,6 +219,8 @@ public sealed class SimConfig
     {
         var errors = new List<string>();
 
+        if (Seed > Rng.MaxSupportedSeed)
+            errors.Add($"Seed must be between 0 and {Rng.MaxSupportedSeed}, inclusive");
         if (WorldWidth <= 0) errors.Add("WorldWidth must be positive");
         if (WorldHeight <= 0) errors.Add("WorldHeight must be positive");
         if (FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
@@ -192,6 +240,13 @@ public sealed class SimConfig
             errors.Add("AggressionMatrix must be square");
 
         return errors;
+    }
+
+    internal SimConfig WithSeed(uint seed)
+    {
+        var copy = (SimConfig)MemberwiseClone();
+        copy._seed = seed;
+        return copy;
     }
 
     public static SimConfig LoadFromJson(string filePath)

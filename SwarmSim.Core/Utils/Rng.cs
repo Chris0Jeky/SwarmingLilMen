@@ -11,16 +11,52 @@ public sealed class Rng
     private readonly uint _seed;
 
     /// <summary>
-    /// Creates RNG with explicit seed for deterministic behavior.
+    /// Largest seed accepted from configuration and other public construction paths.
     /// </summary>
-    public Rng(uint seed)
+    public const uint MaxSupportedSeed = int.MaxValue;
+
+    /// <summary>
+    /// Creates an RNG with an explicit supported seed for deterministic behavior.
+    /// </summary>
+    /// <param name="seed">A seed from 0 through <see cref="MaxSupportedSeed"/>, inclusive.</param>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="seed"/> exceeds <see cref="MaxSupportedSeed"/>.
+    /// </exception>
+    public Rng(uint seed) : this(seed, ToSupportedRandomSeed(seed))
+    {
+    }
+
+    private Rng(uint seed, int randomSeed)
     {
         _seed = seed;
-        _random = new Random((int)seed);
+        _random = new Random(randomSeed);
+    }
+
+    /// <summary>
+    /// Creates an internal derived stream while preserving the established full-width seed mapping.
+    /// </summary>
+    internal static Rng CreateFromDerivedSeed(uint seed) => new(seed, unchecked((int)seed));
+
+    /// <summary>Validates a seed entering through a public construction path.</summary>
+    internal static void ValidateExternalSeed(uint seed, string paramName)
+    {
+        if (seed > MaxSupportedSeed)
+        {
+            throw new ArgumentOutOfRangeException(
+                paramName,
+                seed,
+                $"Seed must be between 0 and {MaxSupportedSeed}, inclusive.");
+        }
     }
 
     /// <summary>Gets the seed used to initialize this RNG.</summary>
     public uint Seed => _seed;
+
+    private static int ToSupportedRandomSeed(uint seed)
+    {
+        ValidateExternalSeed(seed, nameof(seed));
+        return (int)seed;
+    }
 
     /// <summary>
     /// Returns a non-negative random integer.

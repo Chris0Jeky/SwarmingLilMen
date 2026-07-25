@@ -3,6 +3,12 @@
 This guide explains the main fields in `SimConfig`, what they control, and how increasing/decreasing each value affects flocking behaviour. Use it alongside `CONFIGURATION_COOKBOOK.md` when crafting custom JSON configs.
 
 ## Motion & Steering
+- **Seed** – Controls deterministic legacy and canonical construction. Reusing a seed reproduces
+  a trajectory only when the .NET binary/runtime, platform, configuration, timestep, and ordered
+  input events also match; it is not a cross-platform promise. Supported external values are
+  `0` through `2147483647`; larger values are rejected. Prefer `new World(config)`. The existing
+  explicit-seed overload remains compatible: its argument is authoritative, and `World.Config`
+  exposes that effective value without mutating the caller's object.
 - **MaxSpeed** – Upper bound on velocity magnitude. Higher values create more energetic movement but require higher `MaxForce` (or stronger weights) to turn quickly. Keep `MaxForce ≥ MaxSpeed * 0.2` for responsive steering.
 - **MaxForce** – Steering budget per tick. A larger value lets agents change direction faster. Too low relative to `MaxSpeed` yields “train” formations; too high can cause jitter.
 - **Friction** – Velocity damping after applying steering. Values near `0.90–0.98` simulate drag. `1.0` keeps constant speed (only appropriate when steering budgets are high).
@@ -24,7 +30,31 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 - **CohesionWeight** – Pull toward the local center of mass. Too high relative to separation creates clumps; a value around 1/10th of separation is typical.
 
 ## Wander & Noise
-- **WanderStrength** – Random steering magnitude. Use small values (0.1–0.5) to keep agents from freezing. Higher values break up synchronized lines.
+- **WanderStrength** – Finite, non-negative random steering magnitude; the default is `0`
+  (disabled). Use small explicit values (0.1–0.5) to keep agents from freezing. Higher values break
+  up synchronized lines.
+- **WanderRate** – Finite, non-negative canonical wander-angle change limit in radians per second.
+  It has no effect while `WanderStrength` is zero.
+
+## Canonical Smoothing
+- **MaxTurnRateDegPerSecond** – Finite, non-negative canonical heading-change limit; `0` prevents
+  heading changes, while negative and non-finite values are rejected by canonical construction.
+- **WhiskerTimeHorizon / WhiskerWeight** – Predictive collision lookahead and steering weight. Both
+  must be finite; weight must be non-negative, while a finite horizon below `0.05` uses the existing
+  `0.05`-second minimum.
+- **SeparationPriorityRadiusFactor / SeparationPriorityExitFactor** – Entry and hysteresis-exit
+  radii as finite fractions of `SenseRadius`; finite negative values retain the existing effective
+  zero-threshold clamp.
+- **SeparationPriorityBoost / SeparationPriorityHoldTime** – Strength and minimum duration of
+  canonical separation priority. The boost must be finite and non-negative, and hold time must be
+  finite.
+- **SeparationPriorityRampInTime / SeparationPriorityRampOutTime / SeparationSpeedDroop** –
+  Transition timing and temporary target-speed reduction while priority is active. Ramp times must
+  be finite. Speed droop must be finite and remain in `[0, 1]`, preventing priority from reversing
+  velocity.
+
+These fields are read from `SimConfig` only by the canonical renderer path; the similarly named
+legacy crowding controls retain their existing legacy semantics.
 
 ## Energy / Combat (Phase 3+)
 - **AttackDamage / AttackRadius / AttackCooldown** – Enable combat behaviour when aggression matrices are non-zero. Increase to make encounters more lethal.

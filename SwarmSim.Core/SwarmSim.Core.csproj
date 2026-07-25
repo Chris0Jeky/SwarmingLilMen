@@ -1,4 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <!-- Core simulation library with data-oriented design -->
   <!-- All properties inherited from Directory.Build.props -->
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="SwarmSim.Tests" />
+  </ItemGroup>
 </Project>

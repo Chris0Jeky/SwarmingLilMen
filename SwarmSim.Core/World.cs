@@ -66,19 +66,42 @@ public sealed class World
     // private int[] _nextFree;
 
     /// <summary>
-    /// Creates a new world with the given configuration.
+    /// Creates a new world using the seed in the given configuration.
     /// </summary>
+    /// <param name="config">The complete world configuration.</param>
+    public World(SimConfig config)
+        : this(config, config?.Seed ?? throw new ArgumentNullException(nameof(config)))
+    {
+    }
+
+    /// <summary>
+    /// Creates a new world with an explicit deterministic seed.
+    /// </summary>
+    /// <param name="config">The complete world configuration.</param>
+    /// <param name="seed">
+    /// The deterministic seed. This compatibility overload overrides <see cref="SimConfig.Seed"/>
+    /// and exposes the effective value through <see cref="Config"/>.
+    /// </param>
+    /// <exception cref="ArgumentException">
+    /// Thrown when the configuration is invalid.
+    /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="seed"/> is outside the supported range.
+    /// </exception>
     public World(SimConfig config, uint seed)
     {
-        Config = config ?? throw new ArgumentNullException(nameof(config));
-        Rng = new Rng(seed);
+        ArgumentNullException.ThrowIfNull(config);
+        Rng.ValidateExternalSeed(seed, nameof(seed));
+
+        Config = config.Seed == seed ? config : config.WithSeed(seed);
 
         // Validate configuration
-        var errors = config.Validate();
+        var errors = Config.Validate();
         if (errors.Count > 0)
             throw new ArgumentException($"Invalid config: {string.Join(", ", errors)}");
 
-        Initialize(config.InitialCapacity);
+        Rng = new Rng(seed);
+        Initialize(Config.InitialCapacity);
     }
 
     /// <summary>

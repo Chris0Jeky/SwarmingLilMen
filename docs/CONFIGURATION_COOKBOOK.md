@@ -15,7 +15,7 @@ Use these recipes as starting points when building your own `SimConfig` JSON fil
 | `CohesionWeight`     | 0.3 – 3       | Pull toward local center of mass                           |
 | `Friction`           | 0.90 – 0.99   | Velocity damping; 1.0 means constant speed                 |
 | `FieldOfView`        | 240° – 300°   | Vision cone; 360° removes blind spots                      |
-| `WanderStrength`     | 0.1 – 1.0     | Random steering to prevent equilibrium                     |
+| `WanderStrength`     | 0 – 1.0       | Optional random steering; omitted/default `0` disables it  |
 
 ## Recipes
 
@@ -28,6 +28,11 @@ Use these recipes as starting points when building your own `SimConfig` JSON fil
 - SeparationCrowdingBoost: 2.5 (up to 2.5x stronger separation under heavy crowding)
 
 Good general-purpose flocking with noticeable swirls and separation.
+
+All bundled JSON files inherit `Seed: 42` unless they explicitly override it. The balanced file's
+authored `WanderStrength: 0.45` therefore remains deterministic for a matching .NET 8 binary,
+platform, timestep, and input sequence. Supported external seed values are `0` through
+`2147483647`; larger JSON values are rejected. Omit `WanderStrength` to use the disabled default.
 
 ### Peaceful Flocks (configs/peaceful.json)
 - Emphasizes cohesion/alignment, higher friction (0.98) for mellow motion.

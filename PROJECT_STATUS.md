@@ -1,6 +1,6 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2026-07-25 (repository and agent-control audit)
+**Last Updated**: 2026-07-25 (Wave 1 deterministic seed and kinematic-hash repair)
 **Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
 > **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
@@ -28,10 +28,10 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **64 passed, 0 failed, 0 skipped**
-  in 73 ms of test execution (3.2 seconds command wall time) on 2026-07-25.
-- Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 19 seconds of test
-  execution (22.0 seconds command wall time), confirming the full suite remains under one minute.
+- CI-filtered Release solution test (`Category!=Performance`): **80 passed, 0 failed, 0 skipped**
+  in 9 seconds of test execution on 2026-07-25.
+- Unfiltered Release solution test: **84 passed, 0 failed, 0 skipped** in 31 seconds of test
+  execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 19.87 seconds.
   Command after the Release build:
   `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
@@ -48,9 +48,10 @@
   reported-only. The dated figures are one local sample, not a stable benchmark distribution. A
   green default or performance-category run therefore does **not** prove the 50k/60 FPS headline
   objective.
-- Coverage report (`XPlat Code Coverage`, Release): **41.81% line / 35.44% branch overall**;
-  `SwarmSim.Core` is 80.79% line-covered and `SwarmSim.Render` is 1.77% line-covered. The
-  instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **58.20%
+  line / 40.84% branch overall**; `SwarmSim.Core` is 84.14% line / 73.79% branch and
+  `SwarmSim.Render` is 30.06% line / 12.77% branch. The instrumented timing tests are intentionally
+  excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
   Core scaffolding and the three steering-rule implementations exist. The perception contract is
@@ -59,13 +60,36 @@
   and wander, including wander-angle updates (#27).
   Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
   kernel-resolved arbitration.
+  Canonical construction now rejects unsafe turn, wander, whisker, and separation-priority control
+  values mapped by this wave; comprehensive validation of the older base geometry/time/rule fields
+  remains tracked in #48.
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
-- Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
-  `WanderStrength > 0`, and canonical renderer seed/configuration wiring also has known gaps.
-  Seed/configuration/timestep reproducibility is therefore not established for those shipped
-  paths; [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17) owns the fixes and
-  long-horizon proving tests.
+- Reproducibility: legacy wander consumes the world's configured RNG; canonical construction maps
+  `SimConfig.Seed` and the canonical steering settings, and each wander-enabled boid receives an
+  index-derived stream at successful spawn. The supported `--minimal` legacy harness also samples
+  velocities and staged spawn positions from `World.Rng`, not process-global randomness. External
+  seeds are limited to `0..2147483647`; config-only legacy construction is preferred, while the
+  established explicit-seed overload remains authoritative and normalizes `World.Config` without
+  mutating its caller. The established internal full-width derived-stream mapping
+  remains unchanged pending #26. Exact
+  ordered kinematic hashes cover both paths for 500 ticks, and two fresh processes running
+  `configs/balanced.json` produced the same 600-tick SHA-256 kinematic hash
+  (`DAF60518...5BB770F6`). The version-1 hash covers agent count plus ordered X/Y/Vx/Vy bits; it
+  intentionally excludes configuration, clocks, RNG/wander state, groups, lifecycle/resources,
+  and genomes. This verifies same-.NET-8-binary/same-platform kinematics for a matching
+  configuration, timestep, and ordered input sequence; it does not claim broader world-state,
+  reset-event, live-reconfiguration, cross-runtime, or cross-OS identity. Cross-OS measurement
+  remains #21.
+- Intentional trajectory change: the shared unauthored renderer default now follows the
+  `SimConfig` contract (`WanderStrength: 0`, previously `0.45`) for both legacy and canonical paths;
+  authored presets/JSON values still opt into wander. In a comparable 64-agent canonical diagnostic,
+  the initial FNV-1a kinematic diagnostic remained `E4DF43EE92B466D4`, while the 500-tick diagnostic
+  changed from `559B9F9DDD9A26DC` to `1902D36DF3FE793A`. These are before/after diagnostics, not
+  golden fixtures.
+  Wander-enabled canonical construction currently retains one `Rng`/`System.Random` object per
+  boid; it adds no tick-time allocations in the measured probe but is a setup/GC scale risk owned by
+  the broader RNG-stream work in #26.
 - CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
   `--preset` examples; only the five IDs printed under **Available presets** are registered. The
   executable help/test correction is tracked in
@@ -81,14 +105,17 @@
   Docs-only source correction is tracked in
   [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
   this reconciliation.
-- Test inventory: 68 xUnit facts across 9 test files, including four explicitly categorized
+- Test inventory: 84 xUnit facts across 10 test files, including four explicitly categorized
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
-- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,896 lines and
-  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 580 lines.
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,951 lines and
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 680 lines.
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
   in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
-  project adapter/settings. Codex hook activation still requires fresh-session `/hooks` trust.
+  project adapter/settings. The adapter audit marker matches released floor 1.6.5. In a fresh
+  exact-repository Codex session the owner reviewed and accepted the adapter, `/hooks` reported
+  `PreToolUse` as 1 installed / 1 active, `git status` was allowed, and an inert force-push dry-run
+  was denied before Git executed. Runtime byte pinning remains an agent-harness #18 limitation.
 - Extension trust: the product term **sandbox** is retired. **Modeling boundary** / **interaction
   surface** are reserved for simulation concepts, the aspirational package sketch uses
   **Playground**, and the shipped app remains `SwarmSim.Render`. Data-only scenario input is a

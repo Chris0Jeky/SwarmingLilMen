@@ -14,7 +14,7 @@ public sealed class CanonicalWorld
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
-    private readonly Rng _rng;
+    private readonly Rng?[] _wanderRngs;
     private readonly bool[] _priorityState;
     private readonly float[] _priorityBlend;
     private readonly float[] _priorityHoldTimers;
@@ -34,6 +34,93 @@ public sealed class CanonicalWorld
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
+        Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
+        if (!float.IsFinite(settings.MaxTurnRateDegPerSecond) || settings.MaxTurnRateDegPerSecond < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.MaxTurnRateDegPerSecond,
+                "MaxTurnRateDegPerSecond must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.WanderStrength) || settings.WanderStrength < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WanderStrength,
+                "WanderStrength must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.WanderRate) || settings.WanderRate < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WanderRate,
+                "WanderRate must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.WhiskerTimeHorizon))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WhiskerTimeHorizon,
+                "WhiskerTimeHorizon must be finite.");
+        }
+        if (!float.IsFinite(settings.WhiskerWeight) || settings.WhiskerWeight < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WhiskerWeight,
+                "WhiskerWeight must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityRadiusFactor))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityRadiusFactor,
+                "SeparationPriorityRadiusFactor must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityExitFactor))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityExitFactor,
+                "SeparationPriorityExitFactor must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityBoost) || settings.SeparationPriorityBoost < 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityBoost,
+                "SeparationPriorityBoost must be finite and non-negative.");
+        }
+        if (!float.IsFinite(settings.SeparationSpeedDroop)
+            || settings.SeparationSpeedDroop < 0f
+            || settings.SeparationSpeedDroop > 1f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationSpeedDroop,
+                "SeparationSpeedDroop must be finite and between 0 and 1, inclusive.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityHoldTime))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityHoldTime,
+                "SeparationPriorityHoldTime must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityRampInTime))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityRampInTime,
+                "SeparationPriorityRampInTime must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationPriorityRampOutTime))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationPriorityRampOutTime,
+                "SeparationPriorityRampOutTime must be finite.");
+        }
 
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];
@@ -50,12 +137,7 @@ public sealed class CanonicalWorld
         _nearestAngles = new float[capacity];
         _whiskerCounts = new int[capacity];
         _wanderAngles = new float[capacity];
-
-        _rng = new Rng(settings.Seed);
-        for (int i = 0; i < capacity; i++)
-        {
-            _wanderAngles[i] = _rng.NextFloat(0f, MathF.PI * 2f);
-        }
+        _wanderRngs = new Rng?[capacity];
 
         _spatialIndex.Initialize(capacity);
 
@@ -86,8 +168,25 @@ public sealed class CanonicalWorld
             ? new Vec2(1f, 0f).WithLength(Settings.TargetSpeed)
             : velocity.WithLength(Settings.TargetSpeed);
 
-        _activeBoids[Count++] = new Boid(position, normalizedVelocity, group);
+        int index = Count;
+        if (Settings.WanderStrength > 0f)
+        {
+            Rng wanderRng = Rng.CreateFromDerivedSeed(DeriveWanderSeed(Settings.Seed, index));
+            _wanderRngs[index] = wanderRng;
+            _wanderAngles[index] = wanderRng.NextFloat(0f, MathF.PI * 2f);
+        }
+        _activeBoids[index] = new Boid(position, normalizedVelocity, group);
+        Count = index + 1;
         return true;
+    }
+
+    internal static uint DeriveWanderSeed(uint seed, int agentIndex)
+    {
+        uint value = seed + 0x9E3779B9u * ((uint)agentIndex + 1u);
+        value = (value ^ (value >> 16)) * 0x85EBCA6Bu;
+        value = (value ^ (value >> 13)) * 0xC2B2AE35u;
+        value ^= value >> 16;
+        return value;
     }
 
     public void SetVelocity(int index, Vec2 velocity)
@@ -287,7 +386,8 @@ public sealed class CanonicalWorld
 
             if (Settings.WanderStrength > 0f && remainingForce > 0f)
             {
-                float angleChange = _rng.NextFloat(-1f, 1f) * Settings.WanderRate * deltaTime;
+                Rng wanderRng = _wanderRngs[i]!;
+                float angleChange = wanderRng.NextFloat(-1f, 1f) * Settings.WanderRate * deltaTime;
                 _wanderAngles[i] += angleChange;
                 Vec2 wanderDirection = new Vec2(MathF.Cos(_wanderAngles[i]), MathF.Sin(_wanderAngles[i]));
                 Vec2 wander = wanderDirection * Settings.WanderStrength * Settings.TargetSpeed;
