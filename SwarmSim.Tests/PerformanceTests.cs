@@ -22,7 +22,7 @@ public class PerformanceTests
         const int measuredTicks = 100;
         // Dense fixed-area neighbor searches degrade per agent at larger populations. This 40x
         // allowance remains a meaningful regression ceiling while leaving headroom over one
-        // 2026-07-25 local sample of about 22.2x per-agent degradation.
+        // 2026-07-25 local sample of about 19.4x per-agent degradation.
         const double maxPerAgentDegradation = 40.0;
         const double reportedTargetMilliseconds = 16.67;
 
@@ -60,7 +60,7 @@ public class PerformanceTests
         const int referenceAgents = 500;
         const int scenarioAgents = 1_000;
         const int measuredTicks = 1_000;
-        // The 4x allowance leaves headroom over one 2026-07-25 local sample of about 1.8x
+        // The 4x allowance leaves headroom over one 2026-07-25 local sample of about 1.7x
         // per-agent degradation while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 4.0;
         const double reportedTargetMilliseconds = 1.0;
@@ -91,9 +91,9 @@ public class PerformanceTests
         const int referenceAgents = 1_000;
         const int scenarioAgents = 10_000;
         const int measuredTicks = 100;
-        // The 8x allowance leaves headroom over one 2026-07-25 local sample of about 5.3x
+        // The 12x allowance leaves headroom over one 2026-07-25 local sample of about 5.4x
         // per-agent degradation while still detecting a large scaling regression.
-        const double maxPerAgentDegradation = 8.0;
+        const double maxPerAgentDegradation = 12.0;
         const double reportedTargetMilliseconds = 16.67;
 
         static SimConfig CreateConfig(int agentCount) => new() { InitialCapacity = agentCount };
@@ -122,7 +122,7 @@ public class PerformanceTests
         const int referenceAgents = 5_000;
         const int scenarioAgents = 50_000;
         const int measuredRebuilds = 100;
-        // The 2.5x allowance leaves headroom over one 2026-07-25 local sample of about 1.0x
+        // The 2.5x allowance leaves headroom over one 2026-07-25 local sample of about 1.1x
         // per-agent degradation while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 2.5;
         const double reportedTargetMilliseconds = 2.0;

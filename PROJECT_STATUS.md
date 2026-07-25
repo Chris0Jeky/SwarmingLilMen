@@ -21,16 +21,16 @@
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
 - CI-filtered Release solution test (`Category!=Performance`): **64 passed, 0 failed, 0 skipped**
-  in 125 ms of test execution (3.4 seconds command wall time) on 2026-07-25.
-- Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 22 seconds of test
-  execution (25.7 seconds command wall time), confirming the full suite remains under one minute.
-- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 21.90 seconds.
+  in 73 ms of test execution (3.2 seconds command wall time) on 2026-07-25.
+- Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 19 seconds of test
+  execution (22.0 seconds command wall time), confirming the full suite remains under one minute.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 19.87 seconds.
   The measured figures remained in the same broad range as the preceding 0.272 / 14.23 / 291.80 /
-  0.153 baseline; the 1k sample was slower and the other three were faster:
-  - 1k legacy agents: 0.171 ms/tick (5,858 operations/second)
-  - 10k legacy agents: 8.835 ms/tick (113.2 operations/second)
-  - 50k legacy agents: 183.394 ms/tick (5.45 operations/second)
-  - 50k grid rebuild: 0.081 ms
+  0.153 baseline; all four were lower in this one local fully optimized-JIT sample:
+  - 1k legacy agents: 0.172 ms/tick (5,801 operations/second)
+  - 10k legacy agents: 8.839 ms/tick (113.1 operations/second)
+  - 50k legacy agents: 162.815 ms/tick (6.14 operations/second)
+  - 50k grid rebuild: 0.102 ms
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the
