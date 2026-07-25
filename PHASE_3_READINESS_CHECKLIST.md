@@ -444,12 +444,15 @@ acceptance/instrumentation backlog (#40 and #41) remains outside the current ove
 
 Phase 3 readiness achieved when:
 
-1. ✅ All milestones 0-10 from `NewImplementation.md` complete
-2. ✅ Multi-group support implemented and tested
-3. ✅ Performance validated (10k agents @ 60+ FPS)
-4. ✅ Zero allocations in hot path confirmed
-5. ✅ Visualization tools built for debugging
-6. ✅ Comprehensive test suite (50+ tests passing)
+1. [ ] All milestones 0-10 from `NewImplementation.md` complete
+2. [ ] Multi-group support implemented and tested
+3. [ ] Performance validated (10k agents @ 60+ FPS)
+4. [ ] Zero allocations in hot path confirmed
+5. [ ] Visualization tools built for debugging
+6. [x] Comprehensive test suite (50+ tests passing)
+
+Only the test-count criterion is currently satisfied; the unchecked criteria remain required and
+the verified state above governs their evidence.
 
 At that point, we have a **solid, debuggable, performant foundation** for Phase 3 combat and metabolism systems.
 
