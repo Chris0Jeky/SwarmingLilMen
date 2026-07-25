@@ -9,10 +9,13 @@
 
 ## Verified Live State (2026-07-25)
 
-- Git: clean `main` at `51a8b62` before this audit, matching `origin/main`; last product commits
+- Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`; last product commits
   were merged on 2025-11-19.
-- GitHub: public repository; no open issues, no open PRs, no GitHub Actions workflow/run on the
-  current head.
+- GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
+  workflow supplies Release build/test checks (excluding `PerformanceTests`) on ubuntu and windows
+  for pushes and pull requests targeting `main`. No branch-protection ruleset exists, so merge
+  gating remains process-enforced. Pull-request jobs test GitHub's head/base merge ref;
+  `workflow_dispatch` is available for an exact branch-head rerun.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
@@ -32,7 +35,8 @@
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
 - Test inventory: 68 xUnit facts across 9 test files. No canonical BenchmarkDotNet comparison,
-  enforced allocation gate, renderer automation, or GitHub CI currently exists.
+  enforced allocation gate, renderer automation, coverage gate, or performance gate currently
+  exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,896 lines and
   `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 580 lines.
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
@@ -823,8 +827,8 @@ audited on 2026-07-25.
 2. Define and test canonical multi-group semantics before adding combat/metabolism.
 3. Add canonical BenchmarkDotNet cases and a real allocation measurement; decide whether timing
    thresholds should gate CI or remain explicitly observational.
-4. Add a minimal GitHub Actions workflow for Release build/test once the desired performance gate
-   policy is settled.
+4. Keep pull-request CI current with the latest `main`; use the manual workflow trigger when exact
+   branch-head evidence is required. Performance remains separate and observational.
 5. Consolidate README and historical status claims against the verified-state section.
 
 **Remember**: Do not start Phase 3 on the legacy path by default, and do not claim the headline
