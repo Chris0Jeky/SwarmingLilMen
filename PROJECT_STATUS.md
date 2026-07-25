@@ -680,7 +680,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 6. **Documentation drift**: high-traffic entrypoints are reconciled. The explicitly historical
    sections below intentionally preserve obsolete phase, performance, and next-session claims; the
    historical-context banner above them is the liveness boundary.
-7. [ ] **Untrusted-extension prerequisite**: no third-party code may run until
+7. [ ] **Untrusted-extension prerequisite**: no untrusted extension code may run until
    [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) delivers a separate process,
    least-authority filesystem/network access, resource and wall-clock limits, bounded validated
    schemas, authenticated local-only transport, a dedicated threat model, and adversarial
