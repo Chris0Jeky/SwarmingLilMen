@@ -18,6 +18,7 @@ _ReSharper.*
 *.rsuser
 *.suo
 *.userprefs
+.claude/settings.local.json
 
 # Logs, caches
 *.log
@@ -41,3 +42,4 @@ dist/
 .DS_Store
 Thumbs.db
 Capture.JPG
+.claude/settings.local.json
