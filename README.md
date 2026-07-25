@@ -3,7 +3,9 @@
 > [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state; older plans and milestone prose are context only.
 
-A 2D swarm-simulation research project built from first principles in C#/.NET 8.0. The scale figures
+SwarmingLilMen explores the smallest reusable contracts for a generalized experimental engine for
+emergent multi-agent systems. Its current proving ground is a 2D boids/swarm simulation built from
+first principles in C#/.NET 8.0; the generalized kernel remains roadmap work. The scale figures
 below are goals, not achieved throughput claims.
 
 ![Status](https://img.shields.io/badge/status-early%20development-orange)

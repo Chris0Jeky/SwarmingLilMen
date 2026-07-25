@@ -586,10 +586,11 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
   work, leave the PR open for the owner-only F12/HUD-parity check, then continue
 - [ ] #21 - lock and compare deterministic traces after #17-#19 land
 
-Execute these strictly in epic #10 order. The #20 PR remains open at its manual gate while #21
-proceeds, as the epic explicitly permits. The missing milestone 3-6 scenario coverage (#41) and
-milestone 7 renderer UX (#40) deliberately wait for their later contracts rather than introducing
-temporary fixture, telemetry, configuration, or positional-rule seams.
+Execute these strictly in epic #10 order. Under the owner-authorized exception for this overnight
+run, the #20 PR remains open at its manual gate while #21 proceeds. The missing milestone 3-6
+scenario coverage (#41) and milestone 7 renderer UX (#40) deliberately wait for their later
+contracts rather than introducing temporary fixture, telemetry, configuration, or positional-rule
+seams.
 
 ### 2. Complete Core Testing (Milestones 8-10)
 
@@ -698,7 +699,7 @@ renderer FPS are currently unmeasured; use the verified command/results in `PROJ
 
 **Why Critical**: Can't justify the rewrite if performance regresses. Need data to make optimization decisions.
 
-### 5. Full Migration Decision
+### 6. Full Migration Decision
 
 At this point, decide whether to:
 
