@@ -42,9 +42,10 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 - **SeparationPriorityRadiusFactor / SeparationPriorityExitFactor** – Entry and hysteresis-exit
   radii as fractions of `SenseRadius`.
 - **SeparationPriorityBoost / SeparationPriorityHoldTime** – Strength and minimum duration of
-  canonical separation priority.
+  canonical separation priority. The boost must be finite and non-negative.
 - **SeparationPriorityRampInTime / SeparationPriorityRampOutTime / SeparationSpeedDroop** –
-  Transition timing and temporary target-speed reduction while priority is active.
+  Transition timing and temporary target-speed reduction while priority is active. Speed droop must
+  be finite and remain in `[0, 1]`, preventing priority from reversing velocity.
 
 These fields are read from `SimConfig` only by the canonical renderer path; the similarly named
 legacy crowding controls retain their existing legacy semantics.

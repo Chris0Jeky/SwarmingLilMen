@@ -96,6 +96,21 @@ public sealed class DeterminismTests
 
         var nonFiniteTurnRate = new CanonicalWorldSettings { MaxTurnRateDegPerSecond = float.NaN };
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteTurnRate));
+
+        var negativePriorityBoost = new CanonicalWorldSettings { SeparationPriorityBoost = -1f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativePriorityBoost));
+
+        var nonFinitePriorityBoost = new CanonicalWorldSettings { SeparationPriorityBoost = float.PositiveInfinity };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFinitePriorityBoost));
+
+        var excessiveSpeedDroop = new CanonicalWorldSettings { SeparationSpeedDroop = 2f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(excessiveSpeedDroop));
+
+        var negativeSpeedDroop = new CanonicalWorldSettings { SeparationSpeedDroop = -0.1f };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativeSpeedDroop));
+
+        var nonFiniteSpeedDroop = new CanonicalWorldSettings { SeparationSpeedDroop = float.NaN };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteSpeedDroop));
     }
 
     [Fact]
