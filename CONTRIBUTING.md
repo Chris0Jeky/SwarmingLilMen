@@ -469,8 +469,10 @@ dotnet publish SwarmSim.Render -c Release -r win-x64 \
 
 ### 3. GitHub Actions
 GitHub Actions runs the repository's Release build and test gate on Windows and Linux for pushes
-and pull requests targeting `main`. The gate excludes `PerformanceTests` on both triggers; run
-those separately in Release when changing performance-sensitive code.
+and pull requests targeting `main`. The gate excludes the `Performance` category on both triggers;
+run that category separately in Release when changing performance-sensitive code. Release test
+hosts disable tiered compilation so machine-relative timing envelopes measure fully optimized code
+without depending on which test first triggered tier promotion.
 
 ### 4. Publish Profiles (Optional)
 **Action Required**: To use Rider's "Publish..." UI:
