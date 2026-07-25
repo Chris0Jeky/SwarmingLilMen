@@ -266,8 +266,8 @@ using SwarmSim.Core;
 // Create a configuration (or use a preset)
 var config = SimConfig.PeacefulFlocks(); // or new SimConfig()
 
-// SimConfig is the seed source; the compatibility argument must match it
-var world = new World(config, seed: config.Seed);
+// SimConfig is the preferred seed source
+var world = new World(config);
 
 // Spawn some agents
 world.SpawnAgentsInCircle(

@@ -553,7 +553,7 @@ internal static class Program
     private static World CreateWorldWithCurrentParams()
     {
         SimConfig config = BuildCurrentConfig();
-        return new World(config, config.Seed);
+        return new World(config);
     }
 
     private static void ForceSnapshotRefresh(string reason, bool notifyRunner = true)
@@ -1782,7 +1782,7 @@ internal static class Program
     {
         Console.WriteLine("Running headless benchmark...");
         SimConfig config = BuildCurrentConfig();
-        var world = new World(config, config.Seed);
+        var world = new World(config);
         SpawnInitialAgents(world, agentCount);
         var runner = new SimulationRunner(world);
         const int ticks = 600;

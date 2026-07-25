@@ -40,7 +40,7 @@ public class WorldTickBenchmarks
             BaseDrain = 0.1f // Low energy drain
         };
 
-        var world = new World(config, seed: 42);
+        var world = new World(config);
 
         // Spawn agents randomly
         for (int i = 0; i < agentCount; i++)

@@ -77,17 +77,25 @@ public sealed class DeterminismTests
         uint unsupportedSeed = Rng.MaxSupportedSeed + 1u;
 
         Assert.Throws<ArgumentOutOfRangeException>(() => new World(new SimConfig(), unsupportedSeed));
+        Assert.Throws<ArgumentOutOfRangeException>(
+            () => new World(new SimConfig { Seed = unsupportedSeed }));
 
-        var mismatchedConfig = new SimConfig { Seed = 7u };
-        ArgumentException mismatch = Assert.Throws<ArgumentException>(
-            () => new World(mismatchedConfig, seed: 8u));
-        Assert.Equal("seed", mismatch.ParamName);
+        var overriddenConfig = new SimConfig { Seed = 7u };
+        var overriddenWorld = new World(overriddenConfig, seed: 8u);
+        var configuredWorld = new World(new SimConfig { Seed = 8u });
+        Assert.Equal(7u, overriddenConfig.Seed);
+        Assert.NotSame(overriddenConfig, overriddenWorld.Config);
+        Assert.Equal(8u, overriddenWorld.Config.Seed);
+        Assert.Equal(configuredWorld.Rng.Next(), overriddenWorld.Rng.Next());
 
         CanonicalWorldSettings settings = CreateCanonicalSettings(capacity: 8, seed: unsupportedSeed);
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(settings));
 
         var negativeTurnRate = new CanonicalWorldSettings { MaxTurnRateDegPerSecond = -1f };
         Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(negativeTurnRate));
+
+        var nonFiniteTurnRate = new CanonicalWorldSettings { MaxTurnRateDegPerSecond = float.NaN };
+        Assert.Throws<ArgumentOutOfRangeException>(() => CreateCanonicalWorld(nonFiniteTurnRate));
     }
 
     [Fact]

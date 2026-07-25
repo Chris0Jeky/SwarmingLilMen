@@ -81,7 +81,7 @@ internal static class MinimalTest
 
         // Create config based on stage
         var config = CreateConfigForStage(stage);
-        _world = new World(config, seed: 42);
+        _world = new World(config);
 
         // Spawn agents based on stage
         SpawnAgentsForStage(stage);

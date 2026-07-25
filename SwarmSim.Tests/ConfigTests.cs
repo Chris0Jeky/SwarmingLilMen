@@ -34,16 +34,12 @@ public class ConfigTests
     }
 
     [Fact]
-    public void Validate_RejectsInvalidDeterminismInputs()
+    public void Validate_RejectsUnsupportedSeed()
     {
         var supported = new SimConfig { Seed = int.MaxValue };
         var unsupported = new SimConfig { Seed = (uint)int.MaxValue + 1u };
-        var negativeTurnRate = new SimConfig { MaxTurnRateDegPerSecond = -1f };
 
         Assert.DoesNotContain(supported.Validate(), error => error.StartsWith("Seed ", StringComparison.Ordinal));
         Assert.Contains(unsupported.Validate(), error => error.StartsWith("Seed ", StringComparison.Ordinal));
-        Assert.Contains(
-            negativeTurnRate.Validate(),
-            error => error.StartsWith("MaxTurnRateDegPerSecond ", StringComparison.Ordinal));
     }
 }

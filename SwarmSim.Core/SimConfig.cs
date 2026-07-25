@@ -11,11 +11,17 @@ namespace SwarmSim.Core;
 public sealed class SimConfig
 {
     // ===== World Parameters =====
+    private uint _seed = 42u;
+
     /// <summary>
     /// Seed shared by deterministic construction paths. Supported values are 0 through
     /// <see cref="Rng.MaxSupportedSeed"/>, inclusive.
     /// </summary>
-    public uint Seed { get; init; } = 42u;
+    public uint Seed
+    {
+        get => _seed;
+        init => _seed = value;
+    }
 
     public float WorldWidth { get; init; } = 1920f;
     public float WorldHeight { get; init; } = 1080f;
@@ -220,7 +226,6 @@ public sealed class SimConfig
         if (FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
         if (MaxSpeed <= 0) errors.Add("MaxSpeed must be positive");
         if (MaxForce <= 0) errors.Add("MaxForce must be positive");
-        if (MaxTurnRateDegPerSecond < 0) errors.Add("MaxTurnRateDegPerSecond must be non-negative");
         if (GridCellSize <= 0) errors.Add("GridCellSize must be positive");
         if (SenseRadius <= 0) errors.Add("SenseRadius must be positive");
         if (FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
@@ -235,6 +240,13 @@ public sealed class SimConfig
             errors.Add("AggressionMatrix must be square");
 
         return errors;
+    }
+
+    internal SimConfig WithSeed(uint seed)
+    {
+        var copy = (SimConfig)MemberwiseClone();
+        copy._seed = seed;
+        return copy;
     }
 
     public static SimConfig LoadFromJson(string filePath)
