@@ -38,10 +38,15 @@ depends on the selected preset and live parameter edits.
 
 ## Controls
 
-Press **H** in either renderer for its in-app help. The maintained legacy reference is
+Press **H** in either renderer for a partial in-app quick reference. The maintained complete
+reference is
 [`CONTROLS.md`](CONTROLS.md); highlights include spawning with mouse/Space, **R** reset, **V/S/N**
 visualization toggles, **F1-F5** presets, **C** CSV export, and **F12** snapshot/debug information
 (`SwarmSim.Render/Program.cs:637-739,1244-1277`).
+
+Runtime parameter/help labels currently advertise `1-7` even though input accepts **1-8**, and the
+canonical panel omits several active controls; executable synchronization is tracked in
+[issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 
 The canonical path has separate controls: **R** reset, **H** help, **O** metrics overlay, **Tab**
 tracked-boid selection, parameter keys, and **F1-F5** presets

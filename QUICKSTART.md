@@ -69,9 +69,11 @@ dotnet run --project SwarmSim.Render -- --canonical
 ```
 
 Tips:
-- Press **H** to toggle the in-app help overlay (shows every control).
+- Press **H** for the partial in-app quick reference; use [`CONTROLS.md`](CONTROLS.md) for the
+  complete list (runtime overlay drift is tracked in
+  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39)).
 - Press **F12** for the snapshot/debug overlay.
-- See [`CONTROLS.md`](CONTROLS.md) for a quick reference sheet.
+- See [`CONTROLS.md`](CONTROLS.md) for the complete reference sheet.
 - For parameter explanations see [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md).
 
 ## 5. Explore the Code

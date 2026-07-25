@@ -196,9 +196,9 @@ velocity = velocity * friction (each simulation step)
 `friction^60`
 
 **Examples**:
-- **Friction = 1.0 (No Damping)**: Agent accelerates once and coasts forever (no velocity loss)
+- **Friction = 1.0 (No Damping)**: Unforced velocity is retained between simulation steps
   - Good for: Space-like environments, long flowing movements
-  - Bad for: Precise control, stopping behavior
+  - Steering can still increase, decrease, or redirect velocity
 
 - **Friction = 0.99 (Very Light Damping)**: Agent retains about 54.7% of unforced velocity after
   one second at 60 simulation steps
@@ -291,13 +291,11 @@ SenseRadius = 100f
 ```
 
 **Expected Behavior**:
-- Agents accelerate until hitting maxSpeed (10)
-- Once at maxSpeed, maintain momentum indefinitely
-- Forces only change direction, not speed (since speed is maxed and no friction slows them)
-- Smooth, flowing patterns like schools of fish in water
-- Groups orbit and flow without stopping
+- With no steering, velocity persists between steps
+- Steering can increase or decrease speed and change direction
+- Results above `MaxSpeed` are truncated to the cap; the cap does not impose a minimum speed
 
-**Visual**: Continuous motion, agents at nearly constant speed, graceful curves and turns
+**Visual**: Emergent shape depends on the active forces and requires direct renderer observation
 
 ---
 
@@ -414,7 +412,8 @@ velocity_equilibrium = (force * dt) / (1 - 1.0)
                      = (force * dt) / 0
                      = undefined (infinite!)
 ```
-**This means**: Without friction, agents accelerate forever until hitting maxSpeed
+**This means**: With a persistent aligned force there is no finite damping equilibrium; the speed
+cap eventually truncates the result. Other steering directions can still slow or turn the agent.
 
 **Example with Friction = 0.95**:
 ```
@@ -491,14 +490,14 @@ Agent's awareness zones:
 
 ---
 
-### MaxSpeed as a Damper
+### MaxSpeed as an Upper Bound
 
 MaxSpeed acts as a "ceiling" for all motion:
 
 **With no damping (`ConstantSpeed`, or `Damped` with Friction = 1.0)**:
-- Agents accelerate until hitting maxSpeed
-- Once there, forces can only change direction, not speed
-- Result: Most agents move at exactly maxSpeed (constant velocity)
+- Unforced velocity persists between steps
+- Steering can increase, decrease, or redirect velocity
+- Only results above `MaxSpeed` are truncated; speeds below the cap remain below it
 
 **With `Damped` mode and Friction < 1.0**:
 - Equilibrium velocity might be below maxSpeed
@@ -528,8 +527,8 @@ MaxSpeed acts as a "ceiling" for all motion:
    - Fix: Increase to 10+
 
 **Debug**: Check average speed
-- Should be 20-80% of maxSpeed
-- If < 5%, forces or friction problem
+- There is no universal expected fraction of `MaxSpeed`; compare the observed value with the active
+  forces, speed model, and preset
 
 ---
 
@@ -660,29 +659,27 @@ WanderStrength = 0.5f
 **With `ConstantSpeed`, or `Damped` with friction = 1.0**, the integrator applies no velocity
 damping:
 
-1. **Agents accelerate to maxSpeed quickly**
-   - Once there, forces can't increase speed (clamped)
-   - Forces only change direction
+1. **The cap remains one-sided**
+   - Steering is added before the upper-speed clamp
+   - Opposing steering can reduce speed; aligned steering can increase it up to the cap
 
-2. **Constant kinetic energy**
-   - Like objects in space or frictionless surface
-   - Motion continues indefinitely
+2. **Only unforced velocity is retained**
+   - No damping multiplier is applied between steps
+   - Active steering can add or remove kinetic energy, so energy is not generally conserved
 
 3. **Different flocking dynamics**:
    - This force-based configuration retains velocity between steps
    - Without damping, use different tuning:
-     - Lower force weights (agents stay at maxSpeed longer)
+     - Lower force weights produce smaller velocity changes per step
      - Focus on directional forces, not magnitude
 
-4. **Expected patterns**:
-   - Smooth flowing streams
-   - Less stopping and starting
-   - More orbital/circular patterns
-   - Agents rarely below 80% maxSpeed
+4. **Visual outcome**:
+   - Pattern and speed distribution depend on the active steering forces
+   - Validate any qualitative claim directly in the renderer
 
 **Tuning without damping**:
 - Use moderate weights (2.0-5.0 range)
-- MaxSpeed becomes the main speed control
+- MaxSpeed remains the upper-speed control, not a guaranteed travel speed
 - Increase SenseRadius (agents need more lookahead)
 - Reduce WanderStrength (randomness has lasting impact)
 
@@ -700,7 +697,8 @@ The simulation is a **force-based physics system** where:
    - Position is updated (`pos += v * dt`)
 
 2. **Key insight**: Force/damping equilibrium exists only in `Damped` mode
-   - Friction = 1.0: No damping equilibrium; velocity grows until the speed cap intervenes
+   - Friction = 1.0: No damping equilibrium; a persistent aligned force can grow speed until the
+     upper cap, while opposing steering can reduce it
    - Friction < 1.0: For a constant force, equilibrium is
      `v = friction * (force * dt) / (1 - friction)`
 

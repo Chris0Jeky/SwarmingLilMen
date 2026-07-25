@@ -55,6 +55,10 @@
   `--preset` examples; only the five IDs printed under **Available presets** are registered. The
   executable help/test correction is tracked in
   [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+- Runtime parameter/help labels are partial and still advertise keys `1-7` while input accepts
+  **1-8**; the canonical **H** panel also omits several active controls. Runtime synchronization
+  and regression coverage are tracked in
+  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 - Test inventory: 68 xUnit facts across 9 test files, including four explicitly categorized
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
@@ -431,12 +435,12 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 1. **Runtime Help System** ✅
    - [x] Add `--help` flag to SwarmSim.Render showing all command-line options
-   - [x] Add in-app help overlay (H key) showing all controls and their current state
+   - [x] Add in-app help overlay (H key); current text is partial/stale and tracked in issue #39
    - [x] Add configuration file examples for common use cases (`configs/` folder)
-   - [x] Document all keyboard shortcuts with grouping (see `CONTROLS.md` + help overlay)
+   - [x] Document all keyboard shortcuts with grouping (`CONTROLS.md` is the complete reference)
 
 2. **Command-Line Interface** ✅
-   - [x] Add command-line arguments for preset selection (`--preset peaceful`, `--preset warbands`)
+   - [x] Add command-line preset selection; stale help examples are tracked in issue #38
    - [x] Add `--config <path>` to load custom configuration from JSON file
    - [x] Add `--agent-count <n>` to override initial agent count
    - [x] Add `--benchmark` mode for headless performance testing

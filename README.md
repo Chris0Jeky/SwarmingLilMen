@@ -84,7 +84,9 @@ dotnet run --project SwarmSim.Benchmarks -c Release
 ```
 
 While the renderer is running:
-- Press **H** to toggle the in-app help overlay with every control.
+- Press **H** to toggle the partial in-app help overlay; use [`CONTROLS.md`](CONTROLS.md) for the
+  complete list. Runtime overlay drift is tracked in
+  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 - Press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
 - See [`CONTROLS.md`](CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
 

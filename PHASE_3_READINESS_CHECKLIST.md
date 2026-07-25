@@ -294,19 +294,24 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
   ```
 
 - [ ] **Compare Old vs New**
-  - Run benchmarks for both implementations
-  - Current comparison seed: legacy timing-test sample captured 2026-07-25 with:
+  - Run both implementations in the same BenchmarkDotNet job with matched agent initialization,
+    settings, workload, warmup, runtime, and diagnostics; only that paired run may report a speedup.
+  - Historical legacy-only timing-test context captured 2026-07-25 (not a canonical comparison
+    seed):
 
     ```powershell
     dotnet build SwarmingLilMen.sln --configuration Release
     dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
     ```
 
-    | Agents | Legacy sample (ms/tick) | Canonical | Speedup |
-    |--------|-------------------------|-----------|---------|
-    | 1k     | 0.172                   | Unmeasured | Unmeasured |
-    | 10k    | 8.839                   | Unmeasured | Unmeasured |
-    | 50k    | 162.815                 | Unmeasured | Unmeasured |
+    | Agents | Legacy sample (ms/tick) | Timing-test configuration |
+    |--------|-------------------------|---------------------------|
+    | 1k     | 0.172                   | `SimConfig` defaults |
+    | 10k    | 8.839                   | `SimConfig` defaults |
+    | 50k    | 162.815                 | Heavier legacy BenchmarkDotNet-like steering weights |
+
+    These stopwatch samples come from separate test cases and are not valid inputs to a future
+    legacy/canonical speedup calculation (`SwarmSim.Tests/PerformanceTests.cs:15-99`).
 
 - [ ] **Identify Regressions**
   - If canonical is slower, profile with dotTrace

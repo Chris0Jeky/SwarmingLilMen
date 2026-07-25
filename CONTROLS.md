@@ -16,7 +16,7 @@
 - **S** – Toggle sense radius circles
 - **N** – Toggle neighbor connections (per tracked agent)
 - **F12** – Toggle the snapshot/debug overlay (shows interpolation info)
-- **H** – Toggle the full help overlay (quick reference inside the renderer)
+- **H** – Toggle the partial in-app help overlay
 
 ## Parameter Editing
 - **1–8** – Select a parameter (weights, radii, speed, force, friction)
@@ -35,7 +35,8 @@
   - `--minimal` – Launch the minimal debugging harness
   - `--help`, `--version`, `--list-presets` – Self-documenting flags
 
-The legacy in-app help overlay (press **H**) mirrors the legacy controls, displays the ON/OFF state
-of the main toggles, and shows the current vision radius, field-of-view, and max-neighbor settings.
-The canonical path has separate **O** metrics-overlay and **Tab** tracked-boid controls; press **H**
-there for its current list (`SwarmSim.Render/Program.cs:1343-1379`).
+The legacy help/parameter panels and canonical footer currently display `1-7` although input accepts
+keys **1-8**, and the canonical **H** panel lists only its minimal R/H/Esc subset. Use this document
+as the complete reference; executable synchronization and regression coverage are tracked in
+[issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39)
+(`SwarmSim.Render/Program.cs:1093,1267,1447-1455`).
