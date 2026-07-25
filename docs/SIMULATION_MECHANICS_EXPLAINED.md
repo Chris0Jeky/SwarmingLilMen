@@ -161,14 +161,14 @@ Each simulation step:
 ```
 
 **Parameter**: `WanderStrength`
-- **0.0**: No randomness, purely deterministic flocking
+- **0.0**: Wander disabled; flocking uses only the other configured rules
 - **0.5**: Slight jitter, natural variation
 - **5.0**: Chaotic, random walk dominates
 
-> **Current reproducibility limitation:** When legacy wander is enabled, `WanderSystem` seeds its
-> private RNG from the wall clock rather than the world's seed. Identical world seeds therefore do
-> not currently reproduce wander-enabled trajectories; [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17)
-> owns the code fix and long-horizon determinism tests.
+Legacy wander consumes the world's configured RNG, while canonical wander uses deterministic
+per-agent streams derived from `SimConfig.Seed`. Matching same-platform/runtime runs therefore
+reproduce wander-enabled trajectories exactly when configuration, timestep, and ordered input
+events also match. Cross-platform/runtime identity is not claimed.
 
 **Visual Effect**:
 - Zero: Predictable, can feel mechanical
