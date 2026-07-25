@@ -1,5 +1,8 @@
 # Ant Colony Optimization (ACO)
 
+> [`../../PROJECT_STATUS.md`](../../PROJECT_STATUS.md) is the live source of truth for verified
+> project performance state; this standalone demo has no dated benchmark result.
+
 An interactive browser-based demonstration of **Ant Colony Optimization** (Dorigo, 1992), showcasing stigmergy-based pathfinding and emergent route optimization through pheromone trails.
 
 ## Features
@@ -245,7 +248,7 @@ High traffic paths:
 
 ### Experiment 5: Dynamic Environment Adaptation
 **Setup**: Establish optimal path, then disrupt it
-1. Let ants converge to a path (60+ seconds)
+1. Let ants converge visually; duration varies and is unmeasured
 2. Place wall blocking the path
 3. Measure how long until new path emerges
 
@@ -323,12 +326,11 @@ Depends on:
 - **Ant count**: More ants → faster exploration
 - **Pheromone deposit**: Stronger trails → faster convergence
 
-Typical convergence: **30-120 seconds** for simple scenarios
+Convergence time is unmeasured and depends on the scenario and browser.
 
 ### Scalability
-- **50 ants**: Real-time 60 FPS, good exploration
-- **200 ants**: Still 60 FPS, faster convergence
-- **1000+ ants**: Would require spatial partitioning for neighbor queries
+- Renderer FPS, convergence rate, and supported ant count are unmeasured; no dated benchmark is
+  recorded for this demo.
 
 ## Implementation Notes
 

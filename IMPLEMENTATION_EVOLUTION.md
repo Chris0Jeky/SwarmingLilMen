@@ -1,7 +1,12 @@
 # Implementation Evolution: From SoA Systems to Canonical Boids
 
-**Last Updated**: 2025-11-12 (Session 3.3)
-**Status**: Transition in progress - Canonical implementation ~85% complete (smoothing system implemented)
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state; this document explains migration rationale and may retain history.
+
+**Last Updated**: 2026-07-25 (verified-state reconciliation)
+**Status**: Transition in progress - core scaffolding and steering-rule implementations exist;
+perception semantics, rule-composition enforcement, and instrumentation UX are partial. Readiness
+milestones 8-10, multi-group semantics, and canonical performance evidence remain incomplete
 
 ---
 
@@ -49,18 +54,23 @@ World (SoA arrays) → Systems Pipeline → Per-Tick Updates
      - `SeparationX[]`, `SeparationY[]` - accumulated repulsion vectors
      - `AlignmentVx[]`, `AlignmentVy[]` - sum of neighbor velocities
      - `CohesionX[]`, `CohesionY[]` - sum of neighbor positions
-   - **BehaviorSystem** reads these aggregates and writes forces to `Fx[]`, `Fy[]`
+   - **BehaviorSystem** reads these aggregates and writes bounded steering forces to `Fx[]`, `Fy[]`
 
-3. **Force-Based Physics**:
-   - Boids rules generated **forces** (not steering)
-   - Forces accumulated in scratch buffers
-   - Integration: `v += F*dt; v *= friction; x += v*dt`
-   - Relied on force/friction equilibrium for speed control
+3. **Aggregate-Driven Steering and Integration**:
+   - The current `BehaviorSystem` converts `SenseSystem` aggregates into desired velocities and
+     bounded `desired - current` steering stored in `Fx[]` / `Fy[]`
+   - The earlier prototype generated raw forces; current legacy steering still accumulates in
+     scratch buffers
+   - Integration: `v += F*dt`; `Damped` then applies `v *= friction`; both speed models upper-clamp
+     to `MaxSpeed`; then `x += v*dt`
+   - The current renderer and presets select `ConstantSpeed`, which skips damping; earlier
+     `Damped` tuning relied on force/friction equilibrium for speed control
 
 4. **Separation Weighting**:
-   - Used inverse-square distance weighting: `strength = 1/d²`
-   - Required aggressive clamping to prevent explosion at close range
-   - Contributed to numerical instability
+   - The current legacy `SenseSystem` accumulates normalized away directions with bounded linear
+     radial falloff: `strength = 1 - distance / radius`
+   - Earlier prototype notes discussed inverse-square weighting, but that is not the current legacy
+     implementation
 
 ### File Structure (Old Implementation)
 
@@ -70,7 +80,7 @@ SwarmSim.Core/
 ├── Systems/
 │   ├── ISimSystem.cs          # System interface
 │   ├── SenseSystem.cs         # Neighbor queries, aggregate computation
-│   ├── BehaviorSystem.cs      # Force generation from aggregates
+│   ├── BehaviorSystem.cs      # Steering generation from aggregates
 │   └── IntegrateSystem.cs     # Velocity/position integration
 └── Spatial/
     └── UniformGrid.cs         # Spatial partitioning
@@ -92,31 +102,38 @@ The two-pass architecture made it extremely difficult to trace behavior:
 - **No single place** to inspect the full decision-making process
 - Aggregate arrays (`SeparationX[]`, etc.) were opaque intermediate state
 
-### 2. **Force-Friction Equilibrium Pathologies**
+### 2. **Damped-Mode Force-Friction Equilibrium Pathologies**
 
-The force-based approach created tuning nightmares:
-- **Problem**: Agents needed to reach equilibrium speeds through force/friction balance
+Earlier `Damped`-mode tuning created tuning nightmares:
+- **Problem**: Agents needed to reach equilibrium speeds through force/friction balance in that
+  mode
 - **Symptom**: Setting friction < 1.0 caused agents to "get stuck" in low-speed states
-- **Root Cause**: With 1/d² separation + clamping, effective acceleration after `dt` and damping was too small
-- **Bandaid Fix**: Setting friction = 1.0 "worked" but eliminated natural speed variation
+- **Root Cause**: The earlier prototype's separation/clamping and continuous damping could leave
+  too little effective acceleration after `dt`; the current legacy separation has since changed to
+  bounded linear radial falloff
+- **Bandaid Fix**: Setting friction = 1.0 in the earlier damped configuration "worked" but
+  eliminated natural speed variation
 
-As documented in `MakingBoidsBetter.md`:
-> "With friction < 1, your earlier 1/r² separation + heavy clamping meant the effective acceleration after dt and damping was too small to escape clumps. Setting friction to 1 removed the continuous velocity bleed, so agents could finally build/retain speed."
+`MakingBoidsBetter.md` preserves the investigation of that earlier inverse-square variant; it is
+historical design context rather than a description of the current `SenseSystem`.
 
 ### 3. **Parameter Sensitivity**
 
-The force-based model was extremely sensitive to parameter tuning:
+The earlier raw-force/damped model was extremely sensitive to parameter tuning:
 - Small changes in weights could cause dramatic behavioral shifts
-- Separation weight vs. friction vs. maxSpeed all interacted in non-obvious ways
+- Separation weight vs. friction vs. maxSpeed all interacted in non-obvious ways when damping was
+  enabled
 - Hard to predict the effect of changing one parameter
 - No "standard" parameter ranges from literature
 
-### 4. **Non-Canonical Algorithm**
+### 4. **Architecture and Composition Gap**
 
-The implementation diverged from Reynolds' original steering behaviors:
-- **Reynolds' approach**: Compute *desired velocity* → steer toward it with bounded force
-- **Old approach**: Compute raw forces → hope friction creates equilibrium
-- This made it impossible to reference standard boids literature for tuning guidance
+The earlier prototype diverged from Reynolds' original steering behaviors by generating raw forces
+and relying on damped equilibrium. The current legacy `BehaviorSystem` now computes desired
+velocities and bounded `desired - current` steering, but remains coupled to pre-aggregated
+`SenseSystem` arrays. The canonical path isolates the rule computations and applies continuous FOV
+weights, while its world-level composition contract remains incomplete (#27). The earlier
+raw-force formulation made standard boids tuning guidance difficult to apply.
 
 ### 5. **Testing Challenges**
 
@@ -146,7 +163,7 @@ The old implementation provided little visibility into decision-making:
 
 Starting with commit `f5d9dca` (Create NewImplementation.md), a fresh implementation was begun in the `SwarmSim.Core.Canonical` namespace with these principles:
 
-1. **Steering Behaviors, Not Forces** - Follow Reynolds' canonical formulation
+1. **Isolated Steering Rules** - Put Reynolds-style `desired - current` computations behind `IRule`
 2. **Test-Driven Development** - Write tests first, code second
 3. **Incremental Milestones** - Build up complexity gradually
 4. **Immutable Data** - `readonly struct Boid`, functional transformations
@@ -162,13 +179,22 @@ CanonicalWorld
   └─ Step() method:
       1. Rebuild spatial index
       2. For each boid:
-          a. Query neighbors (radius + FOV filtering)
-          b. Run all rules → accumulate steering
-          c. Clamp total steering to MaxForce
-          d. Integrate: v += steer*dt; normalize to TargetSpeed
-          e. Integrate: x += v*dt; wrap boundaries
+          a. Query broad-phase candidates; apply FOV filtering
+          b. Accumulate whisker look-ahead steering within the budget
+          c. Update priority/hysteresis; evaluate positional core-rule slots
+          d. Apply wander only when force budget remains
+          e. Integrate: v += steer*dt; shape avoidance; limit turn; normalize to allowed speed
+          f. Integrate: x += v*dt; wrap boundaries
       3. Double-buffer swap
 ```
+
+This is the intended flow. The current grid index leaves radius candidates unfiltered
+([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)), and the current whisker plus
+separation path can exceed the intended `MaxForce` budget
+([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)). Rule slots are hard-coded,
+later results are discarded, and a clamped separation vector whose squared magnitude exceeds the
+current `1e-6` cutoff exhausts the remainder before alignment, cohesion, and wander
+([issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)).
 
 ### Key Characteristics
 
@@ -187,15 +213,18 @@ CanonicalWorld
 
 2. **Reynolds Steering**:
    ```csharp
+   // Conceptual flow; CanonicalWorld.Step currently performs composition inline.
    Vec2 desired = ComputeDesiredVelocity();
-   Vec2 steering = (desired - current).ClampMagnitude(MaxForce);
-   Vec2 newVelocity = (current + steering * dt).WithLength(TargetSpeed);
+   Vec2 steering = desired - current;
+   ComposeThroughPriorityBudget(steering);
+   Vec2 newVelocity = IntegrateWithAvoidanceAndTurnLimit(allowedSpeed);
    ```
    - Each rule computes a *desired velocity*
-   - Steering = (desired - current), clamped
-   - Final velocity always normalized to TargetSpeed
+   - Steering = desired - current; the caller clamps and composes contributions
+   - Final velocity is normalized to `TargetSpeed`, reduced by the configured separation-speed
+     droop while the priority blend is active
 
-3. **Pluggable Rules**:
+3. **Rule Interface (composition remains positional)**:
    ```csharp
    public interface IRule
    {
@@ -209,12 +238,15 @@ CanonicalWorld
    }
    ```
    - Each rule is isolated and testable
-   - Rules can be enabled/disabled/reordered
-   - Clear input/output contract
+   - `CanonicalWorld` currently assigns separation/alignment/cohesion semantics to slots 0/1/2;
+     reordering changes those semantics, and results from later slots are discarded
+   - Named enable/disable/reorder composition is owned by
+     [issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)
 
-4. **FOV-Weighted Neighbors**:
-   - Neighbors filtered by radius (spatial index)
-   - Then filtered by field-of-view cone
+4. **FOV-Weighted Neighbor Candidates**:
+   - The intended spatial-index contract filters by radius; the current grid implementation does
+     not yet honor that argument ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18))
+   - Candidates are then filtered by field-of-view cone
    - **Weighted by position in FOV**: neighbors at edge of vision have less influence
    - `neighborWeights[]` passed to each rule
 
@@ -260,32 +292,36 @@ SwarmSim.Core/Canonical/
 
 ### Separation
 
-**Old (Force-Based)**:
+**Legacy (Aggregate-Driven Steering)**:
 ```csharp
-// In SenseSystem
+// In the current legacy SenseSystem
 for each neighbor within separationRadius:
-    delta = self.pos - neighbor.pos
-    distSq = |delta|²
-    if distSq > 0:
-        separationX[i] += delta.X / distSq  // 1/d² weighting
-        separationY[i] += delta.Y / distSq
+    towardNeighbor = neighbor.pos - self.pos
+    distance = |towardNeighbor|
+    if distance > 0:
+        away = -(towardNeighbor / distance)
+        strength = (separationRadius - distance) / separationRadius
+        separation[i] += away * strength  // bounded linear radial falloff
 
-// In BehaviorSystem
+// In BehaviorSystem, after the highest-priority collision override
 float sepX = separationX[i];
 float sepY = separationY[i];
 float sepMag = sqrt(sepX² + sepY²);
-if (sepMag > 0):
-    float desiredSpeed = maxSpeed * separationWeight;
+if (remainingForce > 0 and sepMag > 0):
+    float crowdingBoost = ComputeCrowdingBoost(neighborCount);
+    float desiredSpeed = maxSpeed * separationWeight * crowdingBoost;
     float desiredVx = (sepX / sepMag) * desiredSpeed;
     float desiredVy = (sepY / sepMag) * desiredSpeed;
     float steerX = desiredVx - currentVx;
     float steerY = desiredVy - currentVy;
-    (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
-    fx[i] += steerX;
-    fy[i] += steerY;
+    (steerX, steerY) = ClampMagnitude(steerX, steerY, remainingForce);
+    AddPrioritizedSteer(totalSteering, remainingForce, steerX, steerY);
 ```
 
-**New (Steering-Based)**:
+This is a shape-only excerpt; the legacy collision override and shared priority budget are in
+`SwarmSim.Core/Systems/BehaviorSystem.cs:91-149`.
+
+**Canonical (Isolated Rule Steering)**:
 ```csharp
 // In SeparationRule.Compute()
 Vec2 accumulator = Vec2.Zero;
@@ -296,60 +332,82 @@ for each neighbor within separationRadius:
         float dist = sqrt(distSq);
         Vec2 direction = delta / dist;
         float strength = max(0, 1 - dist/radius);  // Linear falloff
-        float influence = strength / dist * weight; // 1/d weighting
+        float influence = strength / dist * fovWeight; // inverse-distance and FOV weighting
         accumulator += direction * influence;
 
-Vec2 desired = accumulator.WithLength(context.TargetSpeed * weight);
-Vec2 steer = (desired - self.Velocity).ClampMagnitude(context.MaxForce);
+Vec2 desired = accumulator.WithLength(
+    context.TargetSpeed * ruleWeight * context.SeparationPriorityBoost);
+Vec2 steer = desired - self.Velocity;
 return steer;
 ```
 
 **Key Differences**:
-1. **Weighting**: Old used 1/d², new uses 1/d (more stable)
-2. **Falloff**: New adds explicit `strength = 1 - dist/radius` for smoother gradients
-3. **Per-neighbor clamp**: New limits individual neighbor contributions
-4. **Direct steering**: New returns steering vector directly, not via aggregate arrays
+1. **Legacy aggregate**: Normalized away direction with bounded linear radial falloff
+2. **Canonical weighting**: The same radial falloff is multiplied by inverse distance and FOV weight
+3. **Priority boost**: Desired speed is multiplied by `SeparationPriorityBoost`
+4. **Composition owner**: Legacy `BehaviorSystem` clamps and spends a shared budget beginning with
+   collision override; canonical rules return unclamped steering and `CanonicalWorld` owns its
+   separate, currently incomplete composition contract (#19, #27)
 
 ### Alignment
 
-**Old**: Accumulate sum of neighbor velocities → compute average → steer toward it
-**New**: Same algorithm, but computed in isolated rule with neighbor weights
+**Legacy**: Accumulate sum of neighbor velocities → compute average → steer toward it
+**Canonical**: Same algorithm, but computed in an isolated rule with neighbor weights
 
 ### Cohesion
 
-**Old**: Accumulate sum of neighbor positions → compute average → steer toward it
-**New**: Same algorithm, but computed in isolated rule with neighbor weights
+**Legacy**: Accumulate sum of neighbor positions → compute average → steer toward it
+**Canonical**: Same algorithm, but computed in an isolated rule with neighbor weights
 
 ### Integration
 
-**Old**:
+**Legacy** (integrator, simplified):
 ```csharp
 // Forces accumulated in Fx[], Fy[]
 vx[i] += Fx[i] * dt;
 vy[i] += Fy[i] * dt;
-vx[i] *= friction;  // Speed control via damping
-vy[i] *= friction;
+if (speedModel == SpeedModel.Damped)
+{
+    vx[i] *= friction;
+    vy[i] *= friction;
+}
+float speed = MathUtils.Length(vx[i], vy[i]);
+if (speed > maxSpeed)
+{
+    float scale = maxSpeed / speed;
+    vx[i] *= scale;
+    vy[i] *= scale;
+}
 x[i] += vx[i] * dt;
 y[i] += vy[i] * dt;
 ```
 
-**New**:
+The current renderer and all registered presets select `SpeedModel.ConstantSpeed`; despite the
+name, that legacy branch skips friction and only clamps velocity when it exceeds `MaxSpeed`
+(`SwarmSim.Core/Systems/IntegrateSystem.cs:42-78`; `SwarmSim.Core/SimConfig.cs:22`;
+`SwarmSim.Render/Program.cs:110-217,240-260`).
+
+**Canonical**:
 ```csharp
-// Steering already computed
+// Simplified shape of the current integration path
 Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
-if (!nextVelocity.IsNearlyZero())
-    nextVelocity = nextVelocity.WithLength(Settings.TargetSpeed);
-else
-    nextVelocity = boid.Velocity.WithLength(Settings.TargetSpeed);
+float allowedSpeed = Settings.TargetSpeed
+    * (1f - Settings.SeparationSpeedDroop * priorityBlend);
+nextVelocity = ApplyShapedAvoidance(nextVelocity, allowedSpeed);
+nextVelocity = LimitTurnAndNormalize(nextVelocity, allowedSpeed);
 
 Vec2 nextPosition = boid.Position + nextVelocity * deltaTime;
 nextPosition = WrapToroidally(nextPosition);
 ```
 
 **Key Differences**:
-1. **Speed control**: Old used friction, new uses direct normalization to TargetSpeed
-2. **Constant speed**: New ensures |velocity| = TargetSpeed always (classic boids)
-3. **Clearer**: No force/friction equilibrium required
+1. **Speed control**: Legacy `Damped` applies friction before the speed cap, while the active
+   legacy `ConstantSpeed` configuration skips friction and applies only the cap; canonical
+   normalizes directly to an allowed speed
+2. **Priority droop**: Allowed speed can fall below `TargetSpeed` by the configured droop while
+   priority blending is active (3% at the current default and full blend)
+3. **Shaping and turn limit**: Nearest-neighbor avoidance can bias velocity before the angular-rate
+   limiter normalizes it
 
 ### Field of View
 
@@ -415,10 +473,12 @@ After implementing the canonical boids foundation, testing revealed collision is
 
 ### Solutions Implemented
 
-**1. Smooth Wander** (`CanonicalWorld.cs:287-294`)
-- Each agent maintains a persistent wander angle that evolves continuously
+**1. Budget-Gated Smooth Wander** (`CanonicalWorld.cs:288-295`)
+- While `WanderStrength > 0` and force budget remains, each agent maintains a persistent wander
+  angle that evolves smoothly
 - `WanderRate` parameter (1.5 rad/s) controls turn rate
-- Angle changes by small random amounts each tick: `±WanderRate * dt`
+- Eligible ticks change the angle by small random amounts: `±WanderRate * dt`; disabled wander or
+  an exhausted budget pauses both the angle update and its steering contribution
 - Creates flowing, natural movement instead of discrete direction changes
 
 **2. Gradual Avoidance Falloff** (`CanonicalWorld.cs:300-322`)
@@ -434,10 +494,14 @@ After implementing the canonical boids foundation, testing revealed collision is
 - Smoothstep transition between zones: `blendWeight = SmoothStep(rHard, rSoft, distance)`
 - Prevents head-on bouncing, creates natural lane-change behavior
 
-**4. Soft Gating** (`CanonicalWorld.cs:229-249`)
-- Alignment/cohesion reduced by 70% during priority (not turned off)
-- `attenuation = 1.0 - (priorityBlend * 0.7)`
-- Agents maintain group awareness while avoiding collisions
+**4. Attempted Soft Gating** (`CanonicalWorld.cs:247-273`)
+- Alignment/cohesion vectors are multiplied by
+  `attenuation = 1.0 - (priorityBlend * 0.7)`
+- A clamped separation vector whose squared magnitude exceeds the current `1e-6` cutoff sets the
+  remaining force budget to zero before those vectors or wander are applied; wander's angle also
+  does not advance on that tick
+- [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns named composition and the
+  explicit arbitration contract
 
 **5. Enhanced Perception** (`CanonicalWorld.cs:21-23, 174-198`)
 - Per-agent perception data in snapshot:
@@ -446,13 +510,12 @@ After implementing the canonical boids foundation, testing revealed collision is
   - `WhiskerCounts[]` - neighbors in lookahead capsule
 - Enables data-driven analysis of flocking quality
 
-### Results
+### Historical Qualitative Observations
 
-- ✅ Smooth, natural movement with continuous direction changes
-- ✅ Robust collision avoidance without "ping-pong" oscillations
-- ✅ Agents shoulder past each other at medium range, repel at close range
-- ✅ Group cohesion maintained even during separation maneuvers
-- ✅ 12 canonical boids tests passing (including new angular limiter and hysteresis tests)
+Earlier interactive sessions described smooth movement, shoulder-passing, and reduced ping-pong,
+but no retained capture or automated acceptance proves those visual claims. The 12 current canonical
+tests include angular-limiter and hysteresis coverage; they do not prove group cohesion while
+separation consumes the remaining force budget.
 
 ### Visualization
 
@@ -462,9 +525,9 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 ## Migration Status
 
-### Completed (Canonical Implementation ~85%)
+### Implemented Components and Known Gaps
 
-✅ **Core Infrastructure** (Milestones 0-2):
+✅ **Core Infrastructure** (Milestones 0-1 plus shared scaffolding):
 - `Vec2` struct with all vector operations
 - `Boid` readonly struct
 - `CanonicalWorld` with double-buffered stepping
@@ -472,29 +535,51 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 - Fixed timestep integration with semi-implicit Euler
 - `NaiveSpatialIndex` (O(n²) reference)
 - `GridSpatialIndex` (O(n) using UniformGrid)
+- Full long-horizon deterministic/golden acceptance remains pending #17 and #21
 
-✅ **Steering Rules** (Milestones 3-5):
+✅ **Steering Rule Implementations** (Milestones 3-5):
 - `SeparationRule` with 1/d weighting and falloff
 - `AlignmentRule` with neighbor averaging
 - `CohesionRule` with center-of-mass steering
+- The prescribed multi-tick separation/alignment/cohesion behavior scenarios remain open in
+  [issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41)
 
-✅ **Perception** (Milestone 2):
-- Radius-based filtering (spatial index)
+⚠️ **Partial Perception** (Milestone 2):
 - Field-of-view cone filtering
 - FOV-based neighbor weighting (linear falloff)
+- `GridSpatialIndex` does not currently honor radius or self-exclusion, so alignment and cohesion
+  can consume the wrong neighborhood; neither index/rule path applies toroidal neighbor deltas
+- The full contract and equivalence fix are owned by
+  [issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)
+- The rule implementations above exist, but their integrated behavior must be revalidated against
+  the corrected perception contract
 
-✅ **Instrumentation** (Milestone 7):
+⚠️ **Partial Rule Composition** (Milestone 6):
+- Separation, alignment, and cohesion are hard-coded to slots 0/1/2; results from later `AddRule`
+  slots are discarded, and clamped separation above the current cutoff exhausts the budget before
+  alignment, cohesion, and wander
+- [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns the named composition and
+  arbitration contract
+- Whisker steering can be followed by a separation contribution clamped to the full `MaxForce`,
+  so the total can exceed the intended bound; the invariant fix and trajectory evidence are owned
+  by [issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)
+
+⚠️ **Partial Instrumentation** (Milestone 7 backend and basic overlay only):
 - `RuleInstrumentation` for metrics collection
 - Per-agent neighbor counts and weight sums
 - Per-rule contribution magnitudes
 - Metrics accessible via `TryGetMetrics()`
+- Basic selected-boid overlay with perception bounds, neighbor links, whisker markers, and metrics
+- Missing: an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
+  rule-toggle acceptance coverage; tracked in
+  [issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40)
 
-✅ **Testing** (Milestones 0-6 + Smoothing):
+✅ **Existing Test Coverage**:
 - `CanonicalBoidsTests` with 12 unit tests
 - Vec2 math tests
 - Single boid constant speed test
 - FOV filtering tests
-- Determinism tests
+- Same-process determinism comparisons (not long-horizon/golden coverage)
 - Per-rule behavior tests (separation, alignment, cohesion)
 - Angular rate limiter tests
 - Priority hysteresis tests
@@ -506,8 +591,9 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 - Priority hysteresis with enter/exit/hold thresholds
 - Shaped separation with lateral+away blending
 - Gradual avoidance falloff (quadratic distance function)
-- Smooth wander with continuous angle evolution
-- Soft gating for alignment/cohesion during priority
+- Smooth wander angle evolution while force budget remains; qualifying separation pauses it
+- Candidate attenuation for alignment/cohesion during priority; current budget starvation remains
+  open in [issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)
 - Enhanced PerceptionSnapshot with per-agent data
 
 ✅ **Renderer Integration** (Partial):
@@ -518,10 +604,11 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 ### In Progress
 
 🔄 **Renderer Polish**:
-- Visualization of FOV cones
+- Visualization of a complete FOV arc
 - Neighbor link rendering with per-rule colors
 - Steering vector display
 - Instrumentation overlay (counts, weights, contributions)
+- Rule enable/disable and FOV controls
 
 🔄 **Testing Coverage**:
 - Boundary/wrapping tests (Milestone 8)
@@ -538,7 +625,6 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 - Replace legacy World/Systems with Canonical implementation
 
 ❌ **Advanced Features**:
-- Wander behavior (optional random exploration)
 - Obstacle avoidance
 - Boundary reflection (currently only wrapping)
 
@@ -553,7 +639,22 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 To complete the migration and reach a solid foundation for Phase 3 (Combat & Metabolism), we need to:
 
-### 1. Complete Core Testing (Milestones 8-10)
+### 1. Resolve the Ordered Wave 1 Correctness Gates
+
+- [ ] #17 - remove wall-clock/seed-wiring determinism breaks and prove long-horizon reproducibility
+- [ ] #18 - enforce the perception/spatial-index radius, self-exclusion, and wrap contract
+- [ ] #19 - enforce the total `MaxForce` composition budget
+- [ ] #20 - make telemetry opt-in/zero-allocation and add canonical benchmarks; complete the agent
+  work, leave the PR open for the owner-only F12/HUD-parity check, then continue
+- [ ] #21 - lock and compare deterministic traces after #17-#19 land
+
+Execute these strictly in epic #10 order. Under the owner-authorized exception for this overnight
+run, the #20 PR remains open at its manual gate while #21 proceeds. The missing milestone 3-6
+scenario coverage (#41) and milestone 7 renderer UX (#40) deliberately wait for their later
+contracts rather than introducing temporary fixture, telemetry, configuration, or positional-rule
+seams.
+
+### 2. Complete Core Testing (Milestones 8-10)
 
 **Goal**: Achieve feature parity with old implementation and verify correctness
 
@@ -576,7 +677,7 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
 
 **Why Critical**: These tests provide confidence that the canonical implementation is correct and equivalent to the old one. Without them, migrating to Phase 3 risks building on a shaky foundation.
 
-### 2. Add Multi-Group Support
+### 3. Add Multi-Group Support
 
 **Goal**: Restore multi-group capabilities from old implementation
 
@@ -610,7 +711,7 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
 
 **Why Critical**: Phase 3 requires multiple groups with aggression matrices. Need solid multi-group foundation first.
 
-### 3. Enhanced Instrumentation & Debugging
+### 4. Enhanced Instrumentation & Debugging
 
 **Goal**: Make the canonical implementation as observable as possible
 
@@ -636,7 +737,7 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
 
 **Why Critical**: The whole point of the canonical rewrite was to enable easier debugging. Need to actually build the tools to leverage it.
 
-### 4. Performance Validation
+### 5. Performance Validation
 
 **Goal**: Ensure canonical implementation meets performance targets
 
@@ -655,11 +756,12 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
   - [ ] Identify top-3 hotspots
   - [ ] Document optimization opportunities for Phase 5
 
-**Target**: Match or exceed old implementation performance (10k @ 129 FPS)
+**Target**: Match or exceed the dated legacy simulation-tick baseline. Canonical throughput and
+renderer FPS are currently unmeasured; use the verified command/results in `PROJECT_STATUS.md`.
 
 **Why Critical**: Can't justify the rewrite if performance regresses. Need data to make optimization decisions.
 
-### 5. Full Migration Decision
+### 6. Full Migration Decision
 
 At this point, decide whether to:
 
@@ -694,16 +796,19 @@ At this point, decide whether to:
 ### What Went Right
 
 1. **TDD Approach**: Writing tests first (via `NewImplementation.md` milestones) caught issues early
-2. **Steering vs. Forces**: Reynolds' steering formulation is objectively better for boids
+2. **Rule isolation**: Explicit steering rules make individual behavior calculations easier to
+   inspect and test than aggregate-coupled logic
 3. **Immutable Data**: `readonly struct Boid` made reasoning about state much simpler
-4. **Clear Abstractions**: `IRule` interface allowed easy testing and composition
+4. **Clear Abstractions**: `IRule` allows individual rule testing; world-level composition is still
+   positional and incomplete (#27)
 5. **Instrumentation**: Rich metrics from the start made debugging tractable
 
 ### What Went Wrong (Old Implementation)
 
 1. **Premature Optimization**: SoA layout chosen for performance before correctness was proven
 2. **Two-Pass Design**: Separating sensing from behavior seemed clean but was debugging nightmare
-3. **Force-Based Physics**: Non-canonical approach made parameter tuning impossible
+3. **Aggregate-Coupled Composition**: Two-pass steering hid individual rule inputs and outputs;
+   the earlier raw-force/damped prototype also made tuning brittle
 4. **Lack of Testing**: Integration tests only, no unit tests for individual rules
 5. **No Instrumentation**: Had to printf debug to understand what was happening
 
@@ -729,7 +834,7 @@ At this point, decide whether to:
 ### Internal Documents
 
 - `NewImplementation.md` - TDD roadmap and milestones
-- `MakingBoidsBetter.md` - Diagnosis of force-based approach issues
+- `MakingBoidsBetter.md` - Diagnosis of the earlier raw-force/damped prototype issues
 - `PROJECT_STATUS.md` - Current implementation status
 - `CLAUDE.md` - Development guidelines
 
@@ -751,17 +856,25 @@ Key commits in the transition:
 
 ## Conclusion
 
-The transition from the systems-based SoA approach to the canonical boids implementation represents a **necessary course correction**. The old implementation, while architecturally sound on paper, proved extremely difficult to debug and tune in practice. The force-based physics model created parameter sensitivity issues that made emergent behavior unpredictable.
+The transition from the systems-based SoA approach to the canonical boids implementation represents a **necessary course correction**. The old implementation, while architecturally sound on paper, proved extremely difficult to debug and tune in practice. Its two-pass aggregate pipeline, plus the earlier raw-force `Damped` tuning that preceded the current steering-based `BehaviorSystem`, created parameter sensitivity and observability problems.
 
 The new canonical implementation, while less "architecturally pure", is:
 - **Easier to understand**: One clear place to see decision-making
-- **Easier to test**: Isolated, composable rules
+- **Easier to test**: Individual rule implementations are isolated, although world-level
+  composition remains positional and incomplete ([issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27))
 - **Easier to debug**: Rich instrumentation and metrics
 - **Easier to tune**: Canonical steering parameters with known ranges
-- **True to literature**: Follows Reynolds' proven formulations
+- **Literature-based direction**: Uses Reynolds-style formulations, with current deviations and
+  incomplete contracts tracked above
 
-**Current Status**: ~70% complete. Core infrastructure and rules are done. Need to finish testing, add multi-group support, and validate performance before Phase 3.
+**Current Status**: Core infrastructure and rule implementations exist. Seeded reproducibility,
+perception semantics, force-budget enforcement, milestone 7 UX/test acceptance, readiness
+milestones 8-10, multi-group support, and performance validation remain incomplete before Phase 3.
 
-**Recommendation**: Complete milestones 8-10, add multi-group support, build visualization tools, validate performance. Then proceed with **gradual migration** (Option C) - port Phase 3 features to canonical implementation while keeping old implementation as reference. Once validated, remove old implementation in Phase 5.
+**Recommendation**: Follow epic #10's ordered correctness/fixture gates, then finish the remaining
+milestone 7 UX and milestones 8-10, add multi-group support, and validate performance. Proceed
+afterward with **gradual migration** (Option C) - port Phase 3 features to canonical implementation
+while keeping the old implementation as reference. Once validated, remove the old implementation
+in Phase 5.
 
 The extra few weeks of work to do this right will pay dividends in developer velocity for Phases 3-6.

@@ -1,7 +1,11 @@
 # Phase 3 Readiness Checklist
 
-**Last Updated**: 2025-11-12
-**Current Status**: Canonical implementation ~70% complete
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state; this checklist defines remaining canonical readiness work.
+
+**Last Updated**: 2026-07-25 (verified-state reconciliation)
+**Current Status**: Core scaffolding and steering-rule implementations exist; perception,
+composition, and instrumentation UX are partial; milestones 8-10 remain incomplete
 
 > This document outlines the concrete steps needed to complete the canonical boids implementation before starting Phase 3 (Combat & Metabolism).
 
@@ -9,25 +13,58 @@
 
 ## Overview
 
-Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a solid, debuggable foundation. The current implementation is ~70% complete (milestones 0-7 done, 8-10 in progress).
+Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a
+solid, debuggable foundation. The perception contract violates its radius/self/wrap requirements,
+milestone 6 violates its total `MaxForce` bound, and milestone 7 does not meet its full UX/test
+acceptance. Milestones 8-10, multi-group semantics, and canonical performance evidence remain
+incomplete.
 
 **Estimated Effort**: 1-2 weeks of focused development
 
 ---
 
-## Critical Path: Complete Milestones 8-10
+## Critical Path: Resolve Correctness Gaps and Complete Readiness
 
 These are the remaining milestones from `NewImplementation.md` that must be completed:
 
-### ✅ Milestone 0-7: COMPLETE
+### ✅ Core Scaffolding and Single-Boid Path (Milestones 0-1)
 - [x] Core scaffolding (Vec2, Boid, World, Rng, interfaces)
 - [x] Single boid motion with constant speed
-- [x] Perception (radius + FOV filtering with weights)
+- [ ] Long-horizon seeded and golden acceptance, tracked in #17 and #21
+
+### 🔄 Milestone 2: Perception (PARTIAL)
+- [x] Field-of-view filtering with weights
+- [ ] Enforce radius filtering, self-exclusion, and toroidal wrap consistently across spatial
+  indexes; tracked in [issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)
+
+### ✅ Steering Rule Implementations (Milestones 3-5)
 - [x] Separation rule (1/d weighting, linear falloff)
 - [x] Alignment rule (match neighbor headings)
 - [x] Cohesion rule (move toward center of mass)
-- [x] Rule composition with force clamping
+- [ ] Add the prescribed head-on/overtaking, heading-convergence, no-neighbor, and
+  single-neighbor/cluster scenarios after the milestone-2 contract is fixed; tracked in
+  [issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41)
+
+### 🔄 Milestone 6: Rule Composition & Stability (PARTIAL)
+- [x] Compose separation, alignment, cohesion, whisker, and wander contributions
+- [ ] Enforce the total steering bound of `MaxForce`; whisker plus separation can currently
+  overspend it, tracked in [issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)
+- [ ] Verify named-rule isolation, classic-mode constant speed, and combined no-NaN/no-stuck
+  stability after #27; tracked in #41
+
+### 🔄 Milestone 7: Instrumentation & UX (PARTIAL)
 - [x] Instrumentation (neighbor counts, weights, rule contributions)
+- [x] Basic selected-boid inspection overlay (perception bounds, neighbor links, whisker markers,
+  aggregate metrics)
+- [ ] Complete FOV arc visualization
+- [ ] Rule-colored neighbor/contribution links
+- [ ] Actual steering-vector arrow
+- [ ] Individual rule enable/disable controls and FOV adjustment
+- [ ] Acceptance tests proving rule toggles change the recorded contributions
+
+The missing milestone-7 slice is tracked in
+[issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40) and is intentionally outside
+epic #10's ordered Wave 0/Wave 1 execution.
 
 ### 🔄 Milestone 8: Boundaries & Worlds (IN PROGRESS)
 **Goal**: Predictable edges so tests don't flake
@@ -149,17 +186,21 @@ These are the remaining milestones from `NewImplementation.md` that must be comp
   }
   ```
 
-- [ ] **Property Test: Speed Limits**
+- [ ] **Property Tests: Speed Semantics** ([issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41))
   ```csharp
-  [Theory]
-  [InlineData(1.0f)]
-  [InlineData(5.0f)]
-  [InlineData(10.0f)]
-  public void PropertyTest_SpeedAlwaysAtTarget(float targetSpeed)
+  [Fact]
+  public void PropertyTest_ClassicComposition_SpeedStaysAtTarget()
   {
-      // Random scenario, all rules enabled
+      // Named classic-Reynolds composition from #27; priority/droop disabled
       // Run for 100 ticks
       // Assert: all agents have |velocity| = targetSpeed (± epsilon)
+  }
+
+  [Fact]
+  public void PropertyTest_DefaultPriority_SpeedMatchesAllowedSpeed()
+  {
+      // Default composition with priority activation and configured SeparationSpeedDroop
+      // Assert: speed matches the blend-adjusted allowed speed, remains finite, and never stalls
   }
   ```
 
@@ -289,13 +330,24 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
   ```
 
 - [ ] **Compare Old vs New**
-  - Run benchmarks for both implementations
-  - Create comparison table:
-    | Agents | Legacy (ms/tick) | Canonical (ms/tick) | Speedup |
-    |--------|------------------|---------------------|---------|
-    | 1k     | 0.117            | TBD                 | TBD     |
-    | 10k    | 7.75             | TBD                 | TBD     |
-    | 50k    | 154              | TBD                 | TBD     |
+  - Run both implementations in the same BenchmarkDotNet job with matched agent initialization,
+    settings, workload, warmup, runtime, and diagnostics; only that paired run may report a speedup.
+  - Historical legacy-only timing-test context captured 2026-07-25 (not a canonical comparison
+    seed):
+
+    ```powershell
+    dotnet build SwarmingLilMen.sln --configuration Release
+    dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
+    ```
+
+    | Agents | Legacy sample (ms/tick) | Timing-test configuration |
+    |--------|-------------------------|---------------------------|
+    | 1k     | 0.172                   | `SimConfig` defaults |
+    | 10k    | 8.839                   | `SimConfig` defaults |
+    | 50k    | 162.815                 | Heavier legacy BenchmarkDotNet-like steering weights |
+
+    These stopwatch samples come from separate test cases and are not valid inputs to a future
+    legacy/canonical speedup calculation (`SwarmSim.Tests/PerformanceTests.cs:15-99`).
 
 - [ ] **Identify Regressions**
   - If canonical is slower, profile with dotTrace
@@ -305,6 +357,8 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
 ### 🔍 Allocation Testing
 
 - [ ] **Zero-Allocation Verification**
+  - Current canonical `Step()` does not satisfy this target because perception-snapshot refresh
+    allocates three arrays (`SwarmSim.Core/Canonical/CanonicalWorld.cs:496-508`).
   ```csharp
   [Fact]
   public void CanonicalWorld_Step_AllocatesNothing()
@@ -330,7 +384,8 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
   - Verify no allocations in `Step()` method
   - Document any allocation sources
 
-**Target**: 10k agents @ 60+ FPS (match or beat legacy 129 FPS)
+**Target**: 10k agents at 60+ rendered FPS. Renderer FPS and canonical tick throughput are
+currently unmeasured.
 
 **Exit Criteria**: Performance validated, allocation-free hot path confirmed
 
@@ -376,7 +431,13 @@ Once all above tasks are complete, decide on migration strategy:
 | Performance Validation | 2 days | HIGH |
 | **Total** | **13-14 days** | |
 
-**Critical Path**: Milestones 8-10 + Multi-Group + Performance (8 days minimum)
+> **Planning boundary:** The table above is a historical estimate for its listed tasks. Its total
+> does not estimate issue-level scope, gates, reviews, or merge time for epic #10's full ordered
+> #11-#21 run or dependency-gated #40/#41, so it is not a current end-to-end forecast.
+
+**Canonical-readiness subset after Wave 0**: epic #10's ordered #17-#21 gates. The full overnight
+queue still begins with Wave 0 issues #11-#16. Multi-group and dependency-gated
+acceptance/instrumentation backlog (#40 and #41) remains outside the current overnight scope.
 
 ---
 
@@ -384,12 +445,15 @@ Once all above tasks are complete, decide on migration strategy:
 
 Phase 3 readiness achieved when:
 
-1. ✅ All milestones 0-10 from `NewImplementation.md` complete
-2. ✅ Multi-group support implemented and tested
-3. ✅ Performance validated (10k agents @ 60+ FPS)
-4. ✅ Zero allocations in hot path confirmed
-5. ✅ Visualization tools built for debugging
-6. ✅ Comprehensive test suite (50+ tests passing)
+1. [ ] All milestones 0-10 from `NewImplementation.md` complete
+2. [ ] Multi-group support implemented and tested
+3. [ ] Performance validated (10k agents @ 60+ FPS)
+4. [ ] Zero allocations in hot path confirmed
+5. [ ] Visualization tools built for debugging
+6. [x] Comprehensive test suite (50+ tests passing)
+
+Only the test-count criterion is currently satisfied; the unchecked criteria remain required and
+the verified state above governs their evidence.
 
 At that point, we have a **solid, debuggable, performant foundation** for Phase 3 combat and metabolism systems.
 
@@ -410,9 +474,10 @@ When starting work on Phase 3 readiness:
 
 1. ✅ Read `IMPLEMENTATION_EVOLUTION.md` to understand context
 2. ✅ Read this document to understand what needs doing
-3. Pick a milestone (8, 9, or 10) and work through it
+3. Resume the first unmerged issue in epic #10's ordered #11-#21 queue
 4. Update `PROJECT_STATUS.md` as you complete tasks
 5. Run tests frequently to ensure nothing breaks
 6. Profile performance after each milestone
 
-**Start with Milestone 8** (Boundaries) - it's the quickest and unblocks testing.
+Do not select work by apparent speed; the epic's dependency order is authoritative.
+The #11-#16 Wave 0 gates precede this checklist's #17-#21 canonical behavior/fixture subset.

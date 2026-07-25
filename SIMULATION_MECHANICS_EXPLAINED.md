@@ -1,5 +1,8 @@
 # Simulation Mechanics Explained
 
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state.
+
 ## Table of Contents
 1. [Physics Integration Pipeline](#physics-integration-pipeline)
 2. [Forces Explained](#forces-explained)
@@ -12,11 +15,17 @@
 
 ## Physics Integration Pipeline
 
-The simulation runs at 60 FPS (frames per second) with a fixed timestep. Each frame, every agent goes through this pipeline:
+The default legacy renderer requests a 60 FPS frame cap and uses a 1/60-second fixed simulation
+step (`SwarmSim.Render/Program.cs:245,467`). These are scheduling settings, not measured renderer
+throughput. On each simulation step, every agent goes through this pipeline:
+
+> **Speed-model scope:** The default renderer uses `SpeedModel.ConstantSpeed`, which skips the
+> friction multiplier (`SwarmSim.Render/Program.cs:245-249`; `SwarmSim.Core/Systems/IntegrateSystem.cs:50-68`).
+> Friction and force/friction-equilibrium sections below apply only to `SpeedModel.Damped`.
 
 ### 1. Force Accumulation Phase
 ```
-Forces start at (0, 0) each frame
+Forces start at (0, 0) each simulation step
 ↓
 Systems add forces:
 - BehaviorSystem adds: separation + alignment + cohesion
@@ -30,8 +39,10 @@ Total force = sum of all system forces
 // Step 1: Add force to velocity (F = ma, assuming mass = 1)
 velocity += force * dt
 
-// Step 2: Apply friction (velocity damping)
-velocity *= friction
+// Step 2: Apply damping only in Damped mode
+if (speedModel == SpeedModel.Damped) {
+    velocity *= friction
+}
 
 // Step 3: Clamp to maximum speed
 if (speed > maxSpeed) {
@@ -44,10 +55,10 @@ position += velocity * dt
 
 ### Key Insight: **Timestep (dt)**
 - dt = 1/60 = 0.0167 seconds
-- This is the "integration step" - how much real time passes per frame
-- Forces are multiplied by dt, so a force of 100 adds `100 × 0.0167 = 1.67` to velocity per frame
-- **Smaller dt = smoother motion but forces have less impact per frame**
-- **Larger dt = choppier motion but forces have more impact per frame**
+- This is the integration step: how much simulated time advances per update
+- Forces are multiplied by dt, so a force of 100 adds `100 × 0.0167 = 1.67` to velocity per step
+- A smaller dt produces smaller per-step changes and more updates per simulated second
+- A larger dt produces larger per-step changes and can reduce numerical fidelity
 
 ---
 
@@ -143,7 +154,7 @@ For each neighbor within senseRadius:
 
 **How it works**:
 ```
-Each frame:
+Each simulation step:
   1. Generate random angle
   2. Calculate force in that direction
   3. Scale by wanderStrength
@@ -153,6 +164,11 @@ Each frame:
 - **0.0**: No randomness, purely deterministic flocking
 - **0.5**: Slight jitter, natural variation
 - **5.0**: Chaotic, random walk dominates
+
+> **Current reproducibility limitation:** When legacy wander is enabled, `WanderSystem` seeds its
+> private RNG from the wall clock rather than the world's seed. Identical world seeds therefore do
+> not currently reproduce wander-enabled trajectories; [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17)
+> owns the code fix and long-horizon determinism tests.
 
 **Visual Effect**:
 - Zero: Predictable, can feel mechanical
@@ -165,33 +181,35 @@ Each frame:
 
 ### Physics Parameters
 
-#### **Friction** (velocity damping)
+#### **Friction** (velocity retention in `SpeedModel.Damped` only)
 ```
-velocity = velocity * friction (each frame)
+velocity = velocity * friction (each simulation step)
 ```
 
 - **Value Range**: 0.0 to 1.0
-- **Meaning**: What fraction of velocity is retained each frame
+- **Meaning**: What fraction of velocity is retained each simulation step
 
-| Friction | Effect | Velocity Per Second | Use Case |
+| Friction | Effect | Unforced retention after 60 steps | Use Case |
 |----------|--------|---------------------|----------|
 | 1.0 | No damping | 100% retained | Frictionless space, momentum preserved |
 | 0.99 | Very light | 54.7% retained (lose 45%) | Gentle drag |
-| 0.95 | Light | 8% retained (lose 92%) | Responsive steering |
-| 0.90 | Medium | 0.1% retained (lose 99.9%) | High drag, slow motion |
-| 0.85 | Heavy | ~0% retained | Extreme drag, forces must constantly push |
+| 0.95 | Light | 4.6% retained (lose 95.4%) | Responsive steering |
+| 0.90 | Medium | 0.18% retained (lose 99.82%) | High drag, slow motion |
+| 0.85 | Heavy | 0.006% retained | Extreme drag, forces must constantly push |
 
-**Key Formula**: After 1 second (60 frames), velocity is multiplied by `friction^60`
+**Key Formula**: After 1 second (60 simulation steps), unforced velocity is multiplied by
+`friction^60`
 
 **Examples**:
-- **Friction = 1.0 (You)**: Agent accelerates once and coasts forever (no energy loss)
+- **Friction = 1.0 (No Damping)**: Unforced velocity is retained between simulation steps
   - Good for: Space-like environments, long flowing movements
-  - Bad for: Precise control, stopping behavior
+  - Steering can still increase, decrease, or redirect velocity
 
-- **Friction = 0.99 (Too High)**: Agent loses almost all velocity every second, forces barely overcome drag
-  - Result: Near-static, microscopic motion (the original bug!)
+- **Friction = 0.99 (Very Light Damping)**: Agent retains about 54.7% of unforced velocity after
+  one second at 60 simulation steps
+  - Result: Longer momentum retention and a higher force/damping equilibrium speed
 
-- **Friction = 0.95 (Balanced)**: Agent has momentum but forces can steer effectively
+- **Friction = 0.95 (Stronger Damping)**: Unforced velocity decays much faster
   - Good for: Responsive flocking with smooth motion
 
 #### **MaxSpeed** (velocity clamp)
@@ -202,14 +220,15 @@ if (|velocity| > maxSpeed) {
 ```
 
 - **Value Range**: Any positive number (typically 5-20)
-- **Meaning**: Maximum velocity magnitude (pixels per frame)
+- **Meaning**: Maximum velocity magnitude in world-position units per second (pixels per second in
+  the renderer's current coordinate mapping)
 
-| MaxSpeed | Pixels/Frame | Pixels/Second | Effect |
-|----------|--------------|---------------|--------|
-| 5 | 5 | 300 | Slow, gentle motion |
-| 10 | 10 | 600 | Moderate, natural pace |
-| 20 | 20 | 1200 | Fast, dynamic |
-| 50 | 50 | 3000 | Very fast, chaotic |
+| MaxSpeed (units/second) | Displacement per 1/60 step | Relative effect |
+|-------------------------|--------------------------------|-----------------|
+| 5 | 0.083 | Slowest of these examples |
+| 10 | 0.167 | Moderate relative pace |
+| 20 | 0.333 | Faster motion |
+| 50 | 0.833 | Fastest of these examples |
 
 **Impact**:
 - Too low: Sluggish, can't escape danger or explore quickly
@@ -218,10 +237,10 @@ if (|velocity| > maxSpeed) {
 
 #### **Timestep (dt)**
 - **Fixed at**: 1/60 = 0.0167 seconds
-- **Impact**: Determines how much forces affect velocity per frame
+- **Impact**: Determines each simulation step's velocity and position change
   - `velocity += force * dt`
-  - Larger dt = forces have bigger impact
-  - Smaller dt = smoother but forces need to be larger
+  - `position += velocity * dt`
+  - Renderer frame rate does not change the fixed simulation dt
 
 ---
 
@@ -261,8 +280,12 @@ These scale the strength of each force type:
 
 ## Configuration Examples
 
-### Example 1: Frictionless Space (Your Current Setup)
+Every example that relies on a friction value explicitly selects `SpeedModel.Damped`; otherwise
+the active default `ConstantSpeed` model ignores `Friction`.
+
+### Example 1: No-Damping Space
 ```csharp
+SpeedModel = SpeedModel.ConstantSpeed
 Friction = 1.0f               // No velocity loss
 MaxSpeed = 10f                // Moderate speed cap
 SeparationWeight = 5.0f       // Clear personal space
@@ -273,18 +296,17 @@ SenseRadius = 100f
 ```
 
 **Expected Behavior**:
-- Agents accelerate until hitting maxSpeed (10)
-- Once at maxSpeed, maintain momentum indefinitely
-- Forces only change direction, not speed (since speed is maxed and no friction slows them)
-- Smooth, flowing patterns like schools of fish in water
-- Groups orbit and flow without stopping
+- With no steering, velocity persists between steps
+- Steering can increase or decrease speed and change direction
+- Results above `MaxSpeed` are truncated to the cap; the cap does not impose a minimum speed
 
-**Visual**: Continuous motion, agents at nearly constant speed, graceful curves and turns
+**Visual**: Emergent shape depends on the active forces and requires direct renderer observation
 
 ---
 
 ### Example 2: Tight Flocking (Bird-like)
 ```csharp
+SpeedModel = SpeedModel.Damped
 Friction = 0.98f              // Light drag
 MaxSpeed = 15f                // Faster movement
 SeparationWeight = 3.0f       // Allow closer approach
@@ -307,6 +329,7 @@ SenseRadius = 120f            // Large awareness
 
 ### Example 3: Loose Swarms (Insect-like)
 ```csharp
+SpeedModel = SpeedModel.Damped
 Friction = 0.92f              // Medium drag
 MaxSpeed = 8f                 // Slower movement
 SeparationWeight = 10.0f      // Strong personal space
@@ -330,6 +353,7 @@ WanderStrength = 2.0f         // High randomness
 
 ### Example 4: Chaotic Bouncing (Particle-like)
 ```csharp
+SpeedModel = SpeedModel.Damped
 Friction = 0.85f              // Heavy drag
 MaxSpeed = 25f                // High speed cap
 SeparationWeight = 15.0f      // Strong repulsion
@@ -352,6 +376,7 @@ WanderStrength = 5.0f         // Maximum chaos
 
 ### Example 5: Slow Orbiting Groups
 ```csharp
+SpeedModel = SpeedModel.Damped
 Friction = 0.96f              // Light-medium drag
 MaxSpeed = 6f                 // Slow speed
 SeparationWeight = 4.0f       // Moderate spacing
@@ -375,40 +400,42 @@ WanderStrength = 0.1f         // Minimal randomness
 
 ## Parameter Interactions
 
-### The Friction-Force Dance
+### The Friction-Force Dance (`SpeedModel.Damped`)
 
 **At Equilibrium** (when acceleration = deceleration):
 ```
-Force added per frame = Velocity lost per frame
-force * dt = velocity * (1 - friction)
+Force contribution per step after damping = Velocity lost per step
+friction * force * dt = velocity * (1 - friction)
 
 Solving for velocity:
-velocity_equilibrium = (force * dt) / (1 - friction)
+velocity_equilibrium = friction * (force * dt) / (1 - friction)
 ```
 
-**Example with Friction = 1.0 (Frictionless)**:
+**Example with Friction = 1.0 (No Damping)**:
 ```
 velocity_equilibrium = (force * dt) / (1 - 1.0)
                      = (force * dt) / 0
                      = undefined (infinite!)
 ```
-**This means**: Without friction, agents accelerate forever until hitting maxSpeed
+**This means**: With a persistent aligned force there is no finite damping equilibrium; the speed
+cap eventually truncates the result. Other steering directions can still slow or turn the agent.
 
 **Example with Friction = 0.95**:
 ```
-velocity_equilibrium = (5.0 * 0.0167) / (1 - 0.95)
-                     = 0.0835 / 0.05
-                     = 1.67
+velocity_equilibrium = 0.95 * (5.0 * 0.0167) / (1 - 0.95)
+                     = 0.079325 / 0.05
+                     = 1.5865
 ```
-**This means**: With friction 0.95 and force 5.0, agents stabilize at speed ~1.67
+**This means**: With friction 0.95 and a constant force of 5.0, agents approach speed ~1.59
 
-**Example with Friction = 0.99 (Original Bug)**:
+**Example with Friction = 0.99**:
 ```
-velocity_equilibrium = (5.0 * 0.0167) / (1 - 0.99)
-                     = 0.0835 / 0.01
-                     = 0.835
+velocity_equilibrium = 0.99 * (5.0 * 0.0167) / (1 - 0.99)
+                     = 0.082665 / 0.01
+                     = 8.2665
 ```
-**This means**: With friction 0.99, agents barely move (equilibrium at 0.835)
+**This means**: A 0.99 retention factor is lighter damping than 0.95 and therefore produces a
+higher equilibrium speed for the same constant force.
 
 ---
 
@@ -468,23 +495,23 @@ Agent's awareness zones:
 
 ---
 
-### MaxSpeed as a Damper
+### MaxSpeed as an Upper Bound
 
 MaxSpeed acts as a "ceiling" for all motion:
 
-**With Friction = 1.0 (Your Setup)**:
-- Agents accelerate until hitting maxSpeed
-- Once there, forces can only change direction, not speed
-- Result: Most agents move at exactly maxSpeed (constant velocity)
+**With no damping (`ConstantSpeed`, or `Damped` with Friction = 1.0)**:
+- Unforced velocity persists between steps
+- Steering can increase, decrease, or redirect velocity
+- Only results above `MaxSpeed` are truncated; speeds below the cap remain below it
 
-**With Friction < 1.0**:
+**With `Damped` mode and Friction < 1.0**:
 - Equilibrium velocity might be below maxSpeed
 - Agents move at equilibrium speed, not max
 - Result: Variable speeds based on local forces
 
 **Tuning Tip**:
-- If agents all move at maxSpeed: Forces are too strong OR friction is too low
-- If agents barely move: Forces are too weak OR friction is too high
+- If agents all move at maxSpeed: Forces may be too strong or the `Damped` retention factor too high
+- If agents barely move: Forces may be too weak or the `Damped` retention factor too low
 
 ---
 
@@ -495,8 +522,8 @@ MaxSpeed acts as a "ceiling" for all motion:
 **Symptoms**: Agents frozen or "giggling" in place
 
 **Causes**:
-1. **Friction too high** (e.g., 0.99)
-   - Fix: Reduce to 0.95 or lower
+1. **Retention factor too low in `Damped` mode** (e.g., 0.85)
+   - Fix: Increase it toward 0.95-0.99, or select `ConstantSpeed` when damping is unwanted
 
 2. **Forces too weak** (e.g., weights all < 1.0)
    - Fix: Increase all weights 5-10x
@@ -505,8 +532,8 @@ MaxSpeed acts as a "ceiling" for all motion:
    - Fix: Increase to 10+
 
 **Debug**: Check average speed
-- Should be 20-80% of maxSpeed
-- If < 5%, forces or friction problem
+- There is no universal expected fraction of `MaxSpeed`; compare the observed value with the active
+  forces, speed model, and preset
 
 ---
 
@@ -518,8 +545,8 @@ MaxSpeed acts as a "ceiling" for all motion:
 1. **MaxSpeed too high** (e.g., 100)
    - Fix: Reduce to 10-20
 
-2. **Forces too strong** with low friction
-   - Fix: Reduce weights or increase friction
+2. **Forces too strong** with light damping (a retention factor near 1.0)
+   - Fix: Reduce weights or lower the `Damped` retention factor
 
 **Debug**: Check if most agents at maxSpeed
 - If yes: Hitting speed cap, need better balance
@@ -581,6 +608,7 @@ MaxSpeed acts as a "ceiling" for all motion:
 
 ### Balanced Flocking (Recommended)
 ```csharp
+SpeedModel = SpeedModel.Damped
 Friction = 0.95f
 MaxSpeed = 10f
 SeparationWeight = 5.0f
@@ -591,8 +619,9 @@ SenseRadius = 100f
 WanderStrength = 0.5f
 ```
 
-### Frictionless (Your Current Style)
+### No Damping (Current Renderer Mode)
 ```csharp
+SpeedModel = SpeedModel.ConstantSpeed
 Friction = 1.0f
 MaxSpeed = 10f
 SeparationWeight = 5.0f
@@ -616,7 +645,7 @@ WanderStrength = 0.5f
    - Separation:Cohesion = 5:1 (balanced)
    - Separation:Cohesion = 2:1 (tight)
 
-3. **Friction controls motion style**:
+3. **In `Damped` mode, the friction retention factor controls motion style**:
    - 1.0 = Spaceship (frictionless)
    - 0.98 = Bird (light drag)
    - 0.95 = Fish (medium drag)
@@ -630,33 +659,32 @@ WanderStrength = 0.5f
 
 ---
 
-## Advanced: Friction = 1.0 Behavior
+## Advanced: No-Damping Behavior
 
-**With friction = 1.0**, the simulation becomes **Newtonian** (no energy loss):
+**With `ConstantSpeed`, or `Damped` with friction = 1.0**, the integrator applies no velocity
+damping:
 
-1. **Agents accelerate to maxSpeed quickly**
-   - Once there, forces can't increase speed (clamped)
-   - Forces only change direction
+1. **The cap remains one-sided**
+   - Steering is added before the upper-speed clamp
+   - Opposing steering can reduce speed; aligned steering can increase it up to the cap
 
-2. **Constant kinetic energy**
-   - Like objects in space or frictionless surface
-   - Motion continues indefinitely
+2. **Only unforced velocity is retained**
+   - No damping multiplier is applied between steps
+   - Active steering can add or remove kinetic energy, so energy is not generally conserved
 
 3. **Different flocking dynamics**:
-   - Traditional boids assumes friction (energy loss)
-   - With friction = 1.0, you need different tuning:
-     - Lower force weights (agents stay at maxSpeed longer)
+   - This force-based configuration retains velocity between steps
+   - Without damping, use different tuning:
+     - Lower force weights produce smaller velocity changes per step
      - Focus on directional forces, not magnitude
 
-4. **Expected patterns**:
-   - Smooth flowing streams
-   - Less stopping and starting
-   - More orbital/circular patterns
-   - Agents rarely below 80% maxSpeed
+4. **Visual outcome**:
+   - Pattern and speed distribution depend on the active steering forces
+   - Validate any qualitative claim directly in the renderer
 
-**Tuning for Friction = 1.0**:
+**Tuning without damping**:
 - Use moderate weights (2.0-5.0 range)
-- MaxSpeed becomes the main speed control
+- MaxSpeed remains the upper-speed control, not a guaranteed travel speed
 - Increase SenseRadius (agents need more lookahead)
 - Reduce WanderStrength (randomness has lasting impact)
 
@@ -666,19 +694,21 @@ WanderStrength = 0.5f
 
 The simulation is a **force-based physics system** where:
 
-1. **Each frame**:
+1. **Each simulation step**:
    - Forces are calculated (separation, alignment, cohesion, wander)
    - Forces are integrated into velocity (`v += f * dt`)
-   - Friction damps velocity (`v *= friction`)
+   - `Damped` mode applies velocity retention (`v *= friction`); `ConstantSpeed` skips it
    - Speed is clamped (`if |v| > maxSpeed`)
    - Position is updated (`pos += v * dt`)
 
-2. **Key insight**: Equilibrium between forces and friction
-   - Friction = 1.0: No equilibrium, accelerate to maxSpeed
-   - Friction < 1.0: Equilibrium at `v = (f * dt) / (1 - friction)`
+2. **Key insight**: Force/damping equilibrium exists only in `Damped` mode
+   - Friction = 1.0: No damping equilibrium; a persistent aligned force can grow speed until the
+     upper cap, while opposing steering can reduce it
+   - Friction < 1.0: For a constant force, equilibrium is
+     `v = friction * (force * dt) / (1 - friction)`
 
 3. **Tuning philosophy**:
-   - Start with friction (sets motion style)
+   - Select `SpeedModel`, then tune friction if using `Damped`
    - Set maxSpeed (sets pace)
    - Balance forces (sets behavior)
    - Adjust radii (sets scale)

@@ -1,5 +1,8 @@
 # Self-Propelled Particles (Vicsek Model)
 
+> [`../../PROJECT_STATUS.md`](../../PROJECT_STATUS.md) is the live source of truth for verified
+> project performance state; this standalone demo has no dated benchmark result.
+
 An interactive browser-based demonstration of the **Vicsek model**, showcasing emergent collective motion and order-disorder phase transitions in active matter systems.
 
 ## Features
@@ -9,7 +12,7 @@ An interactive browser-based demonstration of the **Vicsek model**, showcasing e
 - **Multiple visualization modes**: Arrows, dots, motion trails, density heatmap
 - **Interactive controls**: Adjust noise level, interaction radius, speed, and population
 - **Preset configurations**: Ordered, critical, disordered, and band formation states
-- **Performance optimized**: Smooth 60 FPS with hundreds to thousands of particles
+- **Interactive browser demo**: Throughput depends on browser/hardware and is unmeasured here
 
 ## What is the Vicsek Model?
 

@@ -1,5 +1,8 @@
 # Boids Simulation - JavaScript Demo
 
+> [`../../PROJECT_STATUS.md`](../../PROJECT_STATUS.md) is the live source of truth for verified
+> project performance state; this standalone demo has no dated benchmark result.
+
 A beautiful, interactive browser-based implementation of Craig Reynolds' Boids algorithm, demonstrating emergent flocking behavior from simple steering rules.
 
 ## Features
@@ -8,7 +11,7 @@ A beautiful, interactive browser-based implementation of Craig Reynolds' Boids a
 - **Interactive controls**: Live parameter adjustment via sliders
 - **Visual polish**: Motion trails, debug visualization, gradient backgrounds
 - **Preset configurations**: Quick-load different behavioral patterns
-- **Performance optimized**: Smooth 60 FPS with hundreds of boids
+- **Interactive browser demo**: Throughput depends on browser/hardware and is unmeasured here
 - **Click to spawn**: Add boids dynamically by clicking the canvas
 
 ## How to Run
@@ -112,28 +115,31 @@ For each boid, each frame:
 - Debug overlay with circles and velocity vectors
 
 ### Performance
-- O(n²) neighbor search (acceptable for <1000 boids)
+- Each steering rule scans the boid collection directly (`index.html:398-462`)
 - Single-threaded JavaScript
-- ~60 FPS with 300-500 boids on modern hardware
+- Renderer FPS and supported population are unmeasured; no dated benchmark is recorded
 - Could be optimized with spatial partitioning (future enhancement)
 
 ## Comparison to C# Implementation
 
-This demo mirrors the canonical boids implementation in the main C# project (`SwarmSim.Core/Canonical/`):
+This demo shares the separation/alignment/cohesion vocabulary used by the canonical C# path, but
+the implementations are not feature- or performance-equivalent. See
+[`../IMPLEMENTATION_COMPARISON.md`](../IMPLEMENTATION_COMPARISON.md) for source-backed details.
 
 | Feature | C# Implementation | JS Demo |
 |---------|------------------|---------|
-| Steering model | Reynolds steering | ✅ Same |
-| Speed model | Constant speed | ✅ Same |
-| Separation weighting | 1/d with falloff | ✅ Same |
-| Alignment | Average neighbor velocity | ✅ Same |
-| Cohesion | Center of mass | ✅ Same |
-| Spatial optimization | Uniform grid (O(n)) | ❌ Naive (O(n²)) |
+| Steering model | Reynolds-style composable rules | Same rule family, different composition |
+| Speed model | Target-derived speed with priority droop and turn limiting | Fixed target speed after steering |
+| Separation weighting | Linear falloff with inverse-distance weighting and FOV weight | Linear falloff with inverse-distance weighting |
+| Alignment | FOV-weighted neighbor velocity | Average neighbor velocity |
+| Cohesion | FOV-weighted neighbor position | Average neighbor position |
+| Spatial lookup | Renderer uses a uniform grid | Each rule scans the collection directly |
 | FOV filtering | ✅ Cone-based | ❌ Omnidirectional |
-| Multi-group | ✅ Supported | ❌ Single group |
-| Combat/metabolism | ✅ Planned | ❌ Not applicable |
+| Multi-group | Stored group field; behavior semantics incomplete | ❌ Single collection |
+| Combat/metabolism | Future Phase 3 work | ❌ Not applicable |
 
-The JS demo prioritizes simplicity and educational clarity over the C# version's performance and feature completeness.
+The JS demo prioritizes simplicity and educational clarity. Neither renderer has a comparable dated
+performance result in this repository, and the canonical C# path remains incomplete.
 
 ## Educational Use
 

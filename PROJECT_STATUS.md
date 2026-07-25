@@ -19,6 +19,9 @@
 - Repository hygiene: the advertised MIT license is present; local debug captures, generated run
   outputs, and the unused vendored SDK installer are excluded from the tracked root set. The
   previously committed debug capture remains in Git history; no history rewrite was performed.
+- Documentation entrypoints now point back to this verified-state section and distinguish the
+  unmet performance objective from the dated legacy-core sample. Older phase/session prose remains
+  explicitly historical pending the dedicated archive pass in issue #15.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
@@ -28,6 +31,8 @@
 - Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 19 seconds of test
   execution (22.0 seconds command wall time), confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 19.87 seconds.
+  Command after the Release build:
+  `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
   The measured figures remained in the same broad range as the preceding 0.272 / 14.23 / 291.80 /
   0.153 baseline; all four were lower in this one local fully optimized-JIT sample:
   - 1k legacy agents: 0.172 ms/tick (5,801 operations/second)
@@ -46,6 +51,32 @@
   instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
+  Core scaffolding and the three steering-rule implementations exist. The perception contract is
+  incomplete (#18), composition violates its total `MaxForce` bound (#19), and rule dispatch is
+  positional: later rules are discarded and qualifying separation starves alignment, cohesion,
+  and wander, including wander-angle updates (#27).
+  Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
+  unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
+- Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
+  `WanderStrength > 0`, and canonical renderer seed/configuration wiring also has known gaps.
+  Seed/configuration/timestep reproducibility is therefore not established for those shipped
+  paths; [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17) owns the fixes and
+  long-horizon proving tests.
+- CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
+  `--preset` examples; only the five IDs printed under **Available presets** are registered. The
+  executable help/test correction is tracked in
+  [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+- Runtime parameter/help labels are partial and still advertise keys `1-7` while input accepts
+  **1-8**; the canonical **H** panel also omits several active controls. Friction key 8 is a no-op
+  for registered legacy presets because they inherit `ConstantSpeed`, and canonical settings do
+  not consume friction; only an explicit custom legacy `Damped` configuration uses it. Runtime
+  synchronization and regression coverage are tracked in
+  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+- Source comments in `SenseSystem` still claim inverse-distance separation, and the `ConstantSpeed`
+  XML comment still implies normalization that the upper-cap-only integrator does not perform.
+  Docs-only source correction is tracked in
+  [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
+  this reconciliation.
 - Test inventory: 68 xUnit facts across 9 test files, including four explicitly categorized
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
@@ -59,16 +90,22 @@
 
 ## Quick Context for Future Sessions
 
+> **HISTORICAL CONTEXT:** Numeric performance and test-count entries below preserve prior session
+> reports whose exact commands/hardware were not recorded; they are unmeasured for the current
+> state. Only the verified block above is current evidence.
+
 ### What This Project Is
-A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents @ 60 FPS with emergent behavior from simple rules. Data-oriented design (SoA), deterministic, zero-allocation hot paths.
+A 2D swarm simulation in C#/.NET 8.0 with an unmet target of 50k-100k interactive agents at
+60 FPS. Its data-oriented design emphasizes determinism and allocation-conscious hot paths; the
+verified block above records what is actually measured.
 
 ### What's Been Done
 
-**Session 1 - Phase 0 (Foundation)** ✅
+**Session 1 - Foundation (originally P0)** ✅
 - Solution structure, build system, core data structures
 - World class with SoA layout, Rng, MathUtils
-- 21 tests, Raylib rendering, full documentation
-- **Phase 0 Complete**
+- Original test snapshot (21 facts), Raylib rendering, full documentation
+- **Foundation Complete**
 
 **Session 2 - Phase 1 (Spatial Grid & Basic Movement)** ✅
 - ✅ **Spatial Grid**: UniformGrid with Head[]/Next[] linked lists, O(1) insertion, 3x3 queries
@@ -125,19 +162,26 @@ A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents 
 
 1. **Legacy Implementation** (`SwarmSim.Core/World.cs`, `Systems/`):
    - Structure-of-Arrays (SoA) with systems pipeline
-   - Force-based physics with friction
+   - Bounded steering from `BehaviorSystem` is integrated with selectable speed models; the
+     current renderer/presets use `ConstantSpeed` (no damping, upper cap only), while `Damped`
+     applies friction
    - Two-pass: SenseSystem → BehaviorSystem
    - **Status**: Working but deprecated, hard to debug
    - **Run with**: Default renderer (no `--canonical` flag)
 
 2. **Canonical Implementation** (`SwarmSim.Core/Canonical/`):
-   - Immutable `Boid` structs, pluggable `IRule` components
-   - Reynolds steering behaviors (not forces)
+   - Immutable `Boid` structs and isolated `IRule` implementations
+   - Reynolds-style steering rules with positional, incomplete world-level composition (#27)
    - Single-pass with per-agent decision-making
-   - **Status**: ~70% complete, needs multi-group + testing
-   - **Run with**: `dotnet run --project SwarmSim.Render --canonical`
+   - **Status**: core and rule implementations exist; perception, composition enforcement,
+     prescribed scenario acceptance, and instrumentation UX are partial; milestones 8-10 and
+     multi-group semantics incomplete
+   - **Run with**: `dotnet run --project SwarmSim.Render -- --canonical`
 
-**Before Phase 3**: We must complete the canonical implementation (milestones 8-10), add multi-group support, and validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what needs to happen next.
+**Before Phase 3**: We must resolve seeded reproducibility, perception, and composition defects;
+complete milestone 7's UX/test acceptance and milestones 8-10; add multi-group support; and
+validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what
+needs to happen next.
 
 **Recommendation**: All Phase 3+ features should be built on the canonical implementation, not the legacy one.
 
@@ -154,7 +198,10 @@ SwarmSim.Benchmarks/    - BenchmarkDotNet suite (references Core)
 ```
 
 ### Systems Pipeline Order
-1. SenseSystem → 2. BehaviorSystem → 3. CombatSystem → 4. ForageSystem → 5. ReproductionSystem → 6. MetabolismSystem → 7. IntegrateSystem → 8. LifecycleSystem
+1. `SenseSystem` → 2. `BehaviorSystem` → 3. optional `WanderSystem` → 4. `IntegrateSystem`
+
+Combat, forage, reproduction, metabolism, and lifecycle systems are future Phase 3+ work
+(`SwarmSim.Core/World.cs:119-144`).
 
 ### Data Layout (SoA)
 Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Group[]`, `State[]`, `Genome[]`
@@ -163,7 +210,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ## Implementation Priority Queue
 
-### Phase 0: Foundation (P0) - ✅ COMPLETE
+### Foundation Milestone (P0) - ✅ COMPLETE
 **Goal**: Basic data structures, World skeleton, can compile and run minimal simulation
 
 - [x] **Core Data Structures** (SwarmSim.Core/)
@@ -185,7 +232,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - [x] **Basic Tests** (SwarmSim.Tests/)
   - [x] `RngTests.cs` - 8 tests covering determinism, distributions, shuffling
   - [x] `WorldTests.cs` - 13 tests covering agents, boundaries, determinism
-  - [x] **All 21 tests passing**
+  - [x] **Original suite passing (21 facts)**
 
 - [x] **Minimal Render** (SwarmSim.Render/) ✅ COMPLETE
   - [x] Program.cs - Full Raylib implementation with window, world, render loop
@@ -201,7 +248,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 **Exit Criteria**: ✅ Can create World with 1000 agents, render them as dots, window runs at 60 FPS
 
-**Status**: ✅ **PHASE 0 COMPLETE** - All features implemented, tested, and documented.
+**Status**: ✅ **FOUNDATION COMPLETE** - All planned foundation features were recorded as complete.
 
 ---
 
@@ -256,41 +303,63 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ---
 
-### Canonical Boids Implementation (Post-P2 Rewrite) ~85% Complete
+### Canonical Boids Implementation (Post-P2 Rewrite)
 > **See `IMPLEMENTATION_EVOLUTION.md` and `filesAndResources/CanonicalBoids_SmoothingPlan.md` for full technical details**
 
-- **Status**: In active development, ~85% complete (smoothing system complete)
-- **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
+- **Status**: In active development; core scaffolding and rule implementations exist, but
+  perception, composition, instrumentation UX, milestones 8-10, multi-group semantics, and
+  canonical performance evidence remain incomplete
+- **Why the rewrite**: The legacy two-pass aggregate `BehaviorSystem` architecture had fundamental
+  issues even after it adopted bounded Reynolds-style steering:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
-  - Force/friction equilibrium created unpredictable parameter sensitivity
-  - 1/d² separation weighting caused numerical instability
-  - Non-canonical approach made tuning guidance from literature unusable
+  - Earlier `Damped`-mode force/friction equilibrium created unpredictable parameter sensitivity
+  - Early inverse-square separation was replaced by the current bounded linear radial falloff;
+    separation still participates in the opaque aggregate/force pipeline
+  - Aggregate-coupled rule calculations made standard tuning guidance and isolated diagnosis hard
 - **New approach**: Complete rewrite in `SwarmSim.Core.Canonical` namespace following Reynolds' canonical steering behaviors:
   - **Immutable data**: `readonly struct Boid`, functional transformations
-  - **Steering not forces**: `steering = clamp(desired - current, MaxForce)`
-  - **Constant speed**: Velocity normalized to TargetSpeed (no friction)
+  - **Isolated steering rules**: rules return `desired - current`; the caller clamps and arbitrates
+    contributions, with current composition defects tracked in #19 and #27
+  - **Direct speed control**: velocity is normalized without friction to `TargetSpeed` or the
+    priority-adjusted allowed speed (up to 3% lower at the current default)
   - **Single-pass**: All decision-making in one place per agent
-  - **Pluggable rules**: `IRule` interface (SeparationRule, AlignmentRule, CohesionRule)
+  - **Rule interface**: `IRule` implementations exist, but composition is positional and results
+    after slot 2 are discarded; #27 owns a real named composition surface
   - **FOV weighting**: Neighbors weighted by position in vision cone
-  - **Prioritized separation**: Separation gets the limited acceleration budget whenever anyone encroaches the ~1/3 sense-radius gap
+  - **Prioritized separation**: priority enters at 20% of sense radius by default and boosts
+    separation/reduces allowed speed; independently, a clamped separation vector whose squared
+    magnitude exceeds the current `1e-6` cutoff exhausts the remaining budget (#27)
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
-- **Completed**: Milestones 0-9 from `NewImplementation.md` + Phase C smoothing improvements
+- **Implemented components**: core scaffolding, steering-rule classes, and Phase C smoothing
   - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
-  - All 3 steering rules with 1/d weighting
+  - Separation with 1/d weighting and linear falloff; alignment averages velocity and cohesion
+    targets the weighted center of neighbors
   - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
   - FOV filtering with linear weight falloff
-  - Instrumentation system with per-agent perception data
   - **Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
     - Angular rate limiter (MaxTurnRateDegPerSecond) - prevents instant snaps
     - Priority hysteresis (enter/exit/hold thresholds) - prevents ping-pong
     - Shaped separation (lateral+away blending with smoothstep) - smooth collision avoidance
     - Gradual avoidance falloff - steering sharpness increases with proximity
-    - Smooth wander (continuous angle changes) - replaces chaotic randomness
-    - Soft gating for alignment/cohesion during priority - maintains group cohesion
+    - Smooth wander angle changes while force budget remains; qualifying separation pauses the
+      angle update as well as its contribution (#27)
+    - Alignment/cohesion attenuation is calculated during priority, but qualifying separation
+      currently exhausts the remaining budget before those contributions are applied (#27)
     - Whisker lookahead visualization (blue circle in overlay)
   - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
   - 12 unit tests passing (including new angular limiter and hysteresis tests)
+- **Milestone 2 partial**: grid neighbor queries do not enforce radius/self-exclusion, and neither
+  index/rule path applies toroidal neighbor deltas; #18 owns the full contract, equivalence, and
+  trajectory evidence
+- **Milestone 6 partial**: the composition path exists, but whisker plus separation can exceed the
+  total `MaxForce` budget (#19); positional slots, discarded later rules, and separation starvation
+  of alignment, cohesion, and wander remain tracked in #27
+- **Milestone 7 partial**: backend instrumentation and a basic selected-boid inspection overlay
+  exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
+  rule-toggle acceptance tests remain open in #40
+- **Milestones 3-6 acceptance partial**: direct rule tests exist, but the roadmap's multi-tick
+  behavioral/isolation/stability scenarios remain open in #41
 - **In Progress**: Milestones 8-10
   - Boundary testing (wrapping, reflection)
   - Spatial index equivalence tests
@@ -300,9 +369,10 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - **Not Started**: Full migration, performance validation, Phase 3 features
 - **How to run**:
   - Tests: `dotnet test --filter CanonicalBoidsTests`
-  - Renderer: `dotnet run --project SwarmSim.Render --canonical` (single-group)
+  - Renderer: `dotnet run --project SwarmSim.Render -- --canonical` (single-group)
   - Legacy: `dotnet run --project SwarmSim.Render` (multi-group, deprecated)
-- **Before Phase 3**: Must complete milestones 8-10, add multi-group support, validate performance
+- **Before Phase 3**: Must resolve #17-#19, complete milestone 7's UX/test acceptance and milestones
+  8-10, add multi-group support, and validate performance
 
 ---
 
@@ -312,12 +382,14 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 These improvements address fundamental architecture issues discovered during Phase 2 debugging and should be completed before continuing to Phase 3. They will provide a solid foundation for all future features.
 
 #### Part A: Canonical Boids Implementation (PRIORITY 1) - ✅ COMPLETE
-**Rationale**: Current implementation uses raw forces which caused parameter tuning issues. Steering behaviors are the industry-standard approach.
+**Historical rationale (before the completed refactor)**: The implementation used raw forces,
+which caused parameter-tuning issues. `BehaviorSystem` now computes bounded `desired - current`
+steering; the separate canonical path further isolates rules.
 
 - [x] **Refactor to Steering Behaviors** (SwarmSim.Core/Systems/)
   - [x] Changed BehaviorSystem to compute desired velocities (not raw forces)
   - [x] Implemented steering: `steer = clamp(desired - current, maxForce)`
-  - [x] Separation already uses 1/d (linear) weighting (was correct from Phase 2)
+  - [x] Separation already uses bounded linear radial falloff (corrected during Phase 2)
   - [x] Added MaxForce parameter to SimConfig (default 5.0)
   - [x] Semi-implicit Euler: `v += steer*dt; x += v*dt` in IntegrateSystem
 
@@ -415,12 +487,12 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 1. **Runtime Help System** ✅
    - [x] Add `--help` flag to SwarmSim.Render showing all command-line options
-   - [x] Add in-app help overlay (H key) showing all controls and their current state
+   - [x] Add in-app help overlay (H key); current text is partial/stale and tracked in issue #39
    - [x] Add configuration file examples for common use cases (`configs/` folder)
-   - [x] Document all keyboard shortcuts with grouping (see `CONTROLS.md` + help overlay)
+   - [x] Document all keyboard shortcuts with grouping (`CONTROLS.md` is the complete reference)
 
 2. **Command-Line Interface** ✅
-   - [x] Add command-line arguments for preset selection (`--preset peaceful`, `--preset warbands`)
+   - [x] Add command-line preset selection; stale help examples are tracked in issue #38
    - [x] Add `--config <path>` to load custom configuration from JSON file
    - [x] Add `--agent-count <n>` to override initial agent count
    - [x] Add `--benchmark` mode for headless performance testing
@@ -580,18 +652,22 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 ## Current Blockers & Questions
 
-1. **Canonical readiness**: milestones 8-10 are incomplete (boundary/reflection coverage,
-   grid-vs-naive equivalence, scale properties/metrics).
+1. **Canonical readiness**: seeded reproducibility, the perception/spatial-index contract,
+   force-budget enforcement, milestone 7 UX/test acceptance, and milestones 8-10 are incomplete
+   (#17-#19, #40). Prescribed milestone 3-6 scenarios remain unverified (#41), while
+   boundary/reflection coverage and scale properties/metrics are also open.
 2. **Feature parity**: canonical multi-group semantics and aggression support are not complete, so
    Phase 3 combat/metabolism work has no settled target model.
-3. **Performance evidence**: the legacy 50k path is far below 60 FPS in the 2026-07-25 sample;
-   canonical performance and allocations are unmeasured by the benchmark project.
-4. **Test-gate honesty**: 10k/50k timing tests warn but do not fail, and there is no hosted CI.
+3. **Performance evidence**: the legacy 50k simulation tick took 162.815 ms in the 2026-07-25
+   sample, well above a 16.67 ms single-step budget; renderer FPS, canonical throughput, and
+   allocations remain unmeasured.
+4. **Test-gate honesty**: timing facts now assert generous machine-relative scaling envelopes
+   outside the default hosted CI gate; absolute throughput remains reported-only evidence.
 5. **Maintainability**: renderer and canonical-world monoliths increase change and review cost;
    legacy/canonical duplication creates ongoing drift risk.
-6. **Documentation drift**: README and historical sections below still contain obsolete phase,
-   test-count, performance, and next-session claims. The verified-state section above wins until a
-   dedicated documentation consolidation slice reconciles them.
+6. **Documentation drift**: high-traffic entrypoints are reconciled, but the explicitly historical
+   sections below still preserve obsolete phase, performance, and next-session claims pending the
+   archive/consolidation work in issue #15.
 
 ---
 
@@ -599,8 +675,8 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 ### 2025-11-12 (Session 3.3 - Canonical Smoothing System COMPLETE ✅)
 - **Implemented Complete Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
-  - **Smooth Wander**: Replaced chaotic random jitter with continuous angle changes
-    - Added `WanderRate` parameter (1.5 rad/s) for angle change speed
+  - **Smooth Wander**: Replaced per-tick direction reseeding with a persistent, budget-gated angle
+    - Added `WanderRate` parameter (1.5 rad/s) for eligible angle changes
     - Each agent maintains persistent `_wanderAngles[]` that evolve smoothly over time
     - Creates natural, flowing movement instead of jittery random directions
   - **Gradual Avoidance Falloff**: Replaced sharp threshold activation with smooth ramp
@@ -700,7 +776,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - Part A: Canonical Boids Implementation (steering behaviors, 1/d separation, FOV)
   - Part B: Fixed Timestep & Decoupling (accumulator loop, snapshots, interpolation)
 - **Rationale**: Issues discovered during P2 debugging revealed fundamental architecture gaps
-  - Current force-based approach caused parameter tuning pathologies
+  - The pre-refactor raw-force/damped approach caused parameter-tuning pathologies
   - Simulation coupled to render rate (not deterministic across framerates)
   - Industry-standard approaches (Reynolds steering, Gaffer fixed timestep) will provide solid foundation
 - **References**: Added `DecouplingPlan.md` and `MakingBoidsBetter.md` as design documents
@@ -745,7 +821,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 - Solution builds with 0 warnings, 0 errors
 - **✅ PHASE 1 COMPLETE** - Ready for Phase 2 (Boids)
 
-### 2025-11-10 (Session 1 - Phase 0 COMPLETE ✅)
+### 2025-11-10 (Session 1 - FOUNDATION COMPLETE ✅)
 - Created PROJECT_STATUS.md as persistent memory document
 - Solution reorganized: removed root project, added Directory.Build.props
 - **Implemented complete P0 foundation**:
@@ -755,7 +831,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - Rng.cs with Gaussian, unit vectors, circle sampling, shuffle
   - MathUtils.cs with full 2D vector operations
   - World.cs with 13 SoA arrays, agent lifecycle, boundary modes
-- **Created 21 passing tests** verifying determinism and core functionality
+- **Created a passing 21-fact suite** verifying determinism and core functionality
 - **Implemented Raylib rendering**:
   - Full visualization with 1920x1080 window
   - 16-color palette for agent groups
@@ -768,7 +844,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - QUICKSTART.md - 5-minute getting started guide
   - PublishScript.md analysis and explanation
 - Solution builds with 0 warnings, 0 errors
-- **✅ PHASE 0 COMPLETE** - Ready to move to Phase 1
+- **✅ FOUNDATION COMPLETE** - Ready to move to Phase 1
 
 ---
 

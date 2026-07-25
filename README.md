@@ -1,6 +1,12 @@
 # SwarmingLilMen
 
-A high-performance 2D swarm simulation built from first principles in C#/.NET 8.0, targeting 50k-100k interactive agents at 60 FPS with emergent behavior from simple rules.
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state; older plans and milestone prose are context only.
+
+SwarmingLilMen explores the smallest reusable contracts for a generalized experimental engine for
+emergent multi-agent systems. Its current proving ground is a 2D boids/swarm simulation built from
+first principles in C#/.NET 8.0; the generalized kernel remains roadmap work. The scale figures
+below are goals, not achieved throughput claims.
 
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
 ![.NET](https://img.shields.io/badge/.NET-8.0-blue)
@@ -9,36 +15,44 @@ A high-performance 2D swarm simulation built from first principles in C#/.NET 8.
 ## 🎯 Project Goals
 
 - **Emergence over scripts**: Few simple, composable rules → rich macro patterns
-- **Performance**: 50k-100k agents @ 60 FPS interactive; 1M+ headless
-- **Determinism**: Fixed timestep, reproducible with seeded RNG, record/replay
+- **Performance target (unmet)**: 50k-100k agents at 60 FPS interactive; 1M+ headless
+- **Determinism goal**: Fixed timestep, reproducible seeded runs, and record/replay; current seed
+  wiring limitations are tracked in [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17)
 - **Observability**: Metrics, snapshots, profiling, property tests, benchmarks
 - **Extensibility**: Small public API, Structure-of-Arrays internals, modular systems
 
 ## 📝 Implementation Note
 
-This project is undergoing an architectural transition from a systems-based force approach to Reynolds' canonical steering behaviors. Two implementations currently exist side-by-side:
-- **Legacy** (default): Force-based SoA systems architecture
-- **Canonical** (`--canonical` flag): Steering behaviors, ~70% complete
+This project is undergoing an architectural transition from an aggregate-driven systems approach
+to isolated, Reynolds-style steering rules. Two implementations currently exist side-by-side:
+- **Legacy** (default): Aggregate-driven SoA steering systems architecture
+- **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
+  exist, but the perception contract, force-budget enforcement, and instrumentation UX remain
+  partial; milestones 8-10 and multi-group semantics are also incomplete
 
 For developers: See `IMPLEMENTATION_EVOLUTION.md` for the full story on why we pivoted and what's next. New features should target the canonical implementation.
 
-## ✨ Features (Planned)
+## ✨ Current Capabilities
 
-### Current (Phase 0 - 80% Complete)
 - ✅ Data-oriented design with Structure of Arrays (SoA) layout
-- ✅ Deterministic simulation with seeded random number generation
-- ✅ Agent genetics with mutation
+- ⚠️ Fixed-timestep seeded paths exist, but legacy wander and canonical seed-wiring defects
+  currently prevent a general reproducibility claim; see
+  [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17)
+- ✅ Agent-genome data structures and mutation API
 - ✅ Configurable simulation parameters with presets
-- ✅ Comprehensive test suite (21 tests)
-- ⏳ Basic visualization (in progress)
+- ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
+- ✅ Opt-in canonical single-group renderer with steering instrumentation
+- ✅ 68-test xUnit inventory; the 64 non-performance facts form the hosted CI gate
 
-### Upcoming Phases
-- **Phase 1**: Spatial partitioning (uniform grid), basic movement systems
-- **Phase 2**: Boids flocking behavior (separation, alignment, cohesion)
+### Remaining Direction
+- **Canonical readiness**: Seeded reproducibility (#17), the perception/spatial-index contract
+  (#18), force-budget enforcement (#19), prescribed behavioral scenarios (#41), instrumentation
+  UX (#40), boundary/reflection coverage, scale properties/metrics, multi-group behavior, and
+  canonical benchmarks
 - **Phase 3**: Multi-group interactions, combat, metabolism
 - **Phase 4**: Reproduction, evolution, trait drift
 - **Phase 5**: SIMD optimization, parallelization, NativeAOT compilation
-- **Phase 6**: Presets, replay system, advanced metrics
+- **Phase 6**: Additional scenario presets, replay system, advanced metrics
 
 ## 🚀 Quick Start
 
@@ -79,25 +93,58 @@ dotnet run --project SwarmSim.Benchmarks -c Release
 ```
 
 While the renderer is running:
-- Press **H** to toggle the in-app help overlay with every control.
-- Press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
+- Press **H** to toggle the partial in-app help overlay; use [`CONTROLS.md`](CONTROLS.md) for the
+  complete list. Runtime overlay drift is tracked in
+  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+- Legacy renderer: press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
+- Canonical renderer: press **O** to toggle the interaction overlay and **Tab** to cycle the tracked
+  boid.
 - See [`CONTROLS.md`](CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
 
 ### Command-Line Options
 SwarmSim.Render now accepts a lightweight CLI so you can start with presets or external configs without modifying code:
 
-```
-SwarmSim.Render [OPTIONS]
+```text
+Usage: SwarmSim.Render [OPTIONS]
 
-  -h, --help                Show help and exit
+Options:
+  -h, --help                Show this help message and exit
   -v, --version             Show version information
-  -l, --list-presets        Print available presets
-  -p, --preset NAME         Load a preset (balanced, strong-separation, etc.)
-  -c, --config FILE         Load configuration from JSON (see configs/ folder)
-  -n, --agent-count N       Override initial agent count (default 400)
-  -b, --benchmark           Run a headless benchmark (no window)
+  -l, --list-presets        List built-in presets and exit
+  -p, --preset NAME         Load preset configuration (e.g., peaceful, warbands)
+  -c, --config FILE         Load configuration from JSON file
+  -n, --agent-count N       Override initial agent count (default: 400)
+  -b, --benchmark           Run in headless benchmark mode (no window)
+      --canonical           Launch the single-group canonical boids renderer
       --minimal             Launch the minimal debugging harness
+
+Examples:
+  SwarmSim.Render
+  SwarmSim.Render --preset peaceful
+  SwarmSim.Render --config configs/warbands.json -n 5000
+  SwarmSim.Render --benchmark --agent-count 20000
+
+Interactive Controls:
+  Press H inside the application to toggle the help overlay.
+  Press F12 to view snapshot/debug information.
+
+Available presets:
+  balanced        - Balanced (Recommended) :: Canonical boids tuning with smooth flocking
+  strong-separation - Strong Separation :: Agents prioritize personal space, useful for dense scenes
+  tight-flocking  - Tight Flocking :: Emphasizes cohesion/alignment for ribbon-like formations
+  fast-loose      - Fast & Loose :: Higher speed ceiling with lighter cohesion
+  slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
+
+> **Known executable-help defects:**
+>
+> - `peaceful` and `warbands` in the verbatim help text are JSON configuration names, not registered
+>   `--preset` IDs. Use one of the five IDs under **Available presets**, or load
+>   `configs/peaceful.json` / `configs/warbands.json` with `--config`. The preset correction is
+>   tracked in [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+> - The copied F12 instruction applies only to the legacy renderer. Canonical mode uses **O** for
+>   its interaction overlay and **Tab** to cycle the tracked boid; executable/runtime-help alignment
+>   is tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 
 Example:
 ```bash
@@ -239,10 +286,10 @@ while (true)
 // Peaceful flocking behavior
 var peaceful = SimConfig.PeacefulFlocks();
 
-// Aggressive warbands (groups fight)
+// Warbands-flavoured group settings; combat remains future Phase 3 behavior
 var combat = SimConfig.Warbands();
 
-// Rapid evolution with high mutation rates
+// High mutation settings; reproduction/evolution remains future Phase 4 behavior
 var evolution = SimConfig.RapidEvolution();
 
 // Or customize everything
@@ -250,7 +297,8 @@ var custom = new SimConfig
 {
     WorldWidth = 1920f,
     WorldHeight = 1080f,
-    MaxSpeed = 150f,
+    MaxSpeed = 10f,  // world-position units per second
+    MaxForce = 2.5f,
     SenseRadius = 60f,
     // ... 30+ parameters available
 };
@@ -293,30 +341,40 @@ Genome[] Genomes;          // Genetics
 ```
 
 ### Systems Pipeline
-Stateless systems run in sequence each tick:
-1. **SenseSystem** - Query neighbors via spatial grid
-2. **BehaviorSystem** - Boids rules → forces
-3. **CombatSystem** - Resolve attacks
-4. **ForageSystem** - Energy gain from food
-5. **ReproductionSystem** - Spawn offspring with mutations
-6. **MetabolismSystem** - Energy drain, aging
-7. **IntegrateSystem** - Apply forces, update positions
-8. **LifecycleSystem** - Compact dead agents
+The active legacy path rebuilds the uniform grid, then runs these systems in sequence each tick
+(`SwarmSim.Core/World.cs:119-137,294-320`):
+1. **SenseSystem** - Query same-group neighbors and aggregate boids inputs
+2. **BehaviorSystem** - Convert separation, alignment, and cohesion inputs to steering
+3. **WanderSystem** - Optional wander contribution
+4. **IntegrateSystem** - Apply steering, speed constraints, and boundary behavior
+
+Combat, forage, reproduction, metabolism, and lifecycle systems remain future Phase 3+ work.
 
 ### Performance Principles
-- **Zero allocations** during tick loop (enforced by tests)
+- Allocation-conscious hot paths; there is currently **no enforced allocation gate**
 - No LINQ, delegates, or boxing in hot paths
 - Tight `for` loops with hoisted invariants
 - Direct/static calls over virtual in inner loops
 
-## 📈 Performance Targets
+## 📈 Performance Targets and Evidence
 
-| Phase | Agents | FPS | Allocs/Tick | Status |
-|-------|--------|-----|-------------|--------|
-| P0    | 1k     | TBD | TBD         | In Progress |
-| P1    | 50k    | 60+ | 0           | Planned |
-| P2    | 50k    | 60+ | 0           | Planned |
-| P5    | 200k+  | 60+ | 0           | Planned |
+The interactive objective is **50k-100k agents at 60 FPS** and the headless objective is **1M+
+agents**. Both are targets; neither is currently verified. The latest comparable legacy tick sample
+was captured on 2026-07-25 with:
+
+```bash
+dotnet build SwarmingLilMen.sln --configuration Release
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
+```
+
+| Evidence | Result | Interpretation |
+|----------|--------|----------------|
+| Legacy 1k tick | 0.172 ms/tick | One local reported sample, not a renderer FPS result |
+| Legacy 10k tick | 8.839 ms/tick | One local reported sample |
+| Legacy 50k tick | 162.815 ms/tick (6.14 operations/second) | The 16.67 ms/tick target is unmet |
+| Legacy 50k grid rebuild | 0.102 ms | Grid-only measurement, not full simulation cost |
+| Canonical throughput | Unmeasured | No canonical BenchmarkDotNet comparison exists |
+| Allocations per tick | Unmeasured | No allocation gate exists |
 
 ## 🤝 Contributing
 
@@ -331,15 +389,11 @@ Quick checklist:
 
 ## 📋 Development Status
 
-This project is in **early development** (Phase 0). See [PROJECT_STATUS.md](PROJECT_STATUS.md) for detailed implementation progress.
-
-**Current Phase**: P0 - Foundation (80% complete)
-- ✅ Core data structures
-- ✅ World management
-- ✅ Test suite
-- ⏳ Rendering layer
-
-**Next Phase**: P1 - Spatial Grid & Basic Movement
+Legacy Phases 0-2, fixed-timestep running, snapshot interpolation, and the renderer are implemented.
+The project is now completing canonical readiness before Phase 3; seeded reproducibility,
+perception semantics, force-budget enforcement, instrumentation UX, milestones 8-10, multi-group
+semantics, canonical performance evidence, and renderer automation remain open. See
+[PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
 ## 🔧 Troubleshooting
 
@@ -356,7 +410,7 @@ dotnet build
 - Tests require deterministic behavior - avoid time-based randomness
 
 ### Performance Issues
-- Always benchmark in Release mode: `dotnet run -c Release`
+- Always benchmark in Release mode: `dotnet run --project SwarmSim.Benchmarks --configuration Release`
 - Use Rider's profiling tools (CPU/Memory) for analysis
 - Check allocations with `dotnet-counters` or dotMemory
 
