@@ -1,0 +1,7 @@
+# Trusted-project defaults for this T1 dual-runtime repository.
+# Approval, sandbox, and machine trust remain user-owned settings.
+
+[features]
+hooks = true
+multi_agent = false
+

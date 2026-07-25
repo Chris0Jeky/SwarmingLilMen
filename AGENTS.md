@@ -1,23 +1,106 @@
-# Repository Guidelines
+# AGENTS.md - SwarmingLilMen operating guide
 
-## Project Structure & Module Organization
-`SwarmingLilMen.sln` ties together four primary projects: `SwarmSim.Core` (SoA simulation engine), `SwarmSim.Render` (Raylib visualization shell), `SwarmSim.Tests` (xUnit test suite), and `SwarmSim.Benchmarks` (BenchmarkDotNet harness). Docs and helper scripts live under `filesAndResources/`. Keep new runtime assets inside `SwarmSim.Render/assets` (create if needed) and preserve deterministic presets in `SwarmSim.Core/SimConfig*.cs`.
+This is the repository contract for Codex and other coding agents. `CLAUDE.md` is the Claude
+entrypoint and points back here for shared project rules. Current state lives in
+`PROJECT_STATUS.md`; historical plans are context, not proof.
 
-## Build, Test, and Development Commands
-- `dotnet restore` – pull NuGet dependencies across the solution.
-- `dotnet build` – compile all projects; treat warnings-as-errors for core changes.
-- `dotnet run --project SwarmSim.Render` – launch the interactive renderer (Debug for iteration, Release for perf checks).
-- `dotnet run --project SwarmSim.Benchmarks -c Release` – gather benchmark baselines; never run in Debug.
-- `dotnet test` or `dotnet test --filter "FullyQualifiedName~RngTests"` – execute all or targeted xUnit suites; add `-v detailed` when diagnosing CI issues.
+## Runtime and authority
 
-## Coding Style & Naming Conventions
-Follow the repo’s `Directory.Build.props`: file-scoped namespaces, tabs converted to 4-space indentation, `PascalCase` for types/methods/properties, `_camelCase` for private fields, and `camelCase` locals. Public APIs require XML docs, and hot paths must avoid allocations, LINQ, and virtual dispatch; prefer `readonly struct` patterns and explicit loops. Nullable reference types are enabled—resolve warnings rather than suppressing them.
+- Tier: T1 sandbox, public repository, dual runtime (Claude and Codex). The declaration is
+  `.agent-harness/tier.json`.
+- Work inline by default. Use another agent only for a disjoint read-only review or when the user
+  explicitly asks for parallel work. One writer owns the checkout.
+- Reversible repository edits, local restores/builds/tests, small commits, pushes, and draft PRs
+  are in scope. Destructive operations, deployments, secrets, production data, and public sharing
+  outside the existing repository need explicit user scope.
+- Preserve unrelated user changes. Never stash, reset, clean, restore, or switch branches merely
+  to obtain a clean tree.
+- The Codex deny-floor adapter is `.codex/hooks.json`. It is a tripwire only and is not active until
+  its exact definition is reviewed and trusted through `/hooks` in a fresh Codex session.
 
-## Testing Guidelines
-Place tests beside the feature they cover inside `SwarmSim.Tests` (e.g., `WorldTests`, `GenomeTests`). Name facts descriptively: `Component_Action_Expectation`. Favor deterministic seeds so results mirror `World` behavior. Before opening a PR, run `dotnet test --collect:"XPlat Code Coverage"` if you touched core systems and add property/determinism tests whenever a new agent rule is introduced. Failures should be reproducible with `dotnet test -v detailed`.
+## Mission and current direction
 
-## Commit & Pull Request Guidelines
-Use conventional commits (`feat:`, `fix:`, `perf:`, `docs:`) that summarize the change scope, and keep branches prefixed by feature or bug identifiers (e.g., `feature/boids-grid`). Each PR should include: problem summary, approach, validation commands, and screenshots or perf tables when touching renderer or benchmarks. Update `PROJECT_STATUS.md` for milestone progress and reference any relevant design notes (e.g., `CLAUDE.md`) in your description so reviewers can trace assumptions.
+SwarmingLilMen explores high-performance deterministic 2D swarm simulation in C#/.NET 8. The
+headline goal is emergent behavior at 50k-100k interactive agents and 1M+ headless agents, with
+observable, reproducible behavior and allocation-conscious hot paths.
 
-## Performance & Configuration Tips
-Benchmark any change affecting the tick loop and capture allocations via Rider/dotTrace before and after. When testing large swarms, seed configurations with `SimConfig.Warbands()` or other presets to guarantee reproducibility. Keep configuration defaults inside `SimConfig` so presets stay synchronized with documentation and Quickstart examples.
+Two implementations coexist:
+
+- `SwarmSim.Core/World.cs` plus `Systems/` is the legacy SoA pipeline used by the default renderer
+  and current BenchmarkDotNet suite.
+- `SwarmSim.Core/Canonical/` is the intended future direction: Reynolds-style composable steering,
+  fixed speed/turn constraints, spatial-index abstraction, and richer instrumentation. It runs with
+  `--canonical` but is not yet the default.
+
+New Phase 3+ behavior belongs on the canonical path unless the task explicitly concerns legacy
+parity, comparison, or removal. Do not delete either implementation without a recorded migration
+decision.
+
+## Repository map
+
+- `SwarmSim.Core/` - simulation, configuration, deterministic RNG, snapshots, fixed-step runner.
+- `SwarmSim.Core/Canonical/` - canonical boids world, rules, spatial indexes, instrumentation.
+- `SwarmSim.Render/` - Raylib UI and CLI; `Program.cs` is currently a large integration seam.
+- `SwarmSim.Tests/` - xUnit behavior, determinism, CLI/config, and timing-oriented tests.
+- `SwarmSim.Benchmarks/` - BenchmarkDotNet coverage for the legacy world and uniform grid.
+- `js-demos/` - independent browser demonstrations (boids, Vicsek, ACO, PSO).
+- `PROJECT_STATUS.md` - named live-state file. Read its top verified-state section first.
+- `IMPLEMENTATION_EVOLUTION.md` and `PHASE_3_READINESS_CHECKLIST.md` - migration rationale and
+  remaining canonical work; validate their claims against code/tests before repeating them.
+
+## Commands
+
+```powershell
+dotnet restore SwarmingLilMen.sln
+dotnet build SwarmingLilMen.sln --configuration Release
+dotnet test SwarmingLilMen.sln --configuration Release
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --filter "FullyQualifiedName~CanonicalBoidsTests"
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --collect:"XPlat Code Coverage"
+dotnet run --project SwarmSim.Render -- --help
+dotnet run --project SwarmSim.Render -- --canonical
+dotnet run --project SwarmSim.Benchmarks --configuration Release
+```
+
+Always benchmark in Release. Renderer launch, visual behavior, profiler captures, and full
+BenchmarkDotNet runs are separate evidence; ordinary unit-test success does not prove them.
+
+## Invariants
+
+1. Simulation behavior is deterministic for a fixed seed/configuration/timestep. Do not introduce
+   wall-clock randomness or unstable iteration order into the core.
+2. Hot paths avoid avoidable allocations, LINQ, boxing, exceptions for flow control, and opaque
+   virtual dispatch. Measure before claiming zero allocation.
+3. Configuration defaults and presets stay synchronized with docs and JSON examples.
+4. Snapshot interpolation is valid only when capture/mutation versions and array lengths are
+   compatible. World mutations outside `SimulationRunner.Advance()` call
+   `NotifyWorldMutated()` through the renderer refresh path.
+5. Public APIs use nullable annotations and XML documentation; warnings are errors.
+6. New agent behavior includes deterministic behavior tests and, where meaningful, property or
+   equivalence tests.
+7. The 50k/60 FPS objective is not currently enforced by the test suite: timing tests may print a
+   warning and still pass. Report measured performance separately from pass/fail status.
+
+## Current high-risk seams
+
+- Canonical milestones 8-10 remain incomplete: boundary/reflection coverage, grid-vs-naive
+  equivalence, scale properties/metrics, multi-group behavior, and canonical benchmarks.
+- The renderer is a 1,800+ line static integration class; changes require narrow scope and a visual
+  or CLI-specific check in addition to tests where applicable.
+- Legacy and canonical behavior/configuration can drift because both remain live.
+- There is no GitHub Actions workflow, no open issue backlog, and no automated exact-head gate.
+- README/status history contains stale milestone and performance claims. The verified-state section
+  at the top of `PROJECT_STATUS.md` wins until broader documentation is reconciled.
+
+## Workflow and completion
+
+1. Inspect instructions, `git status --short --branch`, the top of `PROJECT_STATUS.md`, and the
+   files/tests for the requested seam.
+2. Make the smallest coherent change. Preserve hot-path and determinism constraints.
+3. Run the narrowest proving check, then the solution gate when warranted. Core changes also run
+   coverage; tick-loop changes need Release benchmarks and allocation evidence.
+4. Review the diff for unrelated edits and update `PROJECT_STATUS.md` when verified facts or the
+   priority queue change.
+5. Use conventional, present-tense commits (`feat:`, `fix:`, `perf:`, `docs:`, `test:`, `chore:`).
+   Do not add agent-attribution trailers.
+6. Close with changed / verified / not verified / failures or workarounds / residual risk / next
+   safe slice. Never turn warnings, stale prose, or unrun checks into success claims.

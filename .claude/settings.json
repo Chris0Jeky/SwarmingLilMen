@@ -1,0 +1,45 @@
+{
+  "includeCoAuthoredBy": false,
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Read(*)",
+      "Grep(*)",
+      "Glob(*)",
+      "Bash(pwd:*)",
+      "Bash(ls:*)",
+      "Bash(rg:*)",
+      "Bash(cat:*)",
+      "Bash(git status:*)",
+      "Bash(git log:*)",
+      "Bash(git diff:*)",
+      "Bash(git branch:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout:*)",
+      "Bash(gh :*)",
+      "Bash(dotnet --info:*)",
+      "Bash(dotnet --version:*)",
+      "Bash(dotnet restore:*)",
+      "Bash(dotnet build:*)",
+      "Bash(dotnet test:*)",
+      "Bash(dotnet run:*)",
+      "Bash(dotnet list:*)"
+    ],
+    "deny": [
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(rm -rf /:*)",
+      "Bash(rm -rf ~:*)",
+      "Bash(sudo *)",
+      "Bash(curl * | sh*)",
+      "Bash(wget * | sh*)"
+    ]
+  }
+}
+

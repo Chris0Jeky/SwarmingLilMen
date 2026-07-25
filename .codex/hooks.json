@@ -1,0 +1,20 @@
+{
+  "_comment": "SwarmingLilMen T1 Codex irreversible-command floor. Uses the shared Claude-home dispatcher at the reviewed 2026-07-25 SHA-256 marker below and passes --runtime codex so unsupported ask outcomes fail closed. The adapter becomes active only after its exact definition is reviewed and trusted through /hooks in a fresh Codex session.",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "^Bash$",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "expected=4960baa3197d95324a3006f93267707992a4bc8a5f992b7d4ddb334d41a60e11; python3 \"$HOME/.claude/hooks/dispatch.py\" --event pre --runtime codex",
+            "commandWindows": "$expected='4960baa3197d95324a3006f93267707992a4bc8a5f992b7d4ddb334d41a60e11'; py -3 $env:USERPROFILE/.claude/hooks/dispatch.py --event pre --runtime codex",
+            "timeout": 5,
+            "statusMessage": "Checking irreversible-command policy"
+          }
+        ]
+      }
+    ]
+  }
+}
+

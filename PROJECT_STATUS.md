@@ -1,9 +1,43 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2025-11-12 (Session 3.3 - Canonical Smoothing Complete)
-**Current Phase**: Architecture Improvements (Post-P2) - ✅ COMPLETE (Canonical Boids + Fixed Timestep + Smooth Avoidance)
+**Last Updated**: 2026-07-25 (repository and agent-control audit)
+**Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
-> **IMPORTANT FOR FUTURE CLAUDE INSTANCES**: This document is your primary memory and source of truth for project status. Read this FIRST before making any changes. Update it LAST after completing work. This ensures continuity across conversation restarts.
+> **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
+> session log below are retained as historical planning context and contain stale counts/claims.
+> Git, executable checks, and current code override them.
+
+## Verified Live State (2026-07-25)
+
+- Git: clean `main` at `51a8b62` before this audit, matching `origin/main`; last product commits
+  were merged on 2025-11-19.
+- GitHub: public repository; no open issues, no open PRs, no GitHub Actions workflow/run on the
+  current head.
+- Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
+- NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
+  updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
+  BenchmarkDotNet 0.15.8; compatibility has not been tested.
+- Release solution test: **68 passed, 0 failed, 0 skipped** in 41 seconds on 2026-07-25.
+- Release timing sample from `PerformanceTests`:
+  - 1k legacy agents: 0.272 ms/tick (3,670 FPS)
+  - 10k legacy agents: 14.23 ms/tick (70.3 FPS)
+  - 50k legacy agents: 291.80 ms/tick (3.4 FPS)
+  - 50k grid rebuild: 0.153 ms
+- The 50k timing test passes even when the 60 FPS target is missed because it emits a warning and
+  has no failing assertion. A green test run therefore does **not** prove the headline performance
+  objective.
+- Coverage report (`XPlat Code Coverage`, Release): **41.81% line / 35.44% branch overall**;
+  `SwarmSim.Core` is 80.79% line-covered and `SwarmSim.Render` is 1.77% line-covered. The
+  instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
+- Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
+  target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
+- Test inventory: 68 xUnit facts across 9 test files. No canonical BenchmarkDotNet comparison,
+  enforced allocation gate, renderer automation, or GitHub CI currently exists.
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,896 lines and
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 580 lines.
+- Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
+  in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
+  project adapter/settings. Codex hook activation still requires fresh-session `/hooks` trust.
 
 ---
 
@@ -529,7 +563,18 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 ## Current Blockers & Questions
 
-None currently.
+1. **Canonical readiness**: milestones 8-10 are incomplete (boundary/reflection coverage,
+   grid-vs-naive equivalence, scale properties/metrics).
+2. **Feature parity**: canonical multi-group semantics and aggression support are not complete, so
+   Phase 3 combat/metabolism work has no settled target model.
+3. **Performance evidence**: the legacy 50k path is far below 60 FPS in the 2026-07-25 sample;
+   canonical performance and allocations are unmeasured by the benchmark project.
+4. **Test-gate honesty**: 10k/50k timing tests warn but do not fail, and there is no hosted CI.
+5. **Maintainability**: renderer and canonical-world monoliths increase change and review cost;
+   legacy/canonical duplication creates ongoing drift risk.
+6. **Documentation drift**: README and historical sections below still contain obsolete phase,
+   test-count, performance, and next-session claims. The verified-state section above wins until a
+   dedicated documentation consolidation slice reconciles them.
 
 ---
 
@@ -769,12 +814,18 @@ dotnet run --project SwarmSim.Benchmarks/SwarmSim.Benchmarks.csproj -c Release
 
 ## Notes for Next Session
 
-**Where We Left Off**: About to start P0 implementation - basic data structures first.
+**Where We Left Off**: Phases 0-2 and fixed-timestep/smoothing work exist; the project is paused at
+canonical readiness before Phase 3. The repository has been dormant since November 2025 and was
+audited on 2026-07-25.
 
 **Next Steps**:
-1. Create Core/Genome.cs
-2. Create Core/Utils/Rng.cs
-3. Create Core/World.cs skeleton
-4. Write basic tests
+1. Add canonical boundary and grid-vs-naive equivalence tests (milestones 8-9).
+2. Define and test canonical multi-group semantics before adding combat/metabolism.
+3. Add canonical BenchmarkDotNet cases and a real allocation measurement; decide whether timing
+   thresholds should gate CI or remain explicitly observational.
+4. Add a minimal GitHub Actions workflow for Release build/test once the desired performance gate
+   policy is settled.
+5. Consolidate README and historical status claims against the verified-state section.
 
-**Remember**: Focus on getting the foundation right. Don't rush to features. The architecture is more important than speed at this stage.
+**Remember**: Do not start Phase 3 on the legacy path by default, and do not claim the headline
+performance target from a passing timing test alone.
