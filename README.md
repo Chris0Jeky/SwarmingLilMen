@@ -95,7 +95,9 @@ While the renderer is running:
 - Press **H** to toggle the partial in-app help overlay; use [`CONTROLS.md`](CONTROLS.md) for the
   complete list. Runtime overlay drift is tracked in
   [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
-- Press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
+- Legacy renderer: press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
+- Canonical renderer: press **O** to toggle the interaction overlay and **Tab** to cycle the tracked
+  boid.
 - See [`CONTROLS.md`](CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
 
 ### Command-Line Options
@@ -133,10 +135,15 @@ Available presets:
   slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
 
-> **Known help defect:** `peaceful` and `warbands` in the verbatim help text are JSON configuration
-> names, not registered `--preset` IDs. Use one of the five IDs under **Available presets**, or load
-> `configs/peaceful.json` / `configs/warbands.json` with `--config`. The executable help correction
-> is tracked in [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+> **Known executable-help defects:**
+>
+> - `peaceful` and `warbands` in the verbatim help text are JSON configuration names, not registered
+>   `--preset` IDs. Use one of the five IDs under **Available presets**, or load
+>   `configs/peaceful.json` / `configs/warbands.json` with `--config`. The preset correction is
+>   tracked in [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+> - The copied F12 instruction applies only to the legacy renderer. Canonical mode uses **O** for
+>   its interaction overlay and **Tab** to cycle the tracked boid; executable/runtime-help alignment
+>   is tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 
 Example:
 ```bash

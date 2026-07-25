@@ -183,8 +183,8 @@ This is the intended flow. The current grid index leaves radius candidates unfil
 ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)), and the current whisker plus
 separation path can exceed the intended `MaxForce` budget
 ([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)). Rule slots are hard-coded,
-later results are discarded, and a separation contribution above the current `1e-6`
-squared-magnitude cutoff exhausts the remainder before alignment, cohesion, and wander
+later results are discarded, and a clamped separation vector whose squared magnitude exceeds the
+current `1e-6` cutoff exhausts the remainder before alignment, cohesion, and wander
 ([issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)).
 
 ### Key Characteristics
@@ -442,10 +442,12 @@ After implementing the canonical boids foundation, testing revealed collision is
 
 ### Solutions Implemented
 
-**1. Smooth Wander** (`CanonicalWorld.cs:287-294`)
-- Each agent maintains a persistent wander angle that evolves continuously
+**1. Budget-Gated Smooth Wander** (`CanonicalWorld.cs:288-295`)
+- While `WanderStrength > 0` and force budget remains, each agent maintains a persistent wander
+  angle that evolves smoothly
 - `WanderRate` parameter (1.5 rad/s) controls turn rate
-- Angle changes by small random amounts each tick: `±WanderRate * dt`
+- Eligible ticks change the angle by small random amounts: `±WanderRate * dt`; disabled wander or
+  an exhausted budget pauses both the angle update and its steering contribution
 - Creates flowing, natural movement instead of discrete direction changes
 
 **2. Gradual Avoidance Falloff** (`CanonicalWorld.cs:300-322`)
@@ -464,9 +466,9 @@ After implementing the canonical boids foundation, testing revealed collision is
 **4. Attempted Soft Gating** (`CanonicalWorld.cs:247-273`)
 - Alignment/cohesion vectors are multiplied by
   `attenuation = 1.0 - (priorityBlend * 0.7)`
-- A separation contribution above the current `1e-6` squared-magnitude cutoff sets the remaining
-  force budget to zero before those vectors or wander are applied; wander's angle also does not
-  advance on that tick
+- A clamped separation vector whose squared magnitude exceeds the current `1e-6` cutoff sets the
+  remaining force budget to zero before those vectors or wander are applied; wander's angle also
+  does not advance on that tick
 - [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns named composition and the
   explicit arbitration contract
 
@@ -523,7 +525,7 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 ⚠️ **Partial Rule Composition** (Milestone 6):
 - Separation, alignment, and cohesion are hard-coded to slots 0/1/2; results from later `AddRule`
-  slots are discarded, and separation above the current cutoff exhausts the budget before
+  slots are discarded, and clamped separation above the current cutoff exhausts the budget before
   alignment, cohesion, and wander
 - [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns the named composition and
   arbitration contract

@@ -314,8 +314,8 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     after slot 2 are discarded; #27 owns a real named composition surface
   - **FOV weighting**: Neighbors weighted by position in vision cone
   - **Prioritized separation**: priority enters at 20% of sense radius by default and boosts
-    separation/reduces allowed speed; independently, separation above the current `1e-6`
-    squared-magnitude cutoff exhausts the remaining budget (#27)
+    separation/reduces allowed speed; independently, a clamped separation vector whose squared
+    magnitude exceeds the current `1e-6` cutoff exhausts the remaining budget (#27)
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
 - **Implemented components**: core scaffolding, steering-rule classes, and Phase C smoothing
@@ -660,8 +660,8 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 ### 2025-11-12 (Session 3.3 - Canonical Smoothing System COMPLETE ✅)
 - **Implemented Complete Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
-  - **Smooth Wander**: Replaced chaotic random jitter with continuous angle changes
-    - Added `WanderRate` parameter (1.5 rad/s) for angle change speed
+  - **Smooth Wander**: Replaced per-tick direction reseeding with a persistent, budget-gated angle
+    - Added `WanderRate` parameter (1.5 rad/s) for eligible angle changes
     - Each agent maintains persistent `_wanderAngles[]` that evolve smoothly over time
     - Creates natural, flowing movement instead of jittery random directions
   - **Gradual Avoidance Falloff**: Replaced sharp threshold activation with smooth ramp
