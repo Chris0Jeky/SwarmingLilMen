@@ -67,9 +67,16 @@
   executable help/test correction is tracked in
   [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
 - Runtime parameter/help labels are partial and still advertise keys `1-7` while input accepts
-  **1-8**; the canonical **H** panel also omits several active controls. Runtime synchronization
-  and regression coverage are tracked in
+  **1-8**; the canonical **H** panel also omits several active controls. Friction key 8 is a no-op
+  for registered legacy presets because they inherit `ConstantSpeed`, and canonical settings do
+  not consume friction; only an explicit custom legacy `Damped` configuration uses it. Runtime
+  synchronization and regression coverage are tracked in
   [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+- Source comments in `SenseSystem` still claim inverse-distance separation, and the `ConstantSpeed`
+  XML comment still implies normalization that the upper-cap-only integrator does not perform.
+  Docs-only source correction is tracked in
+  [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
+  this reconciliation.
 - Test inventory: 68 xUnit facts across 9 test files, including four explicitly categorized
   performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
   renderer automation, coverage gate, or absolute-throughput gate currently exists.
@@ -163,8 +170,8 @@ verified block above records what is actually measured.
    - **Run with**: Default renderer (no `--canonical` flag)
 
 2. **Canonical Implementation** (`SwarmSim.Core/Canonical/`):
-   - Immutable `Boid` structs, pluggable `IRule` components
-   - Reynolds steering behaviors (not forces)
+   - Immutable `Boid` structs and isolated `IRule` implementations
+   - Reynolds-style steering rules with positional, incomplete world-level composition (#27)
    - Single-pass with per-agent decision-making
    - **Status**: core and rule implementations exist; perception, composition enforcement,
      prescribed scenario acceptance, and instrumentation UX are partial; milestones 8-10 and
@@ -191,7 +198,10 @@ SwarmSim.Benchmarks/    - BenchmarkDotNet suite (references Core)
 ```
 
 ### Systems Pipeline Order
-1. SenseSystem → 2. BehaviorSystem → 3. CombatSystem → 4. ForageSystem → 5. ReproductionSystem → 6. MetabolismSystem → 7. IntegrateSystem → 8. LifecycleSystem
+1. `SenseSystem` → 2. `BehaviorSystem` → 3. optional `WanderSystem` → 4. `IntegrateSystem`
+
+Combat, forage, reproduction, metabolism, and lifecycle systems are future Phase 3+ work
+(`SwarmSim.Core/World.cs:119-144`).
 
 ### Data Layout (SoA)
 Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Group[]`, `State[]`, `Genome[]`

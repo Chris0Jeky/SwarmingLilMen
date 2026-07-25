@@ -32,7 +32,7 @@ Use `--agent-count N` to override the initial legacy count. Run `--help` for the
   (`SwarmSim.Core/World.cs:122-144`).
 - Every registered renderer preset and bundled JSON example currently uses the inherited `Wrap`
   default. `Reflect` and `Clamp` remain available to custom configurations and other callers
-  (`SwarmSim.Core/SimConfig.cs:15,221-230`; `SwarmSim.Render/Program.cs:110-215`; `configs/*.json`).
+  (`SwarmSim.Core/SimConfig.cs:15,221-230`; `SwarmSim.Render/Program.cs:110-217`; `configs/*.json`).
 
 Legacy runs with `WanderStrength = 0` have a seeded, fixed-timestep path. Wander-enabled legacy
 runs are not currently reproducible from the world seed because `WanderSystem` seeds itself from
@@ -50,6 +50,12 @@ reference is
 Runtime parameter/help labels currently advertise `1-7` even though input accepts **1-8**, and the
 canonical panel omits several active controls; executable synchronization is tracked in
 [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+
+Friction key **8** is currently a no-op for every registered legacy preset because those presets
+inherit `SpeedModel.ConstantSpeed`; it affects only an explicit custom legacy `Damped`
+configuration. Canonical settings do not consume friction. Issue #39 owns the executable/help
+alignment (`SwarmSim.Core/SimConfig.cs:22`; `SwarmSim.Core/Systems/IntegrateSystem.cs:42-70`;
+`SwarmSim.Render/Program.cs:81-99,110-217,1553-1593,1687-1704`).
 
 The canonical path has separate controls: **R** reset, **H** help, **O** selected-boid interaction
 overlay, **Tab** tracked-boid selection, parameter keys, and **F1-F5** presets

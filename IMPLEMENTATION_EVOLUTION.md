@@ -303,20 +303,23 @@ for each neighbor within separationRadius:
         strength = (separationRadius - distance) / separationRadius
         separation[i] += away * strength  // bounded linear radial falloff
 
-// In BehaviorSystem
+// In BehaviorSystem, after the highest-priority collision override
 float sepX = separationX[i];
 float sepY = separationY[i];
 float sepMag = sqrt(sepX² + sepY²);
-if (sepMag > 0):
-    float desiredSpeed = maxSpeed * separationWeight;
+if (remainingForce > 0 and sepMag > 0):
+    float crowdingBoost = ComputeCrowdingBoost(neighborCount);
+    float desiredSpeed = maxSpeed * separationWeight * crowdingBoost;
     float desiredVx = (sepX / sepMag) * desiredSpeed;
     float desiredVy = (sepY / sepMag) * desiredSpeed;
     float steerX = desiredVx - currentVx;
     float steerY = desiredVy - currentVy;
-    (steerX, steerY) = ClampMagnitude(steerX, steerY, maxForce);
-    fx[i] += steerX;
-    fy[i] += steerY;
+    (steerX, steerY) = ClampMagnitude(steerX, steerY, remainingForce);
+    AddPrioritizedSteer(totalSteering, remainingForce, steerX, steerY);
 ```
+
+This is a shape-only excerpt; the legacy collision override and shared priority budget are in
+`SwarmSim.Core/Systems/BehaviorSystem.cs:91-149`.
 
 **Canonical (Isolated Rule Steering)**:
 ```csharp
@@ -342,7 +345,9 @@ return steer;
 1. **Legacy aggregate**: Normalized away direction with bounded linear radial falloff
 2. **Canonical weighting**: The same radial falloff is multiplied by inverse distance and FOV weight
 3. **Priority boost**: Desired speed is multiplied by `SeparationPriorityBoost`
-4. **Caller budget**: The rule returns unclamped steering; `CanonicalWorld` clamps/composes it
+4. **Composition owner**: Legacy `BehaviorSystem` clamps and spends a shared budget beginning with
+   collision override; canonical rules return unclamped steering and `CanonicalWorld` owns its
+   separate, currently incomplete composition contract (#19, #27)
 
 ### Alignment
 
@@ -379,7 +384,8 @@ y[i] += vy[i] * dt;
 
 The current renderer and all registered presets select `SpeedModel.ConstantSpeed`; despite the
 name, that legacy branch skips friction and only clamps velocity when it exceeds `MaxSpeed`
-(`SwarmSim.Core/Systems/IntegrateSystem.cs:42-78`; `SwarmSim.Render/Program.cs:110-215,240-260`).
+(`SwarmSim.Core/Systems/IntegrateSystem.cs:42-78`; `SwarmSim.Core/SimConfig.cs:22`;
+`SwarmSim.Render/Program.cs:110-217,240-260`).
 
 **Canonical**:
 ```csharp
