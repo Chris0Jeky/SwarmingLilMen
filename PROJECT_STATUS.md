@@ -12,31 +12,37 @@
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`; last product commits
   were merged on 2025-11-19.
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
-  workflow supplies Release build/test checks (excluding `PerformanceTests`) on ubuntu and windows
-  for pushes and pull requests targeting `main`. No branch-protection ruleset exists, so merge
-  gating remains process-enforced. Pull-request jobs test GitHub's head/base merge ref;
+  workflow supplies Release build/test checks (excluding the `Performance` category) on ubuntu
+  and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
+  so merge gating remains process-enforced. Pull-request jobs test GitHub's head/base merge ref;
   `workflow_dispatch` is available for an exact branch-head rerun.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- Release solution test: **68 passed, 0 failed, 0 skipped** in 41 seconds on 2026-07-25.
-- Release timing sample from `PerformanceTests`:
-  - 1k legacy agents: 0.272 ms/tick (3,670 FPS)
-  - 10k legacy agents: 14.23 ms/tick (70.3 FPS)
-  - 50k legacy agents: 291.80 ms/tick (3.4 FPS)
-  - 50k grid rebuild: 0.153 ms
-- The 50k timing test passes even when the 60 FPS target is missed because it emits a warning and
-  has no failing assertion. A green test run therefore does **not** prove the headline performance
-  objective.
+- Default Release solution test (`Category!=Performance`): **64 passed, 0 failed, 0 skipped**
+  in 158 ms of test execution (4.4 seconds command wall time) on 2026-07-25.
+- Unfiltered Release solution test: **68 passed, 0 failed, 0 skipped** in 22.06 seconds of test
+  execution (25.1 seconds command wall time), confirming the full suite remains under one minute.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 23.47 seconds.
+  The measured figures remained in the same broad range as the preceding 0.272 / 14.23 / 291.80 /
+  0.153 baseline; the 1k sample was slower and the other three were faster:
+  - 1k legacy agents: 0.380 ms/tick (2,631 operations/second)
+  - 10k legacy agents: 10.032 ms/tick (99.7 operations/second)
+  - 50k legacy agents: 188.369 ms/tick (5.31 operations/second)
+  - 50k grid rebuild: 0.094 ms
+- Performance-category tests are excluded from the default CI suite. When run explicitly, all four
+  measurements gate generous machine-relative scaling envelopes and emit JSON records; absolute
+  throughput targets remain reported-only. A green default or performance-category run therefore
+  does **not** prove the 50k/60 FPS headline objective.
 - Coverage report (`XPlat Code Coverage`, Release): **41.81% line / 35.44% branch overall**;
   `SwarmSim.Core` is 80.79% line-covered and `SwarmSim.Render` is 1.77% line-covered. The
   instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
-- Test inventory: 68 xUnit facts across 9 test files. No canonical BenchmarkDotNet comparison,
-  enforced allocation gate, renderer automation, coverage gate, or performance gate currently
-  exists.
+- Test inventory: 68 xUnit facts across 9 test files, including four explicitly categorized
+  performance measurements. No canonical BenchmarkDotNet comparison, enforced allocation gate,
+  renderer automation, coverage gate, or absolute-throughput gate currently exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,896 lines and
   `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 580 lines.
 - Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
@@ -428,7 +434,8 @@ The current project lacks clear onboarding and runtime discoverability. Develope
    - [x] Create "Configuration Cookbook" with recipes for common scenarios
 
 5. **Testing Improvements** ✅
-   - [x] Convert performance tests to warnings instead of hard failures
+   - [x] Historical warning-only timing tests (superseded on 2026-07-25 by machine-relative
+     `Performance`-category assertions)
    - [x] Document that Phase 5 performance targets are deferred until optimization phase
    - [x] Add integration tests for command-line argument parsing
    - [x] Add tests for configuration loading from JSON

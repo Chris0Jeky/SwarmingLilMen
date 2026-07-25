@@ -77,8 +77,9 @@ BenchmarkDotNet runs are separate evidence; ordinary unit-test success does not 
 5. Public APIs use nullable annotations and XML documentation; warnings are errors.
 6. New agent behavior includes deterministic behavior tests and, where meaningful, property or
    equivalence tests.
-7. The 50k/60 FPS objective is not currently enforced by the test suite: timing tests may print a
-   warning and still pass. Report measured performance separately from pass/fail status.
+7. Performance-category tests gate generous machine-relative scaling envelopes outside the default
+   CI suite. Absolute throughput, including the 50k/60 FPS objective, is reported-only evidence;
+   report it separately from pass/fail status.
 
 ## Current high-risk seams
 

@@ -42,4 +42,4 @@ jobs:
         run: dotnet build SwarmingLilMen.sln --configuration Release --no-restore
 
       - name: Test (Release, excluding performance tests)
-        run: dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "FullyQualifiedName!~PerformanceTests" -- RunConfiguration.TreatNoTestsAsError=true
+        run: dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
