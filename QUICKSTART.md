@@ -132,11 +132,14 @@ Try changing these in SimConfig:
   `SpeedModel.Damped`
 - `BoundaryMode` - Wrap, Reflect, or Clamp
 
-**Active legacy behavior**:
-- `SenseRadius` - How far agents can "see" (20-100)
-- `SeparationWeight` - Avoid neighbors (0-3)
-- `AlignmentWeight` - Match neighbor velocity (0-3)
-- `CohesionWeight` - Move toward group center (0-3)
+**Active legacy behavior** (current registered-preset values, not validation limits):
+- `SenseRadius` - How far agents can "see" (80-120 across the shipped presets)
+- `SeparationWeight` - Avoid neighbors (2-10)
+- `AlignmentWeight` - Match neighbor velocity (2-5)
+- `CohesionWeight` - Move toward group center (0.3-3)
+
+`SimConfig` and the live parameter editor allow wider experiments; these ranges only summarize the
+five registered renderer presets (`SwarmSim.Render/Program.cs:110-215`).
 
 **Reserved Phase 3 energy settings** (only initial values are active today):
 - `InitialEnergy` - Starting energy (50-200)
