@@ -1,5 +1,6 @@
 using System;
 using SwarmSim.Core.Spatial;
+using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core.Canonical;
 
@@ -61,8 +62,8 @@ public sealed class GridSpatialIndex : ISpatialIndex
 
         for (int i = 0; i < boids.Length; i++)
         {
-            _xPositions[i] = boids[i].Position.X;
-            _yPositions[i] = boids[i].Position.Y;
+            _xPositions[i] = MathUtils.Wrap(boids[i].Position.X, _worldWidth);
+            _yPositions[i] = MathUtils.Wrap(boids[i].Position.Y, _worldHeight);
         }
 
         _grid.Rebuild(_xPositions, _yPositions, boids.Length);
@@ -87,10 +88,9 @@ public sealed class GridSpatialIndex : ISpatialIndex
         if (boids.Length > _capacity)
             throw new ArgumentException("Boid count exceeds initialized capacity.", nameof(boids));
 
-        Vec2 position = boids[selfIndex].Position;
         int found = _grid.QueryRadiusToroidal(
-            position.X,
-            position.Y,
+            _xPositions[selfIndex],
+            _yPositions[selfIndex],
             radius,
             selfIndex,
             _xPositions,

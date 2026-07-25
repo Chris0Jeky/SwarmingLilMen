@@ -223,21 +223,23 @@ public sealed class UniformGrid
         float radiusSquared = radius * radius;
         int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
         int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
-        int colReach = GetCellReach(radius, Cols);
-        int rowReach = GetCellReach(radius, Rows);
-        bool scanAllCols = colReach * 2 + 1 >= Cols;
-        bool scanAllRows = rowReach * 2 + 1 >= Rows;
-        int colCount = scanAllCols ? Cols : colReach * 2 + 1;
-        int rowCount = scanAllRows ? Rows : rowReach * 2 + 1;
+        GetDirectionalCellReach(
+            x, radius, _worldWidth, Cols, centerCol,
+            out int colsBefore, out int colsAfter, out bool scanAllCols);
+        GetDirectionalCellReach(
+            y, radius, _worldHeight, Rows, centerRow,
+            out int rowsBefore, out int rowsAfter, out bool scanAllRows);
+        int colCount = scanAllCols ? Cols : colsBefore + colsAfter + 1;
+        int rowCount = scanAllRows ? Rows : rowsBefore + rowsAfter + 1;
         int written = 0;
         truncated = false;
 
         for (int rowOffset = 0; rowOffset < rowCount; rowOffset++)
         {
-            int row = scanAllRows ? rowOffset : WrapCell(centerRow - rowReach + rowOffset, Rows);
+            int row = scanAllRows ? rowOffset : WrapCell(centerRow - rowsBefore + rowOffset, Rows);
             for (int colOffset = 0; colOffset < colCount; colOffset++)
             {
-                int col = scanAllCols ? colOffset : WrapCell(centerCol - colReach + colOffset, Cols);
+                int col = scanAllCols ? colOffset : WrapCell(centerCol - colsBefore + colOffset, Cols);
                 int agentIndex = _head[col + row * Cols];
                 while (agentIndex != -1)
                 {
@@ -274,14 +276,40 @@ public sealed class UniformGrid
         return col + row * Cols;
     }
 
-    private int GetCellReach(float radius, int cellCount)
+    private void GetDirectionalCellReach(
+        float coordinate,
+        float radius,
+        float extent,
+        int cellCount,
+        int centerCell,
+        out int cellsBefore,
+        out int cellsAfter,
+        out bool scanAll)
     {
-        if (radius >= cellCount * CellSize)
-            return cellCount;
+        if (cellCount == 1 || radius >= extent * 0.5f)
+        {
+            cellsBefore = 0;
+            cellsAfter = 0;
+            scanAll = true;
+            return;
+        }
 
-        // Include one guard cell because floating-point division can classify a point lying just
-        // below a cell edge into the next cell while it remains within the inclusive radius.
-        return Math.Min(cellCount, (int)MathF.Ceiling(radius / CellSize) + 1);
+        // Endpoint cells cover a short terminal cell across the seam without scanning a blanket
+        // extra ring around ordinary interior queries.
+        float firstCoordinate = MathUtils.Wrap(coordinate - radius, extent);
+        float lastCoordinate = MathUtils.Wrap(coordinate + radius, extent);
+        int firstCell = Math.Clamp((int)(firstCoordinate / CellSize), 0, cellCount - 1);
+        int lastCell = Math.Clamp((int)(lastCoordinate / CellSize), 0, cellCount - 1);
+
+        cellsBefore = WrapCell(centerCell - firstCell, cellCount);
+        cellsAfter = WrapCell(lastCell - centerCell, cellCount);
+        scanAll = cellsBefore + cellsAfter + 1 >= cellCount;
+
+        if (scanAll)
+        {
+            cellsBefore = 0;
+            cellsAfter = 0;
+        }
     }
 
     private static int WrapCell(int value, int length)

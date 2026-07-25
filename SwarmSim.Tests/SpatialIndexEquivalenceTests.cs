@@ -29,6 +29,22 @@ public sealed class SpatialIndexEquivalenceTests
         AssertEquivalent(boids, 100f, 100f, 10f, selfIndex: 0, radius: 3f, bufferLength: 8, new[] { 1 });
     }
 
+    [Fact]
+    public void SpatialIndexEquivalence_NormalizesUnwrappedPositionsBeforeGridPlacement()
+    {
+        var boids = CreateBoids((50f, 50f), (150f, 50f), (-50f, 50f));
+
+        AssertEquivalent(boids, 100f, 100f, 10f, selfIndex: 0, radius: 0f, bufferLength: 4, new[] { 1, 2 });
+    }
+
+    [Fact]
+    public void SpatialIndexEquivalence_ScansPartialTerminalCellAcrossSeam()
+    {
+        var boids = CreateBoids((50f, 1f), (50f, 99f));
+
+        AssertEquivalent(boids, 100f, 108f, 10f, selfIndex: 0, radius: 10f, bufferLength: 4, new[] { 1 });
+    }
+
     [Theory]
     [InlineData(8f, 8f)]
     [InlineData(20f, 20f)]
