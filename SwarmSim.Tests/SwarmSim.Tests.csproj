@@ -6,6 +6,11 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <!-- Keep machine-relative timing facts independent of test order and tier-promotion state. -->
+    <TieredCompilation>false</TieredCompilation>
+  </PropertyGroup>
+
   <ItemGroup>
     <ProjectReference Include="..\SwarmSim.Core\SwarmSim.Core.csproj" />
     <ProjectReference Include="..\SwarmSim.Render\SwarmSim.Render.csproj" />

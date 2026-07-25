@@ -21,11 +21,13 @@ public class PerformanceTests
         const int scenarioAgents = 50_000;
         const int measuredTicks = 100;
         // Dense fixed-area neighbor searches degrade per agent at larger populations. This 40x
-        // allowance remains a meaningful regression ceiling while leaving headroom over the
-        // 2026-07-25 same-run per-agent degradation factor of 23.77x.
+        // allowance remains a meaningful regression ceiling while leaving headroom over one
+        // 2026-07-25 local sample of about 22.2x per-agent degradation.
         const double maxPerAgentDegradation = 40.0;
         const double reportedTargetMilliseconds = 16.67;
 
+        // Match the heavier steering-weight preset used by WorldTickBenchmarks; the lower-scale
+        // tests intentionally exercise SimConfig defaults.
         static SimConfig CreateConfig(int agentCount) => new()
         {
             InitialCapacity = agentCount,
@@ -58,8 +60,8 @@ public class PerformanceTests
         const int referenceAgents = 500;
         const int scenarioAgents = 1_000;
         const int measuredTicks = 1_000;
-        // The 4x allowance leaves headroom over the 2026-07-25 same-run per-agent
-        // degradation factor of 1.29x while still detecting a large scaling regression.
+        // The 4x allowance leaves headroom over one 2026-07-25 local sample of about 1.8x
+        // per-agent degradation while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 4.0;
         const double reportedTargetMilliseconds = 1.0;
 
@@ -89,8 +91,8 @@ public class PerformanceTests
         const int referenceAgents = 1_000;
         const int scenarioAgents = 10_000;
         const int measuredTicks = 100;
-        // The 8x allowance leaves headroom over the 2026-07-25 same-run per-agent
-        // degradation factor of 2.82x while still detecting a large scaling regression.
+        // The 8x allowance leaves headroom over one 2026-07-25 local sample of about 5.3x
+        // per-agent degradation while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 8.0;
         const double reportedTargetMilliseconds = 16.67;
 
@@ -120,8 +122,8 @@ public class PerformanceTests
         const int referenceAgents = 5_000;
         const int scenarioAgents = 50_000;
         const int measuredRebuilds = 100;
-        // The 2.5x allowance leaves headroom over the 2026-07-25 same-run per-agent
-        // degradation factor of 0.36x while still detecting a large scaling regression.
+        // The 2.5x allowance leaves headroom over one 2026-07-25 local sample of about 1.0x
+        // per-agent degradation while still detecting a large scaling regression.
         const double maxPerAgentDegradation = 2.5;
         const double reportedTargetMilliseconds = 2.0;
 
