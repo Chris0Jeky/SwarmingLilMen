@@ -477,7 +477,8 @@ without depending on which test first triggered tier promotion.
 ### 4. Publish Profiles (Optional)
 **Action Required**: To use Rider's "Publish..." UI:
 1. Create `SwarmSim.Render/Properties/PublishProfiles/` folder
-2. Copy `.pubxml` files from PublishScript.md
+2. Copy or adapt the `.pubxml` examples from the
+   [historical publishing reference](docs/archive/PublishScript.md)
 3. Files will appear in Rider's Publish dialog
 
 ### 5. Cross-Platform Testing

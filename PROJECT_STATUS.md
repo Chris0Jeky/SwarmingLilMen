@@ -341,7 +341,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     targets the weighted center of neighbors
   - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
   - FOV filtering with linear weight falloff
-  - **Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
+  - **Smoothing System** (Phase A-C from `docs/archive/CanonicalBoids_SmoothingPlan.md`):
     - Angular rate limiter (MaxTurnRateDegPerSecond) - prevents instant snaps
     - Priority hysteresis (enter/exit/hold thresholds) - prevents ping-pong
     - Shaped separation (lateral+away blending with smoothstep) - smooth collision avoidance
@@ -584,7 +584,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - [ ] Measure speedup vs single-threaded
 
 - [ ] **NativeAOT**
-  - [ ] Publish profiles (see PublishScript.md)
+  - [ ] Publish profiles (see `docs/archive/PublishScript.md`)
   - [ ] Test startup time and memory
 
 **Exit Criteria**: 200k+ agents interactive OR 1M+ headless, documented perf baselines
@@ -669,9 +669,9 @@ The current project lacks clear onboarding and runtime discoverability. Develope
    outside the default hosted CI gate; absolute throughput remains reported-only evidence.
 5. **Maintainability**: renderer and canonical-world monoliths increase change and review cost;
    legacy/canonical duplication creates ongoing drift risk.
-6. **Documentation drift**: high-traffic entrypoints are reconciled, but the explicitly historical
-   sections below still preserve obsolete phase, performance, and next-session claims pending the
-   archive/consolidation work in issue #15.
+6. **Documentation drift**: high-traffic entrypoints are reconciled. The explicitly historical
+   sections below intentionally preserve obsolete phase, performance, and next-session claims; the
+   historical-context banner above them is the liveness boundary.
 
 ---
 

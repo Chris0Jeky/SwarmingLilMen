@@ -237,11 +237,20 @@ SwarmingLilMen/
 │   ├── ant-colony-optimization/   # ACO pathfinding (stigmergy)
 │   └── particle-swarm-optimization/ # PSO (continuous optimization)
 ├── docs/                  # Live guides, roadmap vision, and dated archive
-│   ├── CONTROLS.md         # Keyboard/mouse reference
-│   ├── PARAMETER_GUIDE.md  # Detailed explanation of SimConfig fields
+│   ├── CONFIGURATION_COOKBOOK.md
+│   ├── CONTROLS.md
+│   ├── PARAMETER_GUIDE.md
+│   ├── PHASE_3_READINESS_CHECKLIST.md
+│   ├── QUICKSTART.md
+│   ├── RENDERER_GUIDE.md
+│   ├── ROADMAP-VISION.md
+│   ├── SIMULATION_MECHANICS_EXPLAINED.md
 │   └── archive/            # Historical plans and narratives
 ├── configs/                # JSON configuration presets
+├── AGENTS.md                # Shared agent operating guide
 ├── CLAUDE.md               # AI assistant guidelines
+├── CONTRIBUTING.md          # Developer setup and workflow
+├── LICENSE                  # MIT license
 ├── PROJECT_STATUS.md       # Implementation tracker
 └── README.md               # This file
 ```
