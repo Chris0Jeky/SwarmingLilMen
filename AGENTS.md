@@ -44,9 +44,13 @@ decision.
 - `SwarmSim.Tests/` - xUnit behavior, determinism, CLI/config, and timing-oriented tests.
 - `SwarmSim.Benchmarks/` - BenchmarkDotNet coverage for the legacy world and uniform grid.
 - `js-demos/` - independent browser demonstrations (boids, Vicsek, ACO, PSO).
+- `docs/` - live operator, configuration, renderer, mechanics, and readiness guides.
+- `docs/ROADMAP-VISION.md` - aspirational reference; epic #10 is the executable plan.
+- `docs/archive/` - dated historical plans and implementation/debugging narratives.
 - `PROJECT_STATUS.md` - named live-state file. Read its top verified-state section first.
-- `IMPLEMENTATION_EVOLUTION.md` and `PHASE_3_READINESS_CHECKLIST.md` - migration rationale and
-  remaining canonical work; validate their claims against code/tests before repeating them.
+- `docs/archive/IMPLEMENTATION_EVOLUTION.md` and `docs/PHASE_3_READINESS_CHECKLIST.md` - migration
+  rationale and remaining canonical work; validate their claims against code/tests before repeating
+  them.
 
 ## Commands
 

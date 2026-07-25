@@ -1,8 +1,8 @@
-﻿Historical publishing reference—here’s a set of scripts and a superseded CI example that will:
-
-> **Historical artifact (2025):** the publishing examples below are preserved for reference. The
-> workflow example is superseded by the maintained [repository CI](../.github/workflows/ci.yml)
+> **Historical archive (2026-07-25):** the publishing examples below are preserved for reference.
+> The workflow example is superseded by the maintained [repository CI](../../.github/workflows/ci.yml)
 > and must not be copied over it.
+
+Historical publishing reference—here’s a set of scripts and a superseded CI example that will:
 
 * publish **three flavors** of your app: **JIT** (framework-dependent), **R2R** (ReadyToRun), **NativeAOT** (self-contained),
 * run **tests** (with coverage) and **benchmarks** (short CI-friendly run),
@@ -230,7 +230,7 @@ dotnet publish SwarmSim.Render -p:PublishProfile=AOT-win-x64
 # 3) GitHub Actions workflow — `.github/workflows/ci.yml`
 
 > **Superseded:** This historical workflow example is not the repository CI definition. The active,
-> maintained Release build/test gate is [`.github/workflows/ci.yml`](../.github/workflows/ci.yml);
+> maintained Release build/test gate is [`.github/workflows/ci.yml`](../../.github/workflows/ci.yml);
 > do not copy the block below into the repository.
 
 This example runs on **Windows** and **Linux**; does restore/build/test (+ coverage), a short **BenchmarkDotNet** run, and publishes **JIT + R2R** on both OSes, plus **NativeAOT on Windows** (where toolchain is preinstalled). All outputs get uploaded as artifacts.

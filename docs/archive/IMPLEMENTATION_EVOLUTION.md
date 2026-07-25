@@ -1,6 +1,9 @@
+> **Historical archive (2026-07-25):** This migration narrative is preserved for context, not live
+> status. See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
+
 # Implementation Evolution: From SoA Systems to Canonical Boids
 
-> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state; this document explains migration rationale and may retain history.
 
 **Last Updated**: 2026-07-25 (verified-state reconciliation)
@@ -462,7 +465,7 @@ for each candidate neighbor:
 
 ## Smoothing & Collision Avoidance System (Session 3.3)
 
-After implementing the canonical boids foundation, testing revealed collision issues and "bouncy" behavior. A comprehensive smoothing system was designed and implemented following the plan documented in `filesAndResources/CanonicalBoids_SmoothingPlan.md`.
+After implementing the canonical boids foundation, testing revealed collision issues and "bouncy" behavior. A comprehensive smoothing system was designed and implemented following the plan documented in `CanonicalBoids_SmoothingPlan.md`.
 
 ### Problems Identified
 
@@ -835,8 +838,8 @@ At this point, decide whether to:
 
 - `NewImplementation.md` - TDD roadmap and milestones
 - `MakingBoidsBetter.md` - Diagnosis of the earlier raw-force/damped prototype issues
-- `PROJECT_STATUS.md` - Current implementation status
-- `CLAUDE.md` - Development guidelines
+- `../../PROJECT_STATUS.md` - Current implementation status
+- `../../CLAUDE.md` - Development guidelines
 
 ### Commit History
 

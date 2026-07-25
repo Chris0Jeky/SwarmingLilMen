@@ -10,7 +10,7 @@ Claude entrypoint drifts from it.
 2. Inspect `git status --short --branch` and recent commits.
 3. Read the verified-state section at the top of `PROJECT_STATUS.md`.
 4. For simulation work, read the relevant implementation and tests. For migration decisions, also
-   read `IMPLEMENTATION_EVOLUTION.md` and `PHASE_3_READINESS_CHECKLIST.md`.
+   read `docs/archive/IMPLEMENTATION_EVOLUTION.md` and `docs/PHASE_3_READINESS_CHECKLIST.md`.
 5. Run a baseline check before changing behavior.
 
 ## Project in one paragraph

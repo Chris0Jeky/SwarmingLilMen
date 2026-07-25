@@ -1,6 +1,6 @@
 # Quick Start Guide
 
-> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state.
 
 Get SwarmingLilMen running in 5 minutes!
@@ -161,9 +161,9 @@ This will create `BenchmarkDotNet.Artifacts/` with performance results.
 
 ## Next Steps
 
-1. **Read [README.md](README.md)** - Full project overview
-2. **Read [CONTRIBUTING.md](CONTRIBUTING.md)** - Development setup and IDE configuration
-3. **Check [PROJECT_STATUS.md](PROJECT_STATUS.md)** - See what's implemented and what's next
+1. **Read [README.md](../README.md)** - Full project overview
+2. **Read [CONTRIBUTING.md](../CONTRIBUTING.md)** - Development setup and IDE configuration
+3. **Check [PROJECT_STATUS.md](../PROJECT_STATUS.md)** - See what's implemented and what's next
 4. **Explore Tests** - See how the system behaves in `SwarmSim.Tests/`
 
 ## Common Issues
@@ -180,9 +180,9 @@ interactive graphics session and the required Raylib native dependencies. The re
 implemented; this symptom is an environment/runtime problem, not a missing project phase.
 
 ### Want to contribute?
-See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines!
+See [CONTRIBUTING.md](../CONTRIBUTING.md) for guidelines!
 
 ---
 
-**Questions?** Check the [README.md](README.md) or [CONTRIBUTING.md](CONTRIBUTING.md) for more details.
-- Sample configuration files live in the [`configs/`](configs) directory; copy and tweak them to experiment with `SimConfig`.
+**Questions?** Check the [README.md](../README.md) or [CONTRIBUTING.md](../CONTRIBUTING.md) for more details.
+- Sample configuration files live in the [`configs/`](../configs) directory; copy and tweak them to experiment with `SimConfig`.

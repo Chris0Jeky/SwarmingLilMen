@@ -1,3 +1,7 @@
+> **Historical archive (2026-07-25):** This early parameter-editor narrative is preserved for
+> context. The current reference is [`docs/CONTROLS.md`](../CONTROLS.md); verified state lives in
+> [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md).
+
 # Dynamic Parameter Adjustment System
 
 ## Overview

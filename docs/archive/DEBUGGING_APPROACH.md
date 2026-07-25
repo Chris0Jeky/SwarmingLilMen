@@ -1,3 +1,7 @@
+> **Historical archive (2026-07-25):** The original physics defect is resolved. These diagnostic
+> workflows are preserved for context, not live status. See
+> [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
+
 # Boids Debugging Approach
 
 ## Problem Summary
@@ -171,3 +175,22 @@ dotnet run --project SwarmSim.Render
 ```
 
 The minimal test is the key diagnostic tool. Start there and work up in complexity.
+
+## Snapshot and Runner Hardening Workflow
+
+The snapshot-hardening work added capture/mutation versioning, `ResetAccumulator()`, and
+`NotifyWorldMutated()` to `SimulationRunner`; snapshot consistency helpers; renderer refreshes for
+spawn/reset paths; length-safe interpolation; and the **F12** snapshot/debug overlay.
+
+For a future rendering anomaly:
+
+1. Reproduce it with the **F12** overlay enabled and watch capture IDs, mutation versions, alpha,
+   accumulator, and agent-count deltas.
+2. Correlate `[Snapshots]` log entries with spawn, reset, or other world-mutation actions.
+3. Export the current state with **C**, or add a temporary guarded dump of the offending snapshot
+   pair if the visible telemetry is insufficient.
+4. Extend `SimulationRunnerTests` when adding a mutation path, proving that it calls
+   `NotifyWorldMutated()` and resets interpolation state.
+
+The original hardening note, including its follow-up ideas, remains preserved in
+[`SNAPSHOT_DEBUG_GUIDE.md`](SNAPSHOT_DEBUG_GUIDE.md).

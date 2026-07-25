@@ -1,3 +1,6 @@
+> **Historical archive (2026-07-25):** This design plan is preserved for context, not live status.
+> See [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) for verified state.
+
 # Canonical Boids – Smoothing & Flocking Plan
 
 Audience: engineers iterating on `SwarmSim.Core.Canonical` to move from collision-safe behavior toward natural flocking with smooth trajectories and clear diagnostics.

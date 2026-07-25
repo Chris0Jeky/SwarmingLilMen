@@ -1,3 +1,8 @@
+> **Historical archive (2026-07-25):** These snapshot-hardening notes are preserved for context,
+> not live status. Their reusable workflow is consolidated into
+> [`DEBUGGING_APPROACH.md`](DEBUGGING_APPROACH.md); verified state lives in
+> [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md).
+
 # Snapshot & Runner Hardening Notes
 
 This short guide captures the work done to harden the snapshot pipeline and the recommended workflow for investigating future rendering anomalies (e.g., blinking agents, interpolation crashes).
