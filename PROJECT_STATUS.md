@@ -52,9 +52,10 @@
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
   Core scaffolding and the three steering-rule implementations exist. The perception contract is
-  incomplete (#18), composition violates its total `MaxForce` bound (#19), and instrumentation UX
-  remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is unverified (#41).
-  Milestones 8-10 and multi-group semantics remain incomplete.
+  incomplete (#18), composition violates its total `MaxForce` bound (#19), and rule dispatch is
+  positional: later rules are discarded and non-zero separation starves alignment/cohesion (#27).
+  Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
+  unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
 - Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
   `WanderStrength > 0`, and canonical renderer seed/configuration wiring also has known gaps.
   Seed/configuration/timestep reproducibility is therefore not established for those shipped
@@ -298,21 +299,28 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
   - Force/friction equilibrium created unpredictable parameter sensitivity
-  - 1/d² separation weighting caused numerical instability
+  - Early inverse-square separation was replaced by the current bounded linear radial falloff;
+    separation still participates in the opaque aggregate/force pipeline
   - Non-canonical approach made tuning guidance from literature unusable
 - **New approach**: Complete rewrite in `SwarmSim.Core.Canonical` namespace following Reynolds' canonical steering behaviors:
   - **Immutable data**: `readonly struct Boid`, functional transformations
-  - **Steering not forces**: `steering = clamp(desired - current, MaxForce)`
-  - **Constant speed**: Velocity normalized to TargetSpeed (no friction)
+  - **Steering not forces**: rules return `desired - current`; the caller clamps and arbitrates
+    contributions, with current composition defects tracked in #19 and #27
+  - **Direct speed control**: velocity is normalized without friction to `TargetSpeed` or the
+    priority-adjusted allowed speed (up to 3% lower at the current default)
   - **Single-pass**: All decision-making in one place per agent
-  - **Pluggable rules**: `IRule` interface (SeparationRule, AlignmentRule, CohesionRule)
+  - **Rule interface**: `IRule` implementations exist, but composition is positional and results
+    after slot 2 are discarded; #27 owns a real named composition surface
   - **FOV weighting**: Neighbors weighted by position in vision cone
-  - **Prioritized separation**: Separation gets the limited acceleration budget whenever anyone encroaches the ~1/3 sense-radius gap
+  - **Prioritized separation**: priority enters at 20% of sense radius by default and boosts
+    separation/reduces allowed speed; independently, any non-zero separation currently exhausts the
+    remaining budget (#27)
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
 - **Implemented components**: core scaffolding, steering-rule classes, and Phase C smoothing
   - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
-  - All 3 steering rules with 1/d weighting
+  - Separation with 1/d weighting and linear falloff; alignment averages velocity and cohesion
+    targets the weighted center of neighbors
   - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
   - FOV filtering with linear weight falloff
   - **Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
@@ -321,14 +329,17 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     - Shaped separation (lateral+away blending with smoothstep) - smooth collision avoidance
     - Gradual avoidance falloff - steering sharpness increases with proximity
     - Smooth wander (continuous angle changes) - replaces chaotic randomness
-    - Soft gating for alignment/cohesion during priority - maintains group cohesion
+    - Alignment/cohesion attenuation is calculated during priority, but any non-zero separation
+      currently exhausts the remaining budget before those contributions are applied (#27)
     - Whisker lookahead visualization (blue circle in overlay)
   - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
   - 12 unit tests passing (including new angular limiter and hysteresis tests)
-- **Milestone 2 partial**: grid neighbor queries do not enforce the requested radius/self/wrap
-  contract; #18 owns the fix, index equivalence, and trajectory evidence
+- **Milestone 2 partial**: grid neighbor queries do not enforce radius/self-exclusion, and neither
+  index/rule path applies toroidal neighbor deltas; #18 owns the full contract, equivalence, and
+  trajectory evidence
 - **Milestone 6 partial**: the composition path exists, but whisker plus separation can exceed the
-  total `MaxForce` budget; the invariant and trajectory change are tracked in #19
+  total `MaxForce` budget (#19); positional slots, discarded later rules, and separation starvation
+  remain tracked in #27
 - **Milestone 7 partial**: backend instrumentation and a basic selected-boid inspection overlay
   exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
   rule-toggle acceptance tests remain open in #40
@@ -361,7 +372,7 @@ These improvements address fundamental architecture issues discovered during Pha
 - [x] **Refactor to Steering Behaviors** (SwarmSim.Core/Systems/)
   - [x] Changed BehaviorSystem to compute desired velocities (not raw forces)
   - [x] Implemented steering: `steer = clamp(desired - current, maxForce)`
-  - [x] Separation already uses 1/d (linear) weighting (was correct from Phase 2)
+  - [x] Separation already uses bounded linear radial falloff (corrected during Phase 2)
   - [x] Added MaxForce parameter to SimConfig (default 5.0)
   - [x] Semi-implicit Euler: `v += steer*dt; x += v*dt` in IntegrateSystem
 

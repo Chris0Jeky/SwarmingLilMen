@@ -63,9 +63,10 @@ World (SoA arrays) → Systems Pipeline → Per-Tick Updates
    - Relied on force/friction equilibrium for speed control
 
 4. **Separation Weighting**:
-   - Used inverse-square distance weighting: `strength = 1/d²`
-   - Required aggressive clamping to prevent explosion at close range
-   - Contributed to numerical instability
+   - The current legacy `SenseSystem` accumulates normalized away directions with bounded linear
+     radial falloff: `strength = 1 - distance / radius`
+   - Earlier prototype notes discussed inverse-square weighting, but that is not the current legacy
+     implementation
 
 ### File Structure (Old Implementation)
 
@@ -102,11 +103,13 @@ The two-pass architecture made it extremely difficult to trace behavior:
 The force-based approach created tuning nightmares:
 - **Problem**: Agents needed to reach equilibrium speeds through force/friction balance
 - **Symptom**: Setting friction < 1.0 caused agents to "get stuck" in low-speed states
-- **Root Cause**: With 1/d² separation + clamping, effective acceleration after `dt` and damping was too small
+- **Root Cause**: The earlier prototype's separation/clamping and continuous damping could leave
+  too little effective acceleration after `dt`; the current legacy separation has since changed to
+  bounded linear radial falloff
 - **Bandaid Fix**: Setting friction = 1.0 "worked" but eliminated natural speed variation
 
-As documented in `MakingBoidsBetter.md`:
-> "With friction < 1, your earlier 1/r² separation + heavy clamping meant the effective acceleration after dt and damping was too small to escape clumps. Setting friction to 1 removed the continuous velocity bleed, so agents could finally build/retain speed."
+`MakingBoidsBetter.md` preserves the investigation of that earlier inverse-square variant; it is
+historical design context rather than a description of the current `SenseSystem`.
 
 ### 3. **Parameter Sensitivity**
 
@@ -168,9 +171,9 @@ CanonicalWorld
       1. Rebuild spatial index
       2. For each boid:
           a. Query broad-phase candidates; apply FOV filtering
-          b. Run all rules → accumulate steering
+          b. Evaluate positional core-rule slots; accumulate within the budget
           c. Apply the priority steering budget
-          d. Integrate: v += steer*dt; normalize to TargetSpeed
+          d. Integrate: v += steer*dt; shape avoidance; limit turn; normalize to allowed speed
           e. Integrate: x += v*dt; wrap boundaries
       3. Double-buffer swap
 ```
@@ -178,7 +181,9 @@ CanonicalWorld
 This is the intended flow. The current grid index leaves radius candidates unfiltered
 ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)), and the current whisker plus
 separation path can exceed the intended `MaxForce` budget
-([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)).
+([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)). Rule slots are hard-coded,
+later results are discarded, and non-zero separation exhausts the remainder
+([issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)).
 
 ### Key Characteristics
 
@@ -197,15 +202,18 @@ separation path can exceed the intended `MaxForce` budget
 
 2. **Reynolds Steering**:
    ```csharp
+   // Conceptual flow; CanonicalWorld.Step currently performs composition inline.
    Vec2 desired = ComputeDesiredVelocity();
-   Vec2 steering = (desired - current).ClampMagnitude(MaxForce);
-   Vec2 newVelocity = (current + steering * dt).WithLength(TargetSpeed);
+   Vec2 steering = desired - current;
+   ComposeThroughPriorityBudget(steering);
+   Vec2 newVelocity = IntegrateWithAvoidanceAndTurnLimit(allowedSpeed);
    ```
    - Each rule computes a *desired velocity*
-   - Steering = (desired - current), clamped
-   - Final velocity always normalized to TargetSpeed
+   - Steering = desired - current; the caller clamps and composes contributions
+   - Final velocity is normalized to `TargetSpeed`, reduced by the configured separation-speed
+     droop while the priority blend is active
 
-3. **Pluggable Rules**:
+3. **Rule Interface (composition remains positional)**:
    ```csharp
    public interface IRule
    {
@@ -219,8 +227,10 @@ separation path can exceed the intended `MaxForce` budget
    }
    ```
    - Each rule is isolated and testable
-   - Rules can be enabled/disabled/reordered
-   - Clear input/output contract
+   - `CanonicalWorld` currently assigns separation/alignment/cohesion semantics to slots 0/1/2;
+     reordering changes those semantics, and results from later slots are discarded
+   - Named enable/disable/reorder composition is owned by
+     [issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)
 
 4. **FOV-Weighted Neighbor Candidates**:
    - The intended spatial-index contract filters by radius; the current grid implementation does
@@ -273,13 +283,14 @@ SwarmSim.Core/Canonical/
 
 **Old (Force-Based)**:
 ```csharp
-// In SenseSystem
+// In the current legacy SenseSystem
 for each neighbor within separationRadius:
-    delta = self.pos - neighbor.pos
-    distSq = |delta|²
-    if distSq > 0:
-        separationX[i] += delta.X / distSq  // 1/d² weighting
-        separationY[i] += delta.Y / distSq
+    towardNeighbor = neighbor.pos - self.pos
+    distance = |towardNeighbor|
+    if distance > 0:
+        away = -(towardNeighbor / distance)
+        strength = (separationRadius - distance) / separationRadius
+        separation[i] += away * strength  // bounded linear radial falloff
 
 // In BehaviorSystem
 float sepX = separationX[i];
@@ -307,19 +318,20 @@ for each neighbor within separationRadius:
         float dist = sqrt(distSq);
         Vec2 direction = delta / dist;
         float strength = max(0, 1 - dist/radius);  // Linear falloff
-        float influence = strength / dist * weight; // 1/d weighting
+        float influence = strength / dist * fovWeight; // inverse-distance and FOV weighting
         accumulator += direction * influence;
 
-Vec2 desired = accumulator.WithLength(context.TargetSpeed * weight);
-Vec2 steer = (desired - self.Velocity).ClampMagnitude(context.MaxForce);
+Vec2 desired = accumulator.WithLength(
+    context.TargetSpeed * ruleWeight * context.SeparationPriorityBoost);
+Vec2 steer = desired - self.Velocity;
 return steer;
 ```
 
 **Key Differences**:
-1. **Weighting**: Old used 1/d², new uses 1/d (more stable)
-2. **Falloff**: New adds explicit `strength = 1 - dist/radius` for smoother gradients
-3. **Per-neighbor clamp**: New limits individual neighbor contributions
-4. **Direct steering**: New returns steering vector directly, not via aggregate arrays
+1. **Legacy aggregate**: Normalized away direction with bounded linear radial falloff
+2. **Canonical weighting**: The same radial falloff is multiplied by inverse distance and FOV weight
+3. **Priority boost**: Desired speed is multiplied by `SeparationPriorityBoost`
+4. **Caller budget**: The rule returns unclamped steering; `CanonicalWorld` clamps/composes it
 
 ### Alignment
 
@@ -346,21 +358,23 @@ y[i] += vy[i] * dt;
 
 **New**:
 ```csharp
-// Steering already computed
+// Simplified shape of the current integration path
 Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
-if (!nextVelocity.IsNearlyZero())
-    nextVelocity = nextVelocity.WithLength(Settings.TargetSpeed);
-else
-    nextVelocity = boid.Velocity.WithLength(Settings.TargetSpeed);
+float allowedSpeed = Settings.TargetSpeed
+    * (1f - Settings.SeparationSpeedDroop * priorityBlend);
+nextVelocity = ApplyShapedAvoidance(nextVelocity, allowedSpeed);
+nextVelocity = LimitTurnAndNormalize(nextVelocity, allowedSpeed);
 
 Vec2 nextPosition = boid.Position + nextVelocity * deltaTime;
 nextPosition = WrapToroidally(nextPosition);
 ```
 
 **Key Differences**:
-1. **Speed control**: Old used friction, new uses direct normalization to TargetSpeed
-2. **Constant speed**: New ensures |velocity| = TargetSpeed always (classic boids)
-3. **Clearer**: No force/friction equilibrium required
+1. **Speed control**: Old used friction; new normalizes directly to an allowed speed
+2. **Priority droop**: Allowed speed can fall below `TargetSpeed` by the configured droop while
+   priority blending is active (3% at the current default and full blend)
+3. **Shaping and turn limit**: Nearest-neighbor avoidance can bias velocity before the angular-rate
+   limiter normalizes it
 
 ### Field of View
 
@@ -445,10 +459,13 @@ After implementing the canonical boids foundation, testing revealed collision is
 - Smoothstep transition between zones: `blendWeight = SmoothStep(rHard, rSoft, distance)`
 - Prevents head-on bouncing, creates natural lane-change behavior
 
-**4. Soft Gating** (`CanonicalWorld.cs:229-249`)
-- Alignment/cohesion reduced by 70% during priority (not turned off)
-- `attenuation = 1.0 - (priorityBlend * 0.7)`
-- Agents maintain group awareness while avoiding collisions
+**4. Attempted Soft Gating** (`CanonicalWorld.cs:247-273`)
+- Alignment/cohesion vectors are multiplied by
+  `attenuation = 1.0 - (priorityBlend * 0.7)`
+- Any non-zero separation contribution currently sets the remaining force budget to zero before
+  those vectors are accumulated, so they make no contribution in that case
+- [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns named composition and the
+  explicit arbitration contract
 
 **5. Enhanced Perception** (`CanonicalWorld.cs:21-23, 174-198`)
 - Per-agent perception data in snapshot:
@@ -457,13 +474,12 @@ After implementing the canonical boids foundation, testing revealed collision is
   - `WhiskerCounts[]` - neighbors in lookahead capsule
 - Enables data-driven analysis of flocking quality
 
-### Results
+### Historical Qualitative Observations
 
-- ✅ Smooth, natural movement with continuous direction changes
-- ✅ Robust collision avoidance without "ping-pong" oscillations
-- ✅ Agents shoulder past each other at medium range, repel at close range
-- ✅ Group cohesion maintained even during separation maneuvers
-- ✅ 12 canonical boids tests passing (including new angular limiter and hysteresis tests)
+Earlier interactive sessions described smooth movement, shoulder-passing, and reduced ping-pong,
+but no retained capture or automated acceptance proves those visual claims. The 12 current canonical
+tests include angular-limiter and hysteresis coverage; they do not prove group cohesion while
+separation consumes the remaining force budget.
 
 ### Visualization
 
@@ -495,15 +511,18 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 ⚠️ **Partial Perception** (Milestone 2):
 - Field-of-view cone filtering
 - FOV-based neighbor weighting (linear falloff)
-- `GridSpatialIndex` does not currently honor radius/self/wrap semantics, so alignment and cohesion
-  can consume the wrong neighborhood; the contract and equivalence fix are owned by
+- `GridSpatialIndex` does not currently honor radius or self-exclusion, so alignment and cohesion
+  can consume the wrong neighborhood; neither index/rule path applies toroidal neighbor deltas
+- The full contract and equivalence fix are owned by
   [issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)
 - The rule implementations above exist, but their integrated behavior must be revalidated against
   the corrected perception contract
 
 ⚠️ **Partial Rule Composition** (Milestone 6):
-- Separation, alignment, cohesion, whisker, and wander contributions are composed through a
-  priority budget
+- Separation, alignment, and cohesion are hard-coded to slots 0/1/2; results from later `AddRule`
+  slots are discarded, and non-zero separation exhausts the budget before alignment/cohesion
+- [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns the named composition and
+  arbitration contract
 - Whisker steering can be followed by a separation contribution clamped to the full `MaxForce`,
   so the total can exceed the intended bound; the invariant fix and trajectory evidence are owned
   by [issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)
