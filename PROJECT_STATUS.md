@@ -155,8 +155,9 @@ verified block above records what is actually measured.
 
 1. **Legacy Implementation** (`SwarmSim.Core/World.cs`, `Systems/`):
    - Structure-of-Arrays (SoA) with systems pipeline
-   - Force-based integration with selectable speed models; the current renderer/presets use
-     `ConstantSpeed` (no damping, upper cap only), while `Damped` applies friction
+   - Bounded steering from `BehaviorSystem` is integrated with selectable speed models; the
+     current renderer/presets use `ConstantSpeed` (no damping, upper cap only), while `Damped`
+     applies friction
    - Two-pass: SenseSystem → BehaviorSystem
    - **Status**: Working but deprecated, hard to debug
    - **Run with**: Default renderer (no `--canonical` flag)
@@ -298,15 +299,16 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - **Status**: In active development; core scaffolding and rule implementations exist, but
   perception, composition, instrumentation UX, milestones 8-10, multi-group semantics, and
   canonical performance evidence remain incomplete
-- **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
+- **Why the rewrite**: The legacy two-pass aggregate `BehaviorSystem` architecture had fundamental
+  issues even after it adopted bounded Reynolds-style steering:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
   - Earlier `Damped`-mode force/friction equilibrium created unpredictable parameter sensitivity
   - Early inverse-square separation was replaced by the current bounded linear radial falloff;
     separation still participates in the opaque aggregate/force pipeline
-  - Non-canonical approach made tuning guidance from literature unusable
+  - Aggregate-coupled rule calculations made standard tuning guidance and isolated diagnosis hard
 - **New approach**: Complete rewrite in `SwarmSim.Core.Canonical` namespace following Reynolds' canonical steering behaviors:
   - **Immutable data**: `readonly struct Boid`, functional transformations
-  - **Steering not forces**: rules return `desired - current`; the caller clamps and arbitrates
+  - **Isolated steering rules**: rules return `desired - current`; the caller clamps and arbitrates
     contributions, with current composition defects tracked in #19 and #27
   - **Direct speed control**: velocity is normalized without friction to `TargetSpeed` or the
     priority-adjusted allowed speed (up to 3% lower at the current default)
@@ -370,7 +372,9 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 These improvements address fundamental architecture issues discovered during Phase 2 debugging and should be completed before continuing to Phase 3. They will provide a solid foundation for all future features.
 
 #### Part A: Canonical Boids Implementation (PRIORITY 1) - ✅ COMPLETE
-**Rationale**: Current implementation uses raw forces which caused parameter tuning issues. Steering behaviors are the industry-standard approach.
+**Historical rationale (before the completed refactor)**: The implementation used raw forces,
+which caused parameter-tuning issues. `BehaviorSystem` now computes bounded `desired - current`
+steering; the separate canonical path further isolates rules.
 
 - [x] **Refactor to Steering Behaviors** (SwarmSim.Core/Systems/)
   - [x] Changed BehaviorSystem to compute desired velocities (not raw forces)
@@ -762,7 +766,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - Part A: Canonical Boids Implementation (steering behaviors, 1/d separation, FOV)
   - Part B: Fixed Timestep & Decoupling (accumulator loop, snapshots, interpolation)
 - **Rationale**: Issues discovered during P2 debugging revealed fundamental architecture gaps
-  - Current force-based approach caused parameter tuning pathologies
+  - The pre-refactor raw-force/damped approach caused parameter-tuning pathologies
   - Simulation coupled to render rate (not deterministic across framerates)
   - Industry-standard approaches (Reynolds steering, Gaffer fixed timestep) will provide solid foundation
 - **References**: Added `DecouplingPlan.md` and `MakingBoidsBetter.md` as design documents

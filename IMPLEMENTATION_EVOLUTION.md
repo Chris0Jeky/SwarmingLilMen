@@ -54,11 +54,13 @@ World (SoA arrays) → Systems Pipeline → Per-Tick Updates
      - `SeparationX[]`, `SeparationY[]` - accumulated repulsion vectors
      - `AlignmentVx[]`, `AlignmentVy[]` - sum of neighbor velocities
      - `CohesionX[]`, `CohesionY[]` - sum of neighbor positions
-   - **BehaviorSystem** reads these aggregates and writes forces to `Fx[]`, `Fy[]`
+   - **BehaviorSystem** reads these aggregates and writes bounded steering forces to `Fx[]`, `Fy[]`
 
-3. **Force-Based Physics**:
-   - Boids rules generated **forces** (not steering)
-   - Forces accumulated in scratch buffers
+3. **Aggregate-Driven Steering and Integration**:
+   - The current `BehaviorSystem` converts `SenseSystem` aggregates into desired velocities and
+     bounded `desired - current` steering stored in `Fx[]` / `Fy[]`
+   - The earlier prototype generated raw forces; current legacy steering still accumulates in
+     scratch buffers
    - Integration: `v += F*dt`; `Damped` then applies `v *= friction`; both speed models upper-clamp
      to `MaxSpeed`; then `x += v*dt`
    - The current renderer and presets select `ConstantSpeed`, which skips damping; earlier
@@ -78,7 +80,7 @@ SwarmSim.Core/
 ├── Systems/
 │   ├── ISimSystem.cs          # System interface
 │   ├── SenseSystem.cs         # Neighbor queries, aggregate computation
-│   ├── BehaviorSystem.cs      # Force generation from aggregates
+│   ├── BehaviorSystem.cs      # Steering generation from aggregates
 │   └── IntegrateSystem.cs     # Velocity/position integration
 └── Spatial/
     └── UniformGrid.cs         # Spatial partitioning
@@ -117,20 +119,21 @@ historical design context rather than a description of the current `SenseSystem`
 
 ### 3. **Parameter Sensitivity**
 
-The force-based model was extremely sensitive to parameter tuning:
+The earlier raw-force/damped model was extremely sensitive to parameter tuning:
 - Small changes in weights could cause dramatic behavioral shifts
 - Separation weight vs. friction vs. maxSpeed all interacted in non-obvious ways when damping was
   enabled
 - Hard to predict the effect of changing one parameter
 - No "standard" parameter ranges from literature
 
-### 4. **Non-Canonical Algorithm**
+### 4. **Architecture and Composition Gap**
 
-The implementation diverged from Reynolds' original steering behaviors:
-- **Reynolds' approach**: Compute *desired velocity* → steer toward it with bounded force
-- **Earlier damped approach**: Compute raw forces → hope friction creates equilibrium
-- **Current legacy renderer**: Compute raw forces → skip friction → upper-clamp to `MaxSpeed`
-- This made it impossible to reference standard boids literature for tuning guidance
+The earlier prototype diverged from Reynolds' original steering behaviors by generating raw forces
+and relying on damped equilibrium. The current legacy `BehaviorSystem` now computes desired
+velocities and bounded `desired - current` steering, but remains coupled to pre-aggregated
+`SenseSystem` arrays. The canonical path isolates the rule computations and applies continuous FOV
+weights, while its world-level composition contract remains incomplete (#27). The earlier
+raw-force formulation made standard boids tuning guidance difficult to apply.
 
 ### 5. **Testing Challenges**
 
@@ -160,7 +163,7 @@ The old implementation provided little visibility into decision-making:
 
 Starting with commit `f5d9dca` (Create NewImplementation.md), a fresh implementation was begun in the `SwarmSim.Core.Canonical` namespace with these principles:
 
-1. **Steering Behaviors, Not Forces** - Follow Reynolds' canonical formulation
+1. **Isolated Steering Rules** - Put Reynolds-style `desired - current` computations behind `IRule`
 2. **Test-Driven Development** - Write tests first, code second
 3. **Incremental Milestones** - Build up complexity gradually
 4. **Immutable Data** - `readonly struct Boid`, functional transformations
@@ -289,7 +292,7 @@ SwarmSim.Core/Canonical/
 
 ### Separation
 
-**Old (Force-Based)**:
+**Legacy (Aggregate-Driven Steering)**:
 ```csharp
 // In the current legacy SenseSystem
 for each neighbor within separationRadius:
@@ -315,7 +318,7 @@ if (sepMag > 0):
     fy[i] += steerY;
 ```
 
-**New (Steering-Based)**:
+**Canonical (Isolated Rule Steering)**:
 ```csharp
 // In SeparationRule.Compute()
 Vec2 accumulator = Vec2.Zero;
@@ -343,17 +346,17 @@ return steer;
 
 ### Alignment
 
-**Old**: Accumulate sum of neighbor velocities → compute average → steer toward it
-**New**: Same algorithm, but computed in isolated rule with neighbor weights
+**Legacy**: Accumulate sum of neighbor velocities → compute average → steer toward it
+**Canonical**: Same algorithm, but computed in an isolated rule with neighbor weights
 
 ### Cohesion
 
-**Old**: Accumulate sum of neighbor positions → compute average → steer toward it
-**New**: Same algorithm, but computed in isolated rule with neighbor weights
+**Legacy**: Accumulate sum of neighbor positions → compute average → steer toward it
+**Canonical**: Same algorithm, but computed in an isolated rule with neighbor weights
 
 ### Integration
 
-**Old** (legacy integrator, simplified):
+**Legacy** (integrator, simplified):
 ```csharp
 // Forces accumulated in Fx[], Fy[]
 vx[i] += Fx[i] * dt;
@@ -378,7 +381,7 @@ The current renderer and all registered presets select `SpeedModel.ConstantSpeed
 name, that legacy branch skips friction and only clamps velocity when it exceeds `MaxSpeed`
 (`SwarmSim.Core/Systems/IntegrateSystem.cs:42-78`; `SwarmSim.Render/Program.cs:110-215,240-260`).
 
-**New**:
+**Canonical**:
 ```csharp
 // Simplified shape of the current integration path
 Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
@@ -787,16 +790,19 @@ At this point, decide whether to:
 ### What Went Right
 
 1. **TDD Approach**: Writing tests first (via `NewImplementation.md` milestones) caught issues early
-2. **Steering vs. Forces**: Reynolds' steering formulation is objectively better for boids
+2. **Rule isolation**: Explicit steering rules make individual behavior calculations easier to
+   inspect and test than aggregate-coupled logic
 3. **Immutable Data**: `readonly struct Boid` made reasoning about state much simpler
-4. **Clear Abstractions**: `IRule` interface allowed easy testing and composition
+4. **Clear Abstractions**: `IRule` allows individual rule testing; world-level composition is still
+   positional and incomplete (#27)
 5. **Instrumentation**: Rich metrics from the start made debugging tractable
 
 ### What Went Wrong (Old Implementation)
 
 1. **Premature Optimization**: SoA layout chosen for performance before correctness was proven
 2. **Two-Pass Design**: Separating sensing from behavior seemed clean but was debugging nightmare
-3. **Force-Based Physics**: Non-canonical approach made parameter tuning impossible
+3. **Aggregate-Coupled Composition**: Two-pass steering hid individual rule inputs and outputs;
+   the earlier raw-force/damped prototype also made tuning brittle
 4. **Lack of Testing**: Integration tests only, no unit tests for individual rules
 5. **No Instrumentation**: Had to printf debug to understand what was happening
 
@@ -822,7 +828,7 @@ At this point, decide whether to:
 ### Internal Documents
 
 - `NewImplementation.md` - TDD roadmap and milestones
-- `MakingBoidsBetter.md` - Diagnosis of force-based approach issues
+- `MakingBoidsBetter.md` - Diagnosis of the earlier raw-force/damped prototype issues
 - `PROJECT_STATUS.md` - Current implementation status
 - `CLAUDE.md` - Development guidelines
 
@@ -844,7 +850,7 @@ Key commits in the transition:
 
 ## Conclusion
 
-The transition from the systems-based SoA approach to the canonical boids implementation represents a **necessary course correction**. The old implementation, while architecturally sound on paper, proved extremely difficult to debug and tune in practice. Its raw-force pipeline, especially the earlier `Damped` force/friction tuning, created parameter sensitivity issues that made emergent behavior unpredictable.
+The transition from the systems-based SoA approach to the canonical boids implementation represents a **necessary course correction**. The old implementation, while architecturally sound on paper, proved extremely difficult to debug and tune in practice. Its two-pass aggregate pipeline, plus the earlier raw-force `Damped` tuning that preceded the current steering-based `BehaviorSystem`, created parameter sensitivity and observability problems.
 
 The new canonical implementation, while less "architecturally pure", is:
 - **Easier to understand**: One clear place to see decision-making

@@ -23,8 +23,9 @@ below are goals, not achieved throughput claims.
 
 ## 📝 Implementation Note
 
-This project is undergoing an architectural transition from a systems-based force approach to Reynolds' canonical steering behaviors. Two implementations currently exist side-by-side:
-- **Legacy** (default): Force-based SoA systems architecture
+This project is undergoing an architectural transition from an aggregate-driven systems approach
+to isolated, Reynolds-style steering rules. Two implementations currently exist side-by-side:
+- **Legacy** (default): Aggregate-driven SoA steering systems architecture
 - **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
   exist, but the perception contract, force-budget enforcement, and instrumentation UX remain
   partial; milestones 8-10 and multi-group semantics are also incomplete
