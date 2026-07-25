@@ -51,6 +51,15 @@
   instrumented timing tests make this gate slow, and renderer automation is the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
+  Core scaffolding and the three steering-rule implementations exist. The perception contract is
+  incomplete (#18), composition violates its total `MaxForce` bound (#19), and instrumentation UX
+  remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is unverified (#41).
+  Milestones 8-10 and multi-group semantics remain incomplete.
+- Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
+  `WanderStrength > 0`, and canonical renderer seed/configuration wiring also has known gaps.
+  Seed/configuration/timestep reproducibility is therefore not established for those shipped
+  paths; [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17) owns the fixes and
+  long-horizon proving tests.
 - CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
   `--preset` examples; only the five IDs printed under **Available presets** are registered. The
   executable help/test correction is tracked in
@@ -153,10 +162,15 @@ verified block above records what is actually measured.
    - Immutable `Boid` structs, pluggable `IRule` components
    - Reynolds steering behaviors (not forces)
    - Single-pass with per-agent decision-making
-   - **Status**: milestones 0-7 implemented; milestones 8-10 and multi-group semantics incomplete
+   - **Status**: core and rule implementations exist; perception, composition enforcement,
+     prescribed scenario acceptance, and instrumentation UX are partial; milestones 8-10 and
+     multi-group semantics incomplete
    - **Run with**: `dotnet run --project SwarmSim.Render -- --canonical`
 
-**Before Phase 3**: We must complete the canonical implementation (milestones 8-10), add multi-group support, and validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what needs to happen next.
+**Before Phase 3**: We must resolve seeded reproducibility, perception, and composition defects;
+complete milestone 7's UX/test acceptance and milestones 8-10; add multi-group support; and
+validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what
+needs to happen next.
 
 **Recommendation**: All Phase 3+ features should be built on the canonical implementation, not the legacy one.
 
@@ -278,8 +292,9 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 ### Canonical Boids Implementation (Post-P2 Rewrite)
 > **See `IMPLEMENTATION_EVOLUTION.md` and `filesAndResources/CanonicalBoids_SmoothingPlan.md` for full technical details**
 
-- **Status**: In active development; milestones 0-7 are implemented, while readiness milestones
-  8-10, multi-group semantics, and canonical performance evidence remain incomplete
+- **Status**: In active development; core scaffolding and rule implementations exist, but
+  perception, composition, instrumentation UX, milestones 8-10, multi-group semantics, and
+  canonical performance evidence remain incomplete
 - **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
   - Force/friction equilibrium created unpredictable parameter sensitivity
@@ -295,12 +310,11 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - **Prioritized separation**: Separation gets the limited acceleration budget whenever anyone encroaches the ~1/3 sense-radius gap
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
-- **Completed**: Milestones 0-7 from `NewImplementation.md` + Phase C smoothing improvements
+- **Implemented components**: core scaffolding, steering-rule classes, and Phase C smoothing
   - Core infrastructure (Vec2, Boid, CanonicalWorld, RuleContext)
   - All 3 steering rules with 1/d weighting
   - Spatial indexing (NaiveSpatialIndex, GridSpatialIndex)
   - FOV filtering with linear weight falloff
-  - Instrumentation system with per-agent perception data
   - **Smoothing System** (Phase A-C from CanonicalBoids_SmoothingPlan.md):
     - Angular rate limiter (MaxTurnRateDegPerSecond) - prevents instant snaps
     - Priority hysteresis (enter/exit/hold thresholds) - prevents ping-pong
@@ -311,6 +325,15 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     - Whisker lookahead visualization (blue circle in overlay)
   - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
   - 12 unit tests passing (including new angular limiter and hysteresis tests)
+- **Milestone 2 partial**: grid neighbor queries do not enforce the requested radius/self/wrap
+  contract; #18 owns the fix, index equivalence, and trajectory evidence
+- **Milestone 6 partial**: the composition path exists, but whisker plus separation can exceed the
+  total `MaxForce` budget; the invariant and trajectory change are tracked in #19
+- **Milestone 7 partial**: backend instrumentation and a basic selected-boid inspection overlay
+  exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
+  rule-toggle acceptance tests remain open in #40
+- **Milestones 3-6 acceptance partial**: direct rule tests exist, but the roadmap's multi-tick
+  behavioral/isolation/stability scenarios remain open in #41
 - **In Progress**: Milestones 8-10
   - Boundary testing (wrapping, reflection)
   - Spatial index equivalence tests
@@ -322,7 +345,8 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - Tests: `dotnet test --filter CanonicalBoidsTests`
   - Renderer: `dotnet run --project SwarmSim.Render -- --canonical` (single-group)
   - Legacy: `dotnet run --project SwarmSim.Render` (multi-group, deprecated)
-- **Before Phase 3**: Must complete milestones 8-10, add multi-group support, validate performance
+- **Before Phase 3**: Must resolve #17-#19, complete milestone 7's UX/test acceptance and milestones
+  8-10, add multi-group support, and validate performance
 
 ---
 
@@ -600,8 +624,10 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 ## Current Blockers & Questions
 
-1. **Canonical readiness**: milestones 8-10 are incomplete (boundary/reflection coverage,
-   grid-vs-naive equivalence, scale properties/metrics).
+1. **Canonical readiness**: seeded reproducibility, the perception/spatial-index contract,
+   force-budget enforcement, milestone 7 UX/test acceptance, and milestones 8-10 are incomplete
+   (#17-#19, #40). Prescribed milestone 3-6 scenarios remain unverified (#41), while
+   boundary/reflection coverage and scale properties/metrics are also open.
 2. **Feature parity**: canonical multi-group semantics and aggression support are not complete, so
    Phase 3 combat/metabolism work has no settled target model.
 3. **Performance evidence**: the legacy 50k simulation tick took 162.815 ms in the 2026-07-25

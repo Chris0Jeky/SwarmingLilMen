@@ -4,8 +4,9 @@
 > test, and performance state; this document explains migration rationale and may retain history.
 
 **Last Updated**: 2026-07-25 (verified-state reconciliation)
-**Status**: Transition in progress - milestones 0-7 are implemented; readiness milestones 8-10,
-multi-group semantics, and canonical performance evidence remain incomplete
+**Status**: Transition in progress - core scaffolding and steering-rule implementations exist;
+perception semantics, rule-composition enforcement, and instrumentation UX are partial. Readiness
+milestones 8-10, multi-group semantics, and canonical performance evidence remain incomplete
 
 ---
 
@@ -466,9 +467,9 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 ## Migration Status
 
-### Completed Foundations (Milestones 0-7)
+### Implemented Components and Known Gaps
 
-✅ **Core Infrastructure** (Milestones 0-2):
+✅ **Core Infrastructure** (Milestones 0-1 plus shared scaffolding):
 - `Vec2` struct with all vector operations
 - `Boid` readonly struct
 - `CanonicalWorld` with double-buffered stepping
@@ -476,29 +477,47 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 - Fixed timestep integration with semi-implicit Euler
 - `NaiveSpatialIndex` (O(n²) reference)
 - `GridSpatialIndex` (O(n) using UniformGrid)
+- Full long-horizon deterministic/golden acceptance remains pending #17 and #21
 
-✅ **Steering Rules** (Milestones 3-5):
+✅ **Steering Rule Implementations** (Milestones 3-5):
 - `SeparationRule` with 1/d weighting and falloff
 - `AlignmentRule` with neighbor averaging
 - `CohesionRule` with center-of-mass steering
+- The prescribed multi-tick separation/alignment/cohesion behavior scenarios remain open in
+  [issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41)
 
-✅ **Perception** (Milestone 2):
-- Radius-based filtering (spatial index)
+⚠️ **Partial Perception** (Milestone 2):
 - Field-of-view cone filtering
 - FOV-based neighbor weighting (linear falloff)
+- `GridSpatialIndex` does not currently honor radius/self/wrap semantics, so alignment and cohesion
+  can consume the wrong neighborhood; the contract and equivalence fix are owned by
+  [issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)
+- The rule implementations above exist, but their integrated behavior must be revalidated against
+  the corrected perception contract
 
-✅ **Instrumentation** (Milestone 7):
+⚠️ **Partial Rule Composition** (Milestone 6):
+- Separation, alignment, cohesion, whisker, and wander contributions are composed through a
+  priority budget
+- Whisker steering can be followed by a separation contribution clamped to the full `MaxForce`,
+  so the total can exceed the intended bound; the invariant fix and trajectory evidence are owned
+  by [issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)
+
+⚠️ **Partial Instrumentation** (Milestone 7 backend and basic overlay only):
 - `RuleInstrumentation` for metrics collection
 - Per-agent neighbor counts and weight sums
 - Per-rule contribution magnitudes
 - Metrics accessible via `TryGetMetrics()`
+- Basic selected-boid overlay with perception bounds, neighbor links, whisker markers, and metrics
+- Missing: an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
+  rule-toggle acceptance coverage; tracked in
+  [issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40)
 
-✅ **Testing** (Milestones 0-6 + Smoothing):
+✅ **Existing Test Coverage**:
 - `CanonicalBoidsTests` with 12 unit tests
 - Vec2 math tests
 - Single boid constant speed test
 - FOV filtering tests
-- Determinism tests
+- Same-process determinism comparisons (not long-horizon/golden coverage)
 - Per-rule behavior tests (separation, alignment, cohesion)
 - Angular rate limiter tests
 - Priority hysteresis tests
@@ -522,10 +541,11 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 ### In Progress
 
 🔄 **Renderer Polish**:
-- Visualization of FOV cones
+- Visualization of a complete FOV arc
 - Neighbor link rendering with per-rule colors
 - Steering vector display
 - Instrumentation overlay (counts, weights, contributions)
+- Rule enable/disable and FOV controls
 
 🔄 **Testing Coverage**:
 - Boundary/wrapping tests (Milestone 8)
@@ -557,7 +577,21 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 To complete the migration and reach a solid foundation for Phase 3 (Combat & Metabolism), we need to:
 
-### 1. Complete Core Testing (Milestones 8-10)
+### 1. Resolve the Ordered Wave 1 Correctness Gates
+
+- [ ] #17 - remove wall-clock/seed-wiring determinism breaks and prove long-horizon reproducibility
+- [ ] #18 - enforce the perception/spatial-index radius, self-exclusion, and wrap contract
+- [ ] #19 - enforce the total `MaxForce` composition budget
+- [ ] #20 - make telemetry opt-in/zero-allocation and add canonical benchmarks; complete the agent
+  work, leave the PR open for the owner-only F12/HUD-parity check, then continue
+- [ ] #21 - lock and compare deterministic traces after #17-#19 land
+
+Execute these strictly in epic #10 order. The #20 PR remains open at its manual gate while #21
+proceeds, as the epic explicitly permits. The missing milestone 3-6 scenario coverage (#41) and
+milestone 7 renderer UX (#40) deliberately wait for their later contracts rather than introducing
+temporary fixture, telemetry, configuration, or positional-rule seams.
+
+### 2. Complete Core Testing (Milestones 8-10)
 
 **Goal**: Achieve feature parity with old implementation and verify correctness
 
@@ -580,7 +614,7 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
 
 **Why Critical**: These tests provide confidence that the canonical implementation is correct and equivalent to the old one. Without them, migrating to Phase 3 risks building on a shaky foundation.
 
-### 2. Add Multi-Group Support
+### 3. Add Multi-Group Support
 
 **Goal**: Restore multi-group capabilities from old implementation
 
@@ -614,7 +648,7 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
 
 **Why Critical**: Phase 3 requires multiple groups with aggression matrices. Need solid multi-group foundation first.
 
-### 3. Enhanced Instrumentation & Debugging
+### 4. Enhanced Instrumentation & Debugging
 
 **Goal**: Make the canonical implementation as observable as possible
 
@@ -640,7 +674,7 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
 
 **Why Critical**: The whole point of the canonical rewrite was to enable easier debugging. Need to actually build the tools to leverage it.
 
-### 4. Performance Validation
+### 5. Performance Validation
 
 **Goal**: Ensure canonical implementation meets performance targets
 
@@ -765,9 +799,14 @@ The new canonical implementation, while less "architecturally pure", is:
 - **Easier to tune**: Canonical steering parameters with known ranges
 - **True to literature**: Follows Reynolds' proven formulations
 
-**Current Status**: Core infrastructure and rules are implemented. Readiness milestones 8-10,
-multi-group support, and performance validation remain incomplete before Phase 3.
+**Current Status**: Core infrastructure and rule implementations exist. Seeded reproducibility,
+perception semantics, force-budget enforcement, milestone 7 UX/test acceptance, readiness
+milestones 8-10, multi-group support, and performance validation remain incomplete before Phase 3.
 
-**Recommendation**: Complete milestones 8-10, add multi-group support, build visualization tools, validate performance. Then proceed with **gradual migration** (Option C) - port Phase 3 features to canonical implementation while keeping old implementation as reference. Once validated, remove old implementation in Phase 5.
+**Recommendation**: Follow epic #10's ordered correctness/fixture gates, then finish the remaining
+milestone 7 UX and milestones 8-10, add multi-group support, and validate performance. Proceed
+afterward with **gradual migration** (Option C) - port Phase 3 features to canonical implementation
+while keeping the old implementation as reference. Once validated, remove the old implementation
+in Phase 5.
 
 The extra few weeks of work to do this right will pay dividends in developer velocity for Phases 3-6.

@@ -24,8 +24,8 @@ not a promise that the independent browser demo and either C# path will remain f
 | Alignment/cohesion | Average neighbor velocity/position, then steer toward the desired velocity. | Sense aggregates feed `BehaviorSystem` steering. | Dedicated rules compute FOV-weighted averages. | `js-demos/boids-basic/index.html:421-462`; `SwarmSim.Core/Systems/BehaviorSystem.cs:159-205`; `SwarmSim.Core/Canonical/Rules/AlignmentRule.cs:14-43`; `SwarmSim.Core/Canonical/Rules/CohesionRule.cs:14-42` |
 | Speed/turn model | Velocity is renormalized to `targetSpeed` after steering. | Friction applies only in `Damped` mode; the active renderer configuration uses `ConstantSpeed`, skips friction, then constrains speed. | Target-derived speed with priority-mode separation droop plus an angular turn-rate limiter. | `js-demos/boids-basic/index.html:467-485`; `SwarmSim.Core/Systems/IntegrateSystem.cs:43-78`; `SwarmSim.Render/Program.cs:245-249`; `SwarmSim.Core/Canonical/CanonicalWorld.cs:297-336` |
 | Collision response | Separation reacts to current positions; no look-ahead pass exists. | Separation/crowding steering only; Phase 3 combat is not installed. | Whisker look-ahead, priority hysteresis, and shaped avoidance contribute steering; they are not a collision-free guarantee. | `js-demos/boids-basic/index.html:398-417`; `SwarmSim.Core/World.cs:122-144`; `SwarmSim.Core/Canonical/CanonicalWorld.cs:151-178,207-234,302-324` |
-| Group semantics | One undivided boid collection. | Perception excludes other groups. | `Boid` stores a group, but the renderer creates only default-group boids and multi-group semantics remain incomplete. | `js-demos/boids-basic/index.html:386-472`; `SwarmSim.Core/Systems/SenseSystem.cs:147-180`; `SwarmSim.Core/Canonical/Boid.cs:3-24`; `SwarmSim.Core/Canonical/CanonicalWorld.cs:80-100`; `SwarmSim.Render/Program.cs:1707-1723`; `PROJECT_STATUS.md:52-64,601-609` |
-| Allocation evidence | Unmeasured. | Unmeasured; no enforced allocation gate exists. | `Step()` refreshes a perception snapshot that allocates three result arrays. | `PROJECT_STATUS.md:62-64`; `SwarmSim.Core/Canonical/CanonicalWorld.cs:103-342,496-508` |
+| Group semantics | One undivided boid collection. | Perception excludes other groups. | `Boid` stores a group, but the renderer creates only default-group boids and multi-group semantics remain incomplete. | `js-demos/boids-basic/index.html:386-472`; `SwarmSim.Core/Systems/SenseSystem.cs:147-180`; `SwarmSim.Core/Canonical/Boid.cs:3-24`; `SwarmSim.Core/Canonical/CanonicalWorld.cs:80-100`; `SwarmSim.Render/Program.cs:1707-1723`; `PROJECT_STATUS.md:52-57` |
+| Allocation evidence | Unmeasured. | Unmeasured; no enforced allocation gate exists. | `Step()` refreshes a perception snapshot that allocates three result arrays. | `PROJECT_STATUS.md:71-73`; `SwarmSim.Core/Canonical/CanonicalWorld.cs:103-342,496-508` |
 
 ## Performance Evidence
 
@@ -46,7 +46,7 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-bu
 | Legacy 50k grid rebuild | 0.102 ms | Grid-only cost, not a full tick | `PROJECT_STATUS.md:29-48` |
 | JavaScript renderer/core | Unmeasured | The UI displays instantaneous FPS, but this comparison records no dated result | `js-demos/boids-basic/index.html:306-307,641-644,666` |
 | C# legacy renderer FPS | Unmeasured | The core timing test does not render | `SwarmSim.Tests/PerformanceTests.cs:15-52` |
-| C# canonical core/renderer | Unmeasured | No canonical BenchmarkDotNet comparison exists | `SwarmSim.Benchmarks/WorldTickBenchmarks.cs:12-53`; `PROJECT_STATUS.md:52-64` |
+| C# canonical core/renderer | Unmeasured | No canonical BenchmarkDotNet comparison exists | `SwarmSim.Benchmarks/WorldTickBenchmarks.cs:12-53`; `PROJECT_STATUS.md:71-73` |
 
 ## Choosing a Path
 

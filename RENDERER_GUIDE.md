@@ -33,8 +33,10 @@ Use `--agent-count N` to override the initial legacy count. Run `--help` for the
 - Wrap, reflect, and clamp boundary modes are configuration options. Do not assume wrap mode for
   every preset (`SwarmSim.Core/Systems/IntegrateSystem.cs:7-23`).
 
-Flocking is deterministic for a fixed seed, configuration, and timestep, but its visible shape
-depends on the selected preset and live parameter edits.
+Legacy runs with `WanderStrength = 0` have a seeded, fixed-timestep path. Wander-enabled legacy
+runs are not currently reproducible from the world seed because `WanderSystem` seeds itself from
+the wall clock; canonical seed/configuration wiring also has known gaps. The fixes and proving
+tests are tracked in [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17).
 
 ## Controls
 
@@ -82,6 +84,7 @@ operational outputs should not be committed.
 
 ## Current Direction
 
-Canonical milestones 8-10, multi-group semantics, canonical benchmarks, and renderer automation
-remain open. Phase 3 combat/metabolism work must wait for that readiness evidence; follow
+Canonical perception semantics, force-budget enforcement, milestone 7 UX/test acceptance,
+milestones 8-10, multi-group semantics, canonical benchmarks, and renderer automation remain open.
+Phase 3 combat/metabolism work must wait for that readiness evidence; follow
 `PROJECT_STATUS.md` rather than historical phase percentages.

@@ -14,7 +14,8 @@ below are goals, not achieved throughput claims.
 
 - **Emergence over scripts**: Few simple, composable rules → rich macro patterns
 - **Performance target (unmet)**: 50k-100k agents at 60 FPS interactive; 1M+ headless
-- **Determinism**: Fixed timestep, reproducible with seeded RNG, record/replay
+- **Determinism goal**: Fixed timestep, reproducible seeded runs, and record/replay; current seed
+  wiring limitations are tracked in [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17)
 - **Observability**: Metrics, snapshots, profiling, property tests, benchmarks
 - **Extensibility**: Small public API, Structure-of-Arrays internals, modular systems
 
@@ -22,15 +23,18 @@ below are goals, not achieved throughput claims.
 
 This project is undergoing an architectural transition from a systems-based force approach to Reynolds' canonical steering behaviors. Two implementations currently exist side-by-side:
 - **Legacy** (default): Force-based SoA systems architecture
-- **Canonical** (`--canonical` flag): Steering behaviors with milestones 0-7 implemented;
-  readiness milestones 8-10 and multi-group semantics remain incomplete
+- **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
+  exist, but the perception contract, force-budget enforcement, and instrumentation UX remain
+  partial; milestones 8-10 and multi-group semantics are also incomplete
 
 For developers: See `IMPLEMENTATION_EVOLUTION.md` for the full story on why we pivoted and what's next. New features should target the canonical implementation.
 
 ## ✨ Current Capabilities
 
 - ✅ Data-oriented design with Structure of Arrays (SoA) layout
-- ✅ Deterministic simulation with seeded random number generation
+- ⚠️ Fixed-timestep seeded paths exist, but legacy wander and canonical seed-wiring defects
+  currently prevent a general reproducibility claim; see
+  [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17)
 - ✅ Agent-genome data structures and mutation API
 - ✅ Configurable simulation parameters with presets
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
@@ -38,8 +42,10 @@ For developers: See `IMPLEMENTATION_EVOLUTION.md` for the full story on why we p
 - ✅ 68-test xUnit inventory; the 64 non-performance facts form the hosted CI gate
 
 ### Remaining Direction
-- **Canonical readiness**: Boundary/reflection coverage, grid-vs-naive equivalence, scale
-  properties/metrics, multi-group behavior, and canonical benchmarks
+- **Canonical readiness**: Seeded reproducibility (#17), the perception/spatial-index contract
+  (#18), force-budget enforcement (#19), prescribed behavioral scenarios (#41), instrumentation
+  UX (#40), boundary/reflection coverage, scale properties/metrics, multi-group behavior, and
+  canonical benchmarks
 - **Phase 3**: Multi-group interactions, combat, metabolism
 - **Phase 4**: Reproduction, evolution, trait drift
 - **Phase 5**: SIMD optimization, parallelization, NativeAOT compilation
@@ -374,7 +380,8 @@ Quick checklist:
 ## 📋 Development Status
 
 Legacy Phases 0-2, fixed-timestep running, snapshot interpolation, and the renderer are implemented.
-The project is now completing canonical readiness before Phase 3; milestones 8-10, multi-group
+The project is now completing canonical readiness before Phase 3; seeded reproducibility,
+perception semantics, force-budget enforcement, instrumentation UX, milestones 8-10, multi-group
 semantics, canonical performance evidence, and renderer automation remain open. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
