@@ -53,7 +53,8 @@
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
   Core scaffolding and the three steering-rule implementations exist. The perception contract is
   incomplete (#18), composition violates its total `MaxForce` bound (#19), and rule dispatch is
-  positional: later rules are discarded and non-zero separation starves alignment/cohesion (#27).
+  positional: later rules are discarded and qualifying separation starves alignment, cohesion,
+  and wander, including wander-angle updates (#27).
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
 - Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
@@ -313,8 +314,8 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     after slot 2 are discarded; #27 owns a real named composition surface
   - **FOV weighting**: Neighbors weighted by position in vision cone
   - **Prioritized separation**: priority enters at 20% of sense radius by default and boosts
-    separation/reduces allowed speed; independently, any non-zero separation currently exhausts the
-    remaining budget (#27)
+    separation/reduces allowed speed; independently, separation above the current `1e-6`
+    squared-magnitude cutoff exhausts the remaining budget (#27)
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
 - **Implemented components**: core scaffolding, steering-rule classes, and Phase C smoothing
@@ -328,8 +329,9 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     - Priority hysteresis (enter/exit/hold thresholds) - prevents ping-pong
     - Shaped separation (lateral+away blending with smoothstep) - smooth collision avoidance
     - Gradual avoidance falloff - steering sharpness increases with proximity
-    - Smooth wander (continuous angle changes) - replaces chaotic randomness
-    - Alignment/cohesion attenuation is calculated during priority, but any non-zero separation
+    - Smooth wander angle changes while force budget remains; qualifying separation pauses the
+      angle update as well as its contribution (#27)
+    - Alignment/cohesion attenuation is calculated during priority, but qualifying separation
       currently exhausts the remaining budget before those contributions are applied (#27)
     - Whisker lookahead visualization (blue circle in overlay)
   - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
@@ -339,7 +341,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   trajectory evidence
 - **Milestone 6 partial**: the composition path exists, but whisker plus separation can exceed the
   total `MaxForce` budget (#19); positional slots, discarded later rules, and separation starvation
-  remain tracked in #27
+  of alignment, cohesion, and wander remain tracked in #27
 - **Milestone 7 partial**: backend instrumentation and a basic selected-boid inspection overlay
   exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
   rule-toggle acceptance tests remain open in #40

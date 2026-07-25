@@ -171,10 +171,11 @@ CanonicalWorld
       1. Rebuild spatial index
       2. For each boid:
           a. Query broad-phase candidates; apply FOV filtering
-          b. Evaluate positional core-rule slots; accumulate within the budget
-          c. Apply the priority steering budget
-          d. Integrate: v += steer*dt; shape avoidance; limit turn; normalize to allowed speed
-          e. Integrate: x += v*dt; wrap boundaries
+          b. Accumulate whisker look-ahead steering within the budget
+          c. Update priority/hysteresis; evaluate positional core-rule slots
+          d. Apply wander only when force budget remains
+          e. Integrate: v += steer*dt; shape avoidance; limit turn; normalize to allowed speed
+          f. Integrate: x += v*dt; wrap boundaries
       3. Double-buffer swap
 ```
 
@@ -182,7 +183,8 @@ This is the intended flow. The current grid index leaves radius candidates unfil
 ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18)), and the current whisker plus
 separation path can exceed the intended `MaxForce` budget
 ([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)). Rule slots are hard-coded,
-later results are discarded, and non-zero separation exhausts the remainder
+later results are discarded, and a separation contribution above the current `1e-6`
+squared-magnitude cutoff exhausts the remainder before alignment, cohesion, and wander
 ([issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)).
 
 ### Key Characteristics
@@ -462,8 +464,9 @@ After implementing the canonical boids foundation, testing revealed collision is
 **4. Attempted Soft Gating** (`CanonicalWorld.cs:247-273`)
 - Alignment/cohesion vectors are multiplied by
   `attenuation = 1.0 - (priorityBlend * 0.7)`
-- Any non-zero separation contribution currently sets the remaining force budget to zero before
-  those vectors are accumulated, so they make no contribution in that case
+- A separation contribution above the current `1e-6` squared-magnitude cutoff sets the remaining
+  force budget to zero before those vectors or wander are applied; wander's angle also does not
+  advance on that tick
 - [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns named composition and the
   explicit arbitration contract
 
@@ -520,7 +523,8 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 ⚠️ **Partial Rule Composition** (Milestone 6):
 - Separation, alignment, and cohesion are hard-coded to slots 0/1/2; results from later `AddRule`
-  slots are discarded, and non-zero separation exhausts the budget before alignment/cohesion
+  slots are discarded, and separation above the current cutoff exhausts the budget before
+  alignment, cohesion, and wander
 - [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns the named composition and
   arbitration contract
 - Whisker steering can be followed by a separation contribution clamped to the full `MaxForce`,
@@ -554,8 +558,9 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 - Priority hysteresis with enter/exit/hold thresholds
 - Shaped separation with lateral+away blending
 - Gradual avoidance falloff (quadratic distance function)
-- Smooth wander with continuous angle evolution
-- Soft gating for alignment/cohesion during priority
+- Smooth wander angle evolution while force budget remains; qualifying separation pauses it
+- Candidate attenuation for alignment/cohesion during priority; current budget starvation remains
+  open in [issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)
 - Enhanced PerceptionSnapshot with per-agent data
 
 ✅ **Renderer Integration** (Partial):
