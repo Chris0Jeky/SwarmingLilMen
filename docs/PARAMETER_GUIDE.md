@@ -3,6 +3,9 @@
 This guide explains the main fields in `SimConfig`, what they control, and how increasing/decreasing each value affects flocking behaviour. Use it alongside `CONFIGURATION_COOKBOOK.md` when crafting custom JSON configs.
 
 ## Motion & Steering
+- **Seed** – Controls deterministic legacy and canonical construction. Reusing a seed reproduces
+  a trajectory only when the .NET binary/runtime, platform, configuration, timestep, and ordered
+  input events also match; it is not a cross-platform promise.
 - **MaxSpeed** – Upper bound on velocity magnitude. Higher values create more energetic movement but require higher `MaxForce` (or stronger weights) to turn quickly. Keep `MaxForce ≥ MaxSpeed * 0.2` for responsive steering.
 - **MaxForce** – Steering budget per tick. A larger value lets agents change direction faster. Too low relative to `MaxSpeed` yields “train” formations; too high can cause jitter.
 - **Friction** – Velocity damping after applying steering. Values near `0.90–0.98` simulate drag. `1.0` keeps constant speed (only appropriate when steering budgets are high).
@@ -24,7 +27,23 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 - **CohesionWeight** – Pull toward the local center of mass. Too high relative to separation creates clumps; a value around 1/10th of separation is typical.
 
 ## Wander & Noise
-- **WanderStrength** – Random steering magnitude. Use small values (0.1–0.5) to keep agents from freezing. Higher values break up synchronized lines.
+- **WanderStrength** – Random steering magnitude; the default is `0` (disabled). Use small explicit
+  values (0.1–0.5) to keep agents from freezing. Higher values break up synchronized lines.
+- **WanderRate** – Canonical wander-angle change limit in radians per second. It has no effect
+  while `WanderStrength` is zero.
+
+## Canonical Smoothing
+- **MaxTurnRateDegPerSecond** – Canonical heading-change limit.
+- **WhiskerTimeHorizon / WhiskerWeight** – Predictive collision lookahead and steering weight.
+- **SeparationPriorityRadiusFactor / SeparationPriorityExitFactor** – Entry and hysteresis-exit
+  radii as fractions of `SenseRadius`.
+- **SeparationPriorityBoost / SeparationPriorityHoldTime** – Strength and minimum duration of
+  canonical separation priority.
+- **SeparationPriorityRampInTime / SeparationPriorityRampOutTime / SeparationSpeedDroop** –
+  Transition timing and temporary target-speed reduction while priority is active.
+
+These fields are read from `SimConfig` only by the canonical renderer path; the similarly named
+legacy crowding controls retain their existing legacy semantics.
 
 ## Energy / Combat (Phase 3+)
 - **AttackDamage / AttackRadius / AttackCooldown** – Enable combat behaviour when aggression matrices are non-zero. Increase to make encounters more lethal.

@@ -34,10 +34,18 @@ Use `--agent-count N` to override the initial legacy count. Run `--help` for the
   default. `Reflect` and `Clamp` remain available to custom configurations and other callers
   (`SwarmSim.Core/SimConfig.cs:15,221-230`; `SwarmSim.Render/Program.cs:110-217`; `configs/*.json`).
 
-Legacy runs with `WanderStrength = 0` have a seeded, fixed-timestep path. Wander-enabled legacy
-runs are not currently reproducible from the world seed because `WanderSystem` seeds itself from
-the wall clock; canonical seed/configuration wiring also has known gaps. The fixes and proving
-tests are tracked in [issue #17](https://github.com/Chris0Jeky/SwarmingLilMen/issues/17).
+Legacy wander now consumes the world's configured RNG, and canonical initialization plus
+per-agent wander streams derive from `SimConfig.Seed`. For the same .NET 8 binary, platform,
+configuration, timestep, and input sequence, both paths have exact 500-tick state-hash coverage;
+the bundled balanced configuration is also exercised in two separate headless processes. This is
+not a cross-platform/runtime guarantee, and reset or live-parameter event sequences remain part of
+the deterministic input contract. Cross-platform measurement belongs to
+[issue #21](https://github.com/Chris0Jeky/SwarmingLilMen/issues/21).
+
+The shared unauthored renderer default uses `WanderStrength = 0` for both paths. Authored presets
+and JSON files that set a positive value still enable wander. Canonical construction also maps
+seed, wander-rate, turn-rate, whisker, and separation-priority settings from `SimConfig` instead
+of silently using unrelated canonical defaults.
 
 ## Controls
 
