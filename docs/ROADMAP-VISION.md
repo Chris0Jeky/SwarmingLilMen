@@ -51,12 +51,12 @@ satisfy that gate. The global proof does not replace each primitive's direct pre
 | --- | --- |
 | Resources | Module-owned field/resource storage through stable space and Observation/Intent seams, with deterministic update cadence; ACO's pheromone field in #30 is the proof case. |
 | Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
-| Institutions | Module-owned durable state and a versioned event contract, plus generic intents and arbitration from #27; no institution-specific kernel branch. |
-| Markets | Resource/inventory ownership, order intents, deterministic resolution through #27, and registered metrics from #24; no market-specific kernel branch. |
+| Institutions | Module-owned durable state and a versioned event contract; institutional intents use #27's bounded contract, while the module owns deterministic arbitration. No institution-specific kernel branch. |
+| Markets | Resource/inventory ownership, order intents using #27's bounded contract, a module-owned deterministic market resolver, and metrics registered through #24's probe contract; no market-specific kernel branch. |
 | Networks | The query-contract discipline established by #18, widened to a pluggable graph topology/edge store only when a real post-#30 consumer proves the need, without kernel conditionals. |
-| N-IPD | Deterministic scheduling/RNG, #27 observations/intents and generic payoff resolution, plus #24 cooperation/payoff metrics; pairwise/neighborhood variants remain module configuration. |
+| N-IPD | Deterministic scheduling/RNG, observations/intents using #27's bounded contract, a module-owned deterministic payoff resolver, and cooperation/payoff metrics registered through #24's probe contract; pairwise/neighborhood variants remain module configuration. |
 | IPC learners | The Raylib-free runner (#23), versioned reset/episode/reward and Observation/Intent protocols, bounded DTOs, backpressure, and replay; untrusted execution additionally requires #44. |
-| Policy distillation | Stable Observation/Intent traces from #27, a versioned `(observation, intent, reward, next-observation)` schema, and round-trip validation through the experiment spine (#23-#24). Section 10 is blocked on those contracts, not on distillation algorithms. |
+| Policy distillation | The Observation/Intent contract from #27, an explicitly designed versioned `(observation, intent, reward, next-observation)` trace schema and capture path, and round-trip validation through the experiment spine (#23-#24). The trace work remains unscheduled; section 10 is blocked on these contracts, not on distillation algorithms. |
 
 ---
 
@@ -206,8 +206,9 @@ SwarmSim.sln
 
 ## 10) Policy Extraction (“Reasoning Systems”)
 > **Speculative and deferred:** this section cannot begin until #27 supplies a stable
-> Observation/Intent contract and #23-#24 supply versioned traces. Choosing a distillation
-> algorithm is not the current blocker.
+> Observation/Intent contract, #23-#24 supply the experiment runner and metrics spine, and an
+> explicitly designed versioned trace schema and capture path exists. That trace work is not yet
+> scheduled. Choosing a distillation algorithm is not the current blocker.
 
 1) **Trace capture**: (obs, action, reward, next‑obs) + derived features (last k votes, opponent fingerprints).
 2) **Distillation**:
