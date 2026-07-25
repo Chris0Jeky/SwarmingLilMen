@@ -16,6 +16,9 @@
   and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
   so merge gating remains process-enforced. Pull-request jobs test GitHub's head/base merge ref;
   `workflow_dispatch` is available for an exact branch-head rerun.
+- Repository hygiene: the advertised MIT license is present; local debug captures, generated run
+  outputs, and the unused vendored SDK installer are excluded from the tracked root set. The
+  previously committed debug capture remains in Git history; no history rewrite was performed.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and

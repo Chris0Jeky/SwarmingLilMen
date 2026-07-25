@@ -23,9 +23,11 @@ _ReSharper.*
 # Logs, caches
 *.log
 *.svclog
+*-Debug.txt
 *.Cache/
 *.opendb
 *.VC.db
+runs/
 
 # Coverage/profiling
 *.coverage
@@ -41,5 +43,4 @@ dist/
 # OS cruft
 .DS_Store
 Thumbs.db
-Capture.JPG
-.claude/settings.local.json
+Capture.*

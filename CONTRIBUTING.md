@@ -486,8 +486,8 @@ without depending on which test first triggered tier promotion.
 - **Linux**: May need `apt-get install libraylib-dev`
 - **macOS**: May need Raylib via Homebrew
 
-### 6. License File
-**Action Required**: If distributing, add a LICENSE file (MIT suggested in README).
+### 6. License
+The project is distributed under the [MIT License](LICENSE).
 
 ---
 
