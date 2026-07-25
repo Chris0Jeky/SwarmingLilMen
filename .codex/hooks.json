@@ -1,5 +1,5 @@
 {
-  "description": "SwarmingLilMen T1 Codex irreversible-command floor. Uses the shared Claude-home dispatcher at the reviewed 2026-07-25 SHA-256 marker below and passes --runtime codex so unsupported ask outcomes fail closed. The adapter becomes active only after its exact definition is reviewed and trusted through /hooks in a fresh Codex session.",
+  "description": "SwarmingLilMen T1 Codex irreversible-command floor. Uses the shared Claude-home dispatcher with the audit-only 2026-07-25 normalized SHA-256 marker below and passes --runtime codex so unsupported ask outcomes fail closed. The adapter becomes active only after its exact definition is reviewed and trusted through /hooks in a fresh Codex session.",
   "hooks": {
     "PreToolUse": [
       {
@@ -7,8 +7,8 @@
         "hooks": [
           {
             "type": "command",
-            "command": "expected=55a9db7c1aa5b8d3a73a887dc96f04b949397e2d3afc9dec8eb6468386eecd04; python3 \"$HOME/.claude/hooks/dispatch.py\" --event pre --runtime codex",
-            "commandWindows": "$expected='55a9db7c1aa5b8d3a73a887dc96f04b949397e2d3afc9dec8eb6468386eecd04'; py -3 $env:USERPROFILE/.claude/hooks/dispatch.py --event pre --runtime codex",
+            "command": "expected=91088f9b8cf6a56a6eb6ef49903defe902da152e4ed835e83e59db66298f9a33; python3 \"$HOME/.claude/hooks/dispatch.py\" --event pre --runtime codex",
+            "commandWindows": "$expected='91088f9b8cf6a56a6eb6ef49903defe902da152e4ed835e83e59db66298f9a33'; py -3 $env:USERPROFILE/.claude/hooks/dispatch.py --event pre --runtime codex",
             "timeout": 5,
             "statusMessage": "Checking irreversible-command policy"
           }
