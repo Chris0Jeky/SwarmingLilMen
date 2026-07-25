@@ -1,5 +1,8 @@
 # SwarmingLilMen Controls & Shortcuts
 
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and renderer state.
+
 ## Spawning & World Management
 - **Left Click** – Spawn 50 agents at the cursor (group 0)
 - **Right Click** – Spawn 50 agents at the cursor (group 1)
@@ -16,7 +19,7 @@
 - **H** – Toggle the full help overlay (quick reference inside the renderer)
 
 ## Parameter Editing
-- **1–7** – Select a parameter (weights, radii, speed, friction)
+- **1–8** – Select a parameter (weights, radii, speed, force, friction)
 - **↑/↓ or +/-** – Increase/decrease the selected parameter
 - **SHIFT + ↑/↓** – Fine adjustment (smaller increments)
 - **P** – Print the current parameter configuration to the console
@@ -28,6 +31,11 @@
   - `--config <file>` – Load configuration from JSON (see `configs/` directory)
   - `--agent-count <n>` – Override the initial agent count
   - `--benchmark` – Run a headless benchmark (no window)
+  - `--canonical` – Launch the opt-in single-group canonical renderer
+  - `--minimal` – Launch the minimal debugging harness
   - `--help`, `--version`, `--list-presets` – Self-documenting flags
 
-The in-app help overlay (press **H**) mirrors this document, displays the ON/OFF state of the main toggles, and shows the current vision radius, field-of-view, and max-neighbor settings.
+The legacy in-app help overlay (press **H**) mirrors the legacy controls, displays the ON/OFF state
+of the main toggles, and shows the current vision radius, field-of-view, and max-neighbor settings.
+The canonical path has separate **O** metrics-overlay and **Tab** tracked-boid controls; press **H**
+there for its current list (`SwarmSim.Render/Program.cs:1343-1379`).

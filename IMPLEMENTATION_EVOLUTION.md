@@ -1,7 +1,11 @@
 # Implementation Evolution: From SoA Systems to Canonical Boids
 
-**Last Updated**: 2025-11-12 (Session 3.3)
-**Status**: Transition in progress - Canonical implementation ~85% complete (smoothing system implemented)
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state; this document explains migration rationale and may retain history.
+
+**Last Updated**: 2026-07-25 (verified-state reconciliation)
+**Status**: Transition in progress - milestones 0-7 are implemented; readiness milestones 8-10,
+multi-group semantics, and canonical performance evidence remain incomplete
 
 ---
 
@@ -462,7 +466,7 @@ The **blue circle** in the overlay is the **whisker lookahead capsule** - it sho
 
 ## Migration Status
 
-### Completed (Canonical Implementation ~85%)
+### Completed Foundations (Milestones 0-7)
 
 ✅ **Core Infrastructure** (Milestones 0-2):
 - `Vec2` struct with all vector operations
@@ -655,7 +659,8 @@ To complete the migration and reach a solid foundation for Phase 3 (Combat & Met
   - [ ] Identify top-3 hotspots
   - [ ] Document optimization opportunities for Phase 5
 
-**Target**: Match or exceed old implementation performance (10k @ 129 FPS)
+**Target**: Match or exceed the dated legacy simulation-tick baseline. Canonical throughput and
+renderer FPS are currently unmeasured; use the verified command/results in `PROJECT_STATUS.md`.
 
 **Why Critical**: Can't justify the rewrite if performance regresses. Need data to make optimization decisions.
 
@@ -760,7 +765,8 @@ The new canonical implementation, while less "architecturally pure", is:
 - **Easier to tune**: Canonical steering parameters with known ranges
 - **True to literature**: Follows Reynolds' proven formulations
 
-**Current Status**: ~70% complete. Core infrastructure and rules are done. Need to finish testing, add multi-group support, and validate performance before Phase 3.
+**Current Status**: Core infrastructure and rules are implemented. Readiness milestones 8-10,
+multi-group support, and performance validation remain incomplete before Phase 3.
 
 **Recommendation**: Complete milestones 8-10, add multi-group support, build visualization tools, validate performance. Then proceed with **gradual migration** (Option C) - port Phase 3 features to canonical implementation while keeping old implementation as reference. Once validated, remove old implementation in Phase 5.
 

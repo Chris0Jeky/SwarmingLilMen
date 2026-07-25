@@ -1,5 +1,8 @@
 # Quick Start Guide
 
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state.
+
 Get SwarmingLilMen running in 5 minutes!
 
 ## Prerequisites Check
@@ -15,7 +18,8 @@ If not, install from: https://dotnet.microsoft.com/download/dotnet/8.0
 ## 1. Get the Code
 
 ```bash
-cd "C:\Users\jekyt\Desktop\Printer Config\Others\Git\SwarmingLilMen"
+git clone <repository-url>
+cd SwarmingLilMen
 ```
 
 ## 2. Build
@@ -29,52 +33,20 @@ Expected output: `Build succeeded. 0 Warning(s) 0 Error(s)`
 ## 3. Run Tests
 
 ```bash
-dotnet test
+dotnet test SwarmingLilMen.sln --configuration Release --filter "Category!=Performance"
 ```
 
-Expected output: `Passed!  - Failed: 0, Passed: 21`
+Expected inventory on 2026-07-25: `Passed: 64, Failed: 0`. The four timing facts are in the
+separate `Performance` category; see `PROJECT_STATUS.md` for the dated full-suite evidence.
 
 ## 4. Play with the Code
 
-### Option A: Use the World Programmatically
+### Option A: Run Headless
 
-Create a simple test file to experiment:
+Use the renderer project's headless benchmark mode; there is no root executable project.
 
-```csharp
-// In SwarmingLilMen/Program.cs (if it still exists)
-using SwarmSim.Core;
-
-var config = SimConfig.PeacefulFlocks();
-var world = new World(config, seed: 12345);
-
-// Spawn 100 agents in a circle
-world.SpawnAgentsInCircle(
-    centerX: 500f,
-    centerY: 500f,
-    radius: 100f,
-    count: 100,
-    group: 0
-);
-
-Console.WriteLine($"Spawned {world.Count} agents");
-
-// Run 100 simulation ticks
-for (int i = 0; i < 100; i++)
-{
-    world.Tick();
-}
-
-// Get stats
-var stats = world.GetStats();
-Console.WriteLine($"After 100 ticks:");
-Console.WriteLine($"  Alive: {stats.AliveAgents}");
-Console.WriteLine($"  Avg Energy: {stats.AverageEnergy:F1}");
-Console.WriteLine($"  Avg Speed: {stats.AverageSpeed:F1}");
-```
-
-Run it:
 ```bash
-dotnet run --project SwarmingLilMen.csproj
+dotnet run --project SwarmSim.Render --configuration Release -- --benchmark --agent-count 1000
 ```
 
 ### Option B: Run the Renderer (Interactive)
@@ -91,6 +63,9 @@ dotnet run --project SwarmSim.Render -- --preset fast-loose --agent-count 5000
 
 # Load a JSON config from the configs/ directory
 dotnet run --project SwarmSim.Render -- --config configs/warbands.json
+
+# Launch the opt-in single-group canonical renderer
+dotnet run --project SwarmSim.Render -- --canonical
 ```
 
 Tips:
@@ -105,6 +80,7 @@ Tips:
 
 **Core Simulation**:
 - `SwarmSim.Core/World.cs` - Main simulation loop
+- `SwarmSim.Core/Canonical/CanonicalWorld.cs` - Opt-in canonical steering path
 - `SwarmSim.Core/Genome.cs` - Agent genetics
 - `SwarmSim.Core/SimConfig.cs` - Configuration options
 
@@ -114,6 +90,9 @@ Tips:
 
 **Tests**:
 - `SwarmSim.Tests/WorldTests.cs` - World behavior tests
+- `SwarmSim.Tests/CanonicalBoidsTests.cs` - Canonical steering and determinism tests
+- `SwarmSim.Tests/SimulationRunnerTests.cs` - Fixed-step and interpolation tests
+- `SwarmSim.Tests/CommandLineOptionsTests.cs` - CLI parsing/help tests
 - `SwarmSim.Tests/RngTests.cs` - RNG determinism tests
 
 ## 6. Try the Configuration Presets
@@ -122,10 +101,10 @@ Tips:
 // Peaceful flocking
 var peaceful = SimConfig.PeacefulFlocks();
 
-// Combat between groups
+// Warbands-flavoured group settings; combat is future Phase 3 work
 var warbands = SimConfig.Warbands();
 
-// High mutation rates
+// High mutation settings; reproduction/evolution is not active yet
 var evolution = SimConfig.RapidEvolution();
 
 // Fully custom
@@ -146,20 +125,20 @@ Try changing these in SimConfig:
 
 **Physics**:
 - `MaxSpeed` - How fast agents can move (50-500)
-- `Friction` - Velocity decay per tick (0.9-1.0)
+- `Friction` - Velocity decay per tick (0.9-1.0) when `SpeedModel` is `Damped`
 - `BoundaryMode` - Wrap, Reflect, or Clamp
 
-**Behavior** (when systems are implemented):
+**Active legacy behavior**:
 - `SenseRadius` - How far agents can "see" (20-100)
 - `SeparationWeight` - Avoid neighbors (0-3)
 - `AlignmentWeight` - Match neighbor velocity (0-3)
 - `CohesionWeight` - Move toward group center (0-3)
 
-**Energy**:
+**Reserved Phase 3 energy settings** (only initial values are active today):
 - `InitialEnergy` - Starting energy (50-200)
 - `BaseDrain` - Energy per second (0.1-1.0)
 
-**Evolution**:
+**Reserved Phase 4 evolution settings**:
 - `MutationRate` - Probability of trait mutation (0.01-0.5)
 - `MutationStdDev` - Size of mutations (0.1-0.5)
 
@@ -187,7 +166,9 @@ Install .NET 8.0 SDK from: https://dotnet.microsoft.com/download
 Run `dotnet restore` first
 
 ### Render window doesn't open
-Rendering is not yet implemented (Phase 0 - 20% remaining work)
+Confirm `dotnet run --project SwarmSim.Render -- --help` works, then check that the machine has an
+interactive graphics session and the required Raylib native dependencies. The renderer is
+implemented; this symptom is an environment/runtime problem, not a missing project phase.
 
 ### Want to contribute?
 See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines!

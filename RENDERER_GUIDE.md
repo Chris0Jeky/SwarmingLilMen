@@ -1,124 +1,82 @@
 # SwarmingLilMen Renderer Guide
 
-## What You're Seeing
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state.
 
-The renderer shows **800 agents** (200 per group) performing **boids flocking behavior**:
+## Choose the Renderer Path
 
-### The 4 Groups (Colors)
-- **White** - Group 0
-- **Red** - Group 1
-- **Green** - Group 2
-- **Blue** - Group 3
+The default command launches the legacy SoA renderer with **400 agents** split across four groups
+(`SwarmSim.Render/Program.cs:66,471,552-586`):
 
-**Important**: Each group only flocks with its own color. Different colored agents ignore each other (this is by design).
+```bash
+dotnet run --project SwarmSim.Render
+```
 
-## Expected Behavior
+The canonical renderer is an opt-in, single-group path while canonical readiness work remains
+incomplete (`SwarmSim.Render/CommandLineOptions.cs:101-104`):
 
-### What You Should See:
-1. **Initial Movement**: Agents start with random velocities (50-100 units/sec)
-2. **Flocking Emerges**: Within seconds, each colored group forms cohesive flocks
-3. **Behaviors**:
-   - **Separation**: Agents maintain personal space from nearby neighbors
-   - **Alignment**: Agents match the velocity of nearby neighbors
-   - **Cohesion**: Agents are attracted to the center of nearby neighbors
-4. **Group Movement**: Flocks will swirl, merge, split, and flow around the screen
-5. **Wrapping**: When agents reach screen edges, they wrap to the opposite side
+```bash
+dotnet run --project SwarmSim.Render -- --canonical
+```
 
-### Visualization Options (Press Keys to Toggle):
-- **V** - Velocity vectors (ON by default): Shows direction and speed of movement
-- **S** - Sense radius circles: Shows how far each agent can "see" (120 pixels)
-- **N** - Neighbor connections: Draws lines between nearby agents in the same group
+Use `--agent-count N` to override the initial legacy count. Run `--help` for the authoritative CLI.
 
-### What Makes It Dynamic:
-- **MaxSpeed**: 300 pixels/sec
-- **SenseRadius**: 120 pixels (larger interaction range)
-- **Friction**: 0.95 (less friction = more sustained movement)
-- **Initial velocity**: 100-200 pixels/sec (agents start fast)
-- **Stronger Forces**: All boids weights doubled for more dramatic flocking
+## What the Legacy Renderer Shows
 
-## Interaction Controls
+- Four initial clusters use white, red, green, and blue for groups 0-3
+  (`SwarmSim.Render/Program.cs:220-237,552-575`).
+- Neighbor sensing is limited to the same group and current field of view
+  (`SwarmSim.Core/Systems/SenseSystem.cs:147-193`).
+- Separation, alignment, cohesion, optional wander, and integration are the active systems;
+  combat, metabolism, reproduction, and lifecycle behavior are not implemented
+  (`SwarmSim.Core/World.cs:122-144`).
+- Wrap, reflect, and clamp boundary modes are configuration options. Do not assume wrap mode for
+  every preset (`SwarmSim.Core/Systems/IntegrateSystem.cs:7-23`).
 
-- **Left Click**: Spawn 50 white agents at mouse position
-- **Right Click**: Spawn 50 red agents at mouse position
-- **Space**: Spawn 100 random agents
-- **R**: Reset to initial state (800 agents in 4 groups)
-- **X**: Shake - Add random velocity to all agents (breaks equilibrium)
-- **C**: Export CSV snapshot for data analysis
-- **ESC**: Quit
+Flocking is deterministic for a fixed seed, configuration, and timestep, but its visible shape
+depends on the selected preset and live parameter edits.
 
-## Understanding the Flocking
+## Controls
 
-Each agent follows three simple rules:
+Press **H** in either renderer for its in-app help. The maintained legacy reference is
+[`CONTROLS.md`](CONTROLS.md); highlights include spawning with mouse/Space, **R** reset, **V/S/N**
+visualization toggles, **F1-F5** presets, **C** CSV export, and **F12** snapshot/debug information
+(`SwarmSim.Render/Program.cs:637-739,1244-1277`).
 
-1. **Separation (weight 1.5)**:
-   - Repels from agents within 25 pixels
-   - Force is 1/r² (inverse square, like physics)
-   - Prevents overcrowding
+The canonical path has separate controls: **R** reset, **H** help, **O** metrics overlay, **Tab**
+tracked-boid selection, parameter keys, and **F1-F5** presets
+(`SwarmSim.Render/Program.cs:1343-1379,1556-1607`).
 
-2. **Alignment (weight 1.0)**:
-   - Steers toward the average velocity of neighbors
-   - Creates coordinated group movement
-   - Makes flocks flow together
+## Performance Interpretation
 
-3. **Cohesion (weight 0.8)**:
-   - Attracts toward center of mass of neighbors
-   - Keeps groups from spreading apart
-   - Creates the "flocking" effect
+The legacy renderer requests a **60 FPS** frame cap and its active default configuration uses a
+**1/60-second** fixed simulation step (`SwarmSim.Render/Program.cs:245,467`). Those are scheduling
+settings, not measured throughput guarantees. Other `SimConfig` consumers may use different steps.
 
-## Performance Notes
+The latest legacy-core sample was captured on 2026-07-25 with the explicit Release
+`Performance` test category. Its **50k tick** result was **162.815 ms/tick (6.14 operations/second)**,
+so the **16.67 ms/tick** target was unmet. That test does not render a window and therefore is not
+renderer FPS evidence. Canonical throughput, renderer FPS, and allocation rates remain unmeasured;
+see the verified block in `PROJECT_STATUS.md` for the command and complete sample.
 
-- **FPS**: Should be 60 (or close) with 800 agents
-- **Avg Speed**: Will vary as agents accelerate/decelerate, typically 100-200
-- The simulation runs at 120 Hz internally, renders at 60 FPS
+## Data Export
+
+In the legacy renderer, **C** writes a CSV snapshot with agent ID, group, position, velocity, speed,
+energy, health, age, and state. The file is named
+`swarm_snapshot_YYYYMMDD_HHMMSS_T######.csv` (`SwarmSim.Render/Program.cs:1863-1894`). Generated
+operational outputs should not be committed.
 
 ## Troubleshooting
 
-**"Not much is happening"**:
-- Make sure velocity vectors are ON (press V if gray)
-- Watch for several seconds - flocking takes time to emerge
-- Groups may be moving slowly; press R to reset with new velocities
+- If the window does not open, first run `dotnet run --project SwarmSim.Render -- --help`. If that
+  succeeds, verify the machine has an interactive graphics session and the required Raylib native
+  dependencies.
+- If motion is unexpected, press **H**, inspect the active preset/parameters, and use **R** to reset.
+- If diagnostics are needed, use **F12** on the legacy path or **O** on the canonical path.
+- Unit tests and headless timing checks do not replace a visual renderer check.
 
-**"Agents not flocking"**:
-- Each color only flocks with itself
-- Agents need to be within 120 pixels (SenseRadius) to interact
-- Press N to see neighbor connections
+## Current Direction
 
-**"Too slow"**:
-- This is normal for the initial convergence phase
-- After a few seconds, flocks become more dynamic
-- Try spawning more agents with Space for chaos
-
-**"Agents stuck in static blobs"**:
-- This means forces have reached equilibrium (all cancel out)
-- Press **X** to "shake" agents and add random velocity
-- Press **R** to reset with new initial conditions
-- If you see >30 avg neighbors in diagnostics, agents are too clustered
-
-## Data Export & Analysis
-
-Press **C** to export a CSV snapshot of all agents. The file includes:
-- Agent position (X, Y)
-- Velocity (Vx, Vy, Speed)
-- Group membership
-- Energy, Health, Age
-- State flags
-
-Files are saved as `swarm_snapshot_YYYYMMDD_HHMMSS_T######.csv` with timestamp and tick count.
-
-**Use cases**:
-- Analyze clustering patterns in Python/R
-- Plot agent trajectories over time
-- Calculate spatial statistics (density, dispersion)
-- Verify force balance and equilibrium states
-- Debug anomalous behaviors
-
-## What's Next
-
-This is Phase 2 - basic boids flocking. Future phases will add:
-- **Phase 3**: Combat between groups, energy/metabolism, death
-- **Phase 4**: Reproduction and evolution
-- **Phase 5**: Performance optimizations (SIMD, parallelization) for 50k+ agents
-
----
-
-**Enjoy watching the emergent behavior!** Each group operates on simple local rules, but creates complex global patterns.
+Canonical milestones 8-10, multi-group semantics, canonical benchmarks, and renderer automation
+remain open. Phase 3 combat/metabolism work must wait for that readiness evidence; follow
+`PROJECT_STATUS.md` rather than historical phase percentages.

@@ -19,6 +19,9 @@
 - Repository hygiene: the advertised MIT license is present; local debug captures, generated run
   outputs, and the unused vendored SDK installer are excluded from the tracked root set. The
   previously committed debug capture remains in Git history; no history rewrite was performed.
+- Documentation entrypoints now point back to this verified-state section and distinguish the
+  unmet performance objective from the dated legacy-core sample. Older phase/session prose remains
+  explicitly historical pending the dedicated archive pass in issue #15.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
@@ -59,16 +62,22 @@
 
 ## Quick Context for Future Sessions
 
+> **HISTORICAL CONTEXT:** Numeric performance and test-count entries below preserve prior session
+> reports whose exact commands/hardware were not recorded; they are unmeasured for the current
+> state. Only the verified block above is current evidence.
+
 ### What This Project Is
-A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents @ 60 FPS with emergent behavior from simple rules. Data-oriented design (SoA), deterministic, zero-allocation hot paths.
+A 2D swarm simulation in C#/.NET 8.0 with an unmet target of 50k-100k interactive agents at
+60 FPS. Its data-oriented design emphasizes determinism and allocation-conscious hot paths; the
+verified block above records what is actually measured.
 
 ### What's Been Done
 
-**Session 1 - Phase 0 (Foundation)** ✅
+**Session 1 - Foundation (originally P0)** ✅
 - Solution structure, build system, core data structures
 - World class with SoA layout, Rng, MathUtils
-- 21 tests, Raylib rendering, full documentation
-- **Phase 0 Complete**
+- Original 21-test snapshot, Raylib rendering, full documentation
+- **Foundation Complete**
 
 **Session 2 - Phase 1 (Spatial Grid & Basic Movement)** ✅
 - ✅ **Spatial Grid**: UniformGrid with Head[]/Next[] linked lists, O(1) insertion, 3x3 queries
@@ -134,8 +143,8 @@ A high-performance 2D swarm simulation in C#/.NET 8.0 targeting 50k-100k agents 
    - Immutable `Boid` structs, pluggable `IRule` components
    - Reynolds steering behaviors (not forces)
    - Single-pass with per-agent decision-making
-   - **Status**: ~70% complete, needs multi-group + testing
-   - **Run with**: `dotnet run --project SwarmSim.Render --canonical`
+   - **Status**: milestones 0-7 implemented; milestones 8-10 and multi-group semantics incomplete
+   - **Run with**: `dotnet run --project SwarmSim.Render -- --canonical`
 
 **Before Phase 3**: We must complete the canonical implementation (milestones 8-10), add multi-group support, and validate performance. See `IMPLEMENTATION_EVOLUTION.md` for full details on why we pivoted and what needs to happen next.
 
@@ -163,7 +172,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ## Implementation Priority Queue
 
-### Phase 0: Foundation (P0) - ✅ COMPLETE
+### Foundation Milestone (P0) - ✅ COMPLETE
 **Goal**: Basic data structures, World skeleton, can compile and run minimal simulation
 
 - [x] **Core Data Structures** (SwarmSim.Core/)
@@ -185,7 +194,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - [x] **Basic Tests** (SwarmSim.Tests/)
   - [x] `RngTests.cs` - 8 tests covering determinism, distributions, shuffling
   - [x] `WorldTests.cs` - 13 tests covering agents, boundaries, determinism
-  - [x] **All 21 tests passing**
+  - [x] **Original 21-test suite passing**
 
 - [x] **Minimal Render** (SwarmSim.Render/) ✅ COMPLETE
   - [x] Program.cs - Full Raylib implementation with window, world, render loop
@@ -201,7 +210,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 **Exit Criteria**: ✅ Can create World with 1000 agents, render them as dots, window runs at 60 FPS
 
-**Status**: ✅ **PHASE 0 COMPLETE** - All features implemented, tested, and documented.
+**Status**: ✅ **FOUNDATION COMPLETE** - All planned foundation features were recorded as complete.
 
 ---
 
@@ -256,10 +265,11 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 
 ---
 
-### Canonical Boids Implementation (Post-P2 Rewrite) ~85% Complete
+### Canonical Boids Implementation (Post-P2 Rewrite)
 > **See `IMPLEMENTATION_EVOLUTION.md` and `filesAndResources/CanonicalBoids_SmoothingPlan.md` for full technical details**
 
-- **Status**: In active development, ~85% complete (smoothing system complete)
+- **Status**: In active development; milestones 0-7 are implemented, while readiness milestones
+  8-10, multi-group semantics, and canonical performance evidence remain incomplete
 - **Why the rewrite**: The legacy force-based BehaviorSystem had fundamental issues:
   - Debugging was nearly impossible (two-pass architecture, opaque aggregates)
   - Force/friction equilibrium created unpredictable parameter sensitivity
@@ -584,14 +594,16 @@ The current project lacks clear onboarding and runtime discoverability. Develope
    grid-vs-naive equivalence, scale properties/metrics).
 2. **Feature parity**: canonical multi-group semantics and aggression support are not complete, so
    Phase 3 combat/metabolism work has no settled target model.
-3. **Performance evidence**: the legacy 50k path is far below 60 FPS in the 2026-07-25 sample;
-   canonical performance and allocations are unmeasured by the benchmark project.
-4. **Test-gate honesty**: 10k/50k timing tests warn but do not fail, and there is no hosted CI.
+3. **Performance evidence**: the legacy 50k simulation tick took 162.815 ms in the 2026-07-25
+   sample, well above a 16.67 ms single-step budget; renderer FPS, canonical throughput, and
+   allocations remain unmeasured.
+4. **Test-gate honesty**: timing facts now assert generous machine-relative scaling envelopes
+   outside the default hosted CI gate; absolute throughput remains reported-only evidence.
 5. **Maintainability**: renderer and canonical-world monoliths increase change and review cost;
    legacy/canonical duplication creates ongoing drift risk.
-6. **Documentation drift**: README and historical sections below still contain obsolete phase,
-   test-count, performance, and next-session claims. The verified-state section above wins until a
-   dedicated documentation consolidation slice reconciles them.
+6. **Documentation drift**: high-traffic entrypoints are reconciled, but the explicitly historical
+   sections below still preserve obsolete phase, performance, and next-session claims pending the
+   archive/consolidation work in issue #15.
 
 ---
 
@@ -745,7 +757,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 - Solution builds with 0 warnings, 0 errors
 - **✅ PHASE 1 COMPLETE** - Ready for Phase 2 (Boids)
 
-### 2025-11-10 (Session 1 - Phase 0 COMPLETE ✅)
+### 2025-11-10 (Session 1 - FOUNDATION COMPLETE ✅)
 - Created PROJECT_STATUS.md as persistent memory document
 - Solution reorganized: removed root project, added Directory.Build.props
 - **Implemented complete P0 foundation**:
@@ -768,7 +780,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
   - QUICKSTART.md - 5-minute getting started guide
   - PublishScript.md analysis and explanation
 - Solution builds with 0 warnings, 0 errors
-- **✅ PHASE 0 COMPLETE** - Ready to move to Phase 1
+- **✅ FOUNDATION COMPLETE** - Ready to move to Phase 1
 
 ---
 

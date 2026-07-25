@@ -1,7 +1,10 @@
 # Phase 3 Readiness Checklist
 
-**Last Updated**: 2025-11-12
-**Current Status**: Canonical implementation ~70% complete
+> [`PROJECT_STATUS.md`](PROJECT_STATUS.md) is the live source of truth for verified implementation,
+> test, and performance state; this checklist defines remaining canonical readiness work.
+
+**Last Updated**: 2026-07-25 (verified-state reconciliation)
+**Current Status**: Milestones 0-7 are implemented; milestones 8-10 remain incomplete
 
 > This document outlines the concrete steps needed to complete the canonical boids implementation before starting Phase 3 (Combat & Metabolism).
 
@@ -9,7 +12,9 @@
 
 ## Overview
 
-Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a solid, debuggable foundation. The current implementation is ~70% complete (milestones 0-7 done, 8-10 in progress).
+Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a
+solid, debuggable foundation. Milestones 0-7 are implemented; milestones 8-10, multi-group
+semantics, and canonical performance evidence remain incomplete.
 
 **Estimated Effort**: 1-2 weeks of focused development
 
@@ -290,12 +295,17 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
 
 - [ ] **Compare Old vs New**
   - Run benchmarks for both implementations
-  - Create comparison table:
-    | Agents | Legacy (ms/tick) | Canonical (ms/tick) | Speedup |
-    |--------|------------------|---------------------|---------|
-    | 1k     | 0.117            | TBD                 | TBD     |
-    | 10k    | 7.75             | TBD                 | TBD     |
-    | 50k    | 154              | TBD                 | TBD     |
+  - Current comparison seed: legacy timing-test sample captured 2026-07-25 with:
+
+    ```powershell
+    dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --filter "Category=Performance" --logger "console;verbosity=detailed"
+    ```
+
+    | Agents | Legacy sample (ms/tick) | Canonical | Speedup |
+    |--------|-------------------------|-----------|---------|
+    | 1k     | 0.172                   | Unmeasured | Unmeasured |
+    | 10k    | 8.839                   | Unmeasured | Unmeasured |
+    | 50k    | 162.815                 | Unmeasured | Unmeasured |
 
 - [ ] **Identify Regressions**
   - If canonical is slower, profile with dotTrace
@@ -305,6 +315,8 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
 ### 🔍 Allocation Testing
 
 - [ ] **Zero-Allocation Verification**
+  - Current canonical `Step()` does not satisfy this target because perception-snapshot refresh
+    allocates three arrays (`SwarmSim.Core/Canonical/CanonicalWorld.cs:496-508`).
   ```csharp
   [Fact]
   public void CanonicalWorld_Step_AllocatesNothing()
@@ -330,7 +342,8 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
   - Verify no allocations in `Step()` method
   - Document any allocation sources
 
-**Target**: 10k agents @ 60+ FPS (match or beat legacy 129 FPS)
+**Target**: 10k agents at 60+ rendered FPS. Renderer FPS and canonical tick throughput are
+currently unmeasured.
 
 **Exit Criteria**: Performance validated, allocation-free hot path confirmed
 
