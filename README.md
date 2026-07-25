@@ -433,7 +433,7 @@ dotnet build
 - [CLAUDE.md](CLAUDE.md) - Guidelines for AI assistants
 - [PROJECT_STATUS.md](PROJECT_STATUS.md) - Implementation tracker and roadmap
 - [Roadmap vision](docs/ROADMAP-VISION.md) - Aspirational reference; epic #10 is the executable plan
-- [Documentation index](docs/README.md) - Live guides, trust boundary, and archive routing
+- [Documentation index](docs/README.md) - Live guides, security non-goal, extension posture, and archive routing
 - [Historical publishing reference](docs/archive/PublishScript.md) - Superseded distribution examples
 
 ## 🛠️ Technology Stack

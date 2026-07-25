@@ -57,6 +57,8 @@
   incomplete (#18), composition violates its total `MaxForce` bound (#19), and rule dispatch is
   positional: later rules are discarded and qualifying separation starves alignment, cohesion,
   and wander, including wander-angle updates (#27).
+  Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
+  kernel-resolved arbitration.
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
 - Reproducibility limitation: legacy `World` creates a wall-clock-seeded `WanderSystem` whenever
@@ -91,7 +93,8 @@
   simulation concepts and **playground** for the app. Data-only scenario input is a design choice,
   not a security guarantee; in-process extensions have full host authority. Future untrusted code
   is blocked on the dedicated containment prerequisite in
-  [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44).
+  [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44), an unscheduled marker with no
+  owner or timeline.
 
 ---
 
@@ -133,7 +136,7 @@ verified block above records what is actually measured.
 - ✅ **World Integration**: Updated systems pipeline (Sense → Behavior → Integrate)
 - ✅ **Tests**: 8 new boids behavior tests (43 total, all passing)
   - Separation, alignment, cohesion verified individually
-  - Group separation, speed limits, determinism confirmed
+  - Cross-group non-interaction, speed limits, determinism confirmed
 - ✅ **Performance Results** (Release mode):
   - **10k agents: 129 FPS** ✅ (exceeds 60 FPS target)
   - **1k agents: 8,555 FPS** ✅
@@ -368,7 +371,7 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
   rule-toggle acceptance tests remain open in #40
 - **Milestones 3-6 acceptance partial**: direct rule tests exist, but the roadmap's multi-tick
-  behavioral/group-separation/stability scenarios remain open in #41
+  behavioral/single-rule/stability scenarios remain open in #41
 - **In Progress**: Milestones 8-10
   - Boundary testing (wrapping, reflection)
   - Spatial index equivalence tests
@@ -681,7 +684,7 @@ The current project lacks clear onboarding and runtime discoverability. Develope
    [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) delivers a separate process,
    least-authority filesystem/network access, resource and wall-clock limits, bounded validated
    schemas, authenticated local-only transport, a dedicated threat model, and adversarial
-   fail-closed evidence.
+   fail-closed evidence. This marker is unscheduled and has no owner or timeline.
 
 ---
 

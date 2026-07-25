@@ -36,10 +36,14 @@
 > and adversarial fail-closed tests. Until that workstream passes, no product name, flag, package,
 > API, or documentation may imply containment.
 
+Issue #44 is an unscheduled prerequisite marker with no owner or timeline. It is a stop condition,
+not queued implementation work.
+
 ### Deferral boundary
 
 Every primitive below remains speculative until the shared kernel has carried boids, Vicsek, and
-ACO without kernel edits ([#29](https://github.com/Chris0Jeky/SwarmingLilMen/issues/29) and
+ACO without foundation-specific kernel edits beyond #30's declared generic field phase
+([#29](https://github.com/Chris0Jeky/SwarmingLilMen/issues/29) and
 [#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)); the frozen browser demos do not
 satisfy that gate. The global proof does not replace each primitive's direct prerequisite:
 
@@ -47,7 +51,7 @@ satisfy that gate. The global proof does not replace each primitive's direct pre
 | --- | --- |
 | Resources | Module-owned field/resource storage through stable space and Observation/Intent seams, with deterministic update cadence; ACO's pheromone field in #30 is the proof case. |
 | Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
-| Institutions | Module-owned durable state plus generic intents, arbitration, and events from #27; no institution-specific kernel branch. |
+| Institutions | Module-owned durable state and a versioned event contract, plus generic intents and arbitration from #27; no institution-specific kernel branch. |
 | Markets | Resource/inventory ownership, order intents, deterministic resolution through #27, and registered metrics from #24; no market-specific kernel branch. |
 | Networks | The query-contract discipline established by #18, widened to a pluggable graph topology/edge store only when a real post-#30 consumer proves the need, without kernel conditionals. |
 | N-IPD | Deterministic scheduling/RNG, #27 observations/intents and generic payoff resolution, plus #24 cooperation/payoff metrics; pairwise/neighborhood variants remain module configuration. |

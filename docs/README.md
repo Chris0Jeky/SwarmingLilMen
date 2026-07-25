@@ -21,11 +21,12 @@ ordering authority. Historical documents are context, not proof.
 > **interaction surface** describes simulation behavior, not security isolation. The engine
 > provides no process isolation, resource quotas, filesystem/network capability restrictions, or
 > protection from a malicious or buggy extension. Scenario/config input is data-only today by
-> design, and in-process policies have the host process's full authority. Before any untrusted
+> design, not by an enforced security guarantee, and in-process policies have the host process's
+> full authority. Before any untrusted
 > code, community mod, or untrusted IPC learner can run, the dedicated containment workstream in
 > [issue #44](https://github.com/Chris0Jeky/SwarmingLilMen/issues/44) must pass its threat-model,
 > least-authority, resource-limit, schema-validation, authenticated-transport, and adversarial-test
-> gates.
+> gates. Issue #44 is an unscheduled prerequisite marker with no owner or timeline.
 
 The direct prerequisites for deferred resources, communication, institutions, markets, networks,
 N-IPD, IPC learners, and policy distillation are listed in the
