@@ -1,68 +1,40 @@
-# CLAUDE.md - SwarmingLilMen
+# CLAUDE.md — SwarmingLilMen
 
-Tier: T1 sandbox, public repository, dual runtime (Claude and Codex). Authority and flags live in
-`.agent-harness/tier.json`. `AGENTS.md` is the shared project operating guide and wins if this thin
-Claude entrypoint drifts from it.
+Tier: sandbox (T1) — authority: push free / merge gated · dual-runtime (Claude + Codex).
+Global laws are auto-injected; none are restated here. Codex reads `AGENTS.md`, a thin adapter
+pointing back here. `merge: gated` is *declared* in `.agent-harness/tier.json`, not inherited from
+T1 — changing it is an owner decision. No human-action file exists (`human_todo: null`).
 
-## Start here
+## What this is
 
-1. Read `AGENTS.md`.
-2. Inspect `git status --short --branch` and recent commits.
-3. Read the verified-state section at the top of `PROJECT_STATUS.md`.
-4. For simulation work, read the relevant implementation and tests. For migration decisions, also
-   read `docs/archive/IMPLEMENTATION_EVOLUTION.md` and `docs/PHASE_3_READINESS_CHECKLIST.md`.
-5. Run a baseline check before changing behavior.
+Deterministic 2D swarm simulation in C#/.NET 8, ~9k lines: `SwarmSim.Core` (library),
+`SwarmSim.Render` (Raylib window + CLI), `SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
+`js-demos/` holds unrelated standalone browser demos. **Two engines coexist on purpose**: legacy
+Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer and every
+benchmark, and `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`).
+"50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
-## Project in one paragraph
-
-SwarmingLilMen is a deterministic C#/.NET 8 swarm-simulation research project targeting rich
-emergent behavior and very large agent counts. The default renderer and existing benchmarks use a
-legacy Structure-of-Arrays `World`/systems pipeline. The intended future path is
-`SwarmSim.Core/Canonical`, a composable Reynolds-style implementation available through
-`--canonical`. The canonical migration, multi-group model, Phase 3 survival/combat mechanics, and
-performance validation are incomplete.
-
-## Essential commands
+## Build, test, run — all green 2026-07-27 at `f68cccc` (SDK 8.0.415, Windows)
 
 ```powershell
-dotnet restore SwarmingLilMen.sln
-dotnet build SwarmingLilMen.sln --configuration Release
-dotnet test SwarmingLilMen.sln --configuration Release
-dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --filter "FullyQualifiedName~CanonicalBoidsTests"
-dotnet run --project SwarmSim.Render -- --help
-dotnet run --project SwarmSim.Render -- --canonical
-dotnet run --project SwarmSim.Benchmarks --configuration Release
+dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 warnings / 0 errors
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 80 passed / 2 s — this IS the CI gate
+dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
 ```
 
-Use Release for any performance statement. A green test run does not prove the 50k/60 FPS goal:
-some timing tests are observational and emit warnings without failing.
+Narrowest seam check: `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build
+--filter "FullyQualifiedName~<Class>"` — CanonicalBoidsTests (12), UniformGridTests (14),
+BoidsTests (8), WorldTests (13), SimulationRunnerTests (6), CommandLineOptionsTests (2),
+ConfigTests (2); or `--filter "Category=Determinism"` (14) / `"Category=Performance"` (4, ~18 s,
+Release only). The **renderer has no automated coverage** — prove a `Program.cs` change by running it.
 
-## Claude-specific safety
+## Pitfalls
 
-- The shared global Claude PreToolUse hook supplies the irreversible-command floor. Do not vendor a
-  second Claude hook into this repo; duplicate hooks can double-dispatch.
-- Committed permissions live in `.claude/settings.json`. Personal bypass choices belong in
-  gitignored `.claude/settings.local.json`.
-- Never commit secrets, tokens, generated profiler/test output, private data, or agent-attribution
-  trailers.
-- Work inline at T1 unless the user explicitly requests delegation or a read-only independent lens
-  is materially useful. Keep one writer for this checkout.
-- Small, evidence-backed diffs are preferred. Do not treat historical session prose as live proof.
-
-## Architecture guardrails
-
-- New Phase 3+ behavior targets the canonical implementation unless the task explicitly says
-  otherwise.
-- Preserve deterministic seeds, fixed timesteps, stable ordering, snapshot mutation-version rules,
-  and allocation-conscious hot paths.
-- Do not claim canonical/legacy parity, zero allocations, renderer correctness, or target-scale
-  performance without the check that directly proves that claim.
-- `Program.cs` and `CanonicalWorld.cs` are complexity hotspots. Avoid expanding them when a narrow,
-  testable seam exists.
-
-## Current priority
-
-Complete canonical readiness before Phase 3: boundary tests/reflection decision, spatial-index
-equivalence, scale properties/metrics, multi-group semantics, canonical benchmarks/allocation
-measurement, then a documented migration decision. Keep `PROJECT_STATUS.md` synchronized with
-verified evidence.
+- `TreatWarningsAsErrors` + `Nullable` are on in `Directory.Build.props`; one warning fails CI.
+- A green suite proves nothing about throughput: `Category=Performance` gates machine-relative
+  ratios only and its absolute numbers are reported-only. Never quote them as the target met.
+- Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock.
+- Snapshot interpolation needs matching capture/mutation versions and array lengths; world
+  mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
+- `SwarmSim.Render/Program.cs` (1,951 lines) and `Canonical/CanonicalWorld.cs` (680) are the
+  complexity hotspots — add a narrow testable seam rather than growing them.
