@@ -248,8 +248,8 @@ SwarmingLilMen/
 │   ├── SIMULATION_MECHANICS_EXPLAINED.md
 │   └── archive/            # Historical plans and narratives
 ├── configs/                # JSON configuration presets
-├── AGENTS.md                # Shared agent operating guide
-├── CLAUDE.md               # AI assistant guidelines
+├── AGENTS.md                # Thin Codex adapter (points at CLAUDE.md)
+├── CLAUDE.md               # Shared agent contract: tier, commands, seam checks, pitfalls
 ├── CONTRIBUTING.md          # Developer setup and workflow
 ├── LICENSE                  # MIT license
 ├── PROJECT_STATUS.md       # Implementation tracker
