@@ -7,8 +7,8 @@ a non-Claude runtime.
 ## Codex delta
 
 - **The estate's global laws are not auto-injected into Codex.** Read them at session start:
-  `~/.claude/CLAUDE.md`; blueprint `C:/Users/jekyt/source/agent-harness/BLUEPRINT.md`; registry
-  `~/.claude/ESTATE.md`.
+  `~/.claude/CLAUDE.md`, the registry `~/.claude/ESTATE.md`, and `BLUEPRINT.md` in the active
+  `agent-harness` checkout (its path is recorded in `ESTATE.md`, not hardcoded here).
 - **Deny floor.** Claude receives the irreversible-command floor from the global PreToolUse hook.
   Codex has no global matcher, so `.codex/hooks.json` pins the same shared dispatcher
   (`~/.claude/hooks/dispatch.py --event pre --runtime codex`). That adapter is **inert until its
