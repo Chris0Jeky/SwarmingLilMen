@@ -33,8 +33,8 @@ Release only). The **renderer has no automated coverage** — prove a `Program.c
 - `TreatWarningsAsErrors` + `Nullable` are on in `Directory.Build.props`; one warning fails CI.
 - A green suite proves nothing about throughput: `Category=Performance` gates machine-relative
   ratios only and its absolute numbers are reported-only. Never quote them as the target met.
-- Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock.
+- Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock. A
+  `SimConfig` default change must also land in `configs/*.json` and `docs/PARAMETER_GUIDE.md`.
 - Snapshot interpolation needs matching capture/mutation versions and array lengths; world
   mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
-- `SwarmSim.Render/Program.cs` (1,951 lines) and `Canonical/CanonicalWorld.cs` (680) are the
-  complexity hotspots — add a narrow testable seam rather than growing them.
+- Complexity hotspots `SwarmSim.Render/Program.cs` (1,951 lines) and `Canonical/CanonicalWorld.cs` (680): add a narrow testable seam rather than growing them.
