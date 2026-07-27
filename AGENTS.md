@@ -13,7 +13,8 @@ a non-Claude runtime.
   Codex has no global matcher, so `.codex/hooks.json` pins the same shared dispatcher
   (`~/.claude/hooks/dispatch.py --event pre --runtime codex`). That adapter is **inert until its
   exact definition is reviewed and trusted through `/hooks` in a fresh Codex session** — untrusted
-  means no floor at all, not a quiet one. Never stack a second repo-level floor hook alongside it.
+  means no floor at all, not a quiet one. Never stack a second repo-level floor hook alongside it —
+  the same rule holds Claude-side: this repo deliberately declares no `.claude` hooks; keep it so.
 - `.codex/config.toml` declares `hooks = true`, `multi_agent = false` — work inline in this repo.
 - House style: `rg` to search, `apply_patch` to edit, narrow diffs, conventional present-tense
   commit subjects, and the per-seam `dotnet test --filter` from `CLAUDE.md` before any claim.

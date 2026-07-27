@@ -1,9 +1,8 @@
 # CLAUDE.md — SwarmingLilMen
 
-Tier: sandbox (T1) — authority: push free / merge gated · dual-runtime (Claude + Codex).
-Global laws are auto-injected; none are restated here. Codex reads `AGENTS.md`, a thin adapter
-pointing back here. `merge: gated` is *declared* in `.agent-harness/tier.json`, not inherited from
-T1 — changing it is an owner decision. No human-action file exists (`human_todo: null`).
+Tier: sandbox (T1) — push free / **merge gated** (declared in `.agent-harness/tier.json`; changing
+it is an owner decision) · dual-runtime (Codex reads `AGENTS.md`, a thin adapter pointing here) ·
+`human_todo: null`. Global laws are auto-injected; none are restated here.
 
 ## What this is
 
@@ -21,12 +20,12 @@ dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 w
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 80 passed / 2 s — this IS the CI gate
 dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
 ```
-
 Narrowest seam check: `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build
---filter "FullyQualifiedName~<Class>"` — CanonicalBoidsTests (12), UniformGridTests (14),
-BoidsTests (8), WorldTests (13), SimulationRunnerTests (6), CommandLineOptionsTests (2),
-ConfigTests (2); or `--filter "Category=Determinism"` (14) / `"Category=Performance"` (4, ~18 s,
-Release only). The **renderer has no automated coverage** — prove a `Program.cs` change by running it.
+--filter "FullyQualifiedName~<Class>"` — CanonicalBoidsTests (12), UniformGridTests (14), WorldTests (13),
+SimulationRunnerTests (6), CommandLineOptionsTests (2), ConfigTests (2), BoidsTests (8 — use
+`~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or `"Category=Determinism"`
+(14) / `"Category=Performance"` (4, ~18 s, Release only). Renderer coverage is partial (~30%:
+DeterminismTests drives `Program`'s canonical-settings helpers) — prove UI paths by running the window.
 
 ## Pitfalls
 
@@ -38,3 +37,4 @@ Release only). The **renderer has no automated coverage** — prove a `Program.c
 - Snapshot interpolation needs matching capture/mutation versions and array lengths; world
   mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
 - Complexity hotspots `SwarmSim.Render/Program.cs` (1,951 lines) and `Canonical/CanonicalWorld.cs` (680): add a narrow testable seam rather than growing them.
+- Never stash/reset/clean/switch a checkout to get a clean tree — T1's floor does not guard work-loss, and the main checkout is usually parked on a live feature branch.
