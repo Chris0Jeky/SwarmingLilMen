@@ -10,7 +10,7 @@ renderer, benchmark, profiler, hook, or CI check ran when you only inspected fil
 
 ## Review order
 
-1. Read `AGENTS.md` and the verified-state section at the top of `PROJECT_STATUS.md`.
+1. Read `CLAUDE.md` and the verified-state section at the top of `PROJECT_STATUS.md`.
 2. Read the supplied diff or target files plus the smallest surrounding context needed to test each
    claim.
 3. Identify whether the change affects legacy `World`/`Systems`, canonical boids, renderer/CLI,
