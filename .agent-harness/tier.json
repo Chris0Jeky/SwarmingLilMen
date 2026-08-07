@@ -3,7 +3,7 @@
   "name": "sandbox",
   "authority": {
     "push": "free",
-    "merge": "gated"
+    "merge": "free"
   },
   "flags": {
     "sensitive_data": false,
