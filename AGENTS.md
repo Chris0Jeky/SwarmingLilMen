@@ -20,3 +20,22 @@ a non-Claude runtime.
   commit subjects, and the per-seam `dotnet test --filter` from `CLAUDE.md` before any claim.
 - `.claude/agents/project-validator.md` is a read-only adversarial reviewer (Read/Grep/Glob only).
   It cannot run anything — route "what does this do at runtime" to a runtime that can execute.
+
+## Fail-safe floor — binds when no estate profile is installed
+
+`~/.claude/CLAUDE.md` and `~/.claude/ESTATE.md` are **not tracked in this repository**. In a fresh
+public clone, in CI, or in any Codex installation outside the author's machine they simply do not
+exist — and an untrusted `.codex/hooks.json` enforces nothing either. A session there has neither
+injected policy nor a deny floor, so the rules below are restated in full rather than referenced.
+They are the entire policy in that case, and they still bind when the estate profile *is* present:
+
+- **Nothing irreversible without explicit human instruction.** No force-push, no history rewrite,
+  no branch or tag deletion, no `reset --hard` / `clean -fd` / `stash` / `checkout --` across work
+  you did not write, and no deleting files you did not create.
+- **Preserve unrelated work.** Never destroy an unclean tree merely to obtain a clean one. Ask.
+- **Never commit secrets**, tokens, credentials, private data, generated profiler or test output,
+  or agent-attribution trailers. This repository is public and its history is permanent.
+- **Publishing is scoped.** Local edits, builds, tests, commits, branch pushes, and pull requests
+  are in scope. Repository settings, releases, and anything that leaves this repository are not.
+- **No unproven claims.** Run the check that proves the claim, and state plainly what you did not
+  verify — a green unit suite is not renderer, benchmark, or throughput evidence here.

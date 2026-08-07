@@ -1,8 +1,9 @@
 # CLAUDE.md — SwarmingLilMen
 
-Tier: sandbox (T1) — push free / **merge gated** (declared in `.agent-harness/tier.json`; changing
-it is an owner decision) · dual-runtime (Codex reads `AGENTS.md`, a thin adapter pointing here) ·
-`human_todo: null`. Global laws are auto-injected; none are restated here.
+Tier: sandbox (T1) — push free / **merge free** (declared in `.agent-harness/tier.json`; changing
+it is an owner decision, and the owner set `merge: free` there on 2026-07-27) · dual-runtime (Codex
+reads `AGENTS.md`, a thin adapter pointing here) · `human_todo: null`. Global laws are
+auto-injected; none are restated here.
 
 ## What this is
 
@@ -13,6 +14,11 @@ Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default rendere
 benchmark, and `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`).
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
+**Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
+belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity, comparison, or
+removal. Neither engine is deleted without a recorded migration decision. Building a new feature on
+the legacy default because it is what runs today is exactly the drift this split exists to prevent.
+
 ## Build, test, run — all green 2026-07-27 at `f68cccc` (SDK 8.0.415, Windows)
 
 ```powershell
@@ -20,8 +26,19 @@ dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 w
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 80 passed / 2 s — this IS the CI gate
 dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
 ```
-Narrowest seam check: `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build
---filter "FullyQualifiedName~<Class>"` — CanonicalBoidsTests (12), UniformGridTests (14), WorldTests (13),
+
+`--no-build` above is valid **only** as written — immediately after the build on line 1. It runs the
+previously compiled assemblies, so after any source or test edit it can pass while the current
+sources fail to compile or behave differently. Rebuild first, or drop the flag.
+
+Narrowest seam check — rebuilds, and errors instead of silently matching zero tests when a class is
+renamed or a filter goes stale:
+
+```powershell
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQualifiedName~<Class>" -- RunConfiguration.TreatNoTestsAsError=true
+```
+
+Classes and counts: CanonicalBoidsTests (12), UniformGridTests (14), WorldTests (13),
 SimulationRunnerTests (6), CommandLineOptionsTests (2), ConfigTests (2), BoidsTests (8 — use
 `~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or `"Category=Determinism"`
 (14) / `"Category=Performance"` (4, ~18 s, Release only). Renderer coverage is partial (~30%:
