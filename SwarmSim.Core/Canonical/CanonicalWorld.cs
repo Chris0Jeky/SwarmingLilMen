@@ -372,12 +372,29 @@ public sealed class CanonicalWorld
                 if (_rules.Count > 0)
                 {
                     Vec2 separation = _rules[0].Compute(i, boid, current, neighbors, neighborWeights, context);
-                    Vec2 clampedSep = separation.ClampMagnitude(Settings.MaxForce);
-                    if (clampedSep.LengthSquared > 1e-6f)
+                    // Separation draws from the same per-tick remainder as every other
+                    // contribution. It used to clamp to a fresh Settings.MaxForce and add on top
+                    // of an already-spent whisker budget, so one tick could compose up to 2x
+                    // MaxForce (issue #19). Its priority semantics are preserved: once separation
+                    // has spent, the rest of the budget is withheld from alignment, cohesion and
+                    // wander rather than shared with them.
+                    //
+                    // One reachable corner does differ, and only when MaxForce <= 1e-3: previously
+                    // a separation contribution clamped below the 1e-6 epsilon was dropped AND the
+                    // budget was left to the later rules, whereas now separation takes the whole
+                    // tiny budget. Measured at MaxForce = 1e-4: old gave sep=0 / cohesion=1e-4,
+                    // new gives sep=1e-4 / cohesion=0. That is the consistent behaviour, and the
+                    // shipped configs use 1.5-3.0 against a 0.2 default, but it is not a no-op.
+                    //
+                    // Note RecordSeparation below now reports the force ACTUALLY APPLIED rather
+                    // than the desired-then-clamped magnitude, matching how alignment and cohesion
+                    // already report. The renderer HUD's "Sep avg" and the per-agent inspector
+                    // read that value, so both read lower than before whenever the whisker has
+                    // already spent part of the budget.
+                    if (TryAccumulateSteering(ref steering, ref remainingForce, separation, out float sepMagnitude))
                     {
-                        steering += clampedSep;
                         remainingForce = 0f;
-                        _instrumentation.RecordSeparation(i, clampedSep.Length);
+                        _instrumentation.RecordSeparation(i, sepMagnitude);
                     }
                 }
 
@@ -421,6 +438,12 @@ public sealed class CanonicalWorld
                 Vec2 wander = wanderDirection * Settings.WanderStrength * Settings.TargetSpeed;
                 TryAccumulateSteering(ref steering, ref remainingForce, wander, out _);
             }
+
+            // Record the composed steering budget here and nowhere else: every contribution
+            // (whisker, separation, alignment, cohesion, wander) has landed, and the next line
+            // folds `steering` into a velocity that avoidance blending and speed renormalization
+            // then overwrite. After integration the MaxForce budget is no longer observable.
+            _instrumentation.RecordSteering(i, steering.LengthSquared);
 
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
             float prioritySpeed = Settings.TargetSpeed * (1f - Settings.SeparationSpeedDroop * _priorityBlend[i]);

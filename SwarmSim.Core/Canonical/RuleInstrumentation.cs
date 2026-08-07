@@ -9,6 +9,7 @@ public sealed class RuleInstrumentation
     private readonly float[] _separationMagnitudes;
     private readonly float[] _alignmentMagnitudes;
     private readonly float[] _cohesionMagnitudes;
+    private readonly float[] _steeringMagnitudesSquared;
     private int _activeCount;
 
     public RuleInstrumentation(int capacity)
@@ -21,6 +22,7 @@ public sealed class RuleInstrumentation
         _separationMagnitudes = new float[capacity];
         _alignmentMagnitudes = new float[capacity];
         _cohesionMagnitudes = new float[capacity];
+        _steeringMagnitudesSquared = new float[capacity];
     }
 
     internal void Prepare(int count)
@@ -31,6 +33,7 @@ public sealed class RuleInstrumentation
         Array.Clear(_separationMagnitudes, 0, _activeCount);
         Array.Clear(_alignmentMagnitudes, 0, _activeCount);
         Array.Clear(_cohesionMagnitudes, 0, _activeCount);
+        Array.Clear(_steeringMagnitudesSquared, 0, _activeCount);
     }
 
     internal void SetNeighborCount(int index, int value)
@@ -63,7 +66,32 @@ public sealed class RuleInstrumentation
             _cohesionMagnitudes[index] = magnitude;
     }
 
+    /// <summary>
+    /// Records the total composed steering vector a boid is about to integrate, as a squared
+    /// magnitude so the hot path stores one multiply-free value and no square root.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="CanonicalWorld.Step"/> calls this after every contribution (whisker avoidance,
+    /// separation, alignment, cohesion, wander) has been composed and immediately before velocity
+    /// integration. The composed steering vector is otherwise a method local that later gets
+    /// reshaped by avoidance blending and renormalized to the allowed speed, so this is the only
+    /// point at which the per-tick <see cref="CanonicalWorldSettings.MaxForce"/> budget is
+    /// observable from outside.
+    /// </remarks>
+    internal void RecordSteering(int index, float magnitudeSquared)
+    {
+        if (index < _activeCount)
+            _steeringMagnitudesSquared[index] = magnitudeSquared;
+    }
+
     public ReadOnlySpan<int> NeighborCounts => _neighborCounts.AsSpan(0, _activeCount);
+
+    /// <summary>
+    /// Gets the squared magnitude of the total composed steering vector each active boid
+    /// integrated on the most recent <see cref="CanonicalWorld.Step"/>. Compare against
+    /// <see cref="CanonicalWorldSettings.MaxForce"/> squared to check the per-tick force budget.
+    /// </summary>
+    public ReadOnlySpan<float> SteeringMagnitudesSquared => _steeringMagnitudesSquared.AsSpan(0, _activeCount);
 
     public float AverageNeighborWeight
     {

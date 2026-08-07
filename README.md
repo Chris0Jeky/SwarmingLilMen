@@ -45,12 +45,14 @@ should target the canonical implementation.
 - ✅ Configurable simulation parameters with presets
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
-- ✅ 84-test xUnit inventory; the 80 non-performance facts form the hosted CI gate
+- ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
+  block at the top of `PROJECT_STATUS.md` for the current measured counts
 
 ### Remaining Direction
-- **Canonical readiness**: The perception/spatial-index contract (#18), force-budget enforcement
-  (#19), prescribed behavioral scenarios (#41), instrumentation UX (#40), boundary/reflection
-  coverage, scale properties/metrics, multi-group behavior, and canonical benchmarks
+- **Canonical readiness**: prescribed behavioral scenarios (#41), instrumentation UX (#40),
+  boundary/reflection coverage, scale properties/metrics, multi-group behavior, and canonical
+  benchmarks. The perception/spatial-index contract (#18) and force-budget enforcement (#19) are
+  done
 - **Phase 3**: Multi-group interactions, combat, metabolism
 - **Phase 4**: Reproduction, evolution, trait drift
 - **Phase 5**: SIMD optimization, parallelization, NativeAOT compilation

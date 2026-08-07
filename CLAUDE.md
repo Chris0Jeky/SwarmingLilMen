@@ -35,7 +35,7 @@ commit at which the recorded count provably does not reproduce.
 
 ```powershell
 dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 warnings / 0 errors
-dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 109 passed / 3 s — this IS the CI gate
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 114 passed / 2 s — this IS the CI gate
 dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
 ```
 
