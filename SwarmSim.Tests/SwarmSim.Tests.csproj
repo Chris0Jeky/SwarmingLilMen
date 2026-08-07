@@ -20,6 +20,10 @@
     <None Include="..\configs\balanced.json"
           Link="configs\balanced.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <!-- CommandLineOptionsTests compares README's verbatim help transcript against GetHelpText(). -->
+    <None Include="..\README.md"
+          Link="README.md"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

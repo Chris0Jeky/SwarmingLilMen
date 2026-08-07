@@ -89,6 +89,11 @@ namespace SwarmSim.Render;
 
     public static string GetHelpText()
     {
+        // Derived from the runtime registry: every preset named below must resolve through the
+        // same lookup Program.Main uses, so the help text cannot advertise unusable names.
+        var presetExamples = string.Join(", ", Program.PresetIds.Take(2));
+        var presetExample = Program.PresetIds[0];
+
         var sb = new StringBuilder();
         sb.AppendLine("Usage: SwarmSim.Render [OPTIONS]");
         sb.AppendLine();
@@ -96,8 +101,8 @@ namespace SwarmSim.Render;
         sb.AppendLine("  -h, --help                Show this help message and exit");
         sb.AppendLine("  -v, --version             Show version information");
         sb.AppendLine("  -l, --list-presets        List built-in presets and exit");
-        sb.AppendLine("  -p, --preset NAME         Load preset configuration (e.g., peaceful, warbands)");
-        sb.AppendLine("  -c, --config FILE         Load configuration from JSON file");
+        sb.AppendLine($"  -p, --preset NAME         Load a registered preset (e.g., {presetExamples})");
+        sb.AppendLine("  -c, --config FILE         Load configuration from JSON file (e.g., configs/peaceful.json)");
         sb.AppendLine("  -n, --agent-count N       Override initial agent count (default: 400)");
         sb.AppendLine("  -b, --benchmark           Run in headless benchmark mode (no window)");
         sb.AppendLine("      --canonical           Launch the single-group canonical boids renderer");
@@ -105,7 +110,7 @@ namespace SwarmSim.Render;
         sb.AppendLine();
         sb.AppendLine("Examples:");
         sb.AppendLine("  SwarmSim.Render");
-        sb.AppendLine("  SwarmSim.Render --preset peaceful");
+        sb.AppendLine($"  SwarmSim.Render --preset {presetExample}");
         sb.AppendLine("  SwarmSim.Render --config configs/warbands.json -n 5000");
         sb.AppendLine("  SwarmSim.Render --benchmark --agent-count 20000");
         sb.AppendLine();

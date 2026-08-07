@@ -218,6 +218,11 @@ internal static class Program
         }
     ];
 
+    // Registered preset IDs, derived from Presets so help text and tests cannot drift from the
+    // registry Main actually resolves against. Must stay declared AFTER Presets: static field
+    // initializers run in declaration order, so an earlier declaration would read a null Presets.
+    internal static readonly IReadOnlyList<string> PresetIds = Array.ConvertAll(Presets, p => p.Id);
+
     // Color palette for groups (16 colors)
     private static readonly Color[] GroupColors =
     [
@@ -1324,14 +1329,31 @@ internal static class Program
         Console.WriteLine(".NET Runtime: " + System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
     }
 
-    private static void PrintPresetList()
+    private static void PrintPresetList() => Console.Write(FormatPresetList());
+
+    /// <summary>
+    /// Renders the preset listing exactly as <c>--list-presets</c> prints it, so documentation
+    /// checks can compare against the same text without capturing console output.
+    /// </summary>
+    internal static string FormatPresetList()
     {
-        Console.WriteLine("Available presets:");
+        // Fully qualified: adding a using directive here would renumber the Presets region that
+        // docs/QUICKSTART.md and docs/RENDERER_GUIDE.md cite by line range.
+        var sb = new System.Text.StringBuilder();
+        sb.AppendLine("Available presets:");
         foreach (var preset in Presets)
         {
-            Console.WriteLine($"  {preset.Id,-15} - {preset.Name} :: {preset.Description}");
+            sb.AppendLine($"  {preset.Id,-15} - {preset.Name} :: {preset.Description}");
         }
+
+        return sb.ToString();
     }
+
+    /// <summary>
+    /// Reports whether <paramref name="name"/> resolves through the same preset lookup
+    /// <see cref="Main"/> uses, so tests assert the real matching rules rather than a copy.
+    /// </summary>
+    internal static bool IsRegisteredPreset(string? name) => TryGetPreset(name, out _);
 
     private static bool TryGetPreset(string? name, out Preset preset)
     {
