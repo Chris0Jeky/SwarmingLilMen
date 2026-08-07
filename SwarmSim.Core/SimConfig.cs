@@ -291,9 +291,13 @@ public enum BoundaryMode
 public enum SpeedModel
 {
     /// <summary>
-    /// Constant-speed model: friction = 1.0, agents always move at or near maxSpeed.
-    /// Steering only changes direction, not speed magnitude.
-    /// Simple, canonical boids behavior (like Craig Reynolds' original).
+    /// Undamped model: the integrator skips the friction step entirely, so
+    /// <see cref="SimConfig.Friction"/> is ignored in this mode rather than coerced to 1.0 -
+    /// configuring it has no effect on trajectories.
+    /// Steering is added straight into velocity, so it changes speed as well as direction.
+    /// The only speed constraint is the upper <see cref="SimConfig.MaxSpeed"/> clamp: agents
+    /// slower than MaxSpeed are never renormalized back up to it, so despite the name this
+    /// mode does not hold speed constant.
     /// </summary>
     ConstantSpeed,
 

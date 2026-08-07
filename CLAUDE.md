@@ -26,11 +26,16 @@ belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity, 
 removal. Neither engine is deleted without a recorded migration decision. Building a new feature on
 the legacy default because it is what runs today is exactly the drift this split exists to prevent.
 
-## Build, test, run — all green 2026-07-27 at `f68cccc` (SDK 8.0.415, Windows)
+## Build, test, run — all green 2026-08-07 (SDK 8.0.415, Windows)
+
+The counts below are a snapshot on that date and move with every merge; **the command is the source
+of truth, not the number beside it.** They are deliberately not stamped with a commit SHA — the
+merge commit does not exist yet when the doc is written, and stamping the merge base advertises a
+commit at which the recorded count provably does not reproduce.
 
 ```powershell
 dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 warnings / 0 errors
-dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 80 passed / 2 s — this IS the CI gate
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 104 passed / 6 s — this IS the CI gate
 dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
 ```
 
@@ -45,8 +50,9 @@ renamed or a filter goes stale:
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQualifiedName~<Class>" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
-Classes and counts: CanonicalBoidsTests (12), UniformGridTests (14), WorldTests (13),
-RngTests (9), SimulationRunnerTests (6), CommandLineOptionsTests (2), ConfigTests (2), BoidsTests
+Classes and counts: SpatialIndexEquivalenceTests (23), UniformGridTests (14), WorldTests (14),
+CanonicalBoidsTests (12), RngTests (9), SimulationRunnerTests (6), CommandLineOptionsTests (2),
+ConfigTests (2), BoidsTests
 (8 — use `~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or
 `"Category=Determinism"` (14) / `"Category=Performance"` (4, Release only). **`RngTests` carries no
 `Category=Determinism` trait**, so an RNG change must run `~RngTests` explicitly — the determinism
@@ -97,5 +103,5 @@ here rather than referenced.
   pinning a new default there freezes them against later fixes and can change a named scenario.
 - Snapshot interpolation needs matching capture/mutation versions and array lengths; world
   mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
-- Complexity hotspots `SwarmSim.Render/Program.cs` (1,951 lines) and `Canonical/CanonicalWorld.cs` (680): add a narrow testable seam rather than growing them.
+- Complexity hotspots `SwarmSim.Render/Program.cs` (~1,990 lines) and `Canonical/CanonicalWorld.cs` (~730): add a narrow testable seam rather than growing them. Both grow steadily — treat the figures as scale, not as a value to keep in sync.
 - Never stash/reset/clean/switch a checkout to get a clean tree — T1's floor does not guard work-loss, and the main checkout is usually parked on a live feature branch.

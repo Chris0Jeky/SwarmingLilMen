@@ -26,7 +26,7 @@ Use `--agent-count N` to override the initial legacy count. Run `--help` for the
 - Four initial clusters use white, red, green, and blue for groups 0-3
   (`SwarmSim.Render/Program.cs:220-237,552-575`).
 - Neighbor sensing is limited to the same group and current field of view
-  (`SwarmSim.Core/Systems/SenseSystem.cs:147-193`).
+  (`SwarmSim.Core/Systems/SenseSystem.cs:161-207`).
 - Separation, alignment, cohesion, optional wander, and integration are the active systems;
   combat, metabolism, reproduction, and lifecycle behavior are not implemented
   (`SwarmSim.Core/World.cs:122-144`).
