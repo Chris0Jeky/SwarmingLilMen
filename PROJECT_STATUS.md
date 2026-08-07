@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **104 passed, 0 failed, 0 skipped**
-  in 6 seconds of test execution on 2026-08-07.
-- Unfiltered Release solution test: **108 passed, 0 failed, 0 skipped** in 45 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **109 passed, 0 failed, 0 skipped**
+  in 3 seconds of test execution on 2026-08-07.
+- Unfiltered Release solution test: **113 passed, 0 failed, 0 skipped** in 26 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
   Command after the Release build:
@@ -155,10 +155,17 @@
   Wander-enabled canonical construction currently retains one `Rng`/`System.Random` object per
   boid; it adds no tick-time allocations in the measured probe but is a setup/GC scale risk owned by
   the broader RNG-stream work in #26.
-- CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
-  `--preset` examples; only the five IDs printed under **Available presets** are registered. The
-  executable help/test correction is tracked in
-  [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+- CLI help preset advertising is corrected (#38, 2026-08-07). `--help` no longer names the JSON
+  configuration files `peaceful` and `warbands` as `--preset` values; the option parenthetical and
+  the usage example are now derived from `Program.PresetIds`, and the JSON names moved to the
+  `--config` line where they are valid. The class of drift is closed rather than the instance:
+  `Program.PresetIds` and `Program.IsRegisteredPreset` expose the runtime registry and the same
+  `TryGetPreset` lookup `Main` uses, and tests assert every advertised name resolves through it.
+  A further test compares the README's verbatim help transcript against the live help text, so the
+  README cannot drift again; it was mutation-checked rather than assumed. Note the unknown-preset
+  path still exits **0**, so a mistyped preset remains indistinguishable from success to a script —
+  that is tracked separately in
+  [issue #53](https://github.com/Chris0Jeky/SwarmingLilMen/issues/53).
 - Runtime parameter/help labels are partial and still advertise keys `1-7` while input accepts
   **1-8**; the canonical **H** panel also omits several active controls. Friction key 8 is a no-op
   for registered legacy presets because they inherit `ConstantSpeed`, and canonical settings do
@@ -176,12 +183,12 @@
   clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 108 executed test cases across 11 test files — 104 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 113 executed test cases across 11 test files — 109 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
-- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,990 lines and
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 2,012 lines and
   `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 732 lines.
 - Agent controls were refreshed in this audit: shared repo rules and per-seam proving checks in
   `CLAUDE.md`, with `AGENTS.md` reduced to a thin Codex adapter over it that also carries the
