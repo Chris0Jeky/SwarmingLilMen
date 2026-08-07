@@ -24,8 +24,11 @@ namespace SwarmSim.Core.Systems;
 ///
 /// SEPARATION WEIGHTING:
 /// Each contribution is a unit away-vector scaled only by the bounded linear radial falloff
-/// (separationRadius - distance) / separationRadius, which is 1 at distance 0 and 0 at
-/// separationRadius. There is no inverse-distance or inverse-square term: the division by
+/// (separationRadius - distance) / separationRadius, which tends to 1 as distance tends to 0 and
+/// reaches 0 at separationRadius. The 1.0 end is a limit the code never evaluates: neighbors
+/// nearer than 0.01 units are skipped by the distSq &lt; 0.0001f guard before separation is
+/// reached, so coincident and near-overlapping agents contribute nothing at all rather than a
+/// maximum-strength push. There is no inverse-distance or inverse-square term: the division by
 /// distance normalizes the direction and nothing more. BehaviorSystem re-normalizes the
 /// accumulated vector before steering, so this falloff acts as a per-neighbor direction blend
 /// weight rather than a force gain. The separate Canonical SeparationRule does multiply the
@@ -42,7 +45,8 @@ public sealed class SenseSystem : ISimSystem
     private int[] _neighborCount = null!;
 
     // Separation: accumulated unit away-vectors, each scaled by the bounded linear falloff
-    // (separationRadius - distance) / separationRadius. No inverse-distance weighting.
+    // (separationRadius - distance) / separationRadius. No inverse-distance weighting, and
+    // neighbors nearer than 0.01 units are skipped rather than pushed at maximum strength.
     private float[] _separationX = null!;
     private float[] _separationY = null!;
 
