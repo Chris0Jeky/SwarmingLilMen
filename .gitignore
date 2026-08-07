@@ -13,6 +13,9 @@ TestResults/
 _ReSharper.*
 *.DotSettings.user
 
+# Agent worktrees (git does not auto-ignore a nested linked worktree)
+.worktrees/
+
 # User-specific
 *.user
 *.rsuser

@@ -11,11 +11,6 @@
     "dormant_production": false,
     "relaxed_work_loss_guards": false
   },
-  "model_routing": {
-    "harness_and_review": "sol",
-    "slices": "terra",
-    "maintenance": "luna"
-  },
   "budgets": {
     "standing_context_tokens": 2000,
     "session_baseline_tokens": null
@@ -25,7 +20,6 @@
     "claude",
     "codex"
   ],
-  "last_reviewed": "2026-07-25",
-  "notes": "Public dual-runtime hobby/research repository. T1 permits reversible local work and scoped publishing, but merge remains gated because the repository has no GitHub Actions workflow and performance claims require explicit Release evidence. Claude uses the shared global PreToolUse floor. Codex uses the shared dispatcher through the repository-owned .codex/hooks.json adapter; that adapter is inactive until its exact definition is reviewed and trusted in a fresh Codex session via /hooks. No sensitive or production data is expected. human_todo is null because no human-only operational gate exists."
+  "last_reviewed": "2026-08-07",
+  "notes": "Public dual-runtime hobby/research repository. T1 permits reversible local work and scoped publishing. merge is free: the owner set authority.merge from gated to free on 2026-07-27 in commit 2f722f6, adopting the estate default and settling the question this file previously raised as agent-harness#91. The gate rationale recorded here before 2026-07-27 was stale: it claimed the repository has no GitHub Actions workflow. It does -- .github/workflows/ci.yml runs a Release build plus the Category!=Performance suite on ubuntu-latest and windows-latest for pushes and pull requests to main. Two caveats survive the flip and shape verification rather than permission: main carries no branch-protection ruleset, so exact-head CI is process-enforced rather than required, and the headline 50k/60FPS objective is unmet with only reported-only Release evidence, so no merge may assert it. Claude uses the shared global PreToolUse floor. Codex uses the shared dispatcher through the repository-owned .codex/hooks.json adapter; that adapter is inactive until its exact definition is reviewed and trusted in a fresh Codex session via /hooks, so AGENTS.md restates a self-contained fail-safe floor for clones and runtimes where no estate profile exists at all. No sensitive or production data is expected. human_todo is null because no human-only operational gate exists. The inert model_routing block was removed 2026-07-27 per SPECS: the model ladder lives only in BLUEPRINT/SPECS."
 }
-

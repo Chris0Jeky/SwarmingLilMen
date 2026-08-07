@@ -150,15 +150,16 @@
   Docs-only source correction is tracked in
   [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
   this reconciliation.
-- Test inventory: 98 xUnit facts across 11 test files, including four explicitly categorized
+- Test inventory: 102 xUnit facts across 11 test files, including four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
-- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,970 lines and
-  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 714 lines.
-- Agent controls were refreshed in this audit: shared repo rules in `AGENTS.md`, Claude entrypoint
-  in `CLAUDE.md`, T1 declaration, safe committed Claude settings, read-only validator, and Codex
-  project adapter/settings. The adapter audit marker matches released floor 1.6.5. In a fresh
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,990 lines and
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 732 lines.
+- Agent controls were refreshed in this audit: shared repo rules and per-seam proving checks in
+  `CLAUDE.md`, with `AGENTS.md` reduced to a thin Codex adapter over it that also carries the
+  runtime-neutral fail-safe floor for clones with no estate profile; plus the T1 declaration, safe
+  committed Claude settings, read-only validator, and Codex project adapter/settings. The adapter audit marker matches released floor 1.6.5. In a fresh
   exact-repository Codex session the owner reviewed and accepted the adapter, `/hooks` reported
   `PreToolUse` as 1 installed / 1 active, `git status` was allowed, and an inert force-push dry-run
   was denied before Git executed. Runtime byte pinning remains an agent-harness #18 limitation.
