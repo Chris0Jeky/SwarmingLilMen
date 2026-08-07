@@ -10,6 +10,11 @@ public readonly struct RuleContext
     public float DeltaTime { get; }
     public float SeparationPriorityBoost { get; }
     public RuleInstrumentation? Instrumentation { get; }
+    /// <summary>Gets the toroidal world width, or positive infinity for an unbounded compatibility context.</summary>
+    public float WorldWidth { get; }
+
+    /// <summary>Gets the toroidal world height, or positive infinity for an unbounded compatibility context.</summary>
+    public float WorldHeight { get; }
 
     public RuleContext(
         float targetSpeed,
@@ -18,7 +23,9 @@ public readonly struct RuleContext
         float fieldOfViewCos,
         float deltaTime,
         float separationPriorityBoost,
-        RuleInstrumentation? instrumentation = null)
+        RuleInstrumentation? instrumentation = null,
+        float worldWidth = float.PositiveInfinity,
+        float worldHeight = float.PositiveInfinity)
     {
         TargetSpeed = targetSpeed;
         MaxForce = maxForce;
@@ -28,5 +35,15 @@ public readonly struct RuleContext
         DeltaTime = deltaTime;
         SeparationPriorityBoost = separationPriorityBoost;
         Instrumentation = instrumentation;
+        WorldWidth = worldWidth;
+        WorldHeight = worldHeight;
     }
+
+    /// <summary>
+    /// Returns the shortest toroidal displacement from one position to another in this world.
+    /// </summary>
+    /// <param name="from">Starting position.</param>
+    /// <param name="to">Destination position.</param>
+    /// <returns>The minimum-image displacement.</returns>
+    public Vec2 MinimumImageDelta(Vec2 from, Vec2 to) => Vec2.MinimumImageDelta(from, to, WorldWidth, WorldHeight);
 }

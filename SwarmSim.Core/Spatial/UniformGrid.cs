@@ -189,6 +189,79 @@ public sealed class UniformGrid
     }
 
     /// <summary>
+    /// Queries a toroidal circular neighborhood for the canonical boids path without allocating.
+    /// The legacy <see cref="Query3x3(float, float, Span{int}, int)"/> behavior is intentionally unchanged.
+    /// </summary>
+    /// <param name="x">Query X position.</param>
+    /// <param name="y">Query Y position.</param>
+    /// <param name="radius">Finite, non-negative query radius.</param>
+    /// <param name="selfIndex">Index excluded from results.</param>
+    /// <param name="xPositions">Current X positions.</param>
+    /// <param name="yPositions">Current Y positions.</param>
+    /// <param name="count">Number of active positions.</param>
+    /// <param name="buffer">Caller-owned output buffer.</param>
+    /// <param name="truncated">Set when qualifying agents do not fit in <paramref name="buffer"/>.</param>
+    /// <returns>The number of indices written, sorted ascending by index.</returns>
+    internal int QueryRadiusToroidal(
+        float x,
+        float y,
+        float radius,
+        int selfIndex,
+        ReadOnlySpan<float> xPositions,
+        ReadOnlySpan<float> yPositions,
+        int count,
+        Span<int> buffer,
+        out bool truncated)
+    {
+        if (!float.IsFinite(radius) || radius < 0f)
+            throw new ArgumentOutOfRangeException(nameof(radius), "Radius must be finite and non-negative.");
+
+        if (count < 0 || count > xPositions.Length || count > yPositions.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count must fit both position spans.");
+
+        int activeCount = count;
+        float radiusSquared = radius * radius;
+        int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
+        int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
+        GetDirectionalCellReach(
+            x, radius, _worldWidth, Cols, centerCol,
+            out int colsBefore, out int colsAfter, out bool scanAllCols);
+        GetDirectionalCellReach(
+            y, radius, _worldHeight, Rows, centerRow,
+            out int rowsBefore, out int rowsAfter, out bool scanAllRows);
+        int colCount = scanAllCols ? Cols : colsBefore + colsAfter + 1;
+        int rowCount = scanAllRows ? Rows : rowsBefore + rowsAfter + 1;
+        int written = 0;
+        truncated = false;
+
+        for (int rowOffset = 0; rowOffset < rowCount; rowOffset++)
+        {
+            int row = scanAllRows ? rowOffset : WrapCell(centerRow - rowsBefore + rowOffset, Rows);
+            for (int colOffset = 0; colOffset < colCount; colOffset++)
+            {
+                int col = scanAllCols ? colOffset : WrapCell(centerCol - colsBefore + colOffset, Cols);
+                int agentIndex = _head[col + row * Cols];
+                while (agentIndex != -1)
+                {
+                    if (agentIndex != selfIndex && agentIndex < activeCount)
+                    {
+                        float dx = MathUtils.MinimumImageDelta(xPositions[agentIndex] - x, _worldWidth);
+                        float dy = MathUtils.MinimumImageDelta(yPositions[agentIndex] - y, _worldHeight);
+                        if (dx * dx + dy * dy <= radiusSquared)
+                        {
+                            InsertSortedBounded(buffer, ref written, agentIndex, ref truncated);
+                        }
+                    }
+
+                    agentIndex = _next[agentIndex];
+                }
+            }
+        }
+
+        return written;
+    }
+
+    /// <summary>
     /// Gets the cell index for the given world position.
     /// </summary>
     private int GetCellIndex(float x, float y)
@@ -201,6 +274,117 @@ public sealed class UniformGrid
         row = Math.Clamp(row, 0, Rows - 1);
 
         return col + row * Cols;
+    }
+
+    private void GetDirectionalCellReach(
+        float coordinate,
+        float radius,
+        float extent,
+        int cellCount,
+        int centerCell,
+        out int cellsBefore,
+        out int cellsAfter,
+        out bool scanAll)
+    {
+        if (cellCount == 1 || radius >= extent * 0.5f)
+        {
+            cellsBefore = 0;
+            cellsAfter = 0;
+            scanAll = true;
+            return;
+        }
+
+        // Walk outward one cell at a time, accumulating each cell's ACTUAL extent, and stop as
+        // soon as the accumulated span covers the radius. Deriving the reach from the wrapped
+        // endpoints' cell IDs instead is wrong whenever the world extent is not a whole multiple
+        // of CellSize: the terminal cell is short, so a circular interval can cross the whole of
+        // it while both wrapped endpoints still land back in the centre cell, and the qualifying
+        // neighbours inside that terminal cell are never scanned.
+        //
+        // The running total is a double on purpose. Accumulating cell extents in float rounds in
+        // BOTH directions, and when it rounds up the walk stops one cell early and silently drops
+        // neighbours strictly inside the radius. That needs a cell size not exactly representable
+        // in binary32 plus a walk of hundreds of cells (radius/cellSize large), so no caller in
+        // this repository can reach it today -- every construction site passes
+        // cellSize == SenseRadius -- but the public constructor invites cellSize < radius, which
+        // is the ordinary grid-tuning move. Doubles remove the drift outright; the walk is O(cells)
+        // per query, not per neighbour, so the cost is nil. The comparisons are non-strict so a
+        // remaining per-edge ulp can only widen the scan, never shorten it.
+        cellsBefore = 0;
+        double coveredBefore = (double)coordinate - (double)centerCell * CellSize;
+        int cursor = centerCell;
+        while (coveredBefore <= radius && cellsBefore + 1 < cellCount)
+        {
+            cursor = WrapCell(cursor - 1, cellCount);
+            coveredBefore += GetCellExtent(cursor, extent);
+            cellsBefore++;
+        }
+
+        cellsAfter = 0;
+        double coveredAfter = GetCellUpperEdge(centerCell, extent) - (double)coordinate;
+        cursor = centerCell;
+        while (coveredAfter <= radius && cellsBefore + cellsAfter + 1 < cellCount)
+        {
+            cursor = WrapCell(cursor + 1, cellCount);
+            coveredAfter += GetCellExtent(cursor, extent);
+            cellsAfter++;
+        }
+
+        scanAll = cellsBefore + cellsAfter + 1 >= cellCount;
+
+        if (scanAll)
+        {
+            cellsBefore = 0;
+            cellsAfter = 0;
+        }
+    }
+
+    /// <summary>
+    /// Gets the actual extent of a cell along one axis. The terminal cell is shorter than
+    /// <see cref="CellSize"/> whenever the world extent is not a whole multiple of it.
+    /// Returned as a double so a directional walk can accumulate without rounding drift.
+    /// </summary>
+    private double GetCellExtent(int cell, float extent)
+        => GetCellUpperEdge(cell, extent) - (double)cell * CellSize;
+
+    /// <summary>
+    /// Gets the upper edge of a cell along one axis, clamped to the world extent.
+    /// </summary>
+    private double GetCellUpperEdge(int cell, float extent)
+        => Math.Min((double)(cell + 1) * CellSize, extent);
+
+    private static int WrapCell(int value, int length)
+    {
+        int wrapped = value % length;
+        return wrapped < 0 ? wrapped + length : wrapped;
+    }
+
+    private static void InsertSortedBounded(Span<int> buffer, ref int written, int candidate, ref bool truncated)
+    {
+        if (written < buffer.Length)
+        {
+            int insertAt = written;
+            while (insertAt > 0 && buffer[insertAt - 1] > candidate)
+            {
+                buffer[insertAt] = buffer[insertAt - 1];
+                insertAt--;
+            }
+            buffer[insertAt] = candidate;
+            written++;
+            return;
+        }
+
+        truncated = true;
+        if (buffer.IsEmpty || candidate >= buffer[written - 1])
+            return;
+
+        int replaceAt = written - 1;
+        while (replaceAt > 0 && buffer[replaceAt - 1] > candidate)
+        {
+            buffer[replaceAt] = buffer[replaceAt - 1];
+            replaceAt--;
+        }
+        buffer[replaceAt] = candidate;
     }
 
     /// <summary>
