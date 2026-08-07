@@ -28,11 +28,11 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **103 passed, 0 failed, 0 skipped**
-  in 5 seconds of test execution on 2026-08-07.
-- Unfiltered Release solution test: **107 passed, 0 failed, 0 skipped** in 36 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **106 passed, 0 failed, 0 skipped**
+  in 4 seconds of test execution on 2026-08-08.
+- Unfiltered Release solution test: **110 passed, 0 failed, 0 skipped** in 27 seconds of test
   execution, confirming the full suite remains under one minute.
-- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-08.
   Command after the Release build:
   `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
   This one local fully optimized-JIT sample measured:
@@ -108,8 +108,16 @@
   in exactly the cases where the simulation had truncated. Renderer overlay drawing itself is still
   only verified by the extracted capacity seam, not by running the window.
   The full Release suite passes after correcting a priority-hysteresis test setup that had depended
-  on the pre-contract seam behavior. Composition violates its total `MaxForce` bound (#19), and
-  rule dispatch is positional: later rules are discarded and qualifying separation starves
+  on the pre-contract seam behavior. Composition now honours its total `MaxForce` bound (#19):
+  separation draws from the same per-tick remainder as whisker avoidance, alignment, cohesion, and
+  wander instead of clamping to a fresh `MaxForce` and adding on top. Measured on a 200-agent
+  100x100 dense crowd over 300 ticks with `MaxForce = 2.5`: before the fix the worst composed
+  steering was 5.000000 (ratio exactly 2.0000) with 43,588 of 60,000 agent-ticks over budget;
+  after it, 2.500000 (ratio 1.0000) with 0 over budget. The composed magnitude is observable
+  through `RuleInstrumentation.SteeringMagnitudesSquared`, recorded just before integration.
+  This intentionally changed canonical trajectories; the seed-pinned kinematic hash for that
+  scenario moved from `37EAE868...` to `FE8295A7...` while the initial-state hash is unchanged.
+  Rule dispatch remains positional: later rules are discarded and qualifying separation starves
   alignment, cohesion, and wander, including wander-angle updates (#27).
   Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
   kernel-resolved arbitration.
@@ -430,7 +438,8 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
 - **New approach**: Complete rewrite in `SwarmSim.Core.Canonical` namespace following Reynolds' canonical steering behaviors:
   - **Immutable data**: `readonly struct Boid`, functional transformations
   - **Independent steering rules**: rules return `desired - current`; the caller clamps and arbitrates
-    contributions, with current composition defects tracked in #19 and #27
+    contributions against one shared per-tick `MaxForce` budget (#19), with the remaining
+    composition defects tracked in #27
   - **Direct speed control**: velocity is normalized without friction to `TargetSpeed` or the
     priority-adjusted allowed speed (up to 3% lower at the current default)
   - **Single-pass**: All decision-making in one place per agent
@@ -438,8 +447,9 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     after slot 2 are discarded; #27 owns a real named composition surface
   - **FOV weighting**: Neighbors weighted by position in vision cone
   - **Prioritized separation**: priority enters at 20% of sense radius by default and boosts
-    separation/reduces allowed speed; independently, a clamped separation vector whose squared
-    magnitude exceeds the current `1e-6` cutoff exhausts the remaining budget (#27)
+    separation/reduces allowed speed; independently, a separation vector whose squared magnitude
+    exceeds the current `1e-6` cutoff spends from the shared per-tick budget and then exhausts
+    whatever remains (#27)
   - **World perception snapshot**: new `PerceptionSnapshot` carries avg/min/max neighbor distances plus rule magnitudes so you can reason about the scene without rendering
   - **Rich instrumentation**: Per-agent neighbor counts, weights, rule contributions
 - **Implemented components**: core scaffolding, steering-rule classes, and Phase C smoothing
@@ -456,16 +466,19 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
     - Smooth wander angle changes while force budget remains; qualifying separation pauses the
       angle update as well as its contribution (#27)
     - Alignment/cohesion attenuation is calculated during priority, but qualifying separation
-      currently exhausts the remaining budget before those contributions are applied (#27)
+      spends from and then exhausts the remaining budget before those contributions are applied
+      (#27)
     - Whisker lookahead visualization (blue circle in overlay)
   - Enhanced PerceptionSnapshot with per-agent nearest angles and whisker counts
   - 12 unit tests passing (including new angular limiter and hysteresis tests)
 - **Milestone 2 complete**: canonical grid and naive queries enforce radius/self-exclusion and
   minimum-image deltas are used through the perception and built-in rule paths, with deterministic
   equivalence, bounded-result, trajectory, and steady-state allocation evidence.
-- **Milestone 6 partial**: the composition path exists, but whisker plus separation can exceed the
-  total `MaxForce` budget (#19); positional slots, discarded later rules, and separation starvation
-  of alignment, cohesion, and wander remain tracked in #27
+- **Milestone 6 partial**: the composition path exists and its total `MaxForce` budget is now
+  enforced and test-guarded (#19 - whisker plus separation share one per-tick remainder; measured
+  worst-case ratio 1.0000 across 60,000 dense agent-ticks, down from exactly 2.0000); positional
+  slots, discarded later rules, and separation starvation of alignment, cohesion, and wander remain
+  tracked in #27
 - **Milestone 7 partial**: backend instrumentation and a basic selected-boid inspection overlay
   exist; an FOV arc, rule-colored links, a steering-vector arrow, rule/FOV controls, and
   rule-toggle acceptance tests remain open in #40
@@ -482,8 +495,8 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - Tests: `dotnet test --filter CanonicalBoidsTests`
   - Renderer: `dotnet run --project SwarmSim.Render -- --canonical` (single-group)
   - Legacy: `dotnet run --project SwarmSim.Render` (multi-group, deprecated)
-- **Before Phase 3**: Must resolve #17-#19, complete milestone 7's UX/test acceptance and milestones
-  8-10, add multi-group support, and validate performance
+- **Before Phase 3**: Must resolve #17-#18 (#19's force budget is done), complete milestone 7's
+  UX/test acceptance and milestones 8-10, add multi-group support, and validate performance
 
 ---
 
@@ -764,9 +777,10 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 ## Current Blockers & Questions
 
 1. **Canonical readiness**: seeded reproducibility, the perception/spatial-index contract,
-   force-budget enforcement, milestone 7 UX/test acceptance, and milestones 8-10 are incomplete
-   (#17-#19, #40). Prescribed milestone 3-6 scenarios remain unverified (#41), while
-   boundary/reflection coverage and scale properties/metrics are also open.
+   milestone 7 UX/test acceptance, and milestones 8-10 are incomplete (#17-#18, #40); the
+   per-tick force budget is now enforced and test-guarded (#19). Prescribed milestone 3-6
+   scenarios remain unverified (#41), while boundary/reflection coverage and scale
+   properties/metrics are also open.
 2. **Feature parity**: canonical multi-group semantics and aggression support are not complete, so
    Phase 3 combat/metabolism work has no settled target model.
 3. **Performance evidence**: the legacy 50k simulation tick took 162.815 ms in the 2026-07-25

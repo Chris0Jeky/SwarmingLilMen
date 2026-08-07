@@ -4,6 +4,22 @@ public sealed class CanonicalWorldSettings
 {
     public int InitialCapacity { get; init; } = 1024;
     public float TargetSpeed { get; init; } = 1f;
+    /// <summary>
+    /// Hard per-tick ceiling on the TOTAL composed steering magnitude for one boid, in units of
+    /// speed per second. It is a single shared budget, not a per-contribution allowance: whisker
+    /// avoidance, separation, alignment, cohesion and wander all draw from the same remainder in
+    /// that order, and once it is spent later contributions receive nothing. Separation
+    /// additionally withholds whatever it leaves unspent from alignment, cohesion and wander -
+    /// that priority behaviour is unchanged; what it may no longer do is spend beyond this
+    /// ceiling.
+    /// </summary>
+    /// <remarks>
+    /// Enforced since issue #19. Before that fix separation clamped to a fresh MaxForce and added
+    /// on top of an already-spent whisker budget, so one tick could compose up to 2x this value.
+    /// <see cref="RuleInstrumentation.SteeringMagnitudesSquared"/> exposes the composed magnitude
+    /// so the invariant is checkable from outside; the composition order itself is a separate
+    /// design property owned by the steering-arbitration work.
+    /// </remarks>
     public float MaxForce { get; init; } = 0.2f;
     public float SenseRadius { get; init; } = 10f;
     public float FieldOfView { get; init; } = 270f;

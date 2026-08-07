@@ -372,12 +372,16 @@ public sealed class CanonicalWorld
                 if (_rules.Count > 0)
                 {
                     Vec2 separation = _rules[0].Compute(i, boid, current, neighbors, neighborWeights, context);
-                    Vec2 clampedSep = separation.ClampMagnitude(Settings.MaxForce);
-                    if (clampedSep.LengthSquared > 1e-6f)
+                    // Separation draws from the same per-tick remainder as every other
+                    // contribution. It used to clamp to a fresh Settings.MaxForce and add on top
+                    // of an already-spent whisker budget, so one tick could compose up to 2x
+                    // MaxForce (issue #19). Its priority semantics are unchanged: once separation
+                    // has spent, the rest of the budget is withheld from alignment, cohesion and
+                    // wander rather than shared with them.
+                    if (TryAccumulateSteering(ref steering, ref remainingForce, separation, out float sepMagnitude))
                     {
-                        steering += clampedSep;
                         remainingForce = 0f;
-                        _instrumentation.RecordSeparation(i, clampedSep.Length);
+                        _instrumentation.RecordSeparation(i, sepMagnitude);
                     }
                 }
 
