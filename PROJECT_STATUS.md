@@ -155,10 +155,17 @@
   Wander-enabled canonical construction currently retains one `Rng`/`System.Random` object per
   boid; it adds no tick-time allocations in the measured probe but is a setup/GC scale risk owned by
   the broader RNG-stream work in #26.
-- CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
-  `--preset` examples; only the five IDs printed under **Available presets** are registered. The
-  executable help/test correction is tracked in
-  [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+- CLI help preset advertising is corrected (#38, 2026-08-07). `--help` no longer names the JSON
+  configuration files `peaceful` and `warbands` as `--preset` values; the option parenthetical and
+  the usage example are now derived from `Program.PresetIds`, and the JSON names moved to the
+  `--config` line where they are valid. The class of drift is closed rather than the instance:
+  `Program.PresetIds` and `Program.IsRegisteredPreset` expose the runtime registry and the same
+  `TryGetPreset` lookup `Main` uses, and tests assert every advertised name resolves through it.
+  A further test compares the README's verbatim help transcript against the live help text, so the
+  README cannot drift again; it was mutation-checked rather than assumed. Note the unknown-preset
+  path still exits **0**, so a mistyped preset remains indistinguishable from success to a script —
+  that is tracked separately in
+  [issue #53](https://github.com/Chris0Jeky/SwarmingLilMen/issues/53).
 - Runtime parameter/help labels are partial and still advertise keys `1-7` while input accepts
   **1-8**; the canonical **H** panel also omits several active controls. Friction key 8 is a no-op
   for registered legacy presets because they inherit `ConstantSpeed`, and canonical settings do
@@ -176,7 +183,7 @@
   clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 108 executed test cases across 11 test files — 104 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 113 executed test cases across 11 test files — 109 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
