@@ -324,6 +324,49 @@ public sealed class SpatialIndexEquivalenceTests
         Assert.True(cappedQuery.IsTruncated);
     }
 
+    [Fact]
+    public void SpatialIndexEquivalence_WorldNormalisesSeededPositionsSoPerceptionAndSteeringAgree()
+    {
+        // Both spatial indexes normalise coordinates into [0, extent) before subtracting, but
+        // Vec2.MinimumImageDelta -- which FOV filtering and every steering rule use -- subtracts
+        // the stored coordinates directly. If a boid is seeded outside the world those two round
+        // differently at the inclusive radius boundary, so the query can accept a neighbour that
+        // SeparationRule then rejects. Normalising at ingest makes the whole world agree.
+        const float radius = 12.28416f;
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            WorldWidth = 100f,
+            WorldHeight = 100f,
+            SenseRadius = radius,
+            SeparationRadius = radius,
+            FieldOfView = 360f,
+            TargetSpeed = 1f
+        };
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(10f, settings.WorldWidth, settings.WorldHeight));
+        Assert.True(world.TryAddBoid(new Vec2(-428.021515f, 10f), new Vec2(1f, 0f)));
+        Assert.True(world.TryAddBoid(new Vec2(159.694336f, 10f), new Vec2(1f, 0f)));
+
+        foreach (Boid boid in world.Boids)
+        {
+            Assert.InRange(boid.Position.X, 0f, settings.WorldWidth);
+            Assert.InRange(boid.Position.Y, 0f, settings.WorldHeight);
+        }
+
+        Span<int> visible = stackalloc int[4];
+        Span<float> weights = stackalloc float[4];
+        SpatialQueryResult query = world.QueryVisibleNeighbors(0, visible, weights);
+
+        Vec2 delta = Vec2.MinimumImageDelta(
+            world.Boids[0].Position,
+            world.Boids[1].Position,
+            settings.WorldWidth,
+            settings.WorldHeight);
+        bool ruleSeesNeighbor = delta.LengthSquared <= radius * radius;
+
+        Assert.Equal(ruleSeesNeighbor, query.Count == 1);
+    }
+
     private static void AssertEquivalent(
         Boid[] boids,
         float worldWidth,

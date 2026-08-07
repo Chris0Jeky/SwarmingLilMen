@@ -184,7 +184,16 @@ public sealed class CanonicalWorld
             _wanderRngs[index] = wanderRng;
             _wanderAngles[index] = wanderRng.NextFloat(0f, MathF.PI * 2f);
         }
-        _activeBoids[index] = new Boid(position, normalizedVelocity, group);
+        // Normalize at ingest so every stored position lies in [0, extent). Both spatial indexes
+        // normalize before subtracting, while Vec2.MinimumImageDelta -- used by field-of-view
+        // filtering and every steering rule -- subtracts the stored coordinates directly. A boid
+        // seeded outside the world would therefore be accepted by the query and simultaneously
+        // rejected by SeparationRule at the inclusive radius boundary, until the first Step
+        // happened to wrap it. Establishing the invariant here is cheaper than re-wrapping in the
+        // per-neighbor hot path, and it is the same normalization Step already applies.
+        (float wrappedX, float wrappedY) = MathUtils.WrapPosition(
+            position.X, position.Y, Settings.WorldWidth, Settings.WorldHeight);
+        _activeBoids[index] = new Boid(new Vec2(wrappedX, wrappedY), normalizedVelocity, group);
         Count = index + 1;
         return true;
     }

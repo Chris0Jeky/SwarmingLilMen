@@ -57,6 +57,14 @@ public readonly struct Vec2
     /// <param name="worldWidth">Positive world width, or positive infinity for an unbounded axis.</param>
     /// <param name="worldHeight">Positive world height, or positive infinity for an unbounded axis.</param>
     /// <returns>The minimum-image displacement.</returns>
+    /// <summary>
+    /// Returns the shortest toroidal displacement from <paramref name="from"/> to <paramref name="to"/>.
+    /// Both points are expected to already lie in <c>[0, extent)</c>; this subtracts them directly
+    /// rather than re-normalizing, because it runs once per neighbor per rule.
+    /// <see cref="CanonicalWorld"/> guarantees that invariant by normalizing on spawn and on every
+    /// integration step. Passing raw out-of-range coordinates here can round differently from
+    /// <see cref="ISpatialIndex"/>, which normalizes first, and make perception and steering disagree.
+    /// </summary>
     public static Vec2 MinimumImageDelta(Vec2 from, Vec2 to, float worldWidth, float worldHeight)
     {
         if (float.IsNaN(worldWidth) || worldWidth <= 0f)

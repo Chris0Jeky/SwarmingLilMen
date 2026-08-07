@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **97 passed, 0 failed, 0 skipped**
+- CI-filtered Release solution test (`Category!=Performance`): **98 passed, 0 failed, 0 skipped**
   in 6 seconds of test execution on 2026-08-07.
-- Unfiltered Release solution test: **101 passed, 0 failed, 0 skipped** in 37 seconds of test
+- Unfiltered Release solution test: **102 passed, 0 failed, 0 skipped** in 40 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
   Command after the Release build:
@@ -81,6 +81,13 @@
   positions, so the two rounded differently in float32 and disagreed about neighbors on the
   inclusive radius boundary for far-out-of-range inputs; both now normalize first. Grid/Naive
   equivalence is therefore exact by construction rather than approximate.
+  Normalizing both indexes then exposed a third disagreement one level up: `Vec2.MinimumImageDelta`,
+  which field-of-view filtering and every steering rule use, subtracts the stored coordinates
+  directly, and `TryAddBoid` stored seeded positions raw. A boid spawned outside the world could
+  therefore be accepted by the spatial query and simultaneously rejected by `SeparationRule` at the
+  radius boundary, until the first `Step` happened to wrap it. `TryAddBoid` now applies the same
+  normalization `Step` does, so stored positions are in `[0, extent)` by invariant; the per-neighbor
+  hot path keeps its direct subtraction and `Vec2.MinimumImageDelta` documents the precondition.
   Minimum-image deltas now cover FOV, whiskers, neighbor statistics, separation, and cohesion.
   The renderer overlay uses the same deltas for links/hit classification and labels capped queries.
   `CanonicalWorld.EffectiveMaxNeighbors` exposes the per-boid candidate cap `Step` actually applies,
