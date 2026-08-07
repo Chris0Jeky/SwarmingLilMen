@@ -375,9 +375,22 @@ public sealed class CanonicalWorld
                     // Separation draws from the same per-tick remainder as every other
                     // contribution. It used to clamp to a fresh Settings.MaxForce and add on top
                     // of an already-spent whisker budget, so one tick could compose up to 2x
-                    // MaxForce (issue #19). Its priority semantics are unchanged: once separation
+                    // MaxForce (issue #19). Its priority semantics are preserved: once separation
                     // has spent, the rest of the budget is withheld from alignment, cohesion and
                     // wander rather than shared with them.
+                    //
+                    // One reachable corner does differ, and only when MaxForce <= 1e-3: previously
+                    // a separation contribution clamped below the 1e-6 epsilon was dropped AND the
+                    // budget was left to the later rules, whereas now separation takes the whole
+                    // tiny budget. Measured at MaxForce = 1e-4: old gave sep=0 / cohesion=1e-4,
+                    // new gives sep=1e-4 / cohesion=0. That is the consistent behaviour, and the
+                    // shipped configs use 1.5-3.0 against a 0.2 default, but it is not a no-op.
+                    //
+                    // Note RecordSeparation below now reports the force ACTUALLY APPLIED rather
+                    // than the desired-then-clamped magnitude, matching how alignment and cohesion
+                    // already report. The renderer HUD's "Sep avg" and the per-agent inspector
+                    // read that value, so both read lower than before whenever the whisker has
+                    // already spent part of the budget.
                     if (TryAccumulateSteering(ref steering, ref remainingForce, separation, out float sepMagnitude))
                     {
                         remainingForce = 0f;

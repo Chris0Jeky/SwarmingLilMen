@@ -15,7 +15,7 @@ composition and instrumentation UX are partial, and milestones 8-10 remain incom
 
 Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a
 solid, debuggable foundation. The perception contract now enforces its radius/self/wrap
-requirements; milestone 6 still violates its total `MaxForce` bound, and milestone 7 does not meet
+requirements and milestone 6 now enforces its total `MaxForce` bound, but milestone 7 does not meet
 its full UX/test acceptance. Milestones 8-10, multi-group semantics, and canonical performance
 evidence remain incomplete.
 
@@ -51,8 +51,11 @@ These are the remaining milestones from `archive/NewImplementation.md` that must
 
 ### 🔄 Milestone 6: Rule Composition & Stability (PARTIAL)
 - [x] Compose separation, alignment, cohesion, whisker, and wander contributions
-- [ ] Enforce the total steering bound of `MaxForce`; whisker plus separation can currently
-  overspend it, tracked in [issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)
+- [x] Enforce the total steering bound of `MaxForce` ([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19)).
+  Separation used to clamp to a fresh `MaxForce` on top of an already-spent whisker budget, so one
+  tick could compose 2x the ceiling; it now draws from the same per-tick remainder as every other
+  contribution. `CanonicalSteeringBudgetTests` pins the bound, the priority-withholding semantics,
+  and the instrumentation seam that makes the composed value observable
 - [ ] Verify named-rule independence, classic-mode constant speed, and combined no-NaN/no-stuck
   stability after #27; tracked in #41
 

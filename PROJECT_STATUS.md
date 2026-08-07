@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **107 passed, 0 failed, 0 skipped**
-  in 4 seconds of test execution on 2026-08-08.
-- Unfiltered Release solution test: **111 passed, 0 failed, 0 skipped** in 25 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **114 passed, 0 failed, 0 skipped**
+  in 2 seconds of test execution on 2026-08-08.
+- Unfiltered Release solution test: **118 passed, 0 failed, 0 skipped** in 23 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-08.
   Command after the Release build:
@@ -117,6 +117,10 @@
   through `RuleInstrumentation.SteeringMagnitudesSquared`, recorded just before integration.
   This intentionally changed canonical trajectories; the seed-pinned kinematic hash for that
   scenario moved from `37EAE868...` to `FE8295A7...` while the initial-state hash is unchanged.
+  Those two values come from a temporary probe over the dense-crowd scenario defined in
+  `CanonicalSteeringBudgetTests.CanonicalWorld_DenseCrowd_NeverExceedsMaxForceBudget` (200 agents,
+  seed 20260807, 300 ticks); no committed test emits them, so reproducing them means rebuilding
+  that probe. They are a before/after record, not a golden fixture.
   Rule dispatch remains positional: later rules are discarded and qualifying separation starves
   alignment, cohesion, and wander, including wander-angle updates (#27).
   Issue #27 owns the replacement: named composition plus bounded Observation/Intent contracts and
@@ -163,10 +167,17 @@
   Wander-enabled canonical construction currently retains one `Rng`/`System.Random` object per
   boid; it adds no tick-time allocations in the measured probe but is a setup/GC scale risk owned by
   the broader RNG-stream work in #26.
-- CLI help currently mislabels the JSON configuration names `peaceful` and `warbands` as
-  `--preset` examples; only the five IDs printed under **Available presets** are registered. The
-  executable help/test correction is tracked in
-  [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
+- CLI help preset advertising is corrected (#38, 2026-08-07). `--help` no longer names the JSON
+  configuration files `peaceful` and `warbands` as `--preset` values; the option parenthetical and
+  the usage example are now derived from `Program.PresetIds`, and the JSON names moved to the
+  `--config` line where they are valid. The class of drift is closed rather than the instance:
+  `Program.PresetIds` and `Program.IsRegisteredPreset` expose the runtime registry and the same
+  `TryGetPreset` lookup `Main` uses, and tests assert every advertised name resolves through it.
+  A further test compares the README's verbatim help transcript against the live help text, so the
+  README cannot drift again; it was mutation-checked rather than assumed. Note the unknown-preset
+  path still exits **0**, so a mistyped preset remains indistinguishable from success to a script —
+  that is tracked separately in
+  [issue #53](https://github.com/Chris0Jeky/SwarmingLilMen/issues/53).
 - Runtime parameter/help labels are partial and still advertise keys `1-7` while input accepts
   **1-8**; the canonical **H** panel also omits several active controls. Friction key 8 is a no-op
   for registered legacy presets because they inherit `ConstantSpeed`, and canonical settings do
@@ -184,12 +195,12 @@
   clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 108 executed test cases across 11 test files — 104 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 118 executed test cases across 11 test files — 114 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
-- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,990 lines and
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 2,012 lines and
   `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 732 lines.
 - Agent controls were refreshed in this audit: shared repo rules and per-seam proving checks in
   `CLAUDE.md`, with `AGENTS.md` reduced to a thin Codex adapter over it that also carries the
@@ -502,8 +513,10 @@ Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Gr
   - Tests: `dotnet test --filter CanonicalBoidsTests`
   - Renderer: `dotnet run --project SwarmSim.Render -- --canonical` (single-group)
   - Legacy: `dotnet run --project SwarmSim.Render` (multi-group, deprecated)
-- **Before Phase 3**: Must resolve #17-#18 (#19's force budget is done), complete milestone 7's
-  UX/test acceptance and milestones 8-10, add multi-group support, and validate performance
+- **Before Phase 3**: #17, #18 and #19 are closed — seeded reproducibility, the perception/
+  spatial-index contract, and the per-tick force budget are all enforced and test-guarded. What
+  remains is milestone 7's UX/test acceptance (#40), milestones 8-10, multi-group support, the
+  prescribed milestone 3-6 scenarios (#41), and performance validation
 
 ---
 
@@ -783,9 +796,9 @@ The current project lacks clear onboarding and runtime discoverability. Develope
 
 ## Current Blockers & Questions
 
-1. **Canonical readiness**: seeded reproducibility, the perception/spatial-index contract,
-   milestone 7 UX/test acceptance, and milestones 8-10 are incomplete (#17-#18, #40); the
-   per-tick force budget is now enforced and test-guarded (#19). Prescribed milestone 3-6
+1. **Canonical readiness**: seeded reproducibility (#17), the perception/spatial-index contract
+   (#18), and the per-tick force budget (#19) are all closed, enforced and test-guarded. Milestone
+   7 UX/test acceptance (#40) and milestones 8-10 remain incomplete. Prescribed milestone 3-6
    scenarios remain unverified (#41), while boundary/reflection coverage and scale
    properties/metrics are also open.
 2. **Feature parity**: canonical multi-group semantics and aggression support are not complete, so

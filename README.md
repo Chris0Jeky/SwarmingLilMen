@@ -45,12 +45,14 @@ should target the canonical implementation.
 - ✅ Configurable simulation parameters with presets
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
-- ✅ 84-test xUnit inventory; the 80 non-performance facts form the hosted CI gate
+- ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
+  block at the top of `PROJECT_STATUS.md` for the current measured counts
 
 ### Remaining Direction
-- **Canonical readiness**: The perception/spatial-index contract (#18), force-budget enforcement
-  (#19), prescribed behavioral scenarios (#41), instrumentation UX (#40), boundary/reflection
-  coverage, scale properties/metrics, multi-group behavior, and canonical benchmarks
+- **Canonical readiness**: prescribed behavioral scenarios (#41), instrumentation UX (#40),
+  boundary/reflection coverage, scale properties/metrics, multi-group behavior, and canonical
+  benchmarks. The perception/spatial-index contract (#18) and force-budget enforcement (#19) are
+  done
 - **Phase 3**: Multi-group interactions, combat, metabolism
 - **Phase 4**: Reproduction, evolution, trait drift
 - **Phase 5**: SIMD optimization, parallelization, NativeAOT compilation
@@ -113,8 +115,8 @@ Options:
   -h, --help                Show this help message and exit
   -v, --version             Show version information
   -l, --list-presets        List built-in presets and exit
-  -p, --preset NAME         Load preset configuration (e.g., peaceful, warbands)
-  -c, --config FILE         Load configuration from JSON file
+  -p, --preset NAME         Load a registered preset (e.g., balanced, strong-separation)
+  -c, --config FILE         Load configuration from JSON file (e.g., configs/peaceful.json)
   -n, --agent-count N       Override initial agent count (default: 400)
   -b, --benchmark           Run in headless benchmark mode (no window)
       --canonical           Launch the single-group canonical boids renderer
@@ -122,7 +124,7 @@ Options:
 
 Examples:
   SwarmSim.Render
-  SwarmSim.Render --preset peaceful
+  SwarmSim.Render --preset balanced
   SwarmSim.Render --config configs/warbands.json -n 5000
   SwarmSim.Render --benchmark --agent-count 20000
 
@@ -138,12 +140,8 @@ Available presets:
   slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
 
-> **Known executable-help defects:**
+> **Known executable-help defect:**
 >
-> - `peaceful` and `warbands` in the verbatim help text are JSON configuration names, not registered
->   `--preset` IDs. Use one of the five IDs under **Available presets**, or load
->   `configs/peaceful.json` / `configs/warbands.json` with `--config`. The preset correction is
->   tracked in [issue #38](https://github.com/Chris0Jeky/SwarmingLilMen/issues/38).
 > - The copied F12 instruction applies only to the legacy renderer. Canonical mode uses **O** for
 >   its interaction overlay and **Tab** to cycle the tracked boid; executable/runtime-help alignment
 >   is tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).

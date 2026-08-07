@@ -35,7 +35,7 @@ commit at which the recorded count provably does not reproduce.
 
 ```powershell
 dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 warnings / 0 errors
-dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 104 passed / 6 s — this IS the CI gate
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 114 passed / 2 s — this IS the CI gate
 dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
 ```
 
@@ -51,7 +51,7 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQuali
 ```
 
 Classes and counts: SpatialIndexEquivalenceTests (23), UniformGridTests (14), WorldTests (14),
-CanonicalBoidsTests (12), RngTests (9), SimulationRunnerTests (6), CommandLineOptionsTests (2),
+CanonicalBoidsTests (12), RngTests (9), SimulationRunnerTests (6), CommandLineOptionsTests (7),
 ConfigTests (2), BoidsTests
 (8 — use `~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or
 `"Category=Determinism"` (14) / `"Category=Performance"` (4, Release only). **`RngTests` carries no

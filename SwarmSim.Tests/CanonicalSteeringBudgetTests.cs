@@ -286,6 +286,80 @@ public class CanonicalSteeringBudgetTests
         return world;
     }
 
+    [Fact]
+    public void CanonicalWorld_SteeringSeam_CapturesContributionsAddedAfterTheRuleBlock()
+    {
+        // Every other assertion in this file is an UPPER bound on the recorded steering, so a seam
+        // that under-reports would make all of them vacuous rather than failing. Moving the
+        // RecordSteering call above the wander block survives the whole suite otherwise. A lone
+        // boid with no neighbours receives force from wander and nothing else, so a seam placed
+        // before wander records exactly zero here.
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            WorldWidth = 1000f,
+            WorldHeight = 1000f,
+            TargetSpeed = 10f,
+            MaxForce = 1f,
+            SenseRadius = 20f,
+            FieldOfView = 360f,
+            WanderStrength = 1f,
+            WanderRate = 1f,
+            Seed = 20260808u
+        };
+
+        CanonicalWorld world = CreateWorld(settings);
+        Assert.True(world.TryAddBoid(new Vec2(500f, 500f), new Vec2(1f, 0f)));
+
+        world.Step(settings.FixedDeltaTime);
+
+        ReadOnlySpan<float> recorded = world.Instrumentation.SteeringMagnitudesSquared;
+        Assert.Equal(1, recorded.Length);
+        Assert.True(
+            recorded[0] > 0f,
+            $"Wander-only steering must reach the seam; recorded {recorded[0]}. " +
+            "A zero here means RecordSteering runs before every contribution has landed.");
+    }
+
+    [Fact]
+    public void CanonicalWorld_SeparationWithholdsTheRemainingBudgetFromLaterRules()
+    {
+        // The fix's comment claims separation's priority semantics are unchanged: once separation
+        // spends, the remainder is withheld from alignment, cohesion and wander rather than shared.
+        // Nothing pinned that -- deleting `remainingForce = 0f` leaves the whole suite green while
+        // alignment and cohesion silently start contributing. This geometry gives separation a
+        // small share of a large budget, so a leaked remainder is unmistakable.
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            WorldWidth = 1000f,
+            WorldHeight = 1000f,
+            TargetSpeed = 10f,
+            MaxForce = 50f,
+            SenseRadius = 40f,
+            SeparationRadius = 20f,
+            FieldOfView = 360f,
+            WhiskerWeight = 0f,
+            WanderStrength = 0f,
+            AlignmentWeight = 1f,
+            CohesionWeight = 1f,
+            Seed = 20260808u
+        };
+
+        CanonicalWorld world = CreateWorld(settings);
+        Assert.True(world.TryAddBoid(new Vec2(500f, 500f), new Vec2(1f, 0f)));
+        Assert.True(world.TryAddBoid(new Vec2(515f, 500f), new Vec2(-1f, 0f)));
+
+        world.Step(settings.FixedDeltaTime);
+
+        Assert.True(world.Instrumentation.TryGetMetrics(0, out RuleInstrumentation.Metrics metrics));
+        Assert.True(
+            metrics.SeparationMagnitude > 0f,
+            $"Precondition: separation must fire in this geometry; got {metrics.SeparationMagnitude}.");
+        Assert.Equal(0f, metrics.AlignmentMagnitude);
+        Assert.Equal(0f, metrics.CohesionMagnitude);
+    }
+
     private static CanonicalWorld CreateWorld(CanonicalWorldSettings settings) =>
         new(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
 
