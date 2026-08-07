@@ -203,8 +203,34 @@ public static class MathUtils
     {
         value %= max;
         if (value < 0f)
+        {
             value += max;
+
+            // A tiny negative input rounds up to exactly max once max is added -- Wrap(-1e-9f, 100f)
+            // returned 100f. That is outside the advertised half-open range and lands in a grid
+            // column that does not exist, so callers relying on the [0, max) invariant to skip
+            // re-normalizing would disagree with those that wrap again. Fold it back to the origin.
+            if (value >= max)
+                value = 0f;
+        }
         return value;
+    }
+
+    /// <summary>
+    /// Wraps a signed displacement to the minimum-image interval for a periodic extent.
+    /// </summary>
+    /// <param name="delta">Signed displacement before wrapping.</param>
+    /// <param name="extent">Positive periodic extent.</param>
+    /// <returns>The equivalent displacement in the interval [-extent/2, extent/2].</returns>
+    internal static float MinimumImageDelta(float delta, float extent)
+    {
+        float wrapped = delta % extent;
+        float halfExtent = extent * 0.5f;
+        if (wrapped > halfExtent)
+            return wrapped - extent;
+        if (wrapped < -halfExtent)
+            return wrapped + extent;
+        return wrapped;
     }
 
     /// <summary>

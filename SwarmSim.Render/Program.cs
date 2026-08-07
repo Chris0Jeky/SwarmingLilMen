@@ -1490,6 +1490,20 @@ internal static class Program
         Raylib.CloseWindow();
     }
 
+    /// <summary>
+    /// Gets the query capacity the interaction overlay must use so it observes exactly the
+    /// neighbours the simulation steered with. The overlay owns a fixed 128-entry buffer, but
+    /// <see cref="CanonicalWorld.Step"/> caps candidates at
+    /// <see cref="CanonicalWorld.EffectiveMaxNeighbors"/> (16 for the renderer's mapped config).
+    /// Querying with the wider buffer would draw neighbours steering discarded and would report
+    /// no truncation in exactly the cases where the simulation did truncate.
+    /// </summary>
+    /// <param name="bufferLength">Entries available in the overlay's own buffers.</param>
+    /// <param name="effectiveMaxNeighbors">The simulation's own per-boid candidate cap.</param>
+    /// <returns>The smaller of the two, never negative.</returns>
+    internal static int ComputeOverlayQueryCapacity(int bufferLength, int effectiveMaxNeighbors)
+        => Math.Max(0, Math.Min(bufferLength, effectiveMaxNeighbors));
+
     private static void DrawInteractionOverlay(
         CanonicalWorld world,
         CanonicalWorldSettings settings,
@@ -1522,7 +1536,14 @@ internal static class Program
         Raylib.DrawLineEx(center, lookaheadPoint, 1.5f, Color.SkyBlue);
         Raylib.DrawCircleLines((int)lookaheadPoint.X, (int)lookaheadPoint.Y, whiskerRadius, Color.SkyBlue);
 
-        int neighborCount = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer);
+        int overlayCapacity = ComputeOverlayQueryCapacity(
+            Math.Min(neighborBuffer.Length, weightBuffer.Length),
+            world.EffectiveMaxNeighbors);
+        SpatialQueryResult visibleQuery = world.QueryVisibleNeighbors(
+            _overlaySubjectIndex,
+            neighborBuffer.AsSpan(0, overlayCapacity),
+            weightBuffer.AsSpan(0, overlayCapacity));
+        int neighborCount = visibleQuery.Count;
         int whiskerHits = 0;
         foreach (int idx in neighborBuffer.AsSpan(0, neighborCount))
         {
@@ -1531,11 +1552,15 @@ internal static class Program
 
             var neighbor = world.Boids[idx];
             var pos = new Vector2(neighbor.Position.X, neighbor.Position.Y);
-            Raylib.DrawLineEx(center, pos, 1f, Color.Lime);
 
             var forwardVec = new Vec2(subject.Forward.X, subject.Forward.Y);
             var perp = new Vec2(-forwardVec.Y, forwardVec.X);
-            Vec2 delta = new Vec2(neighbor.Position.X - subject.Position.X, neighbor.Position.Y - subject.Position.Y);
+            Vec2 delta = Vec2.MinimumImageDelta(
+                subject.Position,
+                neighbor.Position,
+                settings.WorldWidth,
+                settings.WorldHeight);
+            DrawToroidalOverlayLink(center, pos, delta, Color.Lime);
             float along = Vec2.Dot(forwardVec, delta);
             float lateralWhisker = Vec2.Dot(perp, delta);
             if (along > 0f && along <= lookAhead && MathF.Abs(lateralWhisker) <= whiskerRadius)
@@ -1550,7 +1575,8 @@ internal static class Program
         }
 
         Raylib.DrawCircleV(center, 5f, Color.Yellow);
-        Raylib.DrawText($"Whisker hits: {whiskerHits}", 10, WindowHeight - 92, 14, Color.Orange);
+        string queryStatus = visibleQuery.IsTruncated ? $" | query capped at {overlayCapacity}" : string.Empty;
+        Raylib.DrawText($"Whisker hits: {whiskerHits}{queryStatus}", 10, WindowHeight - 92, 14, Color.Orange);
 
         Vec2 meanHeading = ComputeMeanHeading(world);
         var meanHeadingVec = new Vector2(meanHeading.X, meanHeading.Y);
@@ -1559,6 +1585,19 @@ internal static class Program
         Vec2 perpHeading = new Vec2(-meanHeading.Y, meanHeading.X);
         float lateral = Vec2.Dot(subject.Velocity, perpHeading);
         Raylib.DrawText($"Proj: {projection:F2} | Lat: {MathF.Abs(lateral):F2}", 10, WindowHeight - 110, 14, Color.SkyBlue);
+    }
+
+    private static void DrawToroidalOverlayLink(Vector2 subject, Vector2 neighbor, Vec2 minimumImageDelta, Color color)
+    {
+        var delta = new Vector2(minimumImageDelta.X, minimumImageDelta.Y);
+        Vector2 wrappedNeighbor = subject + delta;
+        Raylib.DrawLineEx(subject, wrappedNeighbor, 1f, color);
+
+        if (Vector2.DistanceSquared(wrappedNeighbor, neighbor) > 0.01f)
+        {
+            Vector2 wrappedSubject = neighbor - delta;
+            Raylib.DrawLineEx(neighbor, wrappedSubject, 1f, color);
+        }
     }
 
     private static Vec2 ComputeMeanHeading(CanonicalWorld world)

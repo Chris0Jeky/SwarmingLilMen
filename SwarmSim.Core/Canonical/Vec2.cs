@@ -1,3 +1,5 @@
+using SwarmSim.Core.Utils;
+
 namespace SwarmSim.Core.Canonical;
 
 public readonly struct Vec2
@@ -47,6 +49,34 @@ public readonly struct Vec2
 
     public static float Dot(Vec2 a, Vec2 b) => a.X * b.X + a.Y * b.Y;
 
+    /// <summary>
+    /// Returns the shortest toroidal displacement from <paramref name="from"/> to <paramref name="to"/>.
+    /// </summary>
+    /// <param name="from">Starting position.</param>
+    /// <param name="to">Destination position.</param>
+    /// <param name="worldWidth">Positive world width, or positive infinity for an unbounded axis.</param>
+    /// <param name="worldHeight">Positive world height, or positive infinity for an unbounded axis.</param>
+    /// <returns>The minimum-image displacement.</returns>
+    /// <summary>
+    /// Returns the shortest toroidal displacement from <paramref name="from"/> to <paramref name="to"/>.
+    /// Both points are expected to already lie in <c>[0, extent)</c>; this subtracts them directly
+    /// rather than re-normalizing, because it runs once per neighbor per rule.
+    /// <see cref="CanonicalWorld"/> guarantees that invariant by normalizing on spawn and on every
+    /// integration step. Passing raw out-of-range coordinates here can round differently from
+    /// <see cref="ISpatialIndex"/>, which normalizes first, and make perception and steering disagree.
+    /// </summary>
+    public static Vec2 MinimumImageDelta(Vec2 from, Vec2 to, float worldWidth, float worldHeight)
+    {
+        if (float.IsNaN(worldWidth) || worldWidth <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(worldWidth), "World width must be positive.");
+        if (float.IsNaN(worldHeight) || worldHeight <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(worldHeight), "World height must be positive.");
+
+        return new Vec2(
+            MathUtils.MinimumImageDelta(to.X - from.X, worldWidth),
+            MathUtils.MinimumImageDelta(to.Y - from.Y, worldHeight));
+    }
+
     public static Vec2 Lerp(Vec2 a, Vec2 b, float t)
     {
         t = t < 0f ? 0f : (t > 1f ? 1f : t);
@@ -59,4 +89,5 @@ public readonly struct Vec2
     public static Vec2 operator *(Vec2 v, float scalar) => new(v.X * scalar, v.Y * scalar);
     public static Vec2 operator *(float scalar, Vec2 v) => v * scalar;
     public static Vec2 operator /(Vec2 v, float scalar) => new(v.X / scalar, v.Y / scalar);
+
 }
