@@ -301,10 +301,17 @@ public sealed class UniformGrid
         // it while both wrapped endpoints still land back in the centre cell, and the qualifying
         // neighbours inside that terminal cell are never scanned.
         //
-        // The comparisons are non-strict so accumulated float rounding can only ever make the
-        // scan one cell wider, never one cell short of a neighbour on the inclusive boundary.
+        // The running total is a double on purpose. Accumulating cell extents in float rounds in
+        // BOTH directions, and when it rounds up the walk stops one cell early and silently drops
+        // neighbours strictly inside the radius. That needs a cell size not exactly representable
+        // in binary32 plus a walk of hundreds of cells (radius/cellSize large), so no caller in
+        // this repository can reach it today -- every construction site passes
+        // cellSize == SenseRadius -- but the public constructor invites cellSize < radius, which
+        // is the ordinary grid-tuning move. Doubles remove the drift outright; the walk is O(cells)
+        // per query, not per neighbour, so the cost is nil. The comparisons are non-strict so a
+        // remaining per-edge ulp can only widen the scan, never shorten it.
         cellsBefore = 0;
-        float coveredBefore = coordinate - centerCell * CellSize;
+        double coveredBefore = (double)coordinate - (double)centerCell * CellSize;
         int cursor = centerCell;
         while (coveredBefore <= radius && cellsBefore + 1 < cellCount)
         {
@@ -314,7 +321,7 @@ public sealed class UniformGrid
         }
 
         cellsAfter = 0;
-        float coveredAfter = GetCellUpperEdge(centerCell, extent) - coordinate;
+        double coveredAfter = GetCellUpperEdge(centerCell, extent) - (double)coordinate;
         cursor = centerCell;
         while (coveredAfter <= radius && cellsBefore + cellsAfter + 1 < cellCount)
         {
@@ -335,18 +342,16 @@ public sealed class UniformGrid
     /// <summary>
     /// Gets the actual extent of a cell along one axis. The terminal cell is shorter than
     /// <see cref="CellSize"/> whenever the world extent is not a whole multiple of it.
+    /// Returned as a double so a directional walk can accumulate without rounding drift.
     /// </summary>
-    private float GetCellExtent(int cell, float extent)
-    {
-        float lowerEdge = cell * CellSize;
-        return GetCellUpperEdge(cell, extent) - lowerEdge;
-    }
+    private double GetCellExtent(int cell, float extent)
+        => GetCellUpperEdge(cell, extent) - (double)cell * CellSize;
 
     /// <summary>
     /// Gets the upper edge of a cell along one axis, clamped to the world extent.
     /// </summary>
-    private float GetCellUpperEdge(int cell, float extent)
-        => MathF.Min((cell + 1) * CellSize, extent);
+    private double GetCellUpperEdge(int cell, float extent)
+        => Math.Min((double)(cell + 1) * CellSize, extent);
 
     private static int WrapCell(int value, int length)
     {

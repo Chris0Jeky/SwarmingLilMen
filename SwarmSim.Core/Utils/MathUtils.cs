@@ -203,7 +203,16 @@ public static class MathUtils
     {
         value %= max;
         if (value < 0f)
+        {
             value += max;
+
+            // A tiny negative input rounds up to exactly max once max is added -- Wrap(-1e-9f, 100f)
+            // returned 100f. That is outside the advertised half-open range and lands in a grid
+            // column that does not exist, so callers relying on the [0, max) invariant to skip
+            // re-normalizing would disagree with those that wrap again. Fold it back to the origin.
+            if (value >= max)
+                value = 0f;
+        }
         return value;
     }
 

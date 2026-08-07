@@ -1,4 +1,5 @@
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Utils;
 using Xunit;
 using RenderProgram = SwarmSim.Render.Program;
 
@@ -365,6 +366,39 @@ public sealed class SpatialIndexEquivalenceTests
         bool ruleSeesNeighbor = delta.LengthSquared <= radius * radius;
 
         Assert.Equal(ruleSeesNeighbor, query.Count == 1);
+    }
+
+    [Theory]
+    // Reproducers from the adversarial review of the directional-reach rewrite. Each needs a cell
+    // size that is not exactly representable in binary32 together with a walk of hundreds of cells
+    // (radius / cellSize is ~2000 and ~500 here). Accumulating the covered distance in float then
+    // rounds UP partway along the walk, so the scan stops one cell early and drops a neighbour that
+    // is strictly inside the radius. The running total is a double for exactly this reason.
+    // No caller in this repository reaches it -- every construction site passes
+    // cellSize == SenseRadius -- but the public constructor invites cellSize < radius.
+    [InlineData(0.1f, 448.80118f, 197.78207f, 352.62256f, 101.60147f)]
+    [InlineData(0.3f, 445.1133f, 151.69476f, 372.61887f, 79.200165f)]
+    public void SpatialIndexEquivalence_DeepDirectionalWalksDoNotDropNeighboursToRoundingDrift(
+        float cellSize, float worldWidth, float radius, float selfX, float neighborX)
+    {
+        var boids = CreateBoids((selfX, 0f), (neighborX, 0f));
+
+        AssertEquivalent(boids, worldWidth, cellSize, cellSize, selfIndex: 0, radius: radius, bufferLength: 4, new[] { 1 });
+    }
+
+    [Theory]
+    // MathUtils.Wrap advertises [0, extent), and CanonicalWorld/ISpatialIndex both rely on that
+    // half-open range to justify skipping re-normalization in the per-neighbour hot path. A tiny
+    // negative input used to round up to exactly the extent once the extent was added.
+    [InlineData(-1e-9f, 100f)]
+    [InlineData(-1e-9f, 1920f)]
+    [InlineData(-float.Epsilon, 18f)]
+    public void SpatialIndexEquivalence_WrapNeverReturnsTheExtentItself(float value, float extent)
+    {
+        float wrapped = MathUtils.Wrap(value, extent);
+
+        Assert.InRange(wrapped, 0f, extent);
+        Assert.NotEqual(extent, wrapped);
     }
 
     private static void AssertEquivalent(

@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **98 passed, 0 failed, 0 skipped**
-  in 6 seconds of test execution on 2026-08-07.
-- Unfiltered Release solution test: **102 passed, 0 failed, 0 skipped** in 40 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **103 passed, 0 failed, 0 skipped**
+  in 5 seconds of test execution on 2026-08-07.
+- Unfiltered Release solution test: **107 passed, 0 failed, 0 skipped** in 36 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
   Command after the Release build:
@@ -45,10 +45,12 @@
   in this wave. That path was measured separately and directly: a temporary Release harness ran one
   million grid queries over 4,000 boids at radius 12.5 against both this head and its pre-fix
   parent (`48d5c06`), in a world whose extent is a whole multiple of the cell size and in one that
-  leaves a partial terminal cell. One local sample each: exact-multiple 6,380.7 ns/query before
-  versus 6,464.9 ns/query after, partial-terminal 6,689.1 ns/query before versus 6,106.4 ns/query
-  after, with byte-identical neighbor-count checksums in both worlds. The harness was removed. This
-  is one sample per configuration, not a benchmark distribution.
+  leaves a partial terminal cell. One local sample each, measured at this head: exact-multiple
+  6,380.7 ns/query before versus 6,146.4 ns/query after, partial-terminal 6,689.1 ns/query before
+  versus 6,243.6 ns/query after, with identical neighbor-count checksums in both worlds. The
+  `double` accumulator costs nothing measurable because the walk is O(cells) per query rather than
+  per neighbor, and every current caller walks at most two cells. The harness was removed. This is
+  one sample per configuration, not a benchmark distribution.
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the
@@ -79,8 +81,18 @@
   walks outward accumulating each cell's actual extent. Separately, `NaiveSpatialIndex` subtracted
   raw coordinates and wrapped afterwards while `GridSpatialIndex` subtracts already-wrapped stored
   positions, so the two rounded differently in float32 and disagreed about neighbors on the
-  inclusive radius boundary for far-out-of-range inputs; both now normalize first. Grid/Naive
-  equivalence is therefore exact by construction rather than approximate.
+  inclusive radius boundary for far-out-of-range inputs; both now normalize first.
+  A third defect lived in the replacement reach itself: accumulating each cell's extent in `float`
+  rounds in both directions, so a deep walk could stop one cell early and drop a neighbor strictly
+  inside the radius. It needed a cell size not exactly representable in binary32 plus a walk of
+  hundreds of cells, so no current caller could reach it -- every construction site passes
+  `cellSize == SenseRadius` -- but the public constructor invites `cellSize < radius`. The running
+  total is now a `double`; two measured reproducers are pinned as regression tests. Separately,
+  `MathUtils.Wrap` could return exactly `max` for tiny negative inputs (`Wrap(-1e-9f, 100f)` was
+  `100f`), which broke the `[0, extent)` invariant the hot path relies on to skip re-normalizing;
+  it now folds to the origin. Grid/Naive equivalence is therefore exact by construction rather than
+  approximate -- an adversarial differential sweep of roughly 1.5 million generated cases (random,
+  dense, exact-boundary radii, and structural) found only the drift defect above, now fixed.
   Normalizing both indexes then exposed a third disagreement one level up: `Vec2.MinimumImageDelta`,
   which field-of-view filtering and every steering rule use, subtracts the stored coordinates
   directly, and `TryAddBoid` stored seeded positions raw. A boid spawned outside the world could
@@ -125,13 +137,21 @@
 - Intentional trajectory change: the shared unauthored renderer default now follows the
   `SimConfig` contract (`WanderStrength: 0`, previously `0.45`) for both legacy and canonical paths;
   authored presets/JSON values still opt into wander. In a comparable 64-agent canonical diagnostic,
-  the initial FNV-1a kinematic diagnostic remained `E4DF43EE92B466D4`, while the 500-tick diagnostic
-  changed from `559B9F9DDD9A26DC` to `1902D36DF3FE793A`. These are before/after diagnostics, not
-  golden fixtures.
-  The toroidal perception repair left that same default initial diagnostic at
-  `E4DF43EE92B466D4` and changed the 500-tick diagnostic from `1902D36DF3FE793A` to
-  `DB22BC4124AF0A96`, as seam-adjacent neighbors now influence steering. No behavior retuning was
-  included; these values remain diagnostics rather than golden fixtures.
+  the initial 64-bit diagnostic remained `E4DF43EE92B466D4`, while the 500-tick diagnostic changed
+  from `559B9F9DDD9A26DC` to `1902D36DF3FE793A`. **These six 16-hex values are not reproducible from
+  this repository and were previously mislabelled "FNV-1a".** `SimulationKinematicHash` computes
+  SHA-256 (64 hex) and no FNV implementation exists anywhere in the tree; the 16-hex figures came
+  from a temporary word-wise diagnostic that has since been removed. They are retained only as a
+  historical before/after record, and no session should expect to reproduce them.
+  The reproducible evidence is the SHA-256 emitted by
+  `DeterminismTests.RendererDefaultCanonicalTrajectory_EmitsIntentionalAfterHash`. Measured on
+  2026-08-07 against both checkouts: the initial hash is
+  `A638454B49E23E2595060531CD2E64D65ABFD7140B61E283F02170E446A2BCC6`
+  on `main` and unchanged at this head, while the 500-tick hash moves from
+  `2F9351E2E39BBACE0B71E6A488841A63471056965E4C05FE5BAB7AA9C7091781` on `main` to
+  `29F3DC6129BF88265DF4E78C88AA01C328CDE7C47DDD715D5C869D8367201FE1` here, as seam-adjacent
+  neighbors now influence steering. No behavior retuning was included; these remain diagnostics
+  rather than golden fixtures.
   Wander-enabled canonical construction currently retains one `Rng`/`System.Random` object per
   boid; it adds no tick-time allocations in the measured probe but is a setup/GC scale risk owned by
   the broader RNG-stream work in #26.
@@ -150,7 +170,7 @@
   Docs-only source correction is tracked in
   [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
   this reconciliation.
-- Test inventory: 102 xUnit facts across 11 test files, including four explicitly categorized
+- Test inventory: 107 xUnit facts across 11 test files, including four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
