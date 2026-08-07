@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **104 passed, 0 failed, 0 skipped**
-  in 6 seconds of test execution on 2026-08-07.
-- Unfiltered Release solution test: **108 passed, 0 failed, 0 skipped** in 45 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **109 passed, 0 failed, 0 skipped**
+  in 3 seconds of test execution on 2026-08-07.
+- Unfiltered Release solution test: **113 passed, 0 failed, 0 skipped** in 26 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
   Command after the Release build:
@@ -188,7 +188,7 @@
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
-- Complexity hotspots: `SwarmSim.Render/Program.cs` is 1,990 lines and
+- Complexity hotspots: `SwarmSim.Render/Program.cs` is 2,012 lines and
   `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 732 lines.
 - Agent controls were refreshed in this audit: shared repo rules and per-seam proving checks in
   `CLAUDE.md`, with `AGENTS.md` reduced to a thin Codex adapter over it that also carries the
