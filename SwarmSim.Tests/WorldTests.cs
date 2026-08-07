@@ -183,6 +183,48 @@ public class WorldTests
     }
 
     [Fact]
+    public void Tick_ConstantSpeed_IgnoresFrictionAndDoesNotRestoreMaxSpeed()
+    {
+        // Characterizes SpeedModel.ConstantSpeed against its XML documentation:
+        // friction is skipped rather than coerced to 1.0, and MaxSpeed is only an upper
+        // clamp, so an agent below MaxSpeed is never renormalized up to it.
+        static World MakeWorld(float friction)
+        {
+            var config = new SimConfig
+            {
+                Friction = friction,
+                SpeedModel = SpeedModel.ConstantSpeed,
+                MaxSpeed = 200f,
+                FixedDeltaTime = 1f / 60f
+            };
+            var world = new World(config, seed: 42u);
+            world.AddAgent(100f, 100f);
+
+            // Speed 50, well below MaxSpeed.
+            world.Vx[0] = 30f;
+            world.Vy[0] = 40f;
+            return world;
+        }
+
+        var heavyFriction = MakeWorld(0.5f);
+        var noFriction = MakeWorld(1.0f);
+
+        // Act
+        heavyFriction.Tick();
+        noFriction.Tick();
+
+        // Assert - Friction is ignored under ConstantSpeed, so a 0.5 friction world evolves
+        // identically to a 1.0 friction world (under Damped it would have halved the velocity).
+        Assert.Equal(noFriction.Vx[0], heavyFriction.Vx[0]);
+        Assert.Equal(noFriction.Vy[0], heavyFriction.Vy[0]);
+
+        // Assert - The agent keeps its own sub-MaxSpeed speed; it is not raised toward MaxSpeed
+        // (renormalizing speed 50 to MaxSpeed 200 would give roughly 120, 160).
+        Assert.InRange(heavyFriction.Vx[0], 27f, 33f);
+        Assert.InRange(heavyFriction.Vy[0], 37f, 43f);
+    }
+
+    [Fact]
     public void BoundaryMode_Wrap_WrapsPosition()
     {
         // Arrange

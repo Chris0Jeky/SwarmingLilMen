@@ -17,10 +17,22 @@ namespace SwarmSim.Core.Systems;
 /// 1. Query 3x3 grid neighborhood
 /// 2. For each neighbor within SenseRadius and FieldOfView:
 ///    - Count neighbors
-///    - Accumulate separation vector (linear repulsion, 1/d weighting)
+///    - Accumulate separation vector (normalized away direction, bounded linear falloff)
 ///    - Accumulate alignment vector (sum of velocities)
 ///    - Accumulate cohesion center (sum of positions)
 /// 3. Store aggregates for BehaviorSystem to use
+///
+/// SEPARATION WEIGHTING:
+/// Each contribution is a unit away-vector scaled only by the bounded linear radial falloff
+/// (separationRadius - distance) / separationRadius, which tends to 1 as distance tends to 0 and
+/// reaches 0 at separationRadius. The 1.0 end is a limit the code never evaluates: neighbors
+/// nearer than 0.01 units are skipped by the distSq &lt; 0.0001f guard before separation is
+/// reached, so coincident and near-overlapping agents contribute nothing at all rather than a
+/// maximum-strength push. There is no inverse-distance or inverse-square term: the division by
+/// distance normalizes the direction and nothing more. BehaviorSystem re-normalizes the
+/// accumulated vector before steering, so this falloff acts as a per-neighbor direction blend
+/// weight rather than a force gain. The separate Canonical SeparationRule does multiply the
+/// linear falloff by inverse distance; the two engines differ here on purpose.
 ///
 /// FOV (Field of View) filtering:
 /// - Uses agent's velocity as forward direction
@@ -32,7 +44,9 @@ public sealed class SenseSystem : ISimSystem
     // Per-agent aggregates (allocated once, reused each tick)
     private int[] _neighborCount = null!;
 
-    // Separation: accumulated repulsion vectors (weighted by 1/r^2)
+    // Separation: accumulated unit away-vectors, each scaled by the bounded linear falloff
+    // (separationRadius - distance) / separationRadius. No inverse-distance weighting, and
+    // neighbors nearer than 0.01 units are skipped rather than pushed at maximum strength.
     private float[] _separationX = null!;
     private float[] _separationY = null!;
 
