@@ -26,7 +26,12 @@ belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity, 
 removal. Neither engine is deleted without a recorded migration decision. Building a new feature on
 the legacy default because it is what runs today is exactly the drift this split exists to prevent.
 
-## Build, test, run — all green 2026-08-07 at `aee7df0` (SDK 8.0.415, Windows)
+## Build, test, run — all green 2026-08-07 (SDK 8.0.415, Windows)
+
+The counts below are a snapshot on that date and move with every merge; **the command is the source
+of truth, not the number beside it.** They are deliberately not stamped with a commit SHA — the
+merge commit does not exist yet when the doc is written, and stamping the merge base advertises a
+commit at which the recorded count provably does not reproduce.
 
 ```powershell
 dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 warnings / 0 errors
