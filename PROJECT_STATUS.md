@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **103 passed, 0 failed, 0 skipped**
-  in 5 seconds of test execution on 2026-08-07.
-- Unfiltered Release solution test: **107 passed, 0 failed, 0 skipped** in 36 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **104 passed, 0 failed, 0 skipped**
+  in 6 seconds of test execution on 2026-08-07.
+- Unfiltered Release solution test: **108 passed, 0 failed, 0 skipped** in 45 seconds of test
   execution, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
   Command after the Release build:
@@ -165,12 +165,18 @@
   not consume friction; only an explicit custom legacy `Damped` configuration uses it. Runtime
   synchronization and regression coverage are tracked in
   [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
-- Source comments in `SenseSystem` still claim inverse-distance separation, and the `ConstantSpeed`
-  XML comment still implies normalization that the upper-cap-only integrator does not perform.
-  Docs-only source correction is tracked in
-  [issue #42](https://github.com/Chris0Jeky/SwarmingLilMen/issues/42); no behavior change belongs to
-  this reconciliation.
-- Test inventory: 107 xUnit facts across 11 test files, including four explicitly categorized
+- Source comment accuracy in the legacy path is reconciled (#42, 2026-08-07). `SenseSystem` no
+  longer claims inverse-distance or inverse-square separation: the implementation scales a unit
+  away-vector by the bounded linear falloff `(separationRadius - distance) / separationRadius` and
+  nothing else, `BehaviorSystem` re-normalizes the aggregate so that falloff acts as a per-neighbor
+  direction blend weight rather than a force gain, and neighbors nearer than 0.01 units are skipped
+  outright rather than pushed at maximum strength. The `SpeedModel.ConstantSpeed` doc no longer
+  claims `friction = 1.0`, direction-only steering, or that agents hold `MaxSpeed`; the integrator
+  skips friction entirely in that mode, adds steering straight into velocity, and applies an upper
+  clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
+  genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
+  file remain correct and were deliberately left alone. No executable line changed.
+- Test inventory: 108 xUnit facts across 11 test files, including four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
