@@ -2,8 +2,15 @@
 
 Tier: sandbox (T1) — push free / **merge free** (declared in `.agent-harness/tier.json`; changing
 it is an owner decision, and the owner set `merge: free` there on 2026-07-27) · dual-runtime (Codex
-reads `AGENTS.md`, a thin adapter pointing here) · `human_todo: null`. Global laws are
-auto-injected; none are restated here.
+reads `AGENTS.md`, a thin adapter pointing here) · `human_todo: null`.
+
+**If `~/.claude/` is absent, the global laws are NOT loaded.** They are normally auto-injected,
+which is why they are not restated here — but in a fresh clone, a CI or cloud container, or any
+machine without the estate profile, nothing injects them and no PreToolUse floor is installed.
+`AGENTS.md` is a thin Codex adapter in every other respect, but its **Fail-safe floor** section is
+runtime-neutral and is then the entire policy: read it, and treat merge as human-only regardless of
+what `authority.merge` says, until a human says otherwise. Do not infer from "merge free" that an
+unreviewed merge is ever in scope — that dial presumes the laws it is declared under.
 
 ## What this is
 
@@ -39,10 +46,44 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQuali
 ```
 
 Classes and counts: CanonicalBoidsTests (12), UniformGridTests (14), WorldTests (13),
-SimulationRunnerTests (6), CommandLineOptionsTests (2), ConfigTests (2), BoidsTests (8 — use
-`~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or `"Category=Determinism"`
-(14) / `"Category=Performance"` (4, ~18 s, Release only). Renderer coverage is partial (~30%:
-DeterminismTests drives `Program`'s canonical-settings helpers) — prove UI paths by running the window.
+RngTests (9), SimulationRunnerTests (6), CommandLineOptionsTests (2), ConfigTests (2), BoidsTests
+(8 — use `~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or
+`"Category=Determinism"` (14) / `"Category=Performance"` (4, Release only). **`RngTests` carries no
+`Category=Determinism` trait**, so an RNG change must run `~RngTests` explicitly — the determinism
+category alone skips the bounds, sequence, and integer-generation tests.
+
+Evidence the commands above do **not** produce, each needing its own run:
+
+```powershell
+dotnet run --project SwarmSim.Benchmarks -c Release                    # the only real BenchmarkDotNet evidence
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --collect:"XPlat Code Coverage"
+dotnet run --project SwarmSim.Render -c Release -- --canonical         # opens the window; the only proof of UI paths
+```
+
+Renderer coverage is partial (~30%: DeterminismTests drives `Program`'s canonical-settings helpers),
+so UI behaviour is proven only by running the window. Note `--benchmark` measures the **legacy**
+world even with `--canonical`, because `RunBenchmark` returns before the canonical branch.
+
+## Rules that bind
+
+These lived in the old long-form `AGENTS.md`. Claude does not read `AGENTS.md`, so they are stated
+here rather than referenced.
+
+- **Hot paths avoid avoidable allocations, LINQ, boxing, exceptions for flow control, and opaque
+  virtual dispatch.** `Directory.Build.props` global-imports `System.Linq` into every file, so
+  nothing stops you — measure before claiming zero allocation.
+- **New behavior ships with deterministic tests**, plus a property or equivalence test where one is
+  meaningful. Do not land new agent behavior on assertion-free evidence.
+- **Update `PROJECT_STATUS.md` when a verified fact or the priority queue changes** — test counts,
+  measured hashes, implementation status. Its top block is what the validator and the rest of the
+  docs are told to trust, so a change that leaves it stale silently misleads every later session.
+- **Do not vendor a `.claude` hook into this repo.** The floor arrives from the global PreToolUse
+  hook; a second repo-level hook can double-dispatch. This repo deliberately declares none.
+- **Committed permissions belong in `.claude/settings.json`; personal bypasses belong in gitignored
+  `.claude/settings.local.json`.** The committed file already sets `defaultMode: bypassPermissions`,
+  so widening it further is a repo-wide decision, not a personal convenience.
+- **CI validates GitHub's head/base merge ref, not your exact branch head.** Incorporate the latest
+  `main` before merging, and use the workflow's `workflow_dispatch` when an exact-head rerun matters.
 
 ## Pitfalls
 
@@ -50,7 +91,10 @@ DeterminismTests drives `Program`'s canonical-settings helpers) — prove UI pat
 - A green suite proves nothing about throughput: `Category=Performance` gates machine-relative
   ratios only and its absolute numbers are reported-only. Never quote them as the target met.
 - Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock. A
-  `SimConfig` default change must also land in `configs/*.json` and `docs/PARAMETER_GUIDE.md`.
+  `SimConfig` default change must also land in `docs/PARAMETER_GUIDE.md` and in any JSON example
+  written to demonstrate that field. Do **not** copy it into `configs/*.json`: those recipes set
+  ~18 of ~51 properties deliberately and inherit the rest through `SimConfig.LoadFromJson`, so
+  pinning a new default there freezes them against later fixes and can change a named scenario.
 - Snapshot interpolation needs matching capture/mutation versions and array lengths; world
   mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
 - Complexity hotspots `SwarmSim.Render/Program.cs` (1,951 lines) and `Canonical/CanonicalWorld.cs` (680): add a narrow testable seam rather than growing them.

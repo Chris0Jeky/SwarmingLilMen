@@ -35,7 +35,9 @@ They are the entire policy in that case, and they still bind when the estate pro
 - **Preserve unrelated work.** Never destroy an unclean tree merely to obtain a clean one. Ask.
 - **Never commit secrets**, tokens, credentials, private data, generated profiler or test output,
   or agent-attribution trailers. This repository is public and its history is permanent.
-- **Publishing is scoped.** Local edits, builds, tests, commits, branch pushes, and pull requests
-  are in scope. Repository settings, releases, and anything that leaves this repository are not.
+- **Publishing is scoped, and merging is not in it.** Local edits, builds, tests, commits, branch
+  pushes, and pull requests are in scope. Merging to `main`, repository settings, releases, and
+  anything that leaves this repository are not — `authority.merge` in `.agent-harness/tier.json`
+  presumes the estate laws that are missing here, so without them merge is human-only.
 - **No unproven claims.** Run the check that proves the claim, and state plainly what you did not
   verify — a green unit suite is not renderer, benchmark, or throughput evidence here.
