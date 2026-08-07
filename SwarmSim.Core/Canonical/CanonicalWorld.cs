@@ -422,6 +422,12 @@ public sealed class CanonicalWorld
                 TryAccumulateSteering(ref steering, ref remainingForce, wander, out _);
             }
 
+            // Record the composed steering budget here and nowhere else: every contribution
+            // (whisker, separation, alignment, cohesion, wander) has landed, and the next line
+            // folds `steering` into a velocity that avoidance blending and speed renormalization
+            // then overwrite. After integration the MaxForce budget is no longer observable.
+            _instrumentation.RecordSteering(i, steering.LengthSquared);
+
             Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
             float prioritySpeed = Settings.TargetSpeed * (1f - Settings.SeparationSpeedDroop * _priorityBlend[i]);
             float allowedSpeed = _priorityBlend[i] > 0f ? prioritySpeed : Settings.TargetSpeed;
