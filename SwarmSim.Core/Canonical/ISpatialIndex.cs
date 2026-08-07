@@ -47,6 +47,8 @@ public interface ISpatialIndex
     /// <summary>
     /// Finds boids in the inclusive circular <paramref name="radius"/> around <paramref name="selfIndex"/>.
     /// Distances use the world's toroidal minimum-image delta and the boid at <paramref name="selfIndex"/> is excluded.
+    /// Implementations normalize each coordinate into <c>[0, extent)</c> and only then subtract, so
+    /// two implementations agree bit-for-bit even for positions supplied far outside the world bounds.
     /// Results are the lowest qualifying indices in ascending order; if the buffer is too small,
     /// <see cref="SpatialQueryResult.IsTruncated"/> is set rather than silently hiding the omission.
     /// </summary>

@@ -294,15 +294,35 @@ public sealed class UniformGrid
             return;
         }
 
-        // Endpoint cells cover a short terminal cell across the seam without scanning a blanket
-        // extra ring around ordinary interior queries.
-        float firstCoordinate = MathUtils.Wrap(coordinate - radius, extent);
-        float lastCoordinate = MathUtils.Wrap(coordinate + radius, extent);
-        int firstCell = Math.Clamp((int)(firstCoordinate / CellSize), 0, cellCount - 1);
-        int lastCell = Math.Clamp((int)(lastCoordinate / CellSize), 0, cellCount - 1);
+        // Walk outward one cell at a time, accumulating each cell's ACTUAL extent, and stop as
+        // soon as the accumulated span covers the radius. Deriving the reach from the wrapped
+        // endpoints' cell IDs instead is wrong whenever the world extent is not a whole multiple
+        // of CellSize: the terminal cell is short, so a circular interval can cross the whole of
+        // it while both wrapped endpoints still land back in the centre cell, and the qualifying
+        // neighbours inside that terminal cell are never scanned.
+        //
+        // The comparisons are non-strict so accumulated float rounding can only ever make the
+        // scan one cell wider, never one cell short of a neighbour on the inclusive boundary.
+        cellsBefore = 0;
+        float coveredBefore = coordinate - centerCell * CellSize;
+        int cursor = centerCell;
+        while (coveredBefore <= radius && cellsBefore + 1 < cellCount)
+        {
+            cursor = WrapCell(cursor - 1, cellCount);
+            coveredBefore += GetCellExtent(cursor, extent);
+            cellsBefore++;
+        }
 
-        cellsBefore = WrapCell(centerCell - firstCell, cellCount);
-        cellsAfter = WrapCell(lastCell - centerCell, cellCount);
+        cellsAfter = 0;
+        float coveredAfter = GetCellUpperEdge(centerCell, extent) - coordinate;
+        cursor = centerCell;
+        while (coveredAfter <= radius && cellsBefore + cellsAfter + 1 < cellCount)
+        {
+            cursor = WrapCell(cursor + 1, cellCount);
+            coveredAfter += GetCellExtent(cursor, extent);
+            cellsAfter++;
+        }
+
         scanAll = cellsBefore + cellsAfter + 1 >= cellCount;
 
         if (scanAll)
@@ -311,6 +331,22 @@ public sealed class UniformGrid
             cellsAfter = 0;
         }
     }
+
+    /// <summary>
+    /// Gets the actual extent of a cell along one axis. The terminal cell is shorter than
+    /// <see cref="CellSize"/> whenever the world extent is not a whole multiple of it.
+    /// </summary>
+    private float GetCellExtent(int cell, float extent)
+    {
+        float lowerEdge = cell * CellSize;
+        return GetCellUpperEdge(cell, extent) - lowerEdge;
+    }
+
+    /// <summary>
+    /// Gets the upper edge of a cell along one axis, clamped to the world extent.
+    /// </summary>
+    private float GetCellUpperEdge(int cell, float extent)
+        => MathF.Min((cell + 1) * CellSize, extent);
 
     private static int WrapCell(int value, int length)
     {

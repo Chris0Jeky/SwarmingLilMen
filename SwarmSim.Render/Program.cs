@@ -1490,6 +1490,20 @@ internal static class Program
         Raylib.CloseWindow();
     }
 
+    /// <summary>
+    /// Gets the query capacity the interaction overlay must use so it observes exactly the
+    /// neighbours the simulation steered with. The overlay owns a fixed 128-entry buffer, but
+    /// <see cref="CanonicalWorld.Step"/> caps candidates at
+    /// <see cref="CanonicalWorld.EffectiveMaxNeighbors"/> (16 for the renderer's mapped config).
+    /// Querying with the wider buffer would draw neighbours steering discarded and would report
+    /// no truncation in exactly the cases where the simulation did truncate.
+    /// </summary>
+    /// <param name="bufferLength">Entries available in the overlay's own buffers.</param>
+    /// <param name="effectiveMaxNeighbors">The simulation's own per-boid candidate cap.</param>
+    /// <returns>The smaller of the two, never negative.</returns>
+    internal static int ComputeOverlayQueryCapacity(int bufferLength, int effectiveMaxNeighbors)
+        => Math.Max(0, Math.Min(bufferLength, effectiveMaxNeighbors));
+
     private static void DrawInteractionOverlay(
         CanonicalWorld world,
         CanonicalWorldSettings settings,
@@ -1522,7 +1536,13 @@ internal static class Program
         Raylib.DrawLineEx(center, lookaheadPoint, 1.5f, Color.SkyBlue);
         Raylib.DrawCircleLines((int)lookaheadPoint.X, (int)lookaheadPoint.Y, whiskerRadius, Color.SkyBlue);
 
-        SpatialQueryResult visibleQuery = world.QueryVisibleNeighbors(_overlaySubjectIndex, neighborBuffer, weightBuffer);
+        int overlayCapacity = ComputeOverlayQueryCapacity(
+            Math.Min(neighborBuffer.Length, weightBuffer.Length),
+            world.EffectiveMaxNeighbors);
+        SpatialQueryResult visibleQuery = world.QueryVisibleNeighbors(
+            _overlaySubjectIndex,
+            neighborBuffer.AsSpan(0, overlayCapacity),
+            weightBuffer.AsSpan(0, overlayCapacity));
         int neighborCount = visibleQuery.Count;
         int whiskerHits = 0;
         foreach (int idx in neighborBuffer.AsSpan(0, neighborCount))
@@ -1555,7 +1575,7 @@ internal static class Program
         }
 
         Raylib.DrawCircleV(center, 5f, Color.Yellow);
-        string queryStatus = visibleQuery.IsTruncated ? " | query capped" : string.Empty;
+        string queryStatus = visibleQuery.IsTruncated ? $" | query capped at {overlayCapacity}" : string.Empty;
         Raylib.DrawText($"Whisker hits: {whiskerHits}{queryStatus}", 10, WindowHeight - 92, 14, Color.Orange);
 
         Vec2 meanHeading = ComputeMeanHeading(world);

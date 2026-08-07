@@ -127,6 +127,7 @@ public sealed class CanonicalWorld
         _nextBoids = new Boid[capacity];
 
         int maxNeighbors = Math.Max(settings.MaxNeighbors, 4);
+        EffectiveMaxNeighbors = maxNeighbors;
         _neighborScratch = new int[maxNeighbors];
         _neighborWeightScratch = new float[maxNeighbors];
         _instrumentation = new RuleInstrumentation(capacity);
@@ -145,6 +146,14 @@ public sealed class CanonicalWorld
     }
 
     public int Count { get; private set; }
+
+    /// <summary>
+    /// Gets the maximum number of spatial-query candidates <see cref="Step"/> considers per boid:
+    /// <see cref="CanonicalWorldSettings.MaxNeighbors"/> with the same lower bound the simulation
+    /// applies. Diagnostics must size their query buffers to this to observe what steering saw;
+    /// a wider buffer reports neighbours the simulation discarded and hides real truncation.
+    /// </summary>
+    public int EffectiveMaxNeighbors { get; }
 
     public ReadOnlySpan<Boid> Boids => _activeBoids.AsSpan(0, Count);
 

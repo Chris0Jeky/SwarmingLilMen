@@ -1,5 +1,6 @@
 using SwarmSim.Core.Canonical;
 using Xunit;
+using RenderProgram = SwarmSim.Render.Program;
 
 namespace SwarmSim.Tests;
 
@@ -256,6 +257,71 @@ public sealed class SpatialIndexEquivalenceTests
             Assert.InRange(MathF.Abs(grid.Velocity.X - naive.Velocity.X), 0f, 1e-4f);
             Assert.InRange(MathF.Abs(grid.Velocity.Y - naive.Velocity.Y), 0f, 1e-4f);
         }
+    }
+
+    [Fact]
+    public void SpatialIndexEquivalence_ScansPartialTerminalCellWhenBothWrappedEndpointsLandInTheCentreCell()
+    {
+        // Width 18 with cell size 10 leaves a short terminal cell [10, 18). A query at x = 0.5
+        // with radius 8.6 wraps to endpoints 9.9 and 9.1 - both inside centre cell 0 - while the
+        // circular interval still crosses the whole of cell 1. Deriving the scan reach from the
+        // endpoints' cell IDs therefore never visits cell 1 and loses the neighbour at x = 11.4,
+        // which is only 7.1 units away across the seam.
+        var boids = CreateBoids((0.5f, 50f), (11.4f, 50f));
+
+        AssertEquivalent(boids, 18f, 100f, 10f, selfIndex: 0, radius: 8.6f, bufferLength: 4, new[] { 1 });
+    }
+
+    [Fact]
+    public void SpatialIndexEquivalence_UnwrappedPositionsUseIdenticalArithmeticAtTheInclusiveBoundary()
+    {
+        // The grid normalises positions into [0, extent) when it rebuilds, then subtracts the
+        // normalised values. The naive index must perform the same operations in the same order,
+        // or float rounding diverges for far-out-of-range inputs and the two indexes disagree
+        // about a neighbour sitting on the inclusive radius boundary.
+        var boids = CreateBoids((-428.021515f, 10f), (159.694336f, 10f));
+
+        AssertEquivalent(boids, 100f, 100f, 10f, selfIndex: 0, radius: 12.28416f, bufferLength: 4);
+    }
+
+    [Fact]
+    public void SpatialIndexEquivalence_OverlayQueryCapacityMatchesTheCapSteeringApplies()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 16,
+            WorldWidth = 100f,
+            WorldHeight = 100f,
+            SenseRadius = 20f,
+            FieldOfView = 360f,
+            MaxNeighbors = 4,
+            TargetSpeed = 1f
+        };
+        var world = new CanonicalWorld(settings, new NaiveSpatialIndex(settings.WorldWidth, settings.WorldHeight));
+        for (int i = 0; i < 10; i++)
+            Assert.True(world.TryAddBoid(new Vec2(50f + i * 0.5f, 50f), new Vec2(1f, 0f)));
+
+        Assert.Equal(4, world.EffectiveMaxNeighbors);
+        Assert.Equal(4, RenderProgram.ComputeOverlayQueryCapacity(128, world.EffectiveMaxNeighbors));
+        Assert.Equal(2, RenderProgram.ComputeOverlayQueryCapacity(2, world.EffectiveMaxNeighbors));
+
+        // A diagnostic sized to its own buffer rather than to the simulation's cap sees more
+        // neighbours than steering used, and reports no truncation in exactly the case where the
+        // simulation truncated. Sizing to EffectiveMaxNeighbors reproduces what Step observed.
+        Span<int> wide = stackalloc int[128];
+        Span<float> wideWeights = stackalloc float[128];
+        SpatialQueryResult wideQuery = world.QueryVisibleNeighbors(0, wide, wideWeights);
+
+        int capacity = RenderProgram.ComputeOverlayQueryCapacity(128, world.EffectiveMaxNeighbors);
+        Span<int> capped = stackalloc int[128];
+        Span<float> cappedWeights = stackalloc float[128];
+        SpatialQueryResult cappedQuery = world.QueryVisibleNeighbors(
+            0, capped[..capacity], cappedWeights[..capacity]);
+
+        Assert.Equal(9, wideQuery.Count);
+        Assert.False(wideQuery.IsTruncated);
+        Assert.Equal(4, cappedQuery.Count);
+        Assert.True(cappedQuery.IsTruncated);
     }
 
     private static void AssertEquivalent(

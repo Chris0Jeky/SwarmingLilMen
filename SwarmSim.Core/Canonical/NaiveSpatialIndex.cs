@@ -1,3 +1,5 @@
+using SwarmSim.Core.Utils;
+
 namespace SwarmSim.Core.Canonical;
 
 /// <summary>
@@ -62,15 +64,23 @@ public sealed class NaiveSpatialIndex : ISpatialIndex
         int count = 0;
         bool isTruncated = false;
 
-        Vec2 position = boids[selfIndex].Position;
+        // Normalise into [0, extent) and only then subtract, matching GridSpatialIndex exactly.
+        // The grid stores wrapped positions at rebuild time, so subtracting raw coordinates here
+        // and wrapping afterwards would round differently in float32 and the two indexes would
+        // disagree about neighbours sitting on the inclusive radius boundary.
+        float selfX = MathUtils.Wrap(boids[selfIndex].Position.X, _worldWidth);
+        float selfY = MathUtils.Wrap(boids[selfIndex].Position.Y, _worldHeight);
 
         for (int i = 0; i < boids.Length; i++)
         {
             if (i == selfIndex)
                 continue;
 
-            Vec2 delta = Vec2.MinimumImageDelta(position, boids[i].Position, _worldWidth, _worldHeight);
-            if (delta.LengthSquared <= radiusSq)
+            float dx = MathUtils.MinimumImageDelta(
+                MathUtils.Wrap(boids[i].Position.X, _worldWidth) - selfX, _worldWidth);
+            float dy = MathUtils.MinimumImageDelta(
+                MathUtils.Wrap(boids[i].Position.Y, _worldHeight) - selfY, _worldHeight);
+            if (dx * dx + dy * dy <= radiusSq)
             {
                 if (count < results.Length)
                 {
