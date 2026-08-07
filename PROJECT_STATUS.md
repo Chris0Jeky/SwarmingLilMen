@@ -1,13 +1,13 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2026-07-25 (Wave 1 toroidal spatial-index contract and equivalence proof)
+**Last Updated**: 2026-08-07 (Wave 1 toroidal spatial-index contract and equivalence proof)
 **Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
 > **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
 > session log below are retained as historical planning context and contain stale counts/claims.
 > Git, executable checks, and current code override them.
 
-## Verified Live State (2026-07-25)
+## Verified Live State (2026-08-07)
 
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`; last product commits
   were merged on 2025-11-19.
@@ -28,18 +28,27 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **94 passed, 0 failed, 0 skipped**
-  in 5 seconds of test execution on 2026-07-25.
-- Unfiltered Release solution test: **98 passed, 0 failed, 0 skipped** in 21 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **97 passed, 0 failed, 0 skipped**
+  in 6 seconds of test execution on 2026-08-07.
+- Unfiltered Release solution test: **101 passed, 0 failed, 0 skipped** in 37 seconds of test
   execution, confirming the full suite remains under one minute.
-- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** in 25.41 seconds.
+- Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-07.
   Command after the Release build:
-  `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=normal"`.
+  `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
   This one local fully optimized-JIT sample measured:
-  - 1k legacy agents: 0.206 ms/tick (4,845 operations/second)
-  - 10k legacy agents: 10.074 ms/tick (99.27 operations/second)
-  - 50k legacy agents: 209.278 ms/tick (4.78 operations/second; reported target not met)
-  - 50k grid rebuild: 0.108 ms
+  - 1k legacy agents: 0.177 ms/tick (5,641 operations/second)
+  - 10k legacy agents: 9.498 ms/tick (105.3 operations/second)
+  - 50k legacy agents: 261.077 ms/tick (3.83 operations/second; reported target not met)
+  - 50k grid rebuild: 0.104 ms
+- The `Performance` category exercises the **legacy** world tick and the uniform-grid **rebuild**.
+  It does not touch `UniformGrid.QueryRadiusToroidal`, so it cannot speak to the query-reach change
+  in this wave. That path was measured separately and directly: a temporary Release harness ran one
+  million grid queries over 4,000 boids at radius 12.5 against both this head and its pre-fix
+  parent (`48d5c06`), in a world whose extent is a whole multiple of the cell size and in one that
+  leaves a partial terminal cell. One local sample each: exact-multiple 6,380.7 ns/query before
+  versus 6,464.9 ns/query after, partial-terminal 6,689.1 ns/query before versus 6,106.4 ns/query
+  after, with byte-identical neighbor-count checksums in both worlds. The harness was removed. This
+  is one sample per configuration, not a benchmark distribution.
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the
@@ -51,9 +60,9 @@
   Naive worlds, warmed each for 50 ticks, then alternated 100 measured ticks. This one sample
   measured 1.213 ms/tick for Grid and 27.155 ms/tick for Naive (22.40x); the temporary harness was
   removed. This is not a benchmark distribution, scale curve, or replacement for #20.
-- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **60.37%
-  line / 44.61% branch overall**; `SwarmSim.Core` is 86.46% line / 76.76% branch and
-  `SwarmSim.Render` is 29.81% line / 12.70% branch. The instrumented timing tests are intentionally
+- CI-filtered coverage report (`XPlat Code Coverage`, Release, `Category!=Performance`): **60.47%
+  line / 44.93% branch overall**; `SwarmSim.Core` is 86.58% line / 77.03% branch and
+  `SwarmSim.Render` is 29.74% line / 12.70% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
@@ -62,8 +71,23 @@
   lowest-index truncation and caller-visible status; Grid and Naive matched in 200 deterministic
   randomized scenarios plus seam/corner/dense/one-cell, partial-terminal-cell, and unwrapped-input
   cases and a 200-tick no-wander trajectory.
+  Two equivalence gaps found in review were reproduced as failing tests and then closed. The grid
+  derived its scan reach from the wrapped query endpoints' cell IDs, so when the world extent is not
+  a whole multiple of the cell size a circular interval could cross the whole short terminal cell
+  while both endpoints wrapped back into the centre cell, silently dropping qualifying neighbors
+  (width 18 / cell size 10, query at x=0.5 r=8.6 missed a neighbor 7.1 units away); the reach now
+  walks outward accumulating each cell's actual extent. Separately, `NaiveSpatialIndex` subtracted
+  raw coordinates and wrapped afterwards while `GridSpatialIndex` subtracts already-wrapped stored
+  positions, so the two rounded differently in float32 and disagreed about neighbors on the
+  inclusive radius boundary for far-out-of-range inputs; both now normalize first. Grid/Naive
+  equivalence is therefore exact by construction rather than approximate.
   Minimum-image deltas now cover FOV, whiskers, neighbor statistics, separation, and cohesion.
   The renderer overlay uses the same deltas for links/hit classification and labels capped queries.
+  `CanonicalWorld.EffectiveMaxNeighbors` exposes the per-boid candidate cap `Step` actually applies,
+  and the interaction overlay sizes its query to it; it previously queried with its own 128-entry
+  buffer while steering used 16, drawing discarded neighbors and suppressing the truncation notice
+  in exactly the cases where the simulation had truncated. Renderer overlay drawing itself is still
+  only verified by the extracted capacity seam, not by running the window.
   The full Release suite passes after correcting a priority-hysteresis test setup that had depended
   on the pre-contract seam behavior. Composition violates its total `MaxForce` bound (#19), and
   rule dispatch is positional: later rules are discarded and qualifying separation starves
