@@ -10,8 +10,9 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
 
 ## Verified Live State (2026-08-08)
 
-- Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`; last product commits
-  were merged on 2025-11-19.
+- Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
+  whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
+  changes on 2026-08-07 and 2026-08-08; `main` is at `5443fea` as this block is written.
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
   workflow supplies Release build/test checks (excluding the `Performance` category) on ubuntu
   and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
@@ -210,6 +211,27 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
   exact-repository Codex session the owner reviewed and accepted the adapter, `/hooks` reported
   `PreToolUse` as 1 installed / 1 active, `git status` was allowed, and an inert force-push dry-run
   was denied before Git executed. Runtime byte pinning remains an agent-harness #18 limitation.
+- Documentation sweep (2026-08-08). Every tracked Markdown surface was audited against the code by
+  eight independent readers, each finding adversarially re-checked; 72 defects were confirmed and 14
+  claims were rejected as unreproducible. Fixed here: stale counts (`CanonicalWorld.cs` 732 -> 755,
+  "11 test files" -> 12, QUICKSTART's expected 64 passing tests against a suite reporting 114);
+  closed issues still listed as open (#17 in the readiness checklist, #18/#19 in RENDERER_GUIDE and
+  README); `CONTRIBUTING`'s test-file tree naming a `GenomeTests.cs` that has never existed; three of
+  the four legacy force descriptions in `SIMULATION_MECHANICS_EXPLAINED`, each of which claimed a
+  weight or a distance scales the force where the implementation normalizes it away, plus that
+  file's complete silence about the shared `MaxForce` budget; and the duplicated 2026-07-25
+  performance sample in README, RENDERER_GUIDE, and `js-demos/`, which contradicted the newer sample
+  in this block. Performance figures now live only here.
+  Two behavioural facts were measured and documented for the first time: `LoadFromJson` registers no
+  string-enum converter, so `{"SpeedModel":"Damped"}` fails the entire load while `{"SpeedModel":1}`
+  succeeds; and every bundled config authors a `Friction` value while none sets `SpeedModel`, so all
+  three inherit `ConstantSpeed` and the integrator skips friction outright.
+  Two dead configuration knobs were found and filed rather than fixed: `GridCellSize` (#61) is
+  validated, defaulted, and copied but never read, because `World` hard-codes `cellSize:
+  Config.SenseRadius`; and `MaxCapacity` (#62) is validated `>= InitialCapacity` while the arrays
+  never grow past `InitialCapacity`. The remaining unfixed findings are tracked in #63.
+  **Not verified: the renderer window still has not been launched.** No claim in this sweep rests on
+  observing the running UI.
 - Extension trust: the product term **sandbox** is retired. **Modeling boundary** / **interaction
   surface** are reserved for simulation concepts, the aspirational package sketch uses
   **Playground**, and the shipped app remains `SwarmSim.Render`. Data-only scenario input is a
@@ -331,7 +353,7 @@ narrative and what needs to happen next.
 ```
 SwarmSim.Core/          - Core library (SoA data, systems, deterministic logic)
 SwarmSim.Render/        - Raylib-cs visualization (references Core)
-SwarmSim.Tests/         - xUnit tests (references Core)
+SwarmSim.Tests/         - xUnit tests (references Core AND Render)
 SwarmSim.Benchmarks/    - BenchmarkDotNet suite (references Core)
 ```
 
@@ -342,7 +364,8 @@ Combat, forage, reproduction, metabolism, and lifecycle systems are future Phase
 (`SwarmSim.Core/World.cs:119-144`).
 
 ### Data Layout (SoA)
-Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Group[]`, `State[]`, `Genome[]`
+Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Fx[]`, `Fy[]`, `Energy[]`, `Health[]`, `Age[]`,
+`Group[]`, `State[]`, `Genomes[]`, `LastAttackTime[]`
 
 ---
 
