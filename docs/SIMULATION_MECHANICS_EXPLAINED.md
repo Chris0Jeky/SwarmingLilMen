@@ -1,7 +1,14 @@
-# Simulation Mechanics Explained
+# Simulation Mechanics Explained (legacy engine)
 
 > [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
 > test, and performance state.
+
+> **Scope: this document describes the LEGACY engine only.** Every force, formula, parameter, and
+> tuning note below traces to `SwarmSim.Core/World.cs` and `SwarmSim.Core/Systems/` — the default
+> renderer path. The canonical engine (`--canonical`, `SwarmSim.Core/Canonical/`) composes its rules
+> differently: it is per-boid rather than aggregate, its separation genuinely combines linear falloff
+> with `1/d`, and it adds whisker avoidance and separation-priority hysteresis that have no legacy
+> equivalent. Do not tune canonical behaviour from this file.
 
 ## Table of Contents
 1. [Physics Integration Pipeline](#physics-integration-pipeline)
@@ -16,23 +23,34 @@
 ## Physics Integration Pipeline
 
 The default legacy renderer requests a 60 FPS frame cap and uses a 1/60-second fixed simulation
-step (`SwarmSim.Render/Program.cs:245,467`). These are scheduling settings, not measured renderer
+step (`Program.CreateDefaultBaseConfig`, `Program.Main`). These are scheduling settings, not measured renderer
 throughput. On each simulation step, every agent goes through this pipeline:
 
 > **Speed-model scope:** The default renderer uses `SpeedModel.ConstantSpeed`, which skips the
-> friction multiplier (`SwarmSim.Render/Program.cs:245-249`; `SwarmSim.Core/Systems/IntegrateSystem.cs:50-68`).
+> friction multiplier (`Program.CreateDefaultBaseConfig`; `IntegrateSystem.Run`).
 > Friction and force/friction-equilibrium sections below apply only to `SpeedModel.Damped`.
 
 ### 1. Force Accumulation Phase
 ```
 Forces start at (0, 0) each simulation step
 ↓
-Systems add forces:
-- BehaviorSystem adds: separation + alignment + cohesion
-- WanderSystem adds: random exploration force
+BehaviorSystem spends ONE shared per-agent budget of MaxForce, in strict priority order:
+    collision avoidance  ->  separation  ->  alignment  ->  cohesion
+  Each rule is clamped to whatever budget REMAINS, and subtracts what it spends.
+  When the budget hits zero the remaining rules are skipped entirely.
 ↓
-Total force = sum of all system forces
+WanderSystem (registered only when WanderStrength > 0) adds its force OUTSIDE that budget
+↓
+Total force = the MaxForce-bounded behavior steering, plus wander
 ```
+
+> **`MaxForce` is the mechanism that decides what the weights actually do.** It is a per-agent,
+> per-step steering budget, not a per-rule cap. `SimConfig` defaults it to `5.0`; the renderer's
+> `CreateDefaultBaseConfig` and all five shipped presets use `2.5`. Because the budget is shared and
+> spent in priority order, raising `AlignmentWeight` or `CohesionWeight` can change nothing at all
+> when separation has already consumed the budget — a fact worth remembering before following any
+> "increase all weights" advice, here or elsewhere. Wander is the one contribution added outside
+> the budget, so it is the only rule that can push the composed force past `MaxForce`.
 
 ### 2. Integration Phase (IntegrateSystem)
 ```csharp
@@ -54,7 +72,9 @@ position += velocity * dt
 ```
 
 ### Key Insight: **Timestep (dt)**
-- dt = 1/60 = 0.0167 seconds
+- dt is `SimConfig.FixedDeltaTime`, and it is configurable per scenario, not a constant of the
+  engine. The library default is **1/120 = 0.0083 s**; the renderer's own base config and all five
+  shipped presets override it to **1/60 = 0.0167 s**, which is the value used in the examples below
 - This is the integration step: how much simulated time advances per update
 - Forces are multiplied by dt, so a force of 100 adds `100 × 0.0167 = 1.67` to velocity per step
 - A smaller dt produces smaller per-step changes and more updates per simulated second
@@ -72,14 +92,26 @@ Forces are vectors (have direction and magnitude) that pull/push agents in speci
 
 **How it works**:
 ```
-For each neighbor within separationRadius:
-  1. Calculate direction away from neighbor
-  2. Calculate repulsion strength based on distance:
-     strength = (separationRadius - distance) / separationRadius
-     → Closer = stronger repulsion (max 1.0 at distance 0)
-     → Further = weaker repulsion (0.0 at separationRadius)
-  3. Add weighted force: separation += direction * strength * separationWeight
+SenseSystem, per neighbor inside separationRadius:
+  1. Skip the neighbor outright if it is closer than ~0.01 units.
+     There is no "maximum strength" push - the strongest case is simply skipped.
+  2. Accumulate a UNIT away-vector scaled only by the linear falloff:
+     strength = (separationRadius - distance) / separationRadius   -> 0 at separationRadius
+     No inverse-distance term. SeparationWeight is NOT applied here.
+
+BehaviorSystem, once per agent:
+  3. Re-normalize the accumulated vector, which discards its magnitude - so the
+     per-neighbor falloff acted as a direction blend weight, not a force gain
+  4. desired = unitAway * (maxSpeed * separationWeight * crowdingBoost)
+  5. steer = desired - currentVelocity, clamped to the REMAINING MaxForce budget
 ```
+
+> The crowding boost is real and undocumented elsewhere in this file: once a neighbour count
+> exceeds `SeparationCrowdingThreshold` (default `12`), `separationWeight` is scaled up toward
+> `SeparationCrowdingBoost` (default `2.5`). Separation is also preceded by a hard collision
+> override inside `CollisionAvoidanceRadius` (default `12`), which steers away at
+> `maxSpeed * CollisionAvoidanceBoost` and can consume the whole budget before separation is
+> reached.
 
 **Parameter**: `SeparationWeight`
 - **Low (1.0)**: Gentle avoidance, agents can get close
@@ -104,12 +136,13 @@ For each neighbor within separationRadius:
 
 **How it works**:
 ```
-For each neighbor within senseRadius:
+For each same-group neighbor within senseRadius AND inside the field-of-view cone:
   1. Sum up all neighbor velocities
   2. Calculate average velocity of group
-  3. Calculate desired velocity change:
-     desired = averageVelocity - myVelocity
-  4. Add weighted force: alignment += desired * alignmentWeight
+  3. NORMALIZE that average - its magnitude is discarded, so how fast the
+     neighbours are actually moving does not reach the force
+  4. desired = unitAverageHeading * (maxSpeed * alignmentWeight)
+  5. steer = desired - myVelocity, clamped to the REMAINING MaxForce budget
 ```
 
 **Parameter**: `AlignmentWeight`
@@ -130,10 +163,12 @@ For each neighbor within senseRadius:
 
 **How it works**:
 ```
-For each neighbor within senseRadius:
+For each same-group neighbor within senseRadius AND inside the field-of-view cone:
   1. Calculate center of mass (average position) of all neighbors
-  2. Calculate direction toward center: centerOfMass - myPosition
-  3. Add weighted force: cohesion += direction * cohesionWeight
+  2. NORMALIZE (centerOfMass - myPosition). Distance to the centre does NOT
+     scale the force - a far-away centre pulls exactly as hard as a near one
+  3. desired = unitToCenter * (maxSpeed * cohesionWeight)
+  4. steer = desired - myVelocity, clamped to the REMAINING MaxForce budget
 ```
 
 **Parameter**: `CohesionWeight`
@@ -154,14 +189,17 @@ For each neighbor within senseRadius:
 
 **How it works**:
 ```
-Each simulation step:
-  1. Generate random angle
-  2. Calculate force in that direction
-  3. Scale by wanderStrength
+Each simulation step, per agent:
+  1. Draw a random unit vector
+  2. Draw a random magnitude uniformly from [0, wanderStrength)
+  3. Add that force directly - OUTSIDE the shared MaxForce budget
 ```
 
+`WanderStrength` is therefore a **ceiling on a random draw**, not the magnitude applied. The
+expected applied magnitude is about half of it, and it varies every step for every agent.
+
 **Parameter**: `WanderStrength`
-- **0.0**: Wander disabled; flocking uses only the other configured rules
+- **0.0**: Wander disabled. `WanderSystem` is not even registered, so there is no per-step RNG draw
 - **0.5**: Slight jitter, natural variation
 - **5.0**: Chaotic, random walk dominates
 
@@ -622,7 +660,7 @@ SenseRadius = 100f
 WanderStrength = 0.5f
 ```
 
-### No Damping (Current Renderer Mode)
+### No Damping (a suggested starting point, not the renderer's defaults)
 ```csharp
 SpeedModel = SpeedModel.ConstantSpeed
 Friction = 1.0f
@@ -634,6 +672,27 @@ SeparationRadius = 30f
 SenseRadius = 100f
 WanderStrength = 0.5f
 ```
+
+The renderer's actual no-argument defaults (`Program.CreateDefaultBaseConfig`) share only the speed
+model and `MaxSpeed` with the block above. They are:
+
+```csharp
+SpeedModel = SpeedModel.ConstantSpeed   // same
+MaxSpeed = 10f                          // same
+Friction = 0.95f                        // inert under ConstantSpeed
+MaxForce = 2.5f
+SeparationWeight = 7.5f
+AlignmentWeight = 2.2f
+CohesionWeight = 0.35f
+SeparationRadius = 45f
+SenseRadius = 110f
+FieldOfView = 270f
+WanderStrength = 0f                     // wander disabled by default
+FixedDeltaTime = 1f / 60f
+```
+
+Copy the second block, not the first, if the goal is to reproduce what `dotnet run --project
+SwarmSim.Render` actually does.
 
 ### Experimentation Tips
 
