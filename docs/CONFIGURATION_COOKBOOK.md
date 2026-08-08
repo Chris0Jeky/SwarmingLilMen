@@ -13,7 +13,7 @@ Use these recipes as starting points when building your own `SimConfig` JSON fil
 | `SeparationWeight`   | 2 – 12        | Repulsion strength; use larger values for dense scenes     |
 | `AlignmentWeight`    | 1 – 5         | Tendency to match neighbor velocity                        |
 | `CohesionWeight`     | 0.3 – 3       | Pull toward local center of mass                           |
-| `Friction`           | 0.90 – 0.99   | Velocity damping; 1.0 means constant speed                 |
+| `Friction`           | 0.90 – 0.99   | Velocity damping — **inert unless `SpeedModel` is `Damped`** |
 | `FieldOfView`        | 240° – 300°   | Vision cone; 360° removes blind spots                      |
 | `WanderStrength`     | 0 – 1.0       | Optional random steering; omitted/default `0` disables it  |
 
@@ -35,8 +35,29 @@ platform, timestep, and input sequence. Supported external seed values are `0` t
 `2147483647`; larger JSON values are rejected. Omit `WanderStrength` to use the disabled default.
 
 ### Peaceful Flocks (configs/peaceful.json)
-- Emphasizes cohesion/alignment, higher friction (0.98) for mellow motion.
+- Emphasizes cohesion/alignment with a lower `MaxSpeed` (8) and `MaxForce` (1.5) for mellow motion.
 - Use when demonstrating schooling/flocking without combat or chaos.
+
+> **The `Friction` values in these three files do nothing today.** None of them sets `SpeedModel`,
+> so all three inherit the `SpeedModel.ConstantSpeed` default, and `IntegrateSystem` applies
+> friction only under `SpeedModel.Damped`. The authored values (`0.95`, `0.98`, `0.93`) are
+> retained as intent for a future `Damped` variant. Add `"SpeedModel": 1` to a copy if you want
+> damping to take effect — see the enum note below for why that is a number and not `"Damped"`.
+
+### Enums in JSON must be numbers
+
+`SimConfig.LoadFromJson` uses `System.Text.Json` without a string-enum converter, so an enum field
+written as a name fails the whole load. Verified on 2026-08-08:
+`{"SpeedModel": "Damped"}` exits with
+`The JSON value could not be converted to SwarmSim.Core.SpeedModel`, while `{"SpeedModel": 1}`
+loads. Use the ordinal:
+
+| Field | `0` | `1` | `2` |
+| --- | --- | --- | --- |
+| `BoundaryMode` | `Wrap` (default) | `Reflect` | `Clamp` |
+| `SpeedModel` | `ConstantSpeed` (default) | `Damped` | — |
+
+Every bundled config omits both fields and therefore inherits `Wrap` and `ConstantSpeed`.
 
 ### Warbands (configs/warbands.json)
 - Higher speed/force plus combat values (`AttackDamage`, `AttackRadius`).
@@ -47,6 +68,6 @@ platform, timestep, and input sequence. Supported external seed values are `0` t
 1. Copy one of the example JSON files.
 2. Adjust the values you care about. Any omitted property falls back to the default in `SimConfig`.
 3. Run `dotnet run --project SwarmSim.Render -- --config path/to/your.json --agent-count 5000`.
-4. Tweak live in the renderer (1-7, UP/DOWN). When you find a sweet spot, press `P` to print the values and feed them back into your JSON file.
+4. Tweak live in the renderer (keys `1`-`8`, UP/DOWN). When you find a sweet spot, press `P` to print the values and feed them back into your JSON file. The on-screen labels still say `1-7`; that drift is tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
 
 Remember to validate configs via `SimConfig.Validate()` (automatically run when loading via CLI—warnings print to the console).

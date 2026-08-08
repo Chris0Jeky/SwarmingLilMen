@@ -371,22 +371,28 @@ Combat, forage, reproduction, metabolism, and lifecycle systems remain future Ph
 ## 📈 Performance Targets and Evidence
 
 The interactive objective is **50k-100k agents at 60 FPS** and the headless objective is **1M+
-agents**. Both are targets; neither is currently verified. The latest comparable legacy tick sample
-was captured on 2026-07-25 with:
+agents**. Both are targets; neither is currently verified, and the 50k measurement misses the
+16.67 ms/tick budget by more than an order of magnitude.
+
+Reproduce the sample yourself — this is the only command that produces it:
 
 ```bash
 dotnet build SwarmingLilMen.sln --configuration Release
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
-| Evidence | Result | Interpretation |
-|----------|--------|----------------|
-| Legacy 1k tick | 0.172 ms/tick | One local reported sample, not a renderer FPS result |
-| Legacy 10k tick | 8.839 ms/tick | One local reported sample |
-| Legacy 50k tick | 162.815 ms/tick (6.14 operations/second) | The 16.67 ms/tick target is unmet |
-| Legacy 50k grid rebuild | 0.102 ms | Grid-only measurement, not full simulation cost |
-| Canonical throughput | Unmeasured | No canonical BenchmarkDotNet comparison exists |
-| Allocations per tick | Unmeasured | No allocation gate exists |
+| Evidence | State |
+|----------|-------|
+| Legacy tick at 1k / 10k / 50k agents | Measured; the dated figures live in the verified block of [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
+| Legacy 50k grid rebuild | Measured; grid-only, not full simulation cost |
+| Canonical throughput | Unmeasured — no canonical BenchmarkDotNet comparison exists ([#20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20)) |
+| Renderer FPS | Unmeasured — the timing tests open no window |
+| Allocations per tick | Unmeasured — no allocation gate exists |
+
+The absolute numbers are deliberately **not** copied here. They are one local sample rather than a
+benchmark distribution, they move with the machine and with every merge, and a fifth copy of them
+across the docs is how they go stale. `PROJECT_STATUS.md` carries the measured figures with their
+date and command.
 
 ## 🤝 Contributing
 

@@ -1,13 +1,14 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2026-08-07 (Wave 1 toroidal spatial-index contract and equivalence proof)
+**Last Updated**: 2026-08-08 (documentation sweep; Wave 1 landed the toroidal spatial-index
+contract, the source-comment reconciliation, CLI preset help, and the shared `MaxForce` budget)
 **Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
 > **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
 > session log below are retained as historical planning context and contain stale counts/claims.
 > Git, executable checks, and current code override them.
 
-## Verified Live State (2026-08-07)
+## Verified Live State (2026-08-08)
 
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`; last product commits
   were merged on 2025-11-19.
@@ -195,13 +196,13 @@
   clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 118 executed test cases across 11 test files — 114 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 118 executed test cases across 12 test files — 114 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 2,012 lines and
-  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 732 lines.
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 755 lines. Whole tracked C# tree: 10,665 lines.
 - Agent controls were refreshed in this audit: shared repo rules and per-seam proving checks in
   `CLAUDE.md`, with `AGENTS.md` reduced to a thin Codex adapter over it that also carries the
   runtime-neutral fail-safe floor for clones with no estate profile; plus the T1 declaration, safe

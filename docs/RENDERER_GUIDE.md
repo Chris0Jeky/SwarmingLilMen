@@ -79,11 +79,13 @@ The legacy renderer requests a **60 FPS** frame cap and its active default confi
 **1/60-second** fixed simulation step (`SwarmSim.Render/Program.cs:245,467`). Those are scheduling
 settings, not measured throughput guarantees. Other `SimConfig` consumers may use different steps.
 
-The latest legacy-core sample was captured on 2026-07-25 with the explicit Release
-`Performance` test category. Its **50k tick** result was **162.815 ms/tick (6.14 operations/second)**,
-so the **16.67 ms/tick** target was unmet. That test does not render a window and therefore is not
-renderer FPS evidence. Canonical throughput, renderer FPS, and allocation rates remain unmeasured;
-see the verified block in `PROJECT_STATUS.md` for the command and complete sample.
+The legacy-core sample comes from the explicit Release `Performance` test category. Its **50k tick**
+result misses the **16.67 ms/tick** target by more than an order of magnitude. The dated figures are
+deliberately not copied here — see the verified block in
+[`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) for the command and the complete sample, which is one
+local measurement rather than a benchmark distribution. That test does not render a window and
+therefore is not renderer FPS evidence. Canonical throughput, renderer FPS, and allocation rates
+remain unmeasured.
 
 ## Data Export
 
@@ -103,7 +105,9 @@ operational outputs should not be committed.
 
 ## Current Direction
 
-Canonical perception semantics, force-budget enforcement, milestone 7 UX/test acceptance,
-milestones 8-10, multi-group semantics, canonical benchmarks, and renderer automation remain open.
+Canonical perception semantics ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18))
+and force-budget enforcement ([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19))
+are closed. Milestone 7 UX/test acceptance, milestones 8-10, multi-group semantics, canonical
+benchmarks, and renderer automation remain open.
 Phase 3 combat/metabolism work must wait for that readiness evidence; follow
 `PROJECT_STATUS.md` rather than historical phase percentages.
