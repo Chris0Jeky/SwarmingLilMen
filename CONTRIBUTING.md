@@ -488,7 +488,7 @@ without depending on which test first triggered tier promotion.
 - **macOS**: May need Raylib via Homebrew
 
 ### 6. License
-The project is distributed under the [MIT License](LICENSE).
+The project is distributed under [GPL-3.0-only](LICENSE); see [RELICENSING.md](RELICENSING.md) for the transition record.
 
 ---
 
