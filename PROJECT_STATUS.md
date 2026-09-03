@@ -12,7 +12,7 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
 
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
-  changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-09-02; `main` is at
+  changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at
   `f005277` as this block is written.
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
   workflow supplies Release build/test checks (excluding the `Performance` category) on ubuntu
@@ -222,8 +222,12 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
   eight independent readers, each finding adversarially re-checked; 72 defects were confirmed and 14
   claims were rejected as unreproducible. Fixed here: stale counts (`CanonicalWorld.cs` 732 -> 755,
   "11 test files" -> 12, QUICKSTART's expected 64 passing tests against a suite reporting 114);
-  closed issues still listed as open (#17 in the readiness checklist, #18/#19 in RENDERER_GUIDE and
-  README); `CONTRIBUTING`'s test-file tree naming a `GenomeTests.cs` that has never existed; three of
+  closed issues still listed as open (#17 in the readiness checklist, #18/#19 in RENDERER_GUIDE, and
+  #18/#19 in ONE of README's three lists — `README.md:51-55` now says both are done, but
+  `README.md:31-33` still calls the perception contract and force-budget enforcement "partial" and
+  `README.md:410-413` still lists them as open, so README currently contradicts itself and is not
+  fixed; tracked in #63); `CONTRIBUTING`'s test-file tree naming a `GenomeTests.cs` that has never
+  existed; three of
   the four legacy force descriptions in `SIMULATION_MECHANICS_EXPLAINED`, each of which claimed a
   weight or a distance scales the force where the implementation normalizes it away, plus that
   file's complete silence about the shared `MaxForce` budget; and the duplicated 2026-07-25
