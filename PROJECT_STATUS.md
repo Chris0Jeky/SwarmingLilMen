@@ -1,6 +1,6 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2026-08-07 (Wave 1 toroidal spatial-index contract and equivalence proof)
+**Last Updated**: 2026-09-03 (toroidal grid binning and reach fixes from PR #49 review triage)
 **Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
 > **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
@@ -28,10 +28,10 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **114 passed, 0 failed, 0 skipped**
-  in 2 seconds of test execution on 2026-08-08.
-- Unfiltered Release solution test: **118 passed, 0 failed, 0 skipped** in 23 seconds of test
-  execution, confirming the full suite remains under one minute.
+- CI-filtered Release solution test (`Category!=Performance`): **117 passed, 0 failed, 0 skipped**
+  in 11 seconds of test execution on 2026-09-03.
+- Unfiltered Release solution test: **121 passed, 0 failed, 0 skipped** in 40 seconds of test
+  execution on 2026-09-03, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-08.
   Command after the Release build:
   `dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true`.
@@ -107,6 +107,20 @@
   buffer while steering used 16, drawing discarded neighbors and suppressing the truncation notice
   in exactly the cases where the simulation had truncated. Renderer overlay drawing itself is still
   only verified by the extracted capacity seam, not by running the window.
+- Grid/Naive equivalence survived two further float defects, both fixed on 2026-09-03 and both
+  causing `GridSpatialIndex` to DROP a neighbour `NaiveSpatialIndex` returned. (1) `GetCellIndex`
+  derived the cell from a float quotient that can round across a cell edge, filing an agent one
+  cell beyond the one that geometrically contains it while the directional walk measured coverage
+  from the cells' exact edges; `383.624847f / 42.6249847f` is `8.999999642` exactly but the nearest
+  binary32 is `9`. (2) The walk stopped at the exact radius, but the float
+  `MathUtils.MinimumImageDelta` the acceptance test uses can understate a seam-crossing separation
+  by a couple of ulps of the extent, so the walk stopped one cell short of a neighbour that test
+  accepts; the walk now reaches `radius + 4 * float-epsilon * extent`. Evidence is two exact
+  reproducers plus an adversarial sweep that places the neighbour within three ulps of a cell edge
+  and derives the radius from the resulting float distance: 5,994 mismatches in 195,459 samples
+  before the fixes, none after. The legacy engine is unaffected -- `Query3x3` deliberately keeps
+  the raw quotient, and the 2,000-agent 600-tick kinematic hash is unchanged at
+  `64598125...4ED9AE5D` against `f005277`.
   The full Release suite passes after correcting a priority-hysteresis test setup that had depended
   on the pre-contract seam behavior. Composition now honours its total `MaxForce` bound (#19):
   separation draws from the same per-tick remainder as whisker avoidance, alignment, cohesion, and
@@ -195,7 +209,7 @@
   clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 118 executed test cases across 11 test files — 114 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 121 executed test cases across 12 test files — 117 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
