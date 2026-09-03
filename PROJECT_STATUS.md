@@ -1,16 +1,19 @@
 # SwarmingLilMen - Project Status & Implementation Tracker
 
-**Last Updated**: 2026-08-07 (Wave 1 toroidal spatial-index contract and equivalence proof)
+**Last Updated**: 2026-08-08 (documentation sweep; Wave 1 landed the toroidal spatial-index
+contract, the source-comment reconciliation, CLI preset help, and the shared `MaxForce` budget)
 **Current Phase**: Canonical readiness before Phase 3 - migration, parity, and performance evidence incomplete
 
 > **READ ORDER**: This verified-state section is the live source of truth. The phase checklists and
 > session log below are retained as historical planning context and contain stale counts/claims.
 > Git, executable checks, and current code override them.
 
-## Verified Live State (2026-08-07)
+## Verified Live State (2026-08-08)
 
-- Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`; last product commits
-  were merged on 2025-11-19.
+- Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
+  whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
+  changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at
+  `f005277` as this block is written.
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
   workflow supplies Release build/test checks (excluding the `Performance` category) on ubuntu
   and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
@@ -22,8 +25,9 @@
 - Documentation entrypoints now point back to this verified-state section and distinguish the
   unmet performance objective from the dated legacy-core sample. Older phase/session prose remains
   under dated banners in `docs/archive/`. The root contains the five named Markdown entrypoints plus
-  `LICENSE`; live guides are under `docs/`, and `docs/ROADMAP-VISION.md` is explicitly aspirational
-  while epic #10 remains the executable plan.
+  `LICENSE`, and — since the GPLv3 adoption in #65 — `RELICENSING.md` and `LICENSES/`; live guides
+  are under `docs/`, and `docs/ROADMAP-VISION.md` is explicitly aspirational while epic #10 remains
+  the executable plan.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
@@ -192,16 +196,21 @@
   outright rather than pushed at maximum strength. The `SpeedModel.ConstantSpeed` doc no longer
   claims `friction = 1.0`, direction-only steering, or that agents hold `MaxSpeed`; the integrator
   skips friction entirely in that mode, adds steering straight into velocity, and applies an upper
-  clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
+  clamp only. `WorldTests.Tick_ConstantSpeed_IgnoresFrictionAndDoesNotRestoreMaxSpeed` pins the
+  `ConstantSpeed` correction only. **The `SenseSystem` separation correction is documentation, not
+  regression-covered**: `BoidsTests.Separation_TwoCloseAgents_PushApart` asserts only that close
+  agents move apart, so nothing pins the bounded linear falloff, the `BehaviorSystem`
+  re-normalization, or the near-zero skip, and a regression in any of them would go unnoticed.
+  The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 118 executed test cases across 11 test files — 114 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 118 executed test cases across 12 test files — 114 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage
   gate, or absolute-throughput gate currently exists.
 - Complexity hotspots: `SwarmSim.Render/Program.cs` is 2,012 lines and
-  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 732 lines.
+  `SwarmSim.Core/Canonical/CanonicalWorld.cs` is 755 lines. Whole tracked C# tree: 10,665 lines.
 - Agent controls were refreshed in this audit: shared repo rules and per-seam proving checks in
   `CLAUDE.md`, with `AGENTS.md` reduced to a thin Codex adapter over it that also carries the
   runtime-neutral fail-safe floor for clones with no estate profile; plus the T1 declaration, safe
@@ -209,6 +218,34 @@
   exact-repository Codex session the owner reviewed and accepted the adapter, `/hooks` reported
   `PreToolUse` as 1 installed / 1 active, `git status` was allowed, and an inert force-push dry-run
   was denied before Git executed. Runtime byte pinning remains an agent-harness #18 limitation.
+- Documentation sweep (2026-08-08). Every tracked Markdown surface was audited against the code by
+  eight independent readers, each finding adversarially re-checked; 72 defects were confirmed and 14
+  claims were rejected as unreproducible. Fixed here: stale counts (`CanonicalWorld.cs` 732 -> 755,
+  "11 test files" -> 12, QUICKSTART's expected 64 passing tests against a suite reporting 114);
+  closed issues still listed as open (#17 in the readiness checklist, #18/#19 in RENDERER_GUIDE, and
+  #18/#19 in ONE of README's three lists — `README.md:51-55` now says both are done, but
+  `README.md:31-33` still calls the perception contract and force-budget enforcement "partial" and
+  `README.md:410-413` still lists them as open, so README currently contradicts itself and is not
+  fixed; tracked in #63); `CONTRIBUTING`'s test-file tree naming a `GenomeTests.cs` that has never
+  existed; three of
+  the four legacy force descriptions in `SIMULATION_MECHANICS_EXPLAINED`, each of which claimed a
+  weight or a distance scales the force where the implementation normalizes it away, plus that
+  file's complete silence about the shared `MaxForce` budget; and the duplicated 2026-07-25
+  performance sample in README and RENDERER_GUIDE, which contradicted the newer sample in this
+  block. **That cleanup is incomplete and the remaining copies are still live**: the 162.815
+  ms/tick sample survives in `js-demos/README.md`, `js-demos/IMPLEMENTATION_COMPARISON.md`,
+  `docs/PHASE_3_READINESS_CHECKLIST.md`, and the historical sections of this file. Only the
+  entry-point docs were cleared; treat this block, not those copies, as current.
+  Two behavioural facts were measured and documented for the first time: `LoadFromJson` registers no
+  string-enum converter, so `{"SpeedModel":"Damped"}` fails the entire load while `{"SpeedModel":1}`
+  succeeds; and every bundled config authors a `Friction` value while none sets `SpeedModel`, so all
+  three inherit `ConstantSpeed` and the integrator skips friction outright.
+  Two dead configuration knobs were found and filed rather than fixed: `GridCellSize` (#61) is
+  validated, defaulted, and copied but never read, because `World` hard-codes `cellSize:
+  Config.SenseRadius`; and `MaxCapacity` (#62) is validated `>= InitialCapacity` while the arrays
+  never grow past `InitialCapacity`. The remaining unfixed findings are tracked in #63.
+  **Not verified: the renderer window still has not been launched.** No claim in this sweep rests on
+  observing the running UI.
 - Extension trust: the product term **sandbox** is retired. **Modeling boundary** / **interaction
   surface** are reserved for simulation concepts, the aspirational package sketch uses
   **Playground**, and the shipped app remains `SwarmSim.Render`. Data-only scenario input is a
@@ -330,7 +367,7 @@ narrative and what needs to happen next.
 ```
 SwarmSim.Core/          - Core library (SoA data, systems, deterministic logic)
 SwarmSim.Render/        - Raylib-cs visualization (references Core)
-SwarmSim.Tests/         - xUnit tests (references Core)
+SwarmSim.Tests/         - xUnit tests (references Core AND Render)
 SwarmSim.Benchmarks/    - BenchmarkDotNet suite (references Core)
 ```
 
@@ -341,7 +378,8 @@ Combat, forage, reproduction, metabolism, and lifecycle systems are future Phase
 (`SwarmSim.Core/World.cs:119-144`).
 
 ### Data Layout (SoA)
-Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Energy[]`, `Health[]`, `Age[]`, `Group[]`, `State[]`, `Genome[]`
+Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Fx[]`, `Fy[]`, `Energy[]`, `Health[]`, `Age[]`,
+`Group[]`, `State[]`, `Genomes[]`, `LastAttackTime[]`
 
 ---
 

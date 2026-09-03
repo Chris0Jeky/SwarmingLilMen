@@ -14,7 +14,7 @@ unreviewed merge is ever in scope — that dial presumes the laws it is declared
 
 ## What this is
 
-Deterministic 2D swarm simulation in C#/.NET 8, ~9k lines: `SwarmSim.Core` (library),
+Deterministic 2D swarm simulation in C#/.NET 8, ~10.7k lines: `SwarmSim.Core` (library),
 `SwarmSim.Render` (Raylib window + CLI), `SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
 `js-demos/` holds unrelated standalone browser demos. **Two engines coexist on purpose**: legacy
 Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer and every
@@ -26,7 +26,7 @@ belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity, 
 removal. Neither engine is deleted without a recorded migration decision. Building a new feature on
 the legacy default because it is what runs today is exactly the drift this split exists to prevent.
 
-## Build, test, run — all green 2026-08-07 (SDK 8.0.415, Windows)
+## Build, test, run — all green 2026-08-08 (SDK 8.0.415, Windows)
 
 The counts below are a snapshot on that date and move with every merge; **the command is the source
 of truth, not the number beside it.** They are deliberately not stamped with a commit SHA — the
@@ -51,8 +51,9 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQuali
 ```
 
 Classes and counts: SpatialIndexEquivalenceTests (23), UniformGridTests (14), WorldTests (14),
-CanonicalBoidsTests (12), RngTests (9), SimulationRunnerTests (6), CommandLineOptionsTests (7),
-ConfigTests (2), BoidsTests
+DeterminismTests (14), CanonicalBoidsTests (12), RngTests (9), CommandLineOptionsTests (7),
+SimulationRunnerTests (6), CanonicalSteeringBudgetTests (5), PerformanceTests (4), ConfigTests (2),
+BoidsTests
 (8 — use `~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or
 `"Category=Determinism"` (14) / `"Category=Performance"` (4, Release only). **`RngTests` carries no
 `Category=Determinism` trait**, so an RNG change must run `~RngTests` explicitly — the determinism
@@ -99,9 +100,9 @@ here rather than referenced.
 - Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock. A
   `SimConfig` default change must also land in `docs/PARAMETER_GUIDE.md` and in any JSON example
   written to demonstrate that field. Do **not** copy it into `configs/*.json`: those recipes set
-  ~18 of ~51 properties deliberately and inherit the rest through `SimConfig.LoadFromJson`, so
+  17-19 of the 55 properties deliberately and inherit the rest through `SimConfig.LoadFromJson`, so
   pinning a new default there freezes them against later fixes and can change a named scenario.
 - Snapshot interpolation needs matching capture/mutation versions and array lengths; world
   mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
-- Complexity hotspots `SwarmSim.Render/Program.cs` (~1,990 lines) and `Canonical/CanonicalWorld.cs` (~730): add a narrow testable seam rather than growing them. Both grow steadily — treat the figures as scale, not as a value to keep in sync.
+- Complexity hotspots `SwarmSim.Render/Program.cs` (~2,010 lines) and `Canonical/CanonicalWorld.cs` (~755): add a narrow testable seam rather than growing them. Both grow steadily — treat the figures as scale, not as a value to keep in sync.
 - Never stash/reset/clean/switch a checkout to get a clean tree — T1's floor does not guard work-loss, and the main checkout is usually parked on a live feature branch.
