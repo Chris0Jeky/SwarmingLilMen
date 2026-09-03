@@ -18,7 +18,7 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
   and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
   so merge gating remains process-enforced. Pull-request jobs test GitHub's head/base merge ref;
   `workflow_dispatch` is available for an exact branch-head rerun.
-- Repository hygiene: the advertised MIT license is present; local debug captures, generated run
+- Repository hygiene: the advertised GPL-3.0-only license is present; local debug captures, generated run
   outputs, and the unused vendored SDK installer are excluded from the tracked root set. The
   previously committed debug capture remains in Git history; no history rewrite was performed.
 - Documentation entrypoints now point back to this verified-state section and distinguish the

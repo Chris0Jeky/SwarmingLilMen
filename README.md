@@ -10,7 +10,7 @@ below are goals, not achieved throughput claims.
 
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
 ![.NET](https://img.shields.io/badge/.NET-8.0-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
+![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue)
 
 ## 🎯 Project Goals
 
@@ -249,7 +249,7 @@ SwarmingLilMen/
 ├── AGENTS.md                # Thin Codex adapter (points at CLAUDE.md)
 ├── CLAUDE.md               # Shared agent contract: tier, commands, seam checks, pitfalls
 ├── CONTRIBUTING.md          # Developer setup and workflow
-├── LICENSE                  # MIT license
+├── LICENSE                  # GNU GPL v3 license
 ├── PROJECT_STATUS.md       # Implementation tracker
 └── README.md               # This file
 ```
@@ -450,7 +450,7 @@ dotnet build
 
 ## 📝 License
 
-[MIT License](LICENSE) - Feel free to use this project for learning or as a base for your own simulations.
+[GNU GPL v3](LICENSE) (`GPL-3.0-only`) - modified distributions must remain under GPLv3; see [RELICENSING.md](RELICENSING.md).
 
 ## 🙏 Acknowledgments
 
