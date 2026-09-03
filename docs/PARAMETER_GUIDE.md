@@ -8,8 +8,12 @@ tuning one and wondering why nothing changed.
 
 ## World & Timing
 - **WorldWidth / WorldHeight** – Simulation extent in world-position units (defaults `1920` /
-  `1080`). Under the default `Wrap` boundary these define the torus, so they change neighbour
-  topology and not just the visible area.
+  `1080`). Under the default `Wrap` boundary they define the torus that positions are wrapped
+  into, so they change more than the visible area. **Wrapping positions is not the same as
+  toroidal sensing**, and only the canonical engine does both: legacy `SenseSystem` queries the
+  non-wrapping `UniformGrid.Query3x3` and takes raw coordinate deltas, so under the default
+  renderer two agents on opposite edges are never neighbours however small their minimum-image
+  distance is. Neighbour topology wraps only under `--canonical`.
 - **BoundaryMode** – `Wrap` (default, toroidal), `Reflect`, or `Clamp`. In JSON this is an
   **ordinal**, not a name: `0`/`1`/`2`. See the enum note in `CONFIGURATION_COOKBOOK.md`.
 - **FixedDeltaTime** – Fixed simulation timestep in seconds. The `SimConfig` default is `1/120`;

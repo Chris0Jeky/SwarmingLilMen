@@ -46,7 +46,9 @@ Total force = the MaxForce-bounded behavior steering, plus wander
 
 > **`MaxForce` is the mechanism that decides what the weights actually do.** It is a per-agent,
 > per-step steering budget, not a per-rule cap. `SimConfig` defaults it to `5.0`; the renderer's
-> `CreateDefaultBaseConfig` and all five shipped presets use `2.5`. Because the budget is shared and
+> `CreateDefaultBaseConfig` and its `balanced` preset use `2.5`, but the other four presets do not:
+> `strong-separation` and `tight-flocking` use `2.0`, `fast-loose` `3.0`, and `slow-cohesive` `1.5`.
+> Read the budget off the preset you actually selected before tuning against it. Because the budget is shared and
 > spent in priority order, raising `AlignmentWeight` or `CohesionWeight` can change nothing at all
 > when separation has already consumed the budget — a fact worth remembering before following any
 > "increase all weights" advice, here or elsewhere. Wander is the one contribution added outside
@@ -92,7 +94,9 @@ Forces are vectors (have direction and magnitude) that pull/push agents in speci
 
 **How it works**:
 ```
-SenseSystem, per neighbor inside separationRadius:
+SenseSystem, per SAME-GROUP neighbor inside separationRadius AND inside the
+field-of-view cone (other groups and blind-spot neighbors are filtered out
+first, so mixed-group scenes and anything behind an agent give no repulsion):
   1. Skip the neighbor outright if it is closer than ~0.01 units.
      There is no "maximum strength" push - the strongest case is simply skipped.
   2. Accumulate a UNIT away-vector scaled only by the linear falloff:
@@ -277,7 +281,9 @@ if (|velocity| > maxSpeed) {
 - Balanced: Smooth motion with visible dynamics
 
 #### **Timestep (dt)**
-- **Fixed at**: 1/60 = 0.0167 seconds
+- **Fixed per scenario, not per engine**: `SimConfig.FixedDeltaTime` defaults to 1/120 = 0.0083
+  seconds; the renderer's base config and all five presets set 1/60 = 0.0167 seconds. The figures
+  below use the renderer's 1/60.
 - **Impact**: Determines each simulation step's velocity and position change
   - `velocity += force * dt`
   - `position += velocity * dt`

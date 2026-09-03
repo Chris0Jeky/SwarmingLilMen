@@ -220,8 +220,11 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
   the four legacy force descriptions in `SIMULATION_MECHANICS_EXPLAINED`, each of which claimed a
   weight or a distance scales the force where the implementation normalizes it away, plus that
   file's complete silence about the shared `MaxForce` budget; and the duplicated 2026-07-25
-  performance sample in README, RENDERER_GUIDE, and `js-demos/`, which contradicted the newer sample
-  in this block. Performance figures now live only here.
+  performance sample in README and RENDERER_GUIDE, which contradicted the newer sample in this
+  block. **That cleanup is incomplete and the remaining copies are still live**: the 162.815
+  ms/tick sample survives in `js-demos/README.md`, `js-demos/IMPLEMENTATION_COMPARISON.md`,
+  `docs/PHASE_3_READINESS_CHECKLIST.md`, and the historical sections of this file. Only the
+  entry-point docs were cleared; treat this block, not those copies, as current.
   Two behavioural facts were measured and documented for the first time: `LoadFromJson` registers no
   string-enum converter, so `{"SpeedModel":"Damped"}` fails the entire load while `{"SpeedModel":1}`
   succeeds; and every bundled config authors a `Friction` value while none sets `SpeedModel`, so all
