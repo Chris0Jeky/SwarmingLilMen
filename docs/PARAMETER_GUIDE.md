@@ -2,6 +2,24 @@
 
 This guide explains the main fields in `SimConfig`, what they control, and how increasing/decreasing each value affects flocking behaviour. Use it alongside `CONFIGURATION_COOKBOOK.md` when crafting custom JSON configs.
 
+`SimConfig` has 55 properties. Not all of them do anything yet — see
+[Fields that are declared but not consumed](#fields-that-are-declared-but-not-consumed) before
+tuning one and wondering why nothing changed.
+
+## World & Timing
+- **WorldWidth / WorldHeight** – Simulation extent in world-position units (defaults `1920` /
+  `1080`). Under the default `Wrap` boundary they define the torus that positions are wrapped
+  into, so they change more than the visible area. **Wrapping positions is not the same as
+  toroidal sensing**, and only the canonical engine does both: legacy `SenseSystem` queries the
+  non-wrapping `UniformGrid.Query3x3` and takes raw coordinate deltas, so under the default
+  renderer two agents on opposite edges are never neighbours however small their minimum-image
+  distance is. Neighbour topology wraps only under `--canonical`.
+- **BoundaryMode** – `Wrap` (default, toroidal), `Reflect`, or `Clamp`. In JSON this is an
+  **ordinal**, not a name: `0`/`1`/`2`. See the enum note in `CONFIGURATION_COOKBOOK.md`.
+- **FixedDeltaTime** – Fixed simulation timestep in seconds. The `SimConfig` default is `1/120`;
+  the renderer's own base config and every registered preset use `1/60`. Changing it changes
+  trajectories, so it is part of the determinism contract.
+
 ## Motion & Steering
 - **Seed** – Controls deterministic legacy and canonical construction. Reusing a seed reproduces
   a trajectory only when the .NET binary/runtime, platform, configuration, timestep, and ordered
@@ -56,15 +74,38 @@ This guide explains the main fields in `SimConfig`, what they control, and how i
 These fields are read from `SimConfig` only by the canonical renderer path; the similarly named
 legacy crowding controls retain their existing legacy semantics.
 
-## Energy / Combat (Phase 3+)
-- **AttackDamage / AttackRadius / AttackCooldown** – Enable combat behaviour when aggression matrices are non-zero. Increase to make encounters more lethal.
-- **BaseDrain, MoveCost, InitialEnergy** – Control metabolism; use higher drain for survival-style simulations where agents must forage.
+## Energy / Combat (Phase 3+ — reserved, not yet active)
+- **AttackDamage / AttackRadius / AttackCooldown** – Intended to enable combat behaviour when aggression matrices are non-zero. No system reads them today.
+- **BaseDrain, MoveCost** – Intended to control metabolism. No system reads them today, so energy neither drains nor gates death.
+- **InitialEnergy / InitialHealth** – These two *are* applied, at spawn. Every other energy, health, reproduction, and forage field is inert.
+
+## Fields that are declared but not consumed
+
+Measured on 2026-08-08 by searching every read of each property across `SwarmSim.Core`,
+`SwarmSim.Render`, and `SwarmSim.Benchmarks`. Nineteen of the 55 properties are validated and
+copied but never read by any system. Setting them in JSON is silently a no-op.
+
+Seventeen of them are the reserved Phase 3/4 surface above: `AttackDamage`, `AttackRadius`,
+`AttackCooldown`, `AggressionMatrix`, `BaseDrain`, `MoveCost`, `MaxEnergy`,
+`DeathEnergyThreshold`, `MaxHealth`, `HealthRegenRate`, `ReproductionEnergyThreshold`,
+`ReproductionEnergyCost`, `ChildEnergyStart`, `MutationRate`, `MutationStdDev`, `FoodEnergyGain`,
+and `ForageRadius`.
+
+Two are **not** reserved-phase fields and look active but are not:
+
+- **GridCellSize** (default `50`, validated `> 0`, and its source comment says "Should be ≈
+  SenseRadius"). `World` hard-codes its spatial grid to `cellSize: Config.SenseRadius` and never
+  reads this property, so tuning it changes nothing. Tracked as a defect, not a documented
+  design choice.
+- **MaxCapacity** (default `200_000`, validated `>= InitialCapacity`). The agent arrays are
+  allocated once at `InitialCapacity` and never grow; spawning past that returns `-1`. `MaxCapacity`
+  is therefore an unenforced ceiling. `InitialCapacity` is the real limit.
 
 ## How to Tune
 1. **Set Speed & Force First** – Decide how fast you want agents to travel, then set `MaxForce` to at least 20–30% of `MaxSpeed`.
 2. **Balance Separation vs Cohesion** – Start with only separation active to achieve proper spacing, then add alignment, then cohesion.
 3. **Use Crowding Boosts** – `SeparationCrowdingBoost` helps resolve cramped nuclei automatically without needing huge base weights.
-4. **Test with Presets** – Use `--preset balanced` or `--preset fast-loose` to compare behaviours, then copy from `configs/` and tweak.
-5. **Observe Diagnostics** – Press `F12` for snapshot/debug info and look at neighbor counts + steering saturation to know if forces are maxing out.
+4. **Test with Presets** – Use `--preset balanced` or `--preset fast-loose` to compare behaviours, then copy from `configs/` and tweak. `--list-presets` prints the registered set.
+5. **Observe Diagnostics** – On the legacy renderer press `F12` for snapshot/debug info; on the canonical renderer press `O` for the selected-boid interaction overlay and `Tab` to cycle the tracked boid. Watch neighbor counts and steering saturation to see whether forces are maxing out.
 
 Refer to `CONTROLS.md` for runtime shortcuts and `CONFIGURATION_COOKBOOK.md` for concrete recipes. When saving custom configs, only override the fields you change—the loader falls back to defaults for everything else.

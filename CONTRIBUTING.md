@@ -300,12 +300,23 @@ dotnet test -v detailed
 ### Test Organization
 ```
 SwarmSim.Tests/
-├── RngTests.cs           - Random number generation
-├── WorldTests.cs         - World lifecycle and agents
-├── GenomeTests.cs        - Genetics and mutation
-├── SpatialGridTests.cs   - (future) Grid correctness
-└── SystemTests.cs        - (future) Individual systems
+├── BoidsTests.cs                    - Legacy boids steering behaviour
+├── CanonicalBoidsTests.cs           - Canonical world, rules, and settings mapping
+├── CanonicalSteeringBudgetTests.cs  - Shared per-tick MaxForce budget (issue #19)
+├── CommandLineOptionsTests.cs       - CLI parsing, help text, preset registry
+├── ConfigTests.cs                   - SimConfig JSON loading and validation
+├── DeterminismTests.cs              - Seeded kinematic-hash reproducibility
+├── PerformanceTests.cs              - Category=Performance timing facts (excluded from CI)
+├── RngTests.cs                      - Random number generation
+├── SimulationRunnerTests.cs         - Fixed-step advance and snapshot interpolation
+├── SpatialIndexEquivalenceTests.cs  - Grid vs Naive toroidal query equivalence
+├── UniformGridTests.cs              - Legacy uniform-grid correctness
+└── WorldTests.cs                    - World lifecycle and agents
 ```
+
+Earlier revisions of this guide listed a `GenomeTests.cs`. It has never existed, and no test file
+references `Genome` at all — `SwarmSim.Core/Genome.cs` and the mutation API are currently uncovered.
+Adding that coverage is open work, not an omission from this list.
 
 ---
 

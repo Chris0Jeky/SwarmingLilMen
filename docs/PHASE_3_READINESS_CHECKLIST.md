@@ -30,7 +30,9 @@ These are the remaining milestones from `archive/NewImplementation.md` that must
 ### ✅ Core Scaffolding and Single-Boid Path (Milestones 0-1)
 - [x] Core scaffolding (Vec2, Boid, World, Rng, interfaces)
 - [x] Single boid motion with constant speed
-- [ ] Long-horizon seeded and golden acceptance, tracked in #17 and #21
+- [ ] Long-horizon seeded and golden acceptance, tracked in
+  [issue #21](https://github.com/Chris0Jeky/SwarmingLilMen/issues/21) (#17 closed with the seeded
+  construction work; golden-trace fixtures and the cross-OS job remain #21)
 
 ### ✅ Milestone 2: Perception (COMPLETE)
 - [x] Field-of-view filtering with weights

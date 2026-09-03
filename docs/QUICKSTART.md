@@ -36,8 +36,11 @@ Expected output: `Build succeeded. 0 Warning(s) 0 Error(s)`
 dotnet test SwarmingLilMen.sln --configuration Release --filter "Category!=Performance"
 ```
 
-Expected inventory on 2026-07-25: `Passed: 64, Failed: 0`. The four timing facts are in the
-separate `Performance` category; see `PROJECT_STATUS.md` for the dated full-suite evidence.
+Expect `Failed: 0`. The pass count grows with every merge, so the live figure lives in the
+verified-state block at the top of [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) rather than being
+copied here — a number pinned in a quickstart goes stale silently and makes a correct run look
+wrong. The four timing facts are excluded by this filter and live in the separate `Performance`
+category.
 
 ## 4. Play with the Code
 
@@ -52,7 +55,7 @@ dotnet run --project SwarmSim.Render --configuration Release -- --benchmark --ag
 ### Option B: Run the Renderer (Interactive)
 
 ```bash
-# Launch with default balanced preset
+# Launch with the built-in renderer defaults (no preset applied; wander is off)
 dotnet run --project SwarmSim.Render
 
 # List command-line options
