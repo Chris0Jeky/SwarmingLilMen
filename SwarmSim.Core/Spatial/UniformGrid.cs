@@ -38,6 +38,14 @@ public sealed class UniformGrid
     private int _capacity;
 
     /// <summary>
+    /// Slack, as a fraction of the world extent, that the directional cell walk adds to the query
+    /// radius. Four float epsilons bound the rounding error a seam-crossing
+    /// <see cref="MathUtils.MinimumImageDelta"/> can accumulate: one subtraction of two
+    /// extent-magnitude coordinates plus one addition of the extent, each at most half an ulp.
+    /// </summary>
+    private const double MinimumImageUlpSlack = 4.0 * 1.1920928955078125e-7;
+
+    /// <summary>
     /// Creates a new uniform grid with the specified cell size and world dimensions.
     /// </summary>
     /// <param name="cellSize">Size of each grid cell (should be ~= interaction radius)</param>
@@ -221,8 +229,13 @@ public sealed class UniformGrid
 
         int activeCount = count;
         float radiusSquared = radius * radius;
-        int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
-        int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
+        // Same edge-exact mapping the rebuild uses: the directional walk measures its coverage
+        // outward from this cell's exact edges, so a centre that disagreed with the binning by one
+        // ulp would start the walk from the wrong edge. Query3x3 deliberately keeps the raw
+        // quotient -- its 3x3 block is an approximation by construction and its legacy behaviour
+        // is pinned by the kinematic hash.
+        int centerCol = GetCellCoordinate(x, Cols);
+        int centerRow = GetCellCoordinate(y, Rows);
         GetDirectionalCellReach(
             x, radius, _worldWidth, Cols, centerCol,
             out int colsBefore, out int colsAfter, out bool scanAllCols);
@@ -265,15 +278,37 @@ public sealed class UniformGrid
     /// Gets the cell index for the given world position.
     /// </summary>
     private int GetCellIndex(float x, float y)
+        => GetCellCoordinate(x, Cols) + GetCellCoordinate(y, Rows) * Cols;
+
+    /// <summary>
+    /// Maps one coordinate onto the cell that geometrically contains it, so binning agrees with
+    /// the exact cell edges <see cref="GetDirectionalCellReach"/> walks.
+    /// </summary>
+    /// <param name="coordinate">Coordinate already wrapped into the world extent.</param>
+    /// <param name="cellCount">Number of cells along this axis.</param>
+    /// <returns>A cell index in <c>[0, cellCount)</c>.</returns>
+    private int GetCellCoordinate(float coordinate, int cellCount)
     {
-        int col = (int)(x / CellSize);
-        int row = (int)(y / CellSize);
+        int cell = (int)(coordinate / CellSize);
 
-        // Clamp to valid range
-        col = Math.Clamp(col, 0, Cols - 1);
-        row = Math.Clamp(row, 0, Rows - 1);
+        // The float quotient can round ACROSS a cell edge. 383.624847f / 42.6249847f is
+        // 8.999999642 in exact arithmetic, but the nearest binary32 is exactly 9, so the agent was
+        // filed under cell 9 while its position lies inside cell 8 (whose upper edge is
+        // 383.62486267). GetDirectionalCellReach derives its scan from those exact edges in
+        // double, so it correctly stopped at cell 8 -- and the agent, sitting exactly on the
+        // inclusive radius boundary, was never distance-checked at all. Grid then dropped a
+        // neighbour Naive returned, breaking the advertised equivalence.
+        //
+        // Snap the quotient back onto the edge that actually contains the coordinate. A small
+        // integer times a float is exact in double, so both comparisons are exact, and the float
+        // quotient is never wrong by more than one cell. Neither branch is taken on the ordinary
+        // path, so the hot rebuild loop pays two predictable compares and no division.
+        if (cell > 0 && (double)cell * CellSize > coordinate)
+            cell--;
+        else if ((double)(cell + 1) * CellSize <= coordinate)
+            cell++;
 
-        return col + row * Cols;
+        return Math.Clamp(cell, 0, cellCount - 1);
     }
 
     private void GetDirectionalCellReach(
@@ -310,10 +345,22 @@ public sealed class UniformGrid
         // is the ordinary grid-tuning move. Doubles remove the drift outright; the walk is O(cells)
         // per query, not per neighbour, so the cost is nil. The comparisons are non-strict so a
         // remaining per-edge ulp can only widen the scan, never shorten it.
+        //
+        // The walk must nevertheless reach FURTHER than the exact radius, because the acceptance
+        // test it feeds is not exact. Callers admit a neighbour when the float
+        // MathUtils.MinimumImageDelta is within the radius, and across the seam that helper
+        // subtracts two coordinates of world magnitude and then adds the extent back -- so its
+        // result can understate the true separation by a couple of ulps OF THE EXTENT, not of the
+        // radius. A walk measured against the exact radius therefore stops one cell short of a
+        // neighbour the float test accepts, and Grid drops a neighbour Naive returns. Widening the
+        // reach by that same error bound restores the contract; it can only pull in one extra cell
+        // when the radius lands within a few ulps of a cell edge, so the cost is nil.
+        double reach = (double)radius + (double)extent * MinimumImageUlpSlack;
+
         cellsBefore = 0;
         double coveredBefore = (double)coordinate - (double)centerCell * CellSize;
         int cursor = centerCell;
-        while (coveredBefore <= radius && cellsBefore + 1 < cellCount)
+        while (coveredBefore <= reach && cellsBefore + 1 < cellCount)
         {
             cursor = WrapCell(cursor - 1, cellCount);
             coveredBefore += GetCellExtent(cursor, extent);
@@ -323,7 +370,7 @@ public sealed class UniformGrid
         cellsAfter = 0;
         double coveredAfter = GetCellUpperEdge(centerCell, extent) - (double)coordinate;
         cursor = centerCell;
-        while (coveredAfter <= radius && cellsBefore + cellsAfter + 1 < cellCount)
+        while (coveredAfter <= reach && cellsBefore + cellsAfter + 1 < cellCount)
         {
             cursor = WrapCell(cursor + 1, cellCount);
             coveredAfter += GetCellExtent(cursor, extent);
