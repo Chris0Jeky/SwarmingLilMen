@@ -196,7 +196,12 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
   outright rather than pushed at maximum strength. The `SpeedModel.ConstantSpeed` doc no longer
   claims `friction = 1.0`, direction-only steering, or that agents hold `MaxSpeed`; the integrator
   skips friction entirely in that mode, adds steering straight into velocity, and applies an upper
-  clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
+  clamp only. `WorldTests.Tick_ConstantSpeed_IgnoresFrictionAndDoesNotRestoreMaxSpeed` pins the
+  `ConstantSpeed` correction only. **The `SenseSystem` separation correction is documentation, not
+  regression-covered**: `BoidsTests.Separation_TwoCloseAgents_PushApart` asserts only that close
+  agents move apart, so nothing pins the bounded linear falloff, the `BehaviorSystem`
+  re-normalization, or the near-zero skip, and a regression in any of them would go unnoticed.
+  The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
 - Test inventory: 118 executed test cases across 12 test files — 114 `[Fact]`/`[Theory]` attributes,
