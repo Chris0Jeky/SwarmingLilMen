@@ -401,6 +401,122 @@ public sealed class SpatialIndexEquivalenceTests
         Assert.NotEqual(extent, wrapped);
     }
 
+    [Fact]
+    public void SpatialIndexEquivalence_ReachCoversNeighboursBinnedPastTheirContainingCell()
+    {
+        // 383.624847f / 42.6249847f is 8.999999642 exactly, but the nearest binary32 is 9, so
+        // GetCellIndex files the neighbour under cell 9 while its position lies inside cell 8
+        // (cell 9 starts at 383.62486267). The directional walk measures coverage from the cells'
+        // exact edges, so it stopped at cell 8 and never distance-checked the agent, which sits
+        // exactly on the inclusive radius boundary. Grid returned nothing, Naive returned it. The
+        // binning is deliberately left alone -- the legacy 3x3 query shares that raw quotient --
+        // so the walk's slack is what has to reach the mis-binned cell.
+        var boids = CreateBoids((330.519836f, 0f), (383.624847f, 0f));
+
+        AssertEquivalent(
+            boids,
+            worldWidth: 389.808502f,
+            worldHeight: 42.6249847f,
+            cellSize: 42.6249847f,
+            selfIndex: 0,
+            radius: 53.105011f,
+            bufferLength: 4,
+            new[] { 1 });
+    }
+
+    [Fact]
+    public void SpatialIndexEquivalence_ReachOutrunsSeamCrossingMinimumImageRounding()
+    {
+        // Across the seam MathUtils.MinimumImageDelta subtracts two coordinates of world magnitude
+        // and adds the extent back, so the float result understates the true separation by a few
+        // ulps OF THE EXTENT. Both indexes accept the neighbour on that float distance, but the
+        // walk measured its coverage against the exact radius and stopped one cell short.
+        var boids = CreateBoids((405.22028f, 0f), (57.569046f, 0f));
+
+        AssertEquivalent(
+            boids,
+            worldWidth: 421.27646f,
+            worldHeight: 5.006004f,
+            cellSize: 2.503002f,
+            selfIndex: 0,
+            radius: 73.62521f,
+            bufferLength: 4,
+            new[] { 1 });
+    }
+
+    [Fact]
+    public void SpatialIndexEquivalence_BoundaryExactNeighboursNearCellEdgesAlwaysMatch()
+    {
+        // Adversarial sweep for both ways Grid could drop a neighbour Naive returns: the neighbour
+        // is placed within three ulps of a cell edge (where the float quotient used for binning can
+        // round across that edge) and the radius is then DERIVED from the resulting float distance,
+        // so every sample sits exactly on the inclusive boundary Naive accepts.
+        //
+        // Measured with a 200,000-iteration variant of this exact generator: 5,994 mismatches in
+        // 195,459 usable samples against the unfixed index, and none after. The committed size is
+        // 20,000 iterations to keep the suite fast, which still fails within the first few hundred
+        // samples if the slack regresses -- but note it does NOT fail if only the binning is
+        // perturbed, because the slack covers that case too. Raise the iteration count before
+        // concluding anything from a green run here about binning specifically.
+        var random = new Random(20260903);
+        var boids = new Boid[2];
+        var gridResults = new int[4];
+        var naiveResults = new int[4];
+        int considered = 0;
+
+        for (int iteration = 0; iteration < 20_000; iteration++)
+        {
+            float width = 50f + (float)random.NextDouble() * 950f;
+            float cellSize = 1f + (float)random.NextDouble() * 60f;
+            int cols = (int)MathF.Ceiling(width / cellSize);
+            if (cols < 3)
+                continue;
+
+            float selfX = (float)(random.NextDouble() * width);
+
+            int edgeCell = random.Next(1, cols);
+            double exactEdge = (double)edgeCell * cellSize;
+            if (exactEdge >= width)
+                continue;
+
+            float neighborX = (float)exactEdge;
+            int ulps = random.Next(-3, 4);
+            for (int u = 0; u < Math.Abs(ulps); u++)
+                neighborX = ulps > 0 ? MathF.BitIncrement(neighborX) : MathF.BitDecrement(neighborX);
+
+            if (!float.IsFinite(neighborX) || neighborX < 0f || neighborX >= width)
+                continue;
+
+            float wrapped = (neighborX - selfX) % width;
+            float half = width * 0.5f;
+            float delta = wrapped > half ? wrapped - width : (wrapped < -half ? wrapped + width : wrapped);
+            float radius = MathF.Abs(delta);
+            if (radius <= 0f || radius >= half)
+                continue;
+
+            considered++;
+            boids[0] = new Boid(new Vec2(selfX, 0.5f), new Vec2(1f, 0f), 0);
+            boids[1] = new Boid(new Vec2(neighborX, 0.5f), new Vec2(1f, 0f), 0);
+
+            var grid = new GridSpatialIndex(cellSize, width, cellSize * 2f);
+            var naive = new NaiveSpatialIndex(width, cellSize * 2f);
+            grid.Initialize(2);
+            naive.Initialize(2);
+            grid.Rebuild(boids);
+            naive.Rebuild(boids);
+
+            int gridCount = grid.QueryNeighbors(boids, 0, radius, gridResults).Count;
+            int naiveCount = naive.QueryNeighbors(boids, 0, radius, naiveResults).Count;
+
+            Assert.True(
+                gridCount == naiveCount,
+                $"grid={gridCount} naive={naiveCount} width={width:R}f cellSize={cellSize:R}f " +
+                $"selfX={selfX:R}f neighborX={neighborX:R}f radius={radius:R}f");
+        }
+
+        Assert.True(considered > 15_000, $"sweep degenerated to {considered} usable samples");
+    }
+
     private static void AssertEquivalent(
         Boid[] boids,
         float worldWidth,

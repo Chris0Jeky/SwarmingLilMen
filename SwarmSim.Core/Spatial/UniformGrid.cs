@@ -38,6 +38,36 @@ public sealed class UniformGrid
     private int _capacity;
 
     /// <summary>
+    /// Slack, as a fraction of the world extent, that the directional cell walk adds to the query
+    /// radius, so the walk always reaches at least as far as the float acceptance test it feeds.
+    ///
+    /// Error budget for two coordinates in <c>[0, extent)</c>, worst case about
+    /// <c>1.5 * extent * 2^-24</c>:
+    /// <list type="bullet">
+    /// <item>the subtraction of two extent-magnitude coordinates is correctly rounded, so at most
+    /// <c>extent * 2^-24</c>;</item>
+    /// <item><c>delta % extent</c> is exact, and so is the fold by <c>+/- extent</c> -- the folded
+    /// value lies in <c>(extent/2, extent)</c>, where Sterbenz's lemma makes the subtraction
+    /// exact. These terms contribute nothing;</item>
+    /// <item>the squared comparison <c>fl(dx*dx) &lt;= fl(r*r)</c> admits <c>|dx|</c> up to about
+    /// <c>r * (1 + 2^-24)</c>, and <c>r &lt; extent/2</c> on this path, so under
+    /// <c>extent * 2^-25</c>.</item>
+    /// </list>
+    ///
+    /// The same slack absorbs the other way a neighbour was dropped: <see cref="GetCellIndex"/>
+    /// can file an agent one cell above the one that geometrically contains it when the float
+    /// quotient rounds across an edge. Such an agent sits within one ulp of that edge, and
+    /// whenever the float test accepts it the walk's coverage exceeds the radius by no more than
+    /// this slack, so the widened walk always reaches its cell.
+    ///
+    /// The constant below is <c>8 * 2^-24</c> -- roughly five times that bound. The margin is
+    /// deliberate: it costs at most one extra cell per side, and only when the radius lands within
+    /// a few ulps of a cell edge. **Do not tighten it to the derived figure.** Losing the margin
+    /// is how the dropped neighbours this constant exists to prevent come back.
+    /// </summary>
+    private const double MinimumImageUlpSlack = 8.0 * 5.9604644775390625e-8;
+
+    /// <summary>
     /// Creates a new uniform grid with the specified cell size and world dimensions.
     /// </summary>
     /// <param name="cellSize">Size of each grid cell (should be ~= interaction radius)</param>
@@ -264,6 +294,16 @@ public sealed class UniformGrid
     /// <summary>
     /// Gets the cell index for the given world position.
     /// </summary>
+    /// <remarks>
+    /// The float quotient here can round ACROSS a cell edge and file an agent in the cell above
+    /// the one that geometrically contains it -- 383.624847f / 42.6249847f is 8.999999642 exactly,
+    /// but the nearest binary32 is 9. That is deliberately NOT corrected. Snapping it would change
+    /// how the legacy engine bins agents, and the legacy 3x3 query derives its centre from the
+    /// same raw quotient, so correcting one without the other drops neighbours outright. The
+    /// toroidal query tolerates the misplacement instead: a mis-binned agent sits within one ulp
+    /// of the edge, and <see cref="MinimumImageUlpSlack"/> already widens the directional walk by
+    /// far more than that. See the argument on that constant.
+    /// </remarks>
     private int GetCellIndex(float x, float y)
     {
         int col = (int)(x / CellSize);
@@ -310,10 +350,22 @@ public sealed class UniformGrid
         // is the ordinary grid-tuning move. Doubles remove the drift outright; the walk is O(cells)
         // per query, not per neighbour, so the cost is nil. The comparisons are non-strict so a
         // remaining per-edge ulp can only widen the scan, never shorten it.
+        //
+        // The walk must nevertheless reach FURTHER than the exact radius, because the acceptance
+        // test it feeds is not exact. Callers admit a neighbour when the float
+        // MathUtils.MinimumImageDelta is within the radius, and across the seam that helper
+        // subtracts two coordinates of world magnitude and then adds the extent back -- so its
+        // result can understate the true separation by a couple of ulps OF THE EXTENT, not of the
+        // radius. A walk measured against the exact radius therefore stops one cell short of a
+        // neighbour the float test accepts, and Grid drops a neighbour Naive returns. Widening the
+        // reach by that same error bound restores the contract; it can only pull in one extra cell
+        // when the radius lands within a few ulps of a cell edge, so the cost is nil.
+        double reach = (double)radius + (double)extent * MinimumImageUlpSlack;
+
         cellsBefore = 0;
         double coveredBefore = (double)coordinate - (double)centerCell * CellSize;
         int cursor = centerCell;
-        while (coveredBefore <= radius && cellsBefore + 1 < cellCount)
+        while (coveredBefore <= reach && cellsBefore + 1 < cellCount)
         {
             cursor = WrapCell(cursor - 1, cellCount);
             coveredBefore += GetCellExtent(cursor, extent);
@@ -323,7 +375,7 @@ public sealed class UniformGrid
         cellsAfter = 0;
         double coveredAfter = GetCellUpperEdge(centerCell, extent) - (double)coordinate;
         cursor = centerCell;
-        while (coveredAfter <= radius && cellsBefore + cellsAfter + 1 < cellCount)
+        while (coveredAfter <= reach && cellsBefore + cellsAfter + 1 < cellCount)
         {
             cursor = WrapCell(cursor + 1, cellCount);
             coveredAfter += GetCellExtent(cursor, extent);
