@@ -402,13 +402,15 @@ public sealed class SpatialIndexEquivalenceTests
     }
 
     [Fact]
-    public void SpatialIndexEquivalence_BinsAgentsIntoTheCellThatGeometricallyContainsThem()
+    public void SpatialIndexEquivalence_ReachCoversNeighboursBinnedPastTheirContainingCell()
     {
-        // 383.624847f / 42.6249847f is 8.999999642 exactly, but the nearest binary32 is 9, so the
-        // neighbour used to be filed under cell 9 while its position lies inside cell 8 (cell 9
-        // starts at 383.62486267). The directional walk measures coverage from the cells' exact
-        // edges, so it correctly stopped at cell 8 -- and never distance-checked the agent, which
-        // sits exactly on the inclusive radius boundary. Grid returned nothing, Naive returned it.
+        // 383.624847f / 42.6249847f is 8.999999642 exactly, but the nearest binary32 is 9, so
+        // GetCellIndex files the neighbour under cell 9 while its position lies inside cell 8
+        // (cell 9 starts at 383.62486267). The directional walk measures coverage from the cells'
+        // exact edges, so it stopped at cell 8 and never distance-checked the agent, which sits
+        // exactly on the inclusive radius boundary. Grid returned nothing, Naive returned it. The
+        // binning is deliberately left alone -- the legacy 3x3 query shares that raw quotient --
+        // so the walk's slack is what has to reach the mis-binned cell.
         var boids = CreateBoids((330.519836f, 0f), (383.624847f, 0f));
 
         AssertEquivalent(
@@ -445,11 +447,17 @@ public sealed class SpatialIndexEquivalenceTests
     [Fact]
     public void SpatialIndexEquivalence_BoundaryExactNeighboursNearCellEdgesAlwaysMatch()
     {
-        // Adversarial sweep for the two ways Grid could drop a neighbour Naive returns: the
-        // neighbour is placed within three ulps of a cell edge (where the float quotient used for
-        // binning can round across that edge) and the radius is then DERIVED from the resulting
-        // float distance, so every sample sits exactly on the inclusive boundary Naive accepts.
-        // Before the binning and reach-slack fixes this found 5,994 mismatches in 195,459 samples.
+        // Adversarial sweep for both ways Grid could drop a neighbour Naive returns: the neighbour
+        // is placed within three ulps of a cell edge (where the float quotient used for binning can
+        // round across that edge) and the radius is then DERIVED from the resulting float distance,
+        // so every sample sits exactly on the inclusive boundary Naive accepts.
+        //
+        // Measured with a 200,000-iteration variant of this exact generator: 5,994 mismatches in
+        // 195,459 usable samples against the unfixed index, and none after. The committed size is
+        // 20,000 iterations to keep the suite fast, which still fails within the first few hundred
+        // samples if the slack regresses -- but note it does NOT fail if only the binning is
+        // perturbed, because the slack covers that case too. Raise the iteration count before
+        // concluding anything from a green run here about binning specifically.
         var random = new Random(20260903);
         var boids = new Boid[2];
         var gridResults = new int[4];

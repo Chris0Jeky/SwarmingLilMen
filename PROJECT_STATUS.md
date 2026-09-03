@@ -28,9 +28,9 @@
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
   BenchmarkDotNet 0.15.8; compatibility has not been tested.
-- CI-filtered Release solution test (`Category!=Performance`): **117 passed, 0 failed, 0 skipped**
-  in 11 seconds of test execution on 2026-09-03.
-- Unfiltered Release solution test: **121 passed, 0 failed, 0 skipped** in 40 seconds of test
+- CI-filtered Release solution test (`Category!=Performance`): **118 passed, 0 failed, 0 skipped**
+  in 6 seconds of test execution on 2026-09-03.
+- Unfiltered Release solution test: **122 passed, 0 failed, 0 skipped** in 40 seconds of test
   execution on 2026-09-03, confirming the full suite remains under one minute.
 - Explicit Release `Performance` category: **4 passed, 0 failed, 0 skipped** on 2026-08-08.
   Command after the Release build:
@@ -107,20 +107,34 @@
   buffer while steering used 16, drawing discarded neighbors and suppressing the truncation notice
   in exactly the cases where the simulation had truncated. Renderer overlay drawing itself is still
   only verified by the extracted capacity seam, not by running the window.
-- Grid/Naive equivalence survived two further float defects, both fixed on 2026-09-03 and both
-  causing `GridSpatialIndex` to DROP a neighbour `NaiveSpatialIndex` returned. (1) `GetCellIndex`
-  derived the cell from a float quotient that can round across a cell edge, filing an agent one
-  cell beyond the one that geometrically contains it while the directional walk measured coverage
-  from the cells' exact edges; `383.624847f / 42.6249847f` is `8.999999642` exactly but the nearest
-  binary32 is `9`. (2) The walk stopped at the exact radius, but the float
-  `MathUtils.MinimumImageDelta` the acceptance test uses can understate a seam-crossing separation
-  by a couple of ulps of the extent, so the walk stopped one cell short of a neighbour that test
-  accepts; the walk now reaches `radius + 4 * float-epsilon * extent`. Evidence is two exact
-  reproducers plus an adversarial sweep that places the neighbour within three ulps of a cell edge
-  and derives the radius from the resulting float distance: 5,994 mismatches in 195,459 samples
-  before the fixes, none after. The legacy engine is unaffected -- `Query3x3` deliberately keeps
-  the raw quotient, and the 2,000-agent 600-tick kinematic hash is unchanged at
-  `64598125...4ED9AE5D` against `f005277`.
+- Grid/Naive equivalence survived two further float defects (2026-09-03), both causing
+  `GridSpatialIndex` to DROP a neighbour `NaiveSpatialIndex` returned at the inclusive radius
+  boundary. (1) `GetCellIndex` derives the cell from a float quotient that can round ACROSS a cell
+  edge, filing an agent one cell beyond the one that geometrically contains it while the
+  directional walk measures coverage from the cells' exact edges: `383.624847f / 42.6249847f` is
+  `8.999999642` exactly but the nearest binary32 is `9`. (2) The walk stopped at the exact radius,
+  but the float `MathUtils.MinimumImageDelta` its acceptance test uses can understate a
+  seam-crossing separation by ulps of the extent, so it stopped one cell short of a neighbour that
+  test accepts.
+  **Only the walk was changed**, by `UniformGrid.MinimumImageUlpSlack`: it now reaches
+  `radius + extent * 8 * 2^-24`. That covers both, because a mis-binned agent sits within one ulp
+  of a cell edge and the float test can only accept it when the walk's coverage exceeds the radius
+  by less than that slack. The binning was deliberately left alone after a first attempt to correct
+  it was measured to BREAK the legacy engine: the legacy `Query3x3` derives its 3x3 centre from the
+  same raw quotient, so snapping only the binning put a query and its neighbour two cells apart and
+  `SenseSystem` dropped a neighbour inside the sense radius. That trap is now pinned by
+  `UniformGridTests.Query3x3_CentreCellUsesTheSameMappingRebuildBinsWith`.
+  Evidence: two exact reproducers plus an adversarial sweep placing the neighbour within three ulps
+  of a cell edge and deriving the radius from the resulting float distance. Measured with a
+  200,000-iteration variant of that generator: 5,994 mismatches in 195,459 usable samples before,
+  none after; the committed test runs 20,000 iterations. All three new tests fail with the slack
+  removed. The executable delta is four lines in `UniformGrid`, none of them on the legacy path, and
+  the 2,000-agent 600-tick kinematic hash is unchanged at `64598125...4ED9AE5D` against `f005277`.
+  **Not verified: no BenchmarkDotNet or query-path timing was run for the reach widening.** It is
+  argued (at most one extra cell per side, and only when the radius lands within a few ulps of a
+  cell edge) rather than measured, and `Category=Performance` does not exercise
+  `QueryRadiusToroidal`. The slack scales with the extent, so a large-extent/small-cell world would
+  pay more; no such configuration exists in this repository.
   The full Release suite passes after correcting a priority-hysteresis test setup that had depended
   on the pre-contract seam behavior. Composition now honours its total `MaxForce` bound (#19):
   separation draws from the same per-tick remainder as whisker avoidance, alignment, cohesion, and
@@ -209,7 +223,7 @@
   clamp only. A characterization test pins both corrected claims. The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
-- Test inventory: 121 executed test cases across 12 test files — 117 `[Fact]`/`[Theory]` attributes,
+- Test inventory: 122 executed test cases across 12 test files — 118 `[Fact]`/`[Theory]` attributes,
   with `[Theory]` `InlineData` expanding the remainder. Includes four explicitly categorized
   performance measurements and a zero-allocation steady-state assertion for both canonical spatial
   query implementations. No canonical BenchmarkDotNet comparison, renderer automation, coverage

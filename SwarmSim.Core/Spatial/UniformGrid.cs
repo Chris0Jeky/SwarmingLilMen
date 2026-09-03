@@ -39,11 +39,33 @@ public sealed class UniformGrid
 
     /// <summary>
     /// Slack, as a fraction of the world extent, that the directional cell walk adds to the query
-    /// radius. Four float epsilons bound the rounding error a seam-crossing
-    /// <see cref="MathUtils.MinimumImageDelta"/> can accumulate: one subtraction of two
-    /// extent-magnitude coordinates plus one addition of the extent, each at most half an ulp.
+    /// radius, so the walk always reaches at least as far as the float acceptance test it feeds.
+    ///
+    /// Error budget for two coordinates in <c>[0, extent)</c>, worst case about
+    /// <c>1.5 * extent * 2^-24</c>:
+    /// <list type="bullet">
+    /// <item>the subtraction of two extent-magnitude coordinates is correctly rounded, so at most
+    /// <c>extent * 2^-24</c>;</item>
+    /// <item><c>delta % extent</c> is exact, and so is the fold by <c>+/- extent</c> -- the folded
+    /// value lies in <c>(extent/2, extent)</c>, where Sterbenz's lemma makes the subtraction
+    /// exact. These terms contribute nothing;</item>
+    /// <item>the squared comparison <c>fl(dx*dx) &lt;= fl(r*r)</c> admits <c>|dx|</c> up to about
+    /// <c>r * (1 + 2^-24)</c>, and <c>r &lt; extent/2</c> on this path, so under
+    /// <c>extent * 2^-25</c>.</item>
+    /// </list>
+    ///
+    /// The same slack absorbs the other way a neighbour was dropped: <see cref="GetCellIndex"/>
+    /// can file an agent one cell above the one that geometrically contains it when the float
+    /// quotient rounds across an edge. Such an agent sits within one ulp of that edge, and
+    /// whenever the float test accepts it the walk's coverage exceeds the radius by no more than
+    /// this slack, so the widened walk always reaches its cell.
+    ///
+    /// The constant below is <c>8 * 2^-24</c> -- roughly five times that bound. The margin is
+    /// deliberate: it costs at most one extra cell per side, and only when the radius lands within
+    /// a few ulps of a cell edge. **Do not tighten it to the derived figure.** Losing the margin
+    /// is how the dropped neighbours this constant exists to prevent come back.
     /// </summary>
-    private const double MinimumImageUlpSlack = 4.0 * 1.1920928955078125e-7;
+    private const double MinimumImageUlpSlack = 8.0 * 5.9604644775390625e-8;
 
     /// <summary>
     /// Creates a new uniform grid with the specified cell size and world dimensions.
@@ -229,13 +251,8 @@ public sealed class UniformGrid
 
         int activeCount = count;
         float radiusSquared = radius * radius;
-        // Same edge-exact mapping the rebuild uses: the directional walk measures its coverage
-        // outward from this cell's exact edges, so a centre that disagreed with the binning by one
-        // ulp would start the walk from the wrong edge. Query3x3 deliberately keeps the raw
-        // quotient -- its 3x3 block is an approximation by construction and its legacy behaviour
-        // is pinned by the kinematic hash.
-        int centerCol = GetCellCoordinate(x, Cols);
-        int centerRow = GetCellCoordinate(y, Rows);
+        int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
+        int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
         GetDirectionalCellReach(
             x, radius, _worldWidth, Cols, centerCol,
             out int colsBefore, out int colsAfter, out bool scanAllCols);
@@ -277,38 +294,26 @@ public sealed class UniformGrid
     /// <summary>
     /// Gets the cell index for the given world position.
     /// </summary>
+    /// <remarks>
+    /// The float quotient here can round ACROSS a cell edge and file an agent in the cell above
+    /// the one that geometrically contains it -- 383.624847f / 42.6249847f is 8.999999642 exactly,
+    /// but the nearest binary32 is 9. That is deliberately NOT corrected. Snapping it would change
+    /// how the legacy engine bins agents, and the legacy 3x3 query derives its centre from the
+    /// same raw quotient, so correcting one without the other drops neighbours outright. The
+    /// toroidal query tolerates the misplacement instead: a mis-binned agent sits within one ulp
+    /// of the edge, and <see cref="MinimumImageUlpSlack"/> already widens the directional walk by
+    /// far more than that. See the argument on that constant.
+    /// </remarks>
     private int GetCellIndex(float x, float y)
-        => GetCellCoordinate(x, Cols) + GetCellCoordinate(y, Rows) * Cols;
-
-    /// <summary>
-    /// Maps one coordinate onto the cell that geometrically contains it, so binning agrees with
-    /// the exact cell edges <see cref="GetDirectionalCellReach"/> walks.
-    /// </summary>
-    /// <param name="coordinate">Coordinate already wrapped into the world extent.</param>
-    /// <param name="cellCount">Number of cells along this axis.</param>
-    /// <returns>A cell index in <c>[0, cellCount)</c>.</returns>
-    private int GetCellCoordinate(float coordinate, int cellCount)
     {
-        int cell = (int)(coordinate / CellSize);
+        int col = (int)(x / CellSize);
+        int row = (int)(y / CellSize);
 
-        // The float quotient can round ACROSS a cell edge. 383.624847f / 42.6249847f is
-        // 8.999999642 in exact arithmetic, but the nearest binary32 is exactly 9, so the agent was
-        // filed under cell 9 while its position lies inside cell 8 (whose upper edge is
-        // 383.62486267). GetDirectionalCellReach derives its scan from those exact edges in
-        // double, so it correctly stopped at cell 8 -- and the agent, sitting exactly on the
-        // inclusive radius boundary, was never distance-checked at all. Grid then dropped a
-        // neighbour Naive returned, breaking the advertised equivalence.
-        //
-        // Snap the quotient back onto the edge that actually contains the coordinate. A small
-        // integer times a float is exact in double, so both comparisons are exact, and the float
-        // quotient is never wrong by more than one cell. Neither branch is taken on the ordinary
-        // path, so the hot rebuild loop pays two predictable compares and no division.
-        if (cell > 0 && (double)cell * CellSize > coordinate)
-            cell--;
-        else if ((double)(cell + 1) * CellSize <= coordinate)
-            cell++;
+        // Clamp to valid range
+        col = Math.Clamp(col, 0, Cols - 1);
+        row = Math.Clamp(row, 0, Rows - 1);
 
-        return Math.Clamp(cell, 0, cellCount - 1);
+        return col + row * Cols;
     }
 
     private void GetDirectionalCellReach(

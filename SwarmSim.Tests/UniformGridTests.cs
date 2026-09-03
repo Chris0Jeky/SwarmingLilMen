@@ -283,4 +283,36 @@ public class UniformGridTests
         Assert.Equal(3, stats.MaxAgentsPerCell);
         Assert.Equal(2f, stats.AvgAgentsPerOccupiedCell); // (3+2+1)/3 = 2
     }
+
+    [Fact]
+    public void Query3x3_CentreCellUsesTheSameMappingRebuildBinsWith()
+    {
+        // Guard, not a regression: this passes on every revision so far and exists to stop a
+        // plausible future "fix" from breaking the legacy engine. The 3x3 block is an
+        // approximation, but it must be centred on the cell the agent was actually filed under,
+        // so Rebuild and Query3x3 have to derive their cell from the SAME expression -- correcting
+        // one alone drops neighbours outright.
+        //
+        // Both quotients here round ACROSS a cell edge in binary32:
+        // 3788.87255859375f / 39.882869720458984f is 94.99999984 exactly (nearest float: 95) and
+        // 3748.98974609375f / 39.882869720458984f is 93.99999981 (nearest float: 94), while both
+        // coordinates lie one cell lower. Snapping only Rebuild onto the containing cell puts the
+        // query at 95 and the neighbour at 93 -- two cells apart -- and the legacy SenseSystem
+        // then drops a neighbour 39.8828f away with the sense radius at 39.8829f. Verified by
+        // doing exactly that on 2026-09-03: this test failed, and the toroidal fix was reworked
+        // to leave the binning alone. World.cs always builds the grid with
+        // cellSize: Config.SenseRadius, so this is the default engine's own configuration.
+        const float cellSize = 39.882869720458984f;
+        const float selfX = 3788.87255859375f;
+        const float neighborX = 3748.98974609375f;
+
+        var grid = new UniformGrid(cellSize, worldWidth: 4000f, worldHeight: 200f, capacity: 4);
+        grid.Rebuild(new[] { selfX, neighborX }, new[] { 50f, 50f }, count: 2);
+
+        var buffer = new int[8];
+        int found = grid.Query3x3(selfX, 50f, buffer, buffer.Length);
+
+        Assert.True(MathF.Abs(neighborX - selfX) <= cellSize, "the neighbour must be inside the sense radius");
+        Assert.Contains(1, buffer.AsSpan(0, Math.Min(found, buffer.Length)).ToArray());
+    }
 }
