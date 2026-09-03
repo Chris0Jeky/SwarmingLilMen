@@ -12,7 +12,8 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
 
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
-  changes on 2026-08-07 and 2026-08-08; `main` is at `5443fea` as this block is written.
+  changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-09-02; `main` is at
+  `f005277` as this block is written.
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
   workflow supplies Release build/test checks (excluding the `Performance` category) on ubuntu
   and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
@@ -24,8 +25,9 @@ contract, the source-comment reconciliation, CLI preset help, and the shared `Ma
 - Documentation entrypoints now point back to this verified-state section and distinguish the
   unmet performance objective from the dated legacy-core sample. Older phase/session prose remains
   under dated banners in `docs/archive/`. The root contains the five named Markdown entrypoints plus
-  `LICENSE`; live guides are under `docs/`, and `docs/ROADMAP-VISION.md` is explicitly aspirational
-  while epic #10 remains the executable plan.
+  `LICENSE`, and — since the GPLv3 adoption in #65 — `RELICENSING.md` and `LICENSES/`; live guides
+  are under `docs/`, and `docs/ROADMAP-VISION.md` is explicitly aspirational while epic #10 remains
+  the executable plan.
 - Toolchain: .NET SDK `8.0.415` satisfies `global.json` (`8.0.0`, latest-minor roll-forward).
 - NuGet audit: no known vulnerable direct/transitive packages from nuget.org. Available top-level
   updates include Raylib-cs 8.0.0, coverlet.collector 10.0.1, Microsoft.NET.Test.Sdk 18.8.1, and
