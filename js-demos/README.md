@@ -27,6 +27,11 @@ An interactive demonstration of the Vicsek model showing phase transitions in ac
 
 **[Launch Demo](./self-propelled-particles/index.html)**
 
+### [Avalanche Lab](./avalanche-lab/)
+Integer sandpiles with threshold cascades, dissipative sinks and exact mass accounting.
+
+**[Launch demo](./avalanche-lab/index.html)** · [Integration plan](./avalanche-lab/docs/IMPLEMENTATION_PLAN.md) · [Verification](./avalanche-lab/VERIFICATION.md)
+
 ### [Ant Colony Optimization](./ant-colony-optimization/)
 An interactive demonstration of stigmergy-based pathfinding (Dorigo, 1992):
 - Click to place food sources, drag to draw walls/obstacles

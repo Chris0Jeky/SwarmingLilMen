@@ -55,6 +55,7 @@
   `double` accumulator costs nothing measurable because the walk is O(cells) per query rather than
   per neighbor, and every current caller walks at most two cells. The harness was removed. This is
   one sample per configuration, not a benchmark distribution.
+- Standalone browser addition (2026-09-09): [Avalanche Lab](js-demos/avalanche-lab/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/avalanche-lab/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the

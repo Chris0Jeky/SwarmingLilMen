@@ -1,0 +1,12 @@
+{
+  "source": "Conversation simulation artifact supplied by the repository owner",
+  "originalFile": "avalanche_lab.html",
+  "originalSHA256": "77df388c7d4a0a28286117721531f9133c7520d21aeb2670c3caca1f22d49feb",
+  "reviewedBase": "9afdb571bab88f87ad8415241668513c58708c90",
+  "license": "GPL-3.0-only; repository LICENSE and RELICENSING.md govern this import",
+  "nativePort": false,
+  "originalEvidence": "Previous validation claims remain historical; VERIFICATION.md records the checks rerun for this PR.",
+  "packagedSHA256": "77df388c7d4a0a28286117721531f9133c7520d21aeb2670c3caca1f22d49feb",
+  "changesDuringImport": "Original implementation preserved",
+  "verification": "VERIFICATION.md"
+}
