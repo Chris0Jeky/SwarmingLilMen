@@ -1,0 +1,12 @@
+{
+  "source": "Conversation simulation artifact supplied by the repository owner",
+  "originalFile": "ecogenesis_lab.html",
+  "originalSHA256": "bcaeba0e60a0d0b62b24cdcdeed1b4e0d24c89e1d5d0a6fc300dd417778676a6",
+  "reviewedBase": "9afdb571bab88f87ad8415241668513c58708c90",
+  "license": "GPL-3.0-only; repository LICENSE and RELICENSING.md govern this import",
+  "nativePort": false,
+  "originalEvidence": "Previous validation claims remain historical; VERIFICATION.md records the checks rerun for this PR.",
+  "packagedSHA256": "bcaeba0e60a0d0b62b24cdcdeed1b4e0d24c89e1d5d0a6fc300dd417778676a6",
+  "changesDuringImport": "Original implementation preserved",
+  "verification": "VERIFICATION.md"
+}

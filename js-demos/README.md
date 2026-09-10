@@ -37,6 +37,11 @@ An interactive demonstration of stigmergy-based pathfinding (Dorigo, 1992):
 
 **[Launch Demo](./ant-colony-optimization/index.html)**
 
+### [Ecogenesis](./ecogenesis/)
+Artificial life with inherited controllers, trophic niches, disease, reproduction and lineage clustering.
+
+**[Launch demo](./ecogenesis/index.html)** · [Integration plan](./ecogenesis/docs/IMPLEMENTATION_PLAN.md) · [Verification](./ecogenesis/VERIFICATION.md)
+
 ### [Particle Swarm Optimization](./particle-swarm-optimization/)
 Global optimization through velocity-based swarm search (Kennedy, Eberhart & Shi, 1995):
 - Five classic test functions (Rastrigin, Ackley, Rosenbrock, Himmelblau, Sphere)
