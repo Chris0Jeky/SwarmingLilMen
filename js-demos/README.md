@@ -7,6 +7,11 @@ Standalone browser-based demonstrations of swarm algorithms and steering behavio
 
 ## Available Demos
 
+### [Firefly Synchrony](./firefly-synchrony/)
+Phase-coupled oscillators: global, spatial and ring coupling.
+
+**[Launch demo](./firefly-synchrony/index.html)** · [Integration plan](./firefly-synchrony/docs/IMPLEMENTATION_PLAN.md) · [Verification](./firefly-synchrony/VERIFICATION.md)
+
 ### [Boids Basic](./boids-basic/)
 A beautiful implementation of Craig Reynolds' Boids algorithm with:
 - Real-time parameter adjustment
@@ -96,7 +101,7 @@ Planned standalone implementations:
 - [ ] **Obstacle Avoidance**: Steering around static/dynamic obstacles
 - [ ] **Flow Fields**: Following vector fields
 - [ ] **Particle Life**: Chemistry-inspired attraction/repulsion matrix
-- [ ] **Kuramoto Model**: Phase-coupled oscillators (firefly synchronization)
+- [x] **Kuramoto Model**: [Firefly Synchrony](./firefly-synchrony/)
 
 ## Contributing
 

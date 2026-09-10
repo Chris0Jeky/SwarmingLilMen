@@ -1,0 +1,12 @@
+{
+  "source": "Conversation simulation artifact supplied by the repository owner",
+  "originalFile": "firefly_sync_lab.html",
+  "originalSHA256": "549dc09b52d2799d839ad52c9f2d2a004754d9029823695a84d59a7df36e2c91",
+  "reviewedBase": "9afdb571bab88f87ad8415241668513c58708c90",
+  "license": "GPL-3.0-only; repository LICENSE and RELICENSING.md govern this import",
+  "nativePort": false,
+  "originalEvidence": "Previous validation claims remain historical; VERIFICATION.md records the checks rerun for this PR.",
+  "packagedSHA256": "b1982d1b0ab8c780c358a63f45b3a6312cf7ad4f9d65a1947e06c1d8d824a0b7",
+  "changesDuringImport": "Checkpoint cache repair",
+  "verification": "VERIFICATION.md"
+}
