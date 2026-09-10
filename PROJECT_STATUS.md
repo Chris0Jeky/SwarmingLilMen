@@ -71,6 +71,7 @@
   line / 44.93% branch overall**; `SwarmSim.Core` is 86.58% line / 77.03% branch and
   `SwarmSim.Render` is 29.74% line / 12.70% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
+- Standalone browser addition (2026-09-09): [Turing Morphogenesis](js-demos/turing-morphogenesis/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/turing-morphogenesis/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
   Core scaffolding and the three steering-rule implementations exist. Canonical `ISpatialIndex` now
@@ -163,6 +164,7 @@
   remains tracked in #48.
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
+- Standalone browser addition (2026-09-09): [Firefly Synchrony](js-demos/firefly-synchrony/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/firefly-synchrony/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - Reproducibility: legacy wander consumes the world's configured RNG; canonical construction maps
   `SimConfig.Seed` and the canonical steering settings, and each wander-enabled boid receives an
   index-derived stream at successful spawn. The supported `--minimal` legacy harness also samples
