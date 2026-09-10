@@ -1,0 +1,28 @@
+name: 'Demo: Turing morphogenesis'
+on:
+  pull_request:
+    branches: [main]
+    paths: ['js-demos/turing-morphogenesis/**', '.github/workflows/demo-turing-morphogenesis.yml']
+  push:
+    branches: [main]
+    paths: ['js-demos/turing-morphogenesis/**', '.github/workflows/demo-turing-morphogenesis.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser-contracts:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - name: Check source and test syntax
+        run: node js-demos/turing-morphogenesis/tests/static_check.cjs
+      - name: Install pinned browser-test tooling
+        run: |
+          python3 -m venv .demo-venv
+          .demo-venv/bin/python -m pip install -r js-demos/turing-morphogenesis/requirements-test.txt
+          .demo-venv/bin/python -m playwright install --with-deps chromium
+      - name: Run deterministic browser contracts
+        run: .demo-venv/bin/python js-demos/turing-morphogenesis/tests/browser_smoke.py

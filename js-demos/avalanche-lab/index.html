@@ -1,0 +1,1458 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Avalanche Lab — Self-Organized Criticality</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #070b14;
+      --panel: #0e1523;
+      --panel-2: #121c2e;
+      --line: #24314a;
+      --muted: #91a0ba;
+      --text: #edf3ff;
+      --accent: #65d6c4;
+      --accent-2: #f5b942;
+      --danger: #ff7185;
+      --ok: #78e08f;
+      --shadow: 0 18px 60px rgba(0, 0, 0, .35);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; background: var(--bg); color: var(--text); }
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at 18% 0%, rgba(58, 121, 181, .16), transparent 31rem),
+        radial-gradient(circle at 88% 12%, rgba(101, 214, 196, .10), transparent 28rem),
+        var(--bg);
+    }
+
+    button, select, input { font: inherit; }
+    button, select, input[type="number"], input[type="text"] {
+      border: 1px solid var(--line);
+      color: var(--text);
+      background: #0b1220;
+      border-radius: 9px;
+    }
+    button {
+      padding: .64rem .86rem;
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    button:hover { transform: translateY(-1px); border-color: #48638c; background: #111d31; }
+    button:active { transform: translateY(0); }
+    button.primary { background: linear-gradient(135deg, #1c8f82, #176e75); border-color: #4fc3b4; }
+    button.warn { background: rgba(245, 185, 66, .12); border-color: rgba(245, 185, 66, .45); }
+    button.danger { background: rgba(255, 113, 133, .10); border-color: rgba(255, 113, 133, .4); }
+    button.small { padding: .48rem .65rem; font-size: .82rem; }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+    select, input[type="number"], input[type="text"] { width: 100%; padding: .56rem .62rem; }
+    input[type="range"] { width: 100%; accent-color: var(--accent); }
+    input[type="checkbox"] { accent-color: var(--accent); }
+
+    .app {
+      min-height: 100vh;
+      display: grid;
+      grid-template-columns: 285px minmax(520px, 1fr) 320px;
+      grid-template-rows: auto 1fr auto;
+      grid-template-areas:
+        "header header header"
+        "controls stage inspect"
+        "footer footer footer";
+      gap: 14px;
+      padding: 14px;
+    }
+
+    header {
+      grid-area: header;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(14, 21, 35, .88);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow);
+    }
+    .brand { display: flex; align-items: center; gap: .85rem; min-width: 0; }
+    .mark {
+      width: 42px; height: 42px; border-radius: 12px;
+      display: grid; place-items: center;
+      background: conic-gradient(from 210deg, #172d53, #1f8f82, #f5b942, #172d53);
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.12);
+      font-weight: 900;
+    }
+    h1 { font-size: 1.1rem; margin: 0; letter-spacing: .01em; }
+    .subtitle { color: var(--muted); font-size: .8rem; margin-top: .2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .header-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: .5rem; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      background: rgba(14, 21, 35, .92);
+      box-shadow: var(--shadow);
+      overflow: auto;
+    }
+    .controls { grid-area: controls; padding: 14px; }
+    .stage { grid-area: stage; padding: 12px; overflow: hidden; display: flex; flex-direction: column; min-height: 680px; }
+    .inspect { grid-area: inspect; padding: 14px; }
+    footer { grid-area: footer; color: var(--muted); font-size: .76rem; text-align: center; padding: .25rem; }
+
+    .section { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid rgba(36,49,74,.8); }
+    .section:last-child { border: 0; margin-bottom: 0; }
+    .section-title {
+      display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+      margin: 0 0 .8rem; font-size: .78rem; text-transform: uppercase; letter-spacing: .11em; color: #bac8df;
+    }
+    .field { margin-bottom: .8rem; }
+    .field:last-child { margin-bottom: 0; }
+    .field-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; margin-bottom: .35rem; }
+    .field label { color: #d7e2f5; font-size: .82rem; }
+    .value { color: var(--accent); font-variant-numeric: tabular-nums; font-size: .78rem; }
+    .hint { color: var(--muted); font-size: .72rem; line-height: 1.42; margin-top: .36rem; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .check-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin: .58rem 0; font-size: .82rem; }
+
+    .canvas-wrap {
+      position: relative;
+      flex: 1;
+      min-height: 560px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #22304a;
+      border-radius: 12px;
+      background: #050913;
+      overflow: hidden;
+    }
+    #world {
+      width: 100%;
+      height: 100%;
+      image-rendering: pixelated;
+      touch-action: none;
+      cursor: crosshair;
+    }
+    .canvas-overlay {
+      position: absolute;
+      top: 10px; left: 10px; right: 10px;
+      display: flex; justify-content: space-between; gap: .5rem;
+      pointer-events: none;
+    }
+    .pill {
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 999px;
+      padding: .4rem .64rem;
+      background: rgba(4, 9, 18, .76);
+      backdrop-filter: blur(9px);
+      font-size: .74rem;
+      color: #d9e6f8;
+      box-shadow: 0 8px 30px rgba(0,0,0,.25);
+    }
+    .pill strong { color: var(--accent-2); font-variant-numeric: tabular-nums; }
+    .status-row {
+      display: grid;
+      grid-template-columns: repeat(5, minmax(0, 1fr));
+      gap: .55rem;
+      margin-top: .7rem;
+    }
+    .mini-stat {
+      border: 1px solid var(--line);
+      background: #0a1220;
+      border-radius: 10px;
+      padding: .58rem .65rem;
+      min-width: 0;
+    }
+    .mini-stat .k { color: var(--muted); font-size: .66rem; text-transform: uppercase; letter-spacing: .07em; }
+    .mini-stat .v { margin-top: .25rem; font-size: .9rem; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .metric {
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: #0a1220;
+      padding: .68rem;
+    }
+    .metric .name { font-size: .67rem; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; }
+    .metric .number { font-size: 1.15rem; margin-top: .28rem; font-weight: 750; font-variant-numeric: tabular-nums; }
+    .metric .sub { font-size: .68rem; color: var(--muted); margin-top: .18rem; }
+
+    .chart-box { margin-top: .7rem; border: 1px solid var(--line); border-radius: 10px; padding: .5rem; background: #08101d; }
+    .chart-title { font-size: .72rem; color: #c6d3e8; margin: .15rem .2rem .35rem; display: flex; justify-content: space-between; gap: .5rem; }
+    .chart-box canvas { width: 100%; height: 142px; display: block; }
+
+    .legend { display: grid; grid-template-columns: repeat(5, 1fr); gap: .35rem; margin-top: .7rem; }
+    .legend-item { text-align: center; color: var(--muted); font-size: .66rem; }
+    .swatch { height: 8px; border-radius: 3px; margin-bottom: .3rem; border: 1px solid rgba(255,255,255,.08); }
+
+    .callout {
+      border-left: 3px solid var(--accent);
+      padding: .7rem .75rem;
+      background: rgba(101,214,196,.06);
+      border-radius: 0 9px 9px 0;
+      color: #cbd8ea;
+      font-size: .76rem;
+      line-height: 1.5;
+    }
+    .callout strong { color: var(--text); }
+    .kbd { border: 1px solid #40506b; border-bottom-width: 2px; background: #111b2c; border-radius: 5px; padding: .05rem .28rem; font-size: .68rem; color: #dce7f8; }
+    .cell-readout { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; margin-top: .6rem; }
+    .cell-readout div { padding: .5rem; border-radius: 8px; border: 1px solid var(--line); background: #08101d; }
+    .cell-readout span { display: block; color: var(--muted); font-size: .65rem; text-transform: uppercase; }
+    .cell-readout strong { display: block; margin-top: .18rem; font-variant-numeric: tabular-nums; }
+
+    .toast {
+      position: fixed; right: 20px; bottom: 20px; z-index: 10;
+      max-width: min(390px, calc(100vw - 40px));
+      padding: .78rem 1rem;
+      border-radius: 10px;
+      border: 1px solid #3b5776;
+      background: rgba(11,18,32,.96);
+      color: #e8f1ff;
+      box-shadow: var(--shadow);
+      opacity: 0; transform: translateY(8px); pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+      font-size: .8rem;
+    }
+    .toast.show { opacity: 1; transform: translateY(0); }
+
+    @media (max-width: 1180px) {
+      .app {
+        grid-template-columns: 260px 1fr;
+        grid-template-areas:
+          "header header"
+          "controls stage"
+          "inspect inspect"
+          "footer footer";
+      }
+      .inspect { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      .inspect > .section { border-bottom: 0; border-right: 1px solid var(--line); padding-right: 14px; }
+      .inspect > .section:nth-child(even) { border-right: 0; padding-right: 0; }
+    }
+    @media (max-width: 820px) {
+      .app { display: block; padding: 8px; }
+      header, .panel { margin-bottom: 8px; }
+      header { align-items: flex-start; flex-direction: column; }
+      .header-actions { justify-content: flex-start; }
+      .stage { min-height: 590px; }
+      .canvas-wrap { min-height: 460px; }
+      .status-row { grid-template-columns: repeat(2, 1fr); }
+      .inspect { display: block; }
+      .inspect > .section { border-right: 0; border-bottom: 1px solid var(--line); padding-right: 0; }
+    }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="mark">∑</div>
+      <div>
+        <h1>Avalanche Lab</h1>
+        <div class="subtitle">Abelian sandpile · self-organized criticality · deterministic lattice cascades</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button id="toggleRun" class="primary">Pause</button>
+      <button id="dropOne">Drop grain</button>
+      <button id="burst" class="warn">Inject burst</button>
+      <button id="prime">Prime lattice</button>
+      <button id="clear" class="danger">Clear</button>
+    </div>
+  </header>
+
+  <aside class="panel controls">
+    <section class="section">
+      <h2 class="section-title">Experiment preset</h2>
+      <div class="field">
+        <select id="preset">
+          <option value="critical-rain">Critical rain</option>
+          <option value="center-fractal">Central mountain</option>
+          <option value="fault-line">Dissipative fault line</option>
+          <option value="aftershock">Single aftershock</option>
+          <option value="edge-loading">Boundary loading</option>
+          <option value="subcritical">Subcritical accumulation</option>
+        </select>
+      </div>
+      <button id="applyPreset" class="primary" style="width:100%">Load preset</button>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Lattice</h2>
+      <div class="field">
+        <div class="field-head"><label for="gridSize">Grid size</label><span class="value" id="gridSizeValue">64 × 64</span></div>
+        <select id="gridSize">
+          <option value="32">32 × 32</option>
+          <option value="48">48 × 48</option>
+          <option value="64" selected>64 × 64</option>
+          <option value="72">72 × 72</option>
+          <option value="96">96 × 96</option>
+          <option value="128">128 × 128</option>
+        </select>
+        <div class="hint">Changing size clears the state. Open edges and painted sink cells dissipate grains.</div>
+      </div>
+      <div class="check-row"><label for="showGrid">Cell grid</label><input id="showGrid" type="checkbox" /></div>
+      <div class="check-row"><label for="showActivity">Toppling glow</label><input id="showActivity" type="checkbox" checked /></div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Driving</h2>
+      <div class="field">
+        <div class="field-head"><label for="driveMode">Drop geometry</label></div>
+        <select id="driveMode">
+          <option value="random">Uniform random</option>
+          <option value="center">Centre</option>
+          <option value="ring">Ring</option>
+          <option value="edge">Near boundary</option>
+        </select>
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="driveRate">Events / second</label><span class="value" id="driveRateValue">5.0</span></div>
+        <input id="driveRate" type="range" min="0" max="100" value="50" />
+      </div>
+      <div class="field">
+        <div class="field-head"><label for="grainsPerEvent">Grains / event</label><span class="value" id="grainsValue">1</span></div>
+        <input id="grainsPerEvent" type="range" min="0" max="8" value="0" step="1" />
+      </div>
+      <div class="check-row"><label for="autoDrive">Automatic slow drive</label><input id="autoDrive" type="checkbox" checked /></div>
+      <div class="hint">Automatic drive waits for the current avalanche to settle before adding more grains.</div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Relaxation</h2>
+      <div class="field">
+        <div class="field-head"><label for="toppleBudget">Topplings / frame</label><span class="value" id="budgetValue">2,048</span></div>
+        <input id="toppleBudget" type="range" min="5" max="15" value="11" step="1" />
+      </div>
+      <div class="button-grid">
+        <button id="stepTopple" class="small">Single step</button>
+        <button id="relaxFully" class="small">Relax fully</button>
+      </div>
+      <div class="hint">The final stable state is independent of legal toppling order; animation speed changes the path, not the result.</div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Determinism</h2>
+      <div class="field">
+        <div class="field-head"><label for="seed">Seed</label></div>
+        <input id="seed" type="number" min="1" max="4294967295" value="7331" />
+      </div>
+      <button id="applySeed" style="width:100%">Reset with seed</button>
+      <div class="hint" id="selfCheck">Running Abelian-order self-check…</div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">State & evidence</h2>
+      <div class="button-grid">
+        <button id="exportState" class="small">Export checkpoint</button>
+        <button id="importState" class="small">Import JSON</button>
+        <button id="copySummary" class="small">Copy summary</button>
+        <button id="saveImage" class="small">Save PNG</button>
+      </div>
+      <input id="importFile" type="file" accept="application/json,.json" hidden />
+    </section>
+  </aside>
+
+  <main class="panel stage">
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="world"></canvas>
+      <div class="canvas-overlay">
+        <div class="pill" id="phasePill">State: <strong>stable</strong></div>
+        <div class="pill">State hash: <strong id="hashPill">00000000</strong></div>
+      </div>
+    </div>
+    <div class="status-row">
+      <div class="mini-stat"><div class="k">Current avalanche</div><div class="v" id="currentSize">0 topples</div></div>
+      <div class="mini-stat"><div class="k">Affected area</div><div class="v" id="currentArea">0 cells</div></div>
+      <div class="mini-stat"><div class="k">Queue</div><div class="v" id="queueSize">0 unstable</div></div>
+      <div class="mini-stat"><div class="k">Drive event</div><div class="v" id="eventId">#0</div></div>
+      <div class="mini-stat"><div class="k">Mass balance</div><div class="v" id="balance">0</div></div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="swatch" style="background:#080d18"></div>0 grains</div>
+      <div class="legend-item"><div class="swatch" style="background:#1d4c78"></div>1 grain</div>
+      <div class="legend-item"><div class="swatch" style="background:#2696a7"></div>2 grains</div>
+      <div class="legend-item"><div class="swatch" style="background:#f2b441"></div>3 grains</div>
+      <div class="legend-item"><div class="swatch" style="background:#5a284f"></div>sink</div>
+    </div>
+  </main>
+
+  <aside class="panel inspect">
+    <section class="section">
+      <h2 class="section-title">Macroscopic state</h2>
+      <div class="metric-grid">
+        <div class="metric"><div class="name">Mean height</div><div class="number" id="meanHeight">0.000</div><div class="sub">grains / active cell</div></div>
+        <div class="metric"><div class="name">Ready cells</div><div class="number" id="readyFraction">0.0%</div><div class="sub">cells at height 3</div></div>
+        <div class="metric"><div class="name">Largest avalanche</div><div class="number" id="largest">0</div><div class="sub">topplings observed</div></div>
+        <div class="metric"><div class="name">Power-law α</div><div class="number" id="alpha">—</div><div class="sub">rough MLE, size ≥ 4</div></div>
+        <div class="metric"><div class="name">Events</div><div class="number" id="events">0</div><div class="sub">drive events recorded</div></div>
+        <div class="metric"><div class="name">Dissipated</div><div class="number" id="dissipated">0</div><div class="sub">edge + sink grains</div></div>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title"><span>Recent avalanche sizes</span><span>log₁₀(1 + topplings)</span></div>
+        <canvas id="historyChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <div class="chart-title"><span>Size distribution</span><span id="sampleCount">0 non-zero events</span></div>
+        <canvas id="distributionChart"></canvas>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">Selected cell</h2>
+      <div class="callout">Left-click adds a grain. <strong>Shift-click</strong> injects 64. Right-click toggles a dissipative sink. Drag with the left button to paint grains.</div>
+      <div class="cell-readout">
+        <div><span>Coordinate</span><strong id="cellCoord">—</strong></div>
+        <div><span>Height</span><strong id="cellHeight">—</strong></div>
+        <div><span>Role</span><strong id="cellRole">—</strong></div>
+        <div><span>Activity</span><strong id="cellActivity">—</strong></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h2 class="section-title">What to look for</h2>
+      <div class="callout">
+        <strong>No cell knows the global state.</strong> Each unstable cell only gives one grain to each orthogonal neighbour. Under slow drive and boundary dissipation, cascades span many scales: long quiet periods, small local slips, and rare system-wide avalanches.
+      </div>
+      <div class="hint" style="margin-top:.8rem">
+        Try <strong>Critical rain</strong>, then watch the distribution after a few hundred events. Use <strong>Dissipative fault line</strong> to see how a local sink geometry reshapes global cascade statistics.
+      </div>
+      <div class="hint" style="margin-top:.7rem">
+        Keyboard: <span class="kbd">Space</span> pause, <span class="kbd">D</span> drop, <span class="kbd">B</span> burst, <span class="kbd">S</span> single topple, <span class="kbd">P</span> prime, <span class="kbd">C</span> clear.
+      </div>
+    </section>
+  </aside>
+
+  <footer>
+    Standalone deterministic browser demo · no dependencies · model threshold = 4 · open boundaries provide dissipation
+  </footer>
+</div>
+<div id="toast" class="toast"></div>
+
+<script>
+(() => {
+  'use strict';
+
+  const $ = id => document.getElementById(id);
+  const previewMode = new URLSearchParams(location.search).has('preview');
+  const els = {
+    world: $('world'), canvasWrap: $('canvasWrap'), toggleRun: $('toggleRun'), dropOne: $('dropOne'),
+    burst: $('burst'), prime: $('prime'), clear: $('clear'), preset: $('preset'), applyPreset: $('applyPreset'),
+    gridSize: $('gridSize'), gridSizeValue: $('gridSizeValue'), showGrid: $('showGrid'), showActivity: $('showActivity'),
+    driveMode: $('driveMode'), driveRate: $('driveRate'), driveRateValue: $('driveRateValue'),
+    grainsPerEvent: $('grainsPerEvent'), grainsValue: $('grainsValue'), autoDrive: $('autoDrive'),
+    toppleBudget: $('toppleBudget'), budgetValue: $('budgetValue'), stepTopple: $('stepTopple'),
+    relaxFully: $('relaxFully'), seed: $('seed'), applySeed: $('applySeed'), selfCheck: $('selfCheck'),
+    exportState: $('exportState'), importState: $('importState'), importFile: $('importFile'),
+    copySummary: $('copySummary'), saveImage: $('saveImage'), phasePill: $('phasePill'), hashPill: $('hashPill'),
+    currentSize: $('currentSize'), currentArea: $('currentArea'), queueSize: $('queueSize'), eventId: $('eventId'),
+    balance: $('balance'), meanHeight: $('meanHeight'), readyFraction: $('readyFraction'), largest: $('largest'),
+    alpha: $('alpha'), events: $('events'), dissipated: $('dissipated'), historyChart: $('historyChart'),
+    distributionChart: $('distributionChart'), sampleCount: $('sampleCount'), cellCoord: $('cellCoord'),
+    cellHeight: $('cellHeight'), cellRole: $('cellRole'), cellActivity: $('cellActivity'), toast: $('toast')
+  };
+
+  class XorShift32 {
+    constructor(seed) { this.state = (Number(seed) >>> 0) || 0x6d2b79f5; }
+    nextUint() {
+      let x = this.state >>> 0;
+      x ^= (x << 13) >>> 0;
+      x ^= x >>> 17;
+      x ^= (x << 5) >>> 0;
+      this.state = x >>> 0;
+      return this.state;
+    }
+    next() { return this.nextUint() / 4294967296; }
+    int(max) { return Math.floor(this.next() * max); }
+  }
+
+  const COLORS = [
+    [8, 13, 24],
+    [29, 76, 120],
+    [38, 150, 167],
+    [242, 180, 65]
+  ];
+  const SINK_COLOR = [90, 40, 79];
+  const HOT_COLOR = [255, 247, 210];
+  const THRESHOLD = 4;
+
+  const sim = {
+    width: 64, height: 64, count: 4096,
+    heights: new Int32Array(4096),
+    sinks: new Uint8Array(4096),
+    queued: new Uint8Array(4096),
+    activity: new Float32Array(4096),
+    visitStamp: new Uint32Array(4096),
+    stamp: 1,
+    queue: [], depths: [], qHead: 0,
+    avalanche: null,
+    history: [],
+    paused: false,
+    selected: -1,
+    rng: new XorShift32(7331),
+    seed: 7331,
+    eventCounter: 0,
+    totalAdded: 0,
+    totalDissipated: 0,
+    baselineMass: 0,
+    largestAvalanche: 0,
+    nextDriveAt: 0,
+    lastStatsAt: 0,
+    lastChartAt: 0,
+    pointerDown: false,
+    lastPainted: -1,
+    dpr: Math.max(1, Math.min(2, window.devicePixelRatio || 1)),
+    offscreen: document.createElement('canvas'),
+    offctx: null,
+    imageData: null,
+    renderRect: { x: 0, y: 0, size: 0 }
+  };
+
+  const formatInt = n => Math.round(n).toLocaleString('en-GB');
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+  const grainsPerEvent = () => 1 << Number(els.grainsPerEvent.value);
+  const toppleBudget = () => 1 << Number(els.toppleBudget.value);
+  const driveRate = () => {
+    const t = Number(els.driveRate.value) / 100;
+    return 0.35 * Math.pow(85 / 0.35, t);
+  };
+
+  function toast(message) {
+    els.toast.textContent = message;
+    els.toast.classList.add('show');
+    clearTimeout(toast.timer);
+    toast.timer = setTimeout(() => els.toast.classList.remove('show'), 2200);
+  }
+
+  function setSize(size, preserveSettings = true) {
+    const n = size * size;
+    sim.width = size;
+    sim.height = size;
+    sim.count = n;
+    sim.heights = new Int32Array(n);
+    sim.sinks = new Uint8Array(n);
+    sim.queued = new Uint8Array(n);
+    sim.activity = new Float32Array(n);
+    sim.visitStamp = new Uint32Array(n);
+    sim.queue.length = 0;
+    sim.depths.length = 0;
+    sim.qHead = 0;
+    sim.avalanche = null;
+    sim.selected = Math.floor(size / 2) * size + Math.floor(size / 2);
+    sim.offscreen.width = size;
+    sim.offscreen.height = size;
+    sim.offctx = sim.offscreen.getContext('2d', { alpha: false, willReadFrequently: true });
+    sim.imageData = sim.offctx.createImageData(size, size);
+    els.gridSize.value = String(size);
+    els.gridSizeValue.textContent = `${size} × ${size}`;
+    if (!preserveSettings) resetStats(); else rebaseAccounting();
+    renderWorld(true);
+  }
+
+  function resetStats() {
+    sim.history.length = 0;
+    sim.eventCounter = 0;
+    sim.totalAdded = 0;
+    sim.totalDissipated = 0;
+    sim.largestAvalanche = 0;
+    sim.baselineMass = totalMass();
+    sim.nextDriveAt = performance.now();
+    updateStats(true);
+  }
+
+  function rebaseAccounting() {
+    sim.baselineMass = totalMass();
+    sim.totalAdded = 0;
+    sim.totalDissipated = 0;
+    updateStats(true);
+  }
+
+  function clearState(resetStatistics = true) {
+    sim.heights.fill(0);
+    sim.sinks.fill(0);
+    sim.queued.fill(0);
+    sim.activity.fill(0);
+    sim.queue.length = 0;
+    sim.depths.length = 0;
+    sim.qHead = 0;
+    sim.avalanche = null;
+    if (resetStatistics) resetStats(); else rebaseAccounting();
+    renderWorld(true);
+  }
+
+  function primeLattice(kind = 'critical', resetStatistics = true) {
+    sim.queued.fill(0);
+    sim.activity.fill(0);
+    sim.queue.length = 0;
+    sim.depths.length = 0;
+    sim.qHead = 0;
+    sim.avalanche = null;
+    for (let i = 0; i < sim.count; i++) {
+      if (sim.sinks[i]) { sim.heights[i] = 0; continue; }
+      const u = sim.rng.next();
+      if (kind === 'subcritical') {
+        sim.heights[i] = u < .45 ? 0 : u < .80 ? 1 : u < .97 ? 2 : 3;
+      } else {
+        sim.heights[i] = u < .03 ? 0 : u < .15 ? 1 : u < .50 ? 2 : 3;
+      }
+    }
+    if (resetStatistics) resetStats(); else rebaseAccounting();
+    renderWorld(true);
+  }
+
+  function applyFaultLine() {
+    const x = Math.floor(sim.width / 2);
+    const gapHalf = Math.max(2, Math.floor(sim.height * .045));
+    const cy = Math.floor(sim.height / 2);
+    for (let y = 4; y < sim.height - 4; y++) {
+      if (Math.abs(y - cy) <= gapHalf) continue;
+      const idx = y * sim.width + x;
+      sim.sinks[idx] = 1;
+      sim.heights[idx] = 0;
+    }
+  }
+
+  function chooseDriveCell(mode = els.driveMode.value) {
+    const w = sim.width, h = sim.height;
+    for (let attempt = 0; attempt < 64; attempt++) {
+      let x, y;
+      if (mode === 'center') {
+        x = Math.floor(w / 2); y = Math.floor(h / 2);
+      } else if (mode === 'ring') {
+        const a = sim.rng.next() * Math.PI * 2;
+        const r = Math.min(w, h) * .32;
+        x = clamp(Math.round(w / 2 + Math.cos(a) * r), 0, w - 1);
+        y = clamp(Math.round(h / 2 + Math.sin(a) * r), 0, h - 1);
+      } else if (mode === 'edge') {
+        const side = sim.rng.int(4);
+        const inset = sim.rng.int(Math.max(1, Math.floor(Math.min(w, h) * .08)));
+        if (side === 0) { x = inset; y = sim.rng.int(h); }
+        else if (side === 1) { x = w - 1 - inset; y = sim.rng.int(h); }
+        else if (side === 2) { x = sim.rng.int(w); y = inset; }
+        else { x = sim.rng.int(w); y = h - 1 - inset; }
+      } else {
+        x = sim.rng.int(w); y = sim.rng.int(h);
+      }
+      const idx = y * w + x;
+      if (!sim.sinks[idx]) return idx;
+      if (mode === 'center') break;
+    }
+    for (let i = 0; i < sim.count; i++) if (!sim.sinks[i]) return i;
+    return -1;
+  }
+
+  function beginAvalanche() {
+    if (sim.avalanche) return;
+    sim.eventCounter++;
+    sim.stamp++;
+    if (sim.stamp === 0xffffffff) { sim.visitStamp.fill(0); sim.stamp = 1; }
+    sim.avalanche = {
+      id: sim.eventCounter,
+      grainsAdded: 0,
+      topplings: 0,
+      area: 0,
+      maxDepth: 0,
+      dissipated: 0,
+      maxQueue: 0,
+      startedAt: performance.now()
+    };
+    sim.queue.length = 0;
+    sim.depths.length = 0;
+    sim.qHead = 0;
+  }
+
+  function enqueue(idx, depth) {
+    if (idx < 0 || idx >= sim.count || sim.sinks[idx] || sim.queued[idx] || sim.heights[idx] < THRESHOLD) return;
+    sim.queued[idx] = 1;
+    sim.queue.push(idx);
+    sim.depths.push(depth);
+    if (sim.avalanche) sim.avalanche.maxQueue = Math.max(sim.avalanche.maxQueue, sim.queue.length - sim.qHead);
+  }
+
+  function addAt(idx, amount = 1, mergeIntoCurrent = true) {
+    if (idx < 0 || idx >= sim.count || sim.sinks[idx]) return;
+    if (!sim.avalanche || !mergeIntoCurrent) beginAvalanche();
+    sim.heights[idx] += amount;
+    sim.totalAdded += amount;
+    sim.avalanche.grainsAdded += amount;
+    enqueue(idx, 0);
+  }
+
+  function injectDrive(amount = grainsPerEvent(), mode = els.driveMode.value) {
+    if (!sim.avalanche) beginAvalanche();
+    if (mode === 'center' && amount > 8) {
+      addAt(chooseDriveCell(mode), amount);
+    } else {
+      for (let i = 0; i < amount; i++) addAt(chooseDriveCell(mode), 1);
+    }
+    if (sim.queue.length === sim.qHead) finishAvalanche();
+  }
+
+  function finishAvalanche() {
+    const a = sim.avalanche;
+    if (!a) return;
+    a.elapsedMs = performance.now() - a.startedAt;
+    sim.history.push({
+      id: a.id,
+      grainsAdded: a.grainsAdded,
+      topplings: a.topplings,
+      area: a.area,
+      depth: a.maxDepth,
+      dissipated: a.dissipated,
+      maxQueue: a.maxQueue
+    });
+    if (sim.history.length > 5000) sim.history.splice(0, sim.history.length - 5000);
+    sim.largestAvalanche = Math.max(sim.largestAvalanche, a.topplings);
+    sim.avalanche = null;
+    sim.queue.length = 0;
+    sim.depths.length = 0;
+    sim.qHead = 0;
+    sim.queued.fill(0);
+    sim.nextDriveAt = performance.now() + 1000 / driveRate();
+    updateStats(true);
+  }
+
+  function distribute(idx, depth) {
+    const w = sim.width, h = sim.height;
+    const x = idx % w, y = Math.floor(idx / w);
+    const a = sim.avalanche;
+    const left = x > 0 ? idx - 1 : -1, right = x < w - 1 ? idx + 1 : -1, up = y > 0 ? idx - w : -1, down = y < h - 1 ? idx + w : -1;
+    if (left < 0 || sim.sinks[left]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[left]++; enqueue(left, depth + 1); }
+    if (right < 0 || sim.sinks[right]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[right]++; enqueue(right, depth + 1); }
+    if (up < 0 || sim.sinks[up]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[up]++; enqueue(up, depth + 1); }
+    if (down < 0 || sim.sinks[down]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[down]++; enqueue(down, depth + 1); }
+  }
+
+  function processTopplings(budget) {
+    let processed = 0;
+    while (sim.avalanche && sim.qHead < sim.queue.length && processed < budget) {
+      const idx = sim.queue[sim.qHead];
+      const depth = sim.depths[sim.qHead];
+      sim.qHead++;
+      sim.queued[idx] = 0;
+      if (sim.sinks[idx] || sim.heights[idx] < THRESHOLD) continue;
+
+      sim.heights[idx] -= THRESHOLD;
+      sim.activity[idx] = 1;
+      const a = sim.avalanche;
+      a.topplings++;
+      a.maxDepth = Math.max(a.maxDepth, depth);
+      if (sim.visitStamp[idx] !== sim.stamp) {
+        sim.visitStamp[idx] = sim.stamp;
+        a.area++;
+      }
+      distribute(idx, depth);
+      if (sim.heights[idx] >= THRESHOLD) enqueue(idx, depth + 1);
+      processed++;
+    }
+    if (sim.avalanche && sim.qHead >= sim.queue.length) finishAvalanche();
+    return processed;
+  }
+
+  function relaxFully() {
+    if (!sim.avalanche) { toast('The lattice is already stable.'); return; }
+    const limit = 20_000_000;
+    let steps = 0;
+    const started = performance.now();
+    while (sim.avalanche && steps < limit) steps += processTopplings(Math.min(250_000, limit - steps));
+    renderWorld(true);
+    updateStats(true);
+    if (sim.avalanche) toast(`Safety limit reached after ${formatInt(steps)} topplings.`);
+    else toast(`Relaxed ${formatInt(steps)} topplings in ${(performance.now() - started).toFixed(1)} ms.`);
+  }
+
+  function totalMass() {
+    let sum = 0;
+    for (let i = 0; i < sim.count; i++) if (!sim.sinks[i]) sum += sim.heights[i];
+    return sum;
+  }
+
+  function latticeStats() {
+    let mass = 0, activeCells = 0, ready = 0;
+    for (let i = 0; i < sim.count; i++) {
+      if (sim.sinks[i]) continue;
+      activeCells++;
+      mass += sim.heights[i];
+      if (sim.heights[i] === THRESHOLD - 1) ready++;
+    }
+    return { mass, activeCells, mean: activeCells ? mass / activeCells : 0, ready: activeCells ? ready / activeCells : 0 };
+  }
+
+  function estimateAlpha() {
+    const sMin = 4;
+    const sizes = sim.history.map(x => x.topplings).filter(x => x >= sMin);
+    if (sizes.length < 20) return null;
+    let denom = 0;
+    for (const s of sizes) denom += Math.log(s / (sMin - .5));
+    return denom > 0 ? 1 + sizes.length / denom : null;
+  }
+
+  function stateHash() {
+    let h = 0x811c9dc5 >>> 0;
+    const mix = b => { h ^= b & 255; h = Math.imul(h, 0x01000193) >>> 0; };
+    const mix32 = v => { v >>>= 0; mix(v); mix(v >>> 8); mix(v >>> 16); mix(v >>> 24); };
+    mix32(sim.width); mix32(sim.height); mix32(sim.seed); mix32(sim.rng.state);
+    for (let i = 0; i < sim.count; i++) { mix32(sim.heights[i]); mix(sim.sinks[i]); }
+    return h.toString(16).padStart(8, '0').toUpperCase();
+  }
+
+  function resizeCanvas() {
+    const rect = els.canvasWrap.getBoundingClientRect();
+    const width = Math.max(100, Math.floor(rect.width));
+    const height = Math.max(100, Math.floor(rect.height));
+    const dpr = sim.dpr;
+    if (els.world.width !== Math.floor(width * dpr) || els.world.height !== Math.floor(height * dpr)) {
+      els.world.width = Math.floor(width * dpr);
+      els.world.height = Math.floor(height * dpr);
+      els.world.style.width = `${width}px`;
+      els.world.style.height = `${height}px`;
+    }
+    const size = Math.floor(Math.min(width, height));
+    sim.renderRect = { x: Math.floor((width - size) / 2), y: Math.floor((height - size) / 2), size };
+  }
+
+  function renderWorld(force = false) {
+    resizeCanvas();
+    const data = sim.imageData.data;
+    const showActivity = els.showActivity.checked;
+    for (let i = 0; i < sim.count; i++) {
+      let color;
+      if (sim.sinks[i]) color = SINK_COLOR;
+      else if (sim.heights[i] >= THRESHOLD) color = HOT_COLOR;
+      else color = COLORS[clamp(sim.heights[i], 0, 3)];
+      const a = showActivity ? clamp(sim.activity[i], 0, 1) : 0;
+      const p = i * 4;
+      data[p] = Math.round(color[0] + (255 - color[0]) * a * .66);
+      data[p + 1] = Math.round(color[1] + (247 - color[1]) * a * .66);
+      data[p + 2] = Math.round(color[2] + (210 - color[2]) * a * .66);
+      data[p + 3] = 255;
+      sim.activity[i] *= .91;
+    }
+    sim.offctx.putImageData(sim.imageData, 0, 0);
+
+    const ctx = els.world.getContext('2d', { alpha: false });
+    const dpr = sim.dpr;
+    const r = sim.renderRect;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.fillStyle = '#050913';
+    ctx.fillRect(0, 0, els.world.width / dpr, els.world.height / dpr);
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(sim.offscreen, r.x, r.y, r.size, r.size);
+
+    if (els.showGrid.checked && sim.width <= 72) {
+      const cell = r.size / sim.width;
+      ctx.strokeStyle = 'rgba(255,255,255,.075)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let x = 0; x <= sim.width; x++) {
+        const px = r.x + x * cell;
+        ctx.moveTo(px, r.y); ctx.lineTo(px, r.y + r.size);
+      }
+      for (let y = 0; y <= sim.height; y++) {
+        const py = r.y + y * cell;
+        ctx.moveTo(r.x, py); ctx.lineTo(r.x + r.size, py);
+      }
+      ctx.stroke();
+    }
+
+    if (sim.selected >= 0 && sim.selected < sim.count) {
+      const x = sim.selected % sim.width;
+      const y = Math.floor(sim.selected / sim.width);
+      const cell = r.size / sim.width;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.2, Math.min(3, cell * .16));
+      ctx.strokeRect(r.x + x * cell + .5, r.y + y * cell + .5, Math.max(1, cell - 1), Math.max(1, cell - 1));
+    }
+  }
+
+  function drawHistoryChart() {
+    const canvas = els.historyChart;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = sim.dpr;
+    canvas.width = Math.max(20, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(20, Math.floor(rect.height * dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h);
+    ctx.fillStyle = '#07101c'; ctx.fillRect(0, 0, w, h);
+    const values = sim.history.slice(-180).map(x => Math.log10(1 + x.topplings));
+    ctx.strokeStyle = 'rgba(145,160,186,.17)'; ctx.lineWidth = 1;
+    for (let y = 1; y <= 3; y++) { const py = h - 18 - y * (h - 30) / 4; ctx.beginPath(); ctx.moveTo(30, py); ctx.lineTo(w - 8, py); ctx.stroke(); }
+    if (!values.length) return;
+    const max = Math.max(1, ...values);
+    ctx.strokeStyle = '#65d6c4'; ctx.lineWidth = 1.8; ctx.beginPath();
+    values.forEach((v, i) => {
+      const x = 30 + (values.length === 1 ? 0 : i / (values.length - 1)) * (w - 40);
+      const y = h - 17 - (v / max) * (h - 29);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    });
+    ctx.stroke();
+    ctx.fillStyle = '#91a0ba'; ctx.font = '10px system-ui';
+    ctx.fillText('0', 10, h - 14); ctx.fillText(max.toFixed(1), 7, 13);
+  }
+
+  function drawDistributionChart() {
+    const canvas = els.distributionChart;
+    const rect = canvas.getBoundingClientRect();
+    const dpr = sim.dpr;
+    canvas.width = Math.max(20, Math.floor(rect.width * dpr));
+    canvas.height = Math.max(20, Math.floor(rect.height * dpr));
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const w = rect.width, h = rect.height;
+    ctx.clearRect(0, 0, w, h); ctx.fillStyle = '#07101c'; ctx.fillRect(0, 0, w, h);
+    const sizes = sim.history.map(x => x.topplings).filter(x => x > 0);
+    els.sampleCount.textContent = `${formatInt(sizes.length)} non-zero events`;
+    if (!sizes.length) return;
+    const maxSize = Math.max(...sizes);
+    const maxBin = Math.max(1, Math.ceil(Math.log2(maxSize + 1)));
+    const bins = new Array(maxBin + 1).fill(0);
+    for (const s of sizes) bins[Math.min(maxBin, Math.floor(Math.log2(s)))]++;
+    const maxCount = Math.max(...bins);
+    const left = 28, bottom = 18, top = 9, right = 8;
+    const bw = (w - left - right) / bins.length;
+    ctx.fillStyle = '#f5b942';
+    bins.forEach((count, i) => {
+      const height = maxCount ? Math.log1p(count) / Math.log1p(maxCount) * (h - top - bottom) : 0;
+      ctx.fillRect(left + i * bw + 1, h - bottom - height, Math.max(1, bw - 2), height);
+    });
+    ctx.strokeStyle = 'rgba(145,160,186,.25)';
+    ctx.beginPath(); ctx.moveTo(left, top); ctx.lineTo(left, h - bottom); ctx.lineTo(w - right, h - bottom); ctx.stroke();
+    ctx.fillStyle = '#91a0ba'; ctx.font = '10px system-ui';
+    ctx.fillText('1', left, h - 5); ctx.fillText(`2^${maxBin}`, Math.max(left, w - 42), h - 5); ctx.fillText(formatInt(maxCount), 2, 12);
+  }
+
+  function updateSelectedCell() {
+    const idx = sim.selected;
+    if (idx < 0 || idx >= sim.count) {
+      els.cellCoord.textContent = els.cellHeight.textContent = els.cellRole.textContent = els.cellActivity.textContent = '—';
+      return;
+    }
+    const x = idx % sim.width, y = Math.floor(idx / sim.width);
+    els.cellCoord.textContent = `${x}, ${y}`;
+    els.cellHeight.textContent = sim.sinks[idx] ? '—' : String(sim.heights[idx]);
+    els.cellRole.textContent = sim.sinks[idx] ? 'dissipative sink' : sim.heights[idx] >= THRESHOLD ? 'unstable' : 'active lattice';
+    els.cellActivity.textContent = `${(sim.activity[idx] * 100).toFixed(0)}%`;
+  }
+
+  function updateStats(force = false) {
+    const now = performance.now();
+    if (!force && now - sim.lastStatsAt < 120) return;
+    sim.lastStatsAt = now;
+    const s = latticeStats();
+    const a = sim.avalanche;
+    const residual = sim.baselineMass + sim.totalAdded - sim.totalDissipated - s.mass;
+    els.currentSize.textContent = `${formatInt(a ? a.topplings : 0)} topples`;
+    els.currentArea.textContent = `${formatInt(a ? a.area : 0)} cells`;
+    els.queueSize.textContent = `${formatInt(Math.max(0, sim.queue.length - sim.qHead))} unstable`;
+    els.eventId.textContent = `#${formatInt(a ? a.id : sim.eventCounter)}`;
+    els.balance.textContent = residual === 0 ? 'exact' : String(residual);
+    els.balance.style.color = residual === 0 ? 'var(--ok)' : 'var(--danger)';
+    els.meanHeight.textContent = s.mean.toFixed(3);
+    els.readyFraction.textContent = `${(s.ready * 100).toFixed(1)}%`;
+    els.largest.textContent = formatInt(sim.largestAvalanche);
+    const alpha = estimateAlpha();
+    els.alpha.textContent = alpha ? alpha.toFixed(2) : '—';
+    els.events.textContent = formatInt(sim.history.length);
+    els.dissipated.textContent = formatInt(sim.totalDissipated);
+    els.phasePill.innerHTML = `State: <strong>${a ? 'relaxing' : 'stable'}</strong>`;
+    els.hashPill.textContent = stateHash();
+    updateSelectedCell();
+    if (force || now - sim.lastChartAt > 420) {
+      sim.lastChartAt = now;
+      drawHistoryChart();
+      drawDistributionChart();
+    }
+  }
+
+  function pointerToCell(event) {
+    const rect = els.world.getBoundingClientRect();
+    const r = sim.renderRect;
+    const x = event.clientX - rect.left - r.x;
+    const y = event.clientY - rect.top - r.y;
+    if (x < 0 || y < 0 || x >= r.size || y >= r.size) return -1;
+    const cx = clamp(Math.floor(x / r.size * sim.width), 0, sim.width - 1);
+    const cy = clamp(Math.floor(y / r.size * sim.height), 0, sim.height - 1);
+    return cy * sim.width + cx;
+  }
+
+  function paintCell(idx, amount) {
+    if (idx < 0 || idx === sim.lastPainted || sim.sinks[idx]) return;
+    sim.selected = idx;
+    sim.lastPainted = idx;
+    if (!sim.avalanche) beginAvalanche();
+    addAt(idx, amount);
+    if (sim.queue.length === sim.qHead) finishAvalanche();
+    updateStats(true);
+  }
+
+  function toggleSink(idx) {
+    if (idx < 0) return;
+    if (sim.avalanche) {
+      toast('Let the current avalanche settle before editing sinks.');
+      return;
+    }
+    sim.selected = idx;
+    sim.sinks[idx] = sim.sinks[idx] ? 0 : 1;
+    sim.heights[idx] = 0;
+    sim.queued[idx] = 0;
+    sim.activity[idx] = 0;
+    // A topology edit changes the experiment boundary, so begin a fresh evidence series.
+    resetStats();
+    renderWorld(true);
+    toast(sim.sinks[idx] ? 'Dissipative sink added.' : 'Sink removed.');
+  }
+
+  const PRESETS = {
+    'critical-rain': () => {
+      setSize(64, false); els.driveMode.value = 'random'; els.driveRate.value = '50'; els.grainsPerEvent.value = '0';
+      els.toppleBudget.value = '11'; els.autoDrive.checked = true; sim.paused = false; primeLattice('critical', true);
+    },
+    'center-fractal': () => {
+      setSize(64, false); els.driveMode.value = 'center'; els.driveRate.value = '18'; els.grainsPerEvent.value = '0';
+      els.toppleBudget.value = '12'; els.autoDrive.checked = false; sim.paused = false; clearState(true);
+      beginAvalanche(); addAt(Math.floor(sim.height / 2) * sim.width + Math.floor(sim.width / 2), 18000);
+    },
+    'fault-line': () => {
+      setSize(72, false); els.driveMode.value = 'random'; els.driveRate.value = '44'; els.grainsPerEvent.value = '0';
+      els.toppleBudget.value = '11'; els.autoDrive.checked = true; sim.paused = false; primeLattice('critical', false); applyFaultLine(); resetStats();
+    },
+    'aftershock': () => {
+      setSize(64, false); els.driveMode.value = 'center'; els.driveRate.value = '20'; els.grainsPerEvent.value = '0';
+      els.toppleBudget.value = '9'; els.autoDrive.checked = false; sim.paused = false; primeLattice('critical', true);
+      beginAvalanche(); addAt(Math.floor(sim.height / 2) * sim.width + Math.floor(sim.width / 2), 256);
+    },
+    'edge-loading': () => {
+      setSize(64, false); els.driveMode.value = 'edge'; els.driveRate.value = '58'; els.grainsPerEvent.value = '1';
+      els.toppleBudget.value = '11'; els.autoDrive.checked = true; sim.paused = false; primeLattice('critical', true);
+    },
+    'subcritical': () => {
+      setSize(64, false); els.driveMode.value = 'random'; els.driveRate.value = '72'; els.grainsPerEvent.value = '0';
+      els.toppleBudget.value = '12'; els.autoDrive.checked = true; sim.paused = false; primeLattice('subcritical', true);
+    }
+  };
+
+  function syncControlLabels() {
+    els.driveRateValue.textContent = driveRate().toFixed(1);
+    els.grainsValue.textContent = formatInt(grainsPerEvent());
+    els.budgetValue.textContent = formatInt(toppleBudget());
+    els.gridSizeValue.textContent = `${sim.width} × ${sim.height}`;
+    els.toggleRun.textContent = sim.paused ? 'Resume' : 'Pause';
+  }
+
+  function applyPreset() {
+    const fn = PRESETS[els.preset.value];
+    if (fn) fn();
+    syncControlLabels();
+    updateStats(true);
+    renderWorld(true);
+    toast(`Loaded preset: ${els.preset.options[els.preset.selectedIndex].text}`);
+  }
+
+  function createCheckpoint() {
+    if (sim.avalanche) {
+      throw new Error('Relax the current avalanche before exporting a stable checkpoint.');
+    }
+    return {
+      schemaVersion: 1,
+      model: 'abelian-sandpile',
+      checkpointKind: 'stable',
+      exportedUtc: new Date().toISOString(),
+      width: sim.width,
+      height: sim.height,
+      threshold: THRESHOLD,
+      seed: sim.seed,
+      rngState: sim.rng.state >>> 0,
+      heights: Array.from(sim.heights),
+      sinks: Array.from(sim.sinks),
+      history: sim.history,
+      counters: {
+        eventCounter: sim.eventCounter,
+        totalAdded: sim.totalAdded,
+        totalDissipated: sim.totalDissipated,
+        baselineMass: sim.baselineMass,
+        largestAvalanche: sim.largestAvalanche
+      },
+      controls: {
+        driveMode: els.driveMode.value,
+        driveRate: els.driveRate.value,
+        grainsPerEvent: els.grainsPerEvent.value,
+        toppleBudget: els.toppleBudget.value,
+        autoDrive: els.autoDrive.checked,
+        showGrid: els.showGrid.checked,
+        showActivity: els.showActivity.checked
+      },
+      stateHash: stateHash()
+    };
+  }
+
+  function exportState() {
+    try {
+      const payload = createCheckpoint();
+      downloadBlob(`sandpile-${payload.stateHash}.json`, new Blob([JSON.stringify(payload)], { type: 'application/json' }));
+    } catch (error) {
+      toast(error.message);
+    }
+  }
+
+  function applyCheckpoint(p) {
+    if (p.schemaVersion !== 1 || p.model !== 'abelian-sandpile') throw new Error('Unsupported state schema.');
+    if (p.checkpointKind != null && p.checkpointKind !== 'stable') throw new Error('Only stable checkpoints are supported.');
+    if (Number(p.threshold) !== THRESHOLD) throw new Error(`Checkpoint threshold must be ${THRESHOLD}.`);
+    const w = Number(p.width), h = Number(p.height);
+    if (!Number.isInteger(w) || w !== h || w < 8 || w > 256) throw new Error('Invalid grid dimensions.');
+    if (!Array.isArray(p.heights) || p.heights.length !== w * h || !Array.isArray(p.sinks) || p.sinks.length !== w * h) throw new Error('State arrays do not match grid size.');
+
+    const importedHeights = new Int32Array(w * h);
+    const importedSinks = new Uint8Array(w * h);
+    for (let i = 0; i < importedHeights.length; i++) {
+      const isSink = !!p.sinks[i];
+      const raw = Number(p.heights[i]);
+      if (!Number.isFinite(raw) || raw < 0 || !Number.isInteger(raw)) throw new Error(`Invalid height at cell ${i}.`);
+      const height = isSink ? 0 : raw;
+      if (!isSink && height >= THRESHOLD) throw new Error(`Checkpoint is not stable at cell ${i}.`);
+      importedSinks[i] = isSink ? 1 : 0;
+      importedHeights[i] = height;
+    }
+
+    setSize(w, false);
+    sim.heights.set(importedHeights);
+    sim.sinks.set(importedSinks);
+    sim.seed = (Number(p.seed) >>> 0) || 1;
+    sim.rng = new XorShift32((Number(p.rngState) >>> 0) || sim.seed);
+    sim.history = Array.isArray(p.history) ? p.history.slice(-5000) : [];
+    const c = p.counters || {};
+    sim.eventCounter = Number(c.eventCounter) || sim.history.length;
+    sim.totalAdded = Number(c.totalAdded) || 0;
+    sim.totalDissipated = Number(c.totalDissipated) || 0;
+    sim.baselineMass = Number(c.baselineMass);
+    if (!Number.isFinite(sim.baselineMass)) sim.baselineMass = totalMass() - sim.totalAdded + sim.totalDissipated;
+    sim.largestAvalanche = Number(c.largestAvalanche) || Math.max(0, ...sim.history.map(x => Number(x.topplings) || 0));
+    const controls = p.controls || {};
+    if (['random','center','ring','edge'].includes(controls.driveMode)) els.driveMode.value = controls.driveMode;
+    for (const key of ['driveRate','grainsPerEvent','toppleBudget']) if (controls[key] != null) els[key].value = String(controls[key]);
+    if (controls.autoDrive != null) els.autoDrive.checked = !!controls.autoDrive;
+    if (controls.showGrid != null) els.showGrid.checked = !!controls.showGrid;
+    if (controls.showActivity != null) els.showActivity.checked = !!controls.showActivity;
+    els.seed.value = String(sim.seed);
+    sim.paused = true;
+    syncControlLabels(); renderWorld(true); updateStats(true);
+    return stateHash();
+  }
+
+  function importState(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const hash = applyCheckpoint(JSON.parse(String(reader.result)));
+        toast(`Imported stable checkpoint ${hash}.`);
+      } catch (error) {
+        toast(`Import failed: ${error.message}`);
+      }
+    };
+    reader.readAsText(file);
+  }
+
+  function runSummary() {
+    const s = latticeStats();
+    const alpha = estimateAlpha();
+    return [
+      'Avalanche Lab — Abelian sandpile',
+      `Grid: ${sim.width}x${sim.height}; threshold: ${THRESHOLD}; open boundaries`,
+      `Seed: ${sim.seed}; RNG state: ${sim.rng.state >>> 0}`,
+      `State hash: ${stateHash()}`,
+      `Drive: ${els.driveMode.value}; ${driveRate().toFixed(2)} events/s; ${grainsPerEvent()} grains/event`,
+      `Recorded events: ${sim.history.length}; largest avalanche: ${sim.largestAvalanche}`,
+      `Mean height: ${s.mean.toFixed(6)}; ready fraction: ${(s.ready * 100).toFixed(3)}%`,
+      `Dissipated grains: ${sim.totalDissipated}; accounting residual: ${sim.baselineMass + sim.totalAdded - sim.totalDissipated - s.mass}`,
+      `Approximate power-law alpha (size>=4): ${alpha ? alpha.toFixed(5) : 'insufficient sample'}`
+    ].join('\n');
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast('Summary copied to clipboard.');
+    } catch {
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove();
+      toast('Summary copied to clipboard.');
+    }
+  }
+
+  function downloadBlob(name, blob) {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 500);
+  }
+
+  function saveImage() {
+    els.world.toBlob(blob => {
+      if (blob) downloadBlob(`sandpile-${stateHash()}.png`, blob);
+    }, 'image/png');
+  }
+
+  function selfCheckRelax(initial, additions, lifo) {
+    const w = 11, h = 11, n = w * h;
+    const grid = Int32Array.from(initial);
+    const queued = new Uint8Array(n);
+    const q = [];
+    const put = idx => {
+      if (idx >= 0 && idx < n && !queued[idx] && grid[idx] >= 4) { queued[idx] = 1; q.push(idx); }
+    };
+    for (const idx of additions) { grid[idx]++; put(idx); }
+    let guard = 0;
+    while (q.length && guard++ < 2_000_000) {
+      const idx = lifo ? q.pop() : q.shift();
+      queued[idx] = 0;
+      if (grid[idx] < 4) continue;
+      grid[idx] -= 4;
+      const x = idx % w, y = Math.floor(idx / w);
+      if (x > 0) { grid[idx - 1]++; put(idx - 1); }
+      if (x < w - 1) { grid[idx + 1]++; put(idx + 1); }
+      if (y > 0) { grid[idx - w]++; put(idx - w); }
+      if (y < h - 1) { grid[idx + w]++; put(idx + w); }
+      put(idx);
+    }
+    return grid;
+  }
+
+  function runSelfCheck() {
+    try {
+      const rng = new XorShift32(0x51a7c0de);
+      const initial = new Int32Array(121);
+      for (let i = 0; i < initial.length; i++) initial[i] = rng.int(4);
+      const additions = [];
+      for (let i = 0; i < 700; i++) additions.push(rng.int(121));
+      const fifo = selfCheckRelax(initial, additions, false);
+      const lifo = selfCheckRelax(initial, additions, true);
+      let same = true;
+      for (let i = 0; i < fifo.length; i++) if (fifo[i] !== lifo[i]) { same = false; break; }
+      if (!same) throw new Error('toppling orders diverged');
+      els.selfCheck.textContent = '✓ Abelian-order self-check passed: FIFO and LIFO reached the same stable state.';
+      els.selfCheck.style.color = 'var(--ok)';
+    } catch (e) {
+      els.selfCheck.textContent = `Self-check failed: ${e.message}`;
+      els.selfCheck.style.color = 'var(--danger)';
+      console.error(e);
+    }
+  }
+
+  function animationFrame(now) {
+    if (!sim.paused) {
+      if (sim.avalanche) processTopplings(toppleBudget());
+      else if (els.autoDrive.checked && now >= sim.nextDriveAt) injectDrive(grainsPerEvent(), els.driveMode.value);
+    }
+    renderWorld();
+    updateStats();
+    requestAnimationFrame(animationFrame);
+  }
+
+  // Event wiring
+  els.toggleRun.addEventListener('click', () => { sim.paused = !sim.paused; syncControlLabels(); });
+  els.dropOne.addEventListener('click', () => { injectDrive(1, els.driveMode.value); updateStats(true); });
+  els.burst.addEventListener('click', () => { injectDrive(Math.max(64, grainsPerEvent() * 16), els.driveMode.value); updateStats(true); });
+  els.prime.addEventListener('click', () => { primeLattice('critical', true); toast('Metastable lattice primed.'); });
+  els.clear.addEventListener('click', () => { clearState(true); toast('Lattice cleared.'); });
+  els.applyPreset.addEventListener('click', applyPreset);
+  els.gridSize.addEventListener('change', () => { setSize(Number(els.gridSize.value), false); syncControlLabels(); });
+  els.driveRate.addEventListener('input', syncControlLabels);
+  els.grainsPerEvent.addEventListener('input', syncControlLabels);
+  els.toppleBudget.addEventListener('input', syncControlLabels);
+  els.stepTopple.addEventListener('click', () => {
+    sim.paused = true; syncControlLabels();
+    if (!sim.avalanche) injectDrive(1, els.driveMode.value);
+    else processTopplings(1);
+    renderWorld(true); updateStats(true);
+  });
+  els.relaxFully.addEventListener('click', relaxFully);
+  els.applySeed.addEventListener('click', () => {
+    sim.seed = (Number(els.seed.value) >>> 0) || 1;
+    sim.rng = new XorShift32(sim.seed);
+    clearState(true); primeLattice('critical', true); toast(`Reset with seed ${sim.seed}.`);
+  });
+  els.exportState.addEventListener('click', exportState);
+  els.importState.addEventListener('click', () => els.importFile.click());
+  els.importFile.addEventListener('change', () => { if (els.importFile.files[0]) importState(els.importFile.files[0]); els.importFile.value = ''; });
+  els.copySummary.addEventListener('click', () => copyText(runSummary()));
+  els.saveImage.addEventListener('click', saveImage);
+  els.showGrid.addEventListener('change', () => renderWorld(true));
+  els.showActivity.addEventListener('change', () => renderWorld(true));
+
+  els.world.addEventListener('contextmenu', e => e.preventDefault());
+  els.world.addEventListener('pointerdown', e => {
+    e.preventDefault();
+    const idx = pointerToCell(e);
+    if (e.button === 2) { toggleSink(idx); return; }
+    sim.pointerDown = true; sim.lastPainted = -1; els.world.setPointerCapture(e.pointerId);
+    paintCell(idx, e.shiftKey ? 64 : 1);
+  });
+  els.world.addEventListener('pointermove', e => {
+    const idx = pointerToCell(e);
+    if (idx >= 0) { sim.selected = idx; updateSelectedCell(); }
+    if (sim.pointerDown && (e.buttons & 1)) paintCell(idx, e.shiftKey ? 16 : 1);
+  });
+  const endPointer = () => { sim.pointerDown = false; sim.lastPainted = -1; };
+  els.world.addEventListener('pointerup', endPointer);
+  els.world.addEventListener('pointercancel', endPointer);
+
+  window.addEventListener('keydown', e => {
+    if (e.target && ['INPUT','SELECT','TEXTAREA'].includes(e.target.tagName)) return;
+    if (e.code === 'Space') { e.preventDefault(); sim.paused = !sim.paused; syncControlLabels(); }
+    else if (e.key.toLowerCase() === 'd') injectDrive(1, els.driveMode.value);
+    else if (e.key.toLowerCase() === 'b') injectDrive(Math.max(64, grainsPerEvent() * 16), els.driveMode.value);
+    else if (e.key.toLowerCase() === 's') { sim.paused = true; if (!sim.avalanche) injectDrive(1, els.driveMode.value); else processTopplings(1); syncControlLabels(); }
+    else if (e.key.toLowerCase() === 'p') primeLattice('critical', true);
+    else if (e.key.toLowerCase() === 'c') clearState(true);
+  });
+  window.addEventListener('resize', () => { renderWorld(true); drawHistoryChart(); drawDistributionChart(); });
+
+  // Small browser-console API used by the validation harness and useful for scripted experiments.
+  // It exposes commands and copied evidence, not mutable internal arrays.
+  window.AvalancheLab = Object.freeze({
+    model: 'abelian-sandpile',
+    schemaVersion: 1,
+    threshold: THRESHOLD,
+    pause() { sim.paused = true; syncControlLabels(); },
+    resume() { sim.paused = false; syncControlLabels(); },
+    reset({ size = 64, seed = 7331, prime = 'critical' } = {}) {
+      const parsedSize = Number(size);
+      if (!Number.isInteger(parsedSize) || parsedSize < 8 || parsedSize > 256) throw new RangeError('size must be an integer in [8, 256].');
+      sim.seed = (Number(seed) >>> 0) || 1;
+      sim.rng = new XorShift32(sim.seed);
+      setSize(parsedSize, false);
+      sim.paused = true;
+      els.autoDrive.checked = false;
+      if (prime === 'critical' || prime === 'subcritical') primeLattice(prime, true);
+      else if (prime === 'clear' || prime == null) clearState(true);
+      else throw new RangeError("prime must be 'critical', 'subcritical', or 'clear'.");
+      els.seed.value = String(sim.seed);
+      syncControlLabels(); renderWorld(true); updateStats(true);
+      return this.snapshot();
+    },
+    loadPreset(id) {
+      const fn = PRESETS[id];
+      if (!fn) throw new RangeError(`Unknown preset '${id}'.`);
+      els.preset.value = id;
+      fn();
+      syncControlLabels(); renderWorld(true); updateStats(true);
+      return this.snapshot();
+    },
+    drive(amount = 1, mode = els.driveMode.value) {
+      const grains = Number(amount);
+      if (!Number.isInteger(grains) || grains <= 0 || grains > 10_000_000) throw new RangeError('amount must be an integer in [1, 10000000].');
+      if (!['random','center','ring','edge'].includes(mode)) throw new RangeError(`Unknown drive mode '${mode}'.`);
+      injectDrive(grains, mode);
+      updateStats(true);
+      return this.snapshot();
+    },
+    addGrains(x, y, amount = 1) {
+      const ix = Number(x), iy = Number(y), grains = Number(amount);
+      if (!Number.isInteger(ix) || !Number.isInteger(iy) || ix < 0 || iy < 0 || ix >= sim.width || iy >= sim.height) throw new RangeError('cell coordinate is outside the lattice.');
+      if (!Number.isInteger(grains) || grains <= 0 || grains > 10_000_000) throw new RangeError('amount must be an integer in [1, 10000000].');
+      addAt(iy * sim.width + ix, grains);
+      updateStats(true);
+      return this.snapshot();
+    },
+    setSink(x, y, enabled = true) {
+      if (sim.avalanche) throw new Error('Let the current avalanche settle before editing sinks.');
+      const ix = Number(x), iy = Number(y);
+      if (!Number.isInteger(ix) || !Number.isInteger(iy) || ix < 0 || iy < 0 || ix >= sim.width || iy >= sim.height) throw new RangeError('cell coordinate is outside the lattice.');
+      const idx = iy * sim.width + ix;
+      sim.sinks[idx] = enabled ? 1 : 0;
+      sim.heights[idx] = 0;
+      sim.queued[idx] = 0;
+      sim.activity[idx] = 0;
+      resetStats(); renderWorld(true); updateStats(true);
+      return this.snapshot();
+    },
+    process(maxTopplings = 1) {
+      const budget = Number(maxTopplings);
+      if (!Number.isInteger(budget) || budget <= 0) throw new RangeError('maxTopplings must be a positive integer.');
+      const processed = processTopplings(budget);
+      renderWorld(true); updateStats(true);
+      return { processed, snapshot: this.snapshot() };
+    },
+    settle(limit = 20_000_000) {
+      const cap = Number(limit);
+      if (!Number.isInteger(cap) || cap <= 0) throw new RangeError('limit must be a positive integer.');
+      let processed = 0;
+      while (sim.avalanche && processed < cap) processed += processTopplings(Math.min(250_000, cap - processed));
+      renderWorld(true); updateStats(true);
+      return { processed, complete: !sim.avalanche, snapshot: this.snapshot() };
+    },
+    createCheckpoint() { return JSON.parse(JSON.stringify(createCheckpoint())); },
+    applyCheckpoint(payload) { return applyCheckpoint(JSON.parse(JSON.stringify(payload))); },
+    summary() { return runSummary(); },
+    snapshot() {
+      const stats = latticeStats();
+      let unstableCells = 0, sinkCount = 0, maxHeight = 0;
+      for (let i = 0; i < sim.count; i++) {
+        if (sim.sinks[i]) sinkCount++;
+        else {
+          if (sim.heights[i] >= THRESHOLD) unstableCells++;
+          if (sim.heights[i] > maxHeight) maxHeight = sim.heights[i];
+        }
+      }
+      return {
+        width: sim.width,
+        height: sim.height,
+        seed: sim.seed,
+        rngState: sim.rng.state >>> 0,
+        stateHash: stateHash(),
+        paused: sim.paused,
+        stable: !sim.avalanche && unstableCells === 0,
+        unstableCells,
+        sinkCount,
+        maxHeight,
+        mass: stats.mass,
+        meanHeight: stats.mean,
+        readyFraction: stats.ready,
+        eventCounter: sim.eventCounter,
+        totalAdded: sim.totalAdded,
+        totalDissipated: sim.totalDissipated,
+        accountingResidual: sim.baselineMass + sim.totalAdded - sim.totalDissipated - stats.mass,
+        largestAvalanche: sim.largestAvalanche,
+        currentAvalanche: sim.avalanche ? {
+          id: sim.avalanche.id,
+          topplings: sim.avalanche.topplings,
+          area: sim.avalanche.area,
+          maxDepth: sim.avalanche.maxDepth,
+          dissipated: sim.avalanche.dissipated,
+          queueRemaining: Math.max(0, sim.queue.length - sim.qHead)
+        } : null,
+        history: sim.history.map(x => ({ ...x })),
+        selfCheck: els.selfCheck.textContent
+      };
+    }
+  });
+
+  // Initialize.
+  setSize(64, false);
+  runSelfCheck();
+  if (previewMode) {
+    els.preset.value = 'fault-line';
+    PRESETS['fault-line']();
+    els.autoDrive.checked = false;
+    sim.paused = true;
+    beginAvalanche();
+    addAt(Math.floor(sim.height / 2) * sim.width + Math.floor(sim.width * .28), 420);
+    processTopplings(28000);
+    syncControlLabels();
+    renderWorld(true);
+    updateStats(true);
+    document.documentElement.dataset.previewReady = 'true';
+  } else {
+    applyPreset();
+    syncControlLabels();
+    requestAnimationFrame(animationFrame);
+  }
+})();
+</script>
+</body>
+</html>

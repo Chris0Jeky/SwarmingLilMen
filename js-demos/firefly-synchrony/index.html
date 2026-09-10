@@ -1,0 +1,1728 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Firefly Synchrony Lab — Kuramoto Emergence</title>
+  <style>
+    :root {
+      --bg: #070a12;
+      --panel: rgba(13, 18, 31, 0.93);
+      --panel-2: rgba(20, 27, 44, 0.82);
+      --line: rgba(255, 255, 255, 0.10);
+      --line-strong: rgba(255, 255, 255, 0.18);
+      --text: #edf3ff;
+      --muted: #9ba9c3;
+      --accent: #8cd6ff;
+      --accent-2: #c9a7ff;
+      --good: #7ce6ae;
+      --warn: #ffd27f;
+      --danger: #ff8b9c;
+      --shadow: 0 18px 54px rgba(0, 0, 0, 0.34);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 68% 18%, rgba(78, 114, 255, 0.12), transparent 35%),
+        radial-gradient(circle at 18% 80%, rgba(162, 83, 255, 0.11), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, select, input { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 310px minmax(360px, 1fr) 320px;
+      grid-template-rows: 74px minmax(0, 1fr) 30px;
+      width: 100%;
+      height: 100%;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(18, 25, 43, 0.92), rgba(11, 15, 27, 0.82));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      position: relative;
+      width: 42px;
+      height: 42px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.20);
+      background:
+        radial-gradient(circle, rgba(255,255,255,.96) 0 6%, rgba(123,221,255,.85) 7% 14%, transparent 15%),
+        conic-gradient(from 40deg, #4a6dff, #b985ff, #72e7e0, #4a6dff);
+      box-shadow: 0 0 22px rgba(110, 189, 255, 0.42);
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 8px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,.4);
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(18px, 2vw, 26px);
+      letter-spacing: -0.03em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subtitle {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,.045);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .badge.good {
+      color: var(--good);
+      border-color: rgba(124, 230, 174, .36);
+      background: rgba(124, 230, 174, .08);
+    }
+
+    aside, main {
+      min-height: 0;
+      min-width: 0;
+    }
+
+    .panel {
+      height: 100%;
+      overflow: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.18) transparent;
+    }
+
+    .panel::-webkit-scrollbar { width: 8px; }
+    .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 9px; }
+
+    .section {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { border-bottom: 0; margin-bottom: 0; }
+
+    .section-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin: 0 0 10px;
+      color: #dce8ff;
+      font-size: 12px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .field { margin: 11px 0; }
+
+    .field-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+
+    .field-row label { color: #cdd8eb; }
+
+    output {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-weight: 750;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: #7bcfff;
+      cursor: pointer;
+    }
+
+    input[type="number"], select {
+      width: 100%;
+      min-height: 34px;
+      padding: 6px 9px;
+      color: var(--text);
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: rgba(255,255,255,.045);
+      outline: none;
+    }
+
+    input[type="number"]:focus, select:focus {
+      border-color: rgba(140,214,255,.7);
+      box-shadow: 0 0 0 3px rgba(140,214,255,.09);
+    }
+
+    .button-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 9px;
+    }
+
+    button {
+      min-height: 35px;
+      padding: 7px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 10px;
+      background: rgba(255,255,255,.055);
+      color: var(--text);
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(140,214,255,.48);
+      background: rgba(140,214,255,.08);
+    }
+
+    button:active { transform: translateY(0); }
+
+    button.primary {
+      color: #07111d;
+      border-color: transparent;
+      background: linear-gradient(135deg, #8ddcff, #c8adff);
+      font-weight: 800;
+    }
+
+    button.warn {
+      border-color: rgba(255,210,127,.35);
+      color: var(--warn);
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 9px;
+    }
+
+    .toggle {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--muted);
+      font-size: 11px;
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .toggle input { accent-color: #8cd6ff; }
+
+    main {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #05070d;
+      box-shadow: var(--shadow);
+    }
+
+    #world {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: crosshair;
+    }
+
+    .canvas-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+
+    .readout {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      max-width: calc(100% - 28px);
+    }
+
+    .chip {
+      padding: 6px 8px;
+      border: 1px solid rgba(255,255,255,.12);
+      border-radius: 9px;
+      background: rgba(5,8,15,.64);
+      color: #c9d5e8;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: .03em;
+      backdrop-filter: blur(8px);
+    }
+
+    .interaction-tip {
+      position: absolute;
+      left: 50%;
+      bottom: 13px;
+      transform: translateX(-50%);
+      width: max-content;
+      max-width: calc(100% - 28px);
+      padding: 7px 10px;
+      border: 1px solid rgba(255,255,255,.10);
+      border-radius: 10px;
+      background: rgba(5,8,15,.62);
+      color: rgba(220,231,248,.68);
+      font-size: 10px;
+      text-align: center;
+      backdrop-filter: blur(8px);
+    }
+
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .kpi {
+      padding: 11px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--panel-2);
+    }
+
+    .kpi-label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .kpi-value {
+      margin-top: 4px;
+      font-size: 22px;
+      font-weight: 800;
+      letter-spacing: -.03em;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .kpi-value.small { font-size: 16px; }
+
+    .meter {
+      height: 6px;
+      margin-top: 8px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.07);
+    }
+
+    .meter > span {
+      display: block;
+      width: 0;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, #5e82ff, #a97dff, #75e9d8);
+      transition: width .15s linear;
+    }
+
+    .chart-card {
+      margin: 10px 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: rgba(255,255,255,.025);
+    }
+
+    .chart-title {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 6px;
+      color: #cdd8eb;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .chart-card canvas {
+      display: block;
+      width: 100%;
+      height: 112px;
+    }
+
+    .formula {
+      padding: 10px;
+      border-radius: 11px;
+      border: 1px solid rgba(140,214,255,.20);
+      background: rgba(140,214,255,.05);
+      color: #d9e8fb;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      overflow-wrap: anywhere;
+    }
+
+    .note {
+      margin-top: 9px;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+
+    .try-list {
+      display: grid;
+      gap: 7px;
+      margin-top: 8px;
+    }
+
+    .try-item {
+      padding: 8px 9px;
+      border-left: 2px solid rgba(140,214,255,.45);
+      background: rgba(255,255,255,.025);
+      color: #bdc9dc;
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    footer {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      padding: 0 8px;
+      color: rgba(205,217,235,.58);
+      font-size: 10px;
+    }
+
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+
+    @media (max-width: 1120px) {
+      .app { grid-template-columns: 286px minmax(360px, 1fr); }
+      .right { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      html, body { overflow: auto; }
+      .app {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 66vh auto;
+        height: auto;
+        min-height: 100%;
+      }
+      header { min-height: 74px; }
+      .badges { display: none; }
+      .left { grid-row: 2; }
+      main { grid-row: 3; min-height: 440px; }
+      .right { display: block; grid-row: 4; }
+      .panel { overflow: visible; }
+      footer { grid-column: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1>Firefly Synchrony Lab</h1>
+          <div class="subtitle">Kuramoto–Sakaguchi oscillators: order emerging from local phase coupling</div>
+        </div>
+      </div>
+      <div class="badges">
+        <div class="badge">Standalone HTML</div>
+        <div class="badge">Fixed Δt</div>
+        <div class="badge">Seeded replay</div>
+        <div class="badge good" id="selfTestBadge">Self-checking…</div>
+      </div>
+    </header>
+
+    <aside class="left panel">
+      <section class="section">
+        <div class="section-title"><span>Scenario</span><span class="hint">presets</span></div>
+        <select id="preset" aria-label="Scenario preset">
+          <option value="critical">Critical threshold</option>
+          <option value="disorder">Persistent disorder</option>
+          <option value="chorus">Global chorus</option>
+          <option value="localWaves">Local phase waves</option>
+          <option value="chimera">Chimera seed</option>
+          <option value="fireflies">Moving fireflies</option>
+        </select>
+        <div class="button-row">
+          <button class="primary" id="applyPreset">Apply preset</button>
+          <button id="reset">Reset seed</button>
+        </div>
+        <div class="hint" id="presetDescription" style="margin-top:8px"></div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>Dynamics</span><span class="hint">live</span></div>
+
+        <div class="field">
+          <div class="field-row"><label for="topology">Coupling topology</label></div>
+          <select id="topology">
+            <option value="global">Global mean field</option>
+            <option value="spatial">Local metric radius</option>
+            <option value="ring">Non-local ring</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="count">Oscillators</label><output id="countOut"></output></div>
+          <input id="count" type="range" min="32" max="800" step="8" value="320" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="coupling">Coupling K</label><output id="couplingOut"></output></div>
+          <input id="coupling" type="range" min="0" max="8" step="0.05" value="1.55" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="spread">Frequency spread σ</label><output id="spreadOut"></output></div>
+          <input id="spread" type="range" min="0" max="2" step="0.01" value="0.95" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="noise">Phase noise D</label><output id="noiseOut"></output></div>
+          <input id="noise" type="range" min="0" max="0.75" step="0.005" value="0.02" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="lag">Phase lag α</label><output id="lagOut"></output></div>
+          <input id="lag" type="range" min="0" max="1.55" step="0.01" value="0" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="range" id="rangeLabel">Coupling range</label><output id="rangeOut"></output></div>
+          <input id="range" type="range" min="0.03" max="1" step="0.01" value="1" />
+        </div>
+
+        <div class="field">
+          <div class="field-row"><label for="movement">Particle drift</label><output id="movementOut"></output></div>
+          <input id="movement" type="range" min="0" max="0.12" step="0.002" value="0.018" />
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>Replay & intervention</span></div>
+        <div class="field">
+          <div class="field-row"><label for="seed">Seed</label></div>
+          <input id="seed" type="number" min="1" max="4294967295" step="1" value="24681357" />
+        </div>
+        <div class="button-row">
+          <button class="primary" id="playPause">Pause</button>
+          <button class="warn" id="disrupt">Disrupt 20%</button>
+          <button id="flash">External flash</button>
+          <button id="randomizeFrequencies">New frequencies</button>
+        </div>
+        <div class="toggle-row">
+          <label class="toggle"><input type="checkbox" id="trails" checked /> trails</label>
+          <label class="toggle"><input type="checkbox" id="links" /> selected links</label>
+          <label class="toggle"><input type="checkbox" id="phaseColour" checked /> phase colour</label>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>Artefacts</span></div>
+        <div class="button-row">
+          <button id="exportState">Export state</button>
+          <button id="importState">Import state</button>
+          <button id="saveImage">Save image</button>
+          <button id="copySummary">Copy summary</button>
+        </div>
+        <input id="fileInput" type="file" accept="application/json,.json" hidden />
+        <div class="hint" style="margin-top:8px">State exports include the seed, resolved parameters, simulation clock, positions, frequencies and phases.</div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>Keyboard</span></div>
+        <div class="hint"><b>Space</b> pause · <b>R</b> reset · <b>D</b> disrupt · <b>F</b> flash · <b>1–5</b> load major presets.</div>
+      </section>
+    </aside>
+
+    <main id="stage">
+      <canvas id="world" aria-label="Interactive firefly synchronization simulation"></canvas>
+      <div class="canvas-overlay">
+        <div class="readout">
+          <div class="chip" id="topologyChip">GLOBAL</div>
+          <div class="chip" id="clockChip">t = 0.0 s</div>
+          <div class="chip" id="seedChip">seed 24681357</div>
+          <div class="chip" id="fpsChip">60 fps</div>
+        </div>
+        <div class="interaction-tip">Click to inspect a firefly · double-click to create a local phase disturbance</div>
+      </div>
+    </main>
+
+    <aside class="right panel">
+      <section class="section">
+        <div class="section-title"><span>Emergence state</span><span class="hint">live</span></div>
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">Order parameter r</div>
+            <div class="kpi-value" id="orderValue">0.000</div>
+            <div class="meter"><span id="orderMeter"></span></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Mean phase ψ</div>
+            <div class="kpi-value" id="phaseValue">0°</div>
+            <div class="meter"><span id="phaseMeter"></span></div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Mean neighbours</div>
+            <div class="kpi-value small" id="neighborValue">319.0</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Lock regime</div>
+            <div class="kpi-value small" id="regimeValue">disordered</div>
+          </div>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title"><span>Synchrony through time</span><span>r ∈ [0,1]</span></div>
+          <canvas id="historyChart"></canvas>
+        </div>
+
+        <div class="chart-card">
+          <div class="chart-title"><span>Phase distribution</span><span>24 bins</span></div>
+          <canvas id="phaseChart"></canvas>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>Model</span></div>
+        <div class="formula">
+          dθᵢ = [ωᵢ + K/Nᵢ Σⱼ sin(θⱼ − θᵢ − α)]dt + D√dt·ξᵢ
+          <br><br>
+          r·eⁱᵠ = (1/N) Σⱼ eⁱᶿʲ
+        </div>
+        <div class="note">
+          Every oscillator follows its own natural frequency. Coupling pulls phases toward nearby phases. Above a topology- and noise-dependent threshold, macroscopic synchrony appears without a leader.
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>What to try</span></div>
+        <div class="try-list">
+          <div class="try-item">Start at <b>Critical threshold</b>. Move K slowly across the point where r begins to remain high.</div>
+          <div class="try-item">Use <b>Local phase waves</b>, then reduce coupling range. Coherent domains form before global order.</div>
+          <div class="try-item">Apply an <b>External flash</b>. The population can be temporarily entrained, then either retain or lose synchrony.</div>
+          <div class="try-item">Use <b>Chimera seed</b>: one region starts coherent while another starts disordered under identical dynamics.</div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-title"><span>Why it belongs in SwarmingLilMen</span></div>
+        <div class="note">
+          This is a new foundation, not another boids rule. The agents carry <b>phase</b> rather than velocity-alignment intent. It exercises deterministic scheduling, named RNG streams, spatial or graph neighbourhoods, and a foundation-specific order parameter while bypassing force arbitration entirely.
+        </div>
+      </section>
+    </aside>
+
+    <footer>
+      <span>Firefly Synchrony Lab · no external libraries · browser-local only</span>
+      <span class="mono" id="stateHash">state —</span>
+    </footer>
+  </div>
+
+  <script>
+    "use strict";
+
+    const TAU = Math.PI * 2;
+    const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+    const wrapPhase = v => {
+      v %= TAU;
+      return v < 0 ? v + TAU : v;
+    };
+    const torusDelta = d => {
+      d = Math.abs(d);
+      return d > 0.5 ? 1 - d : d;
+    };
+
+    class XorShift32 {
+      constructor(seed) {
+        this.state = (Number(seed) >>> 0) || 0x9e3779b9;
+        this.spare = null;
+      }
+      nextUint() {
+        let x = this.state >>> 0;
+        x ^= x << 13;
+        x ^= x >>> 17;
+        x ^= x << 5;
+        this.state = x >>> 0;
+        return this.state;
+      }
+      next() { return this.nextUint() / 4294967296; }
+      range(a, b) { return a + (b - a) * this.next(); }
+      normal() {
+        if (this.spare !== null) {
+          const v = this.spare;
+          this.spare = null;
+          return v;
+        }
+        let u = 0;
+        let v = 0;
+        while (u <= Number.EPSILON) u = this.next();
+        while (v <= Number.EPSILON) v = this.next();
+        const mag = Math.sqrt(-2 * Math.log(u));
+        const angle = TAU * v;
+        this.spare = mag * Math.sin(angle);
+        return mag * Math.cos(angle);
+      }
+    }
+
+    class FireflySimulation {
+      constructor(settings) {
+        this.settings = { ...settings };
+        this.time = 0;
+        this.order = 0;
+        this.meanPhase = 0;
+        this.meanNeighbors = 0;
+        this.selected = -1;
+        this.history = [];
+        this.historyClock = 0;
+        this.flashStrength = 0;
+        this.reset(settings.seed, settings.initMode || "random");
+      }
+
+      reset(seed = this.settings.seed, initMode = "random") {
+        this.settings.seed = Number(seed) >>> 0;
+        this.rng = new XorShift32(this.settings.seed);
+        const n = this.settings.count | 0;
+        this.theta = new Float64Array(n);
+        this.nextTheta = new Float64Array(n);
+        this.omega = new Float64Array(n);
+        this.frequencyZ = new Float64Array(n);
+        this.x = new Float64Array(n);
+        this.y = new Float64Array(n);
+        this.vx = new Float64Array(n);
+        this.vy = new Float64Array(n);
+        this.couplingTerm = new Float64Array(n);
+        this.neighborCounts = new Int32Array(n);
+        this.gridNext = new Int32Array(n);
+        this.cellScratch = new Int32Array(9);
+        this.time = 0;
+        this.history.length = 0;
+        this.historyClock = 0;
+        this.selected = -1;
+        this.flashStrength = 0;
+        this.initializeState(initMode);
+        this.computeOrder();
+        this.pushHistory(true);
+      }
+
+      initializeState(initMode) {
+        const n = this.theta.length;
+        const ring = this.settings.topology === "ring";
+        for (let i = 0; i < n; i++) {
+          if (initMode === "chimera") {
+            const coherent = i < Math.floor(n * 0.48);
+            this.theta[i] = coherent ? this.rng.normal() * 0.08 : this.rng.range(0, TAU);
+          } else if (initMode === "wave") {
+            this.theta[i] = wrapPhase((i / n) * TAU * 3 + this.rng.normal() * 0.08);
+          } else if (initMode === "cluster") {
+            this.theta[i] = wrapPhase(this.rng.normal() * 0.22);
+          } else {
+            this.theta[i] = this.rng.range(0, TAU);
+          }
+
+          const frequencyZ = this.rng.normal();
+          this.frequencyZ[i] = frequencyZ;
+          this.omega[i] = 1.8 + this.settings.spread * frequencyZ;
+
+          if (ring) {
+            const a = (i / n) * TAU - Math.PI / 2;
+            this.x[i] = 0.5 + Math.cos(a) * 0.38;
+            this.y[i] = 0.5 + Math.sin(a) * 0.38;
+            this.vx[i] = 0;
+            this.vy[i] = 0;
+          } else {
+            this.x[i] = this.rng.next();
+            this.y[i] = this.rng.next();
+            const a = this.rng.range(0, TAU);
+            this.vx[i] = Math.cos(a);
+            this.vy[i] = Math.sin(a);
+          }
+        }
+      }
+
+      setSettings(partial, resetRequired = false) {
+        const previousTopology = this.settings.topology;
+        Object.assign(this.settings, partial);
+        if (resetRequired || partial.count !== undefined || partial.seed !== undefined ||
+            (partial.topology !== undefined && partial.topology !== previousTopology)) {
+          this.reset(this.settings.seed, this.settings.initMode || "random");
+        }
+      }
+
+      regenerateFrequencies() {
+        for (let i = 0; i < this.omega.length; i++) {
+          const frequencyZ = this.rng.normal();
+          this.frequencyZ[i] = frequencyZ;
+          this.omega[i] = 1.8 + this.settings.spread * frequencyZ;
+        }
+      }
+
+      disrupt(fraction = 0.2) {
+        const count = Math.max(1, Math.floor(this.theta.length * fraction));
+        for (let k = 0; k < count; k++) {
+          const i = this.rng.nextUint() % this.theta.length;
+          this.theta[i] = this.rng.range(0, TAU);
+        }
+      }
+
+      externalFlash() {
+        this.flashStrength = 1;
+        for (let i = 0; i < this.theta.length; i++) {
+          const delta = Math.atan2(Math.sin(-this.theta[i]), Math.cos(-this.theta[i]));
+          this.theta[i] = wrapPhase(this.theta[i] + delta * 0.72);
+        }
+      }
+
+      localDisturbance(px, py, radius = 0.13) {
+        const r2 = radius * radius;
+        for (let i = 0; i < this.theta.length; i++) {
+          const dx = torusDelta(this.x[i] - px);
+          const dy = torusDelta(this.y[i] - py);
+          if (dx * dx + dy * dy <= r2) {
+            this.theta[i] = this.rng.range(0, TAU);
+          }
+        }
+      }
+
+      step(dt) {
+        const s = this.settings;
+        const n = this.theta.length;
+        if (n === 0) return;
+
+        if (s.topology !== "ring" && s.movement > 0) {
+          const speed = s.movement;
+          for (let i = 0; i < n; i++) {
+            this.x[i] = (this.x[i] + this.vx[i] * speed * dt + 1) % 1;
+            this.y[i] = (this.y[i] + this.vy[i] * speed * dt + 1) % 1;
+          }
+        }
+
+        if (s.topology === "global") {
+          this.computeGlobalCoupling();
+        } else if (s.topology === "ring") {
+          this.computeRingCoupling();
+        } else {
+          this.computeSpatialCoupling();
+        }
+
+        const noiseScale = s.noise * Math.sqrt(dt);
+        for (let i = 0; i < n; i++) {
+          const drift = this.omega[i] + s.coupling * this.couplingTerm[i];
+          const stochastic = noiseScale > 0 ? noiseScale * this.rng.normal() : 0;
+          this.nextTheta[i] = wrapPhase(this.theta[i] + drift * dt + stochastic);
+        }
+        const tmp = this.theta;
+        this.theta = this.nextTheta;
+        this.nextTheta = tmp;
+
+        this.time += dt;
+        this.flashStrength *= Math.exp(-4.8 * dt);
+        this.computeOrder();
+        this.historyClock += dt;
+        if (this.historyClock >= 0.08) {
+          this.historyClock %= 0.08;
+          this.pushHistory(false);
+        }
+      }
+
+      computeOrder() {
+        let c = 0;
+        let s = 0;
+        for (let i = 0; i < this.theta.length; i++) {
+          c += Math.cos(this.theta[i]);
+          s += Math.sin(this.theta[i]);
+        }
+        c /= this.theta.length || 1;
+        s /= this.theta.length || 1;
+        this.order = Math.hypot(c, s);
+        this.meanPhase = wrapPhase(Math.atan2(s, c));
+      }
+
+      computeGlobalCoupling() {
+        const n = this.theta.length;
+        let c = 0;
+        let s = 0;
+        for (let i = 0; i < n; i++) {
+          c += Math.cos(this.theta[i]);
+          s += Math.sin(this.theta[i]);
+        }
+        const psi = Math.atan2(s, c);
+        const r = Math.hypot(c, s) / n;
+        for (let i = 0; i < n; i++) {
+          this.couplingTerm[i] = r * Math.sin(psi - this.theta[i] - this.settings.lag);
+          this.neighborCounts[i] = n - 1;
+        }
+        this.meanNeighbors = Math.max(0, n - 1);
+      }
+
+      computeRingCoupling() {
+        const n = this.theta.length;
+        const halfRange = Math.max(1, Math.floor(n * clamp(this.settings.range, 0.002, 0.5) * 0.5));
+        const denom = halfRange * 2;
+        let neighborTotal = 0;
+        for (let i = 0; i < n; i++) {
+          let sum = 0;
+          for (let d = 1; d <= halfRange; d++) {
+            const left = (i - d + n) % n;
+            const right = (i + d) % n;
+            sum += Math.sin(this.theta[left] - this.theta[i] - this.settings.lag);
+            sum += Math.sin(this.theta[right] - this.theta[i] - this.settings.lag);
+          }
+          this.couplingTerm[i] = sum / denom;
+          this.neighborCounts[i] = denom;
+          neighborTotal += denom;
+        }
+        this.meanNeighbors = neighborTotal / n;
+      }
+
+      rebuildGrid(radius) {
+        const cellCount = Math.max(1, Math.floor(1 / Math.max(radius, 0.001)));
+        this.gridCols = cellCount;
+        this.gridRows = cellCount;
+        const cells = cellCount * cellCount;
+        if (!this.gridHead || this.gridHead.length !== cells) this.gridHead = new Int32Array(cells);
+        this.gridHead.fill(-1);
+        this.gridNext.fill(-1);
+        for (let i = 0; i < this.x.length; i++) {
+          const cx = Math.min(cellCount - 1, Math.floor(this.x[i] * cellCount));
+          const cy = Math.min(cellCount - 1, Math.floor(this.y[i] * cellCount));
+          const cell = cy * cellCount + cx;
+          this.gridNext[i] = this.gridHead[cell];
+          this.gridHead[cell] = i;
+        }
+      }
+
+      computeSpatialCoupling() {
+        const n = this.theta.length;
+        const radius = clamp(this.settings.range, 0.01, 1.0);
+        const radiusSq = radius * radius;
+        this.rebuildGrid(radius);
+        const cols = this.gridCols;
+        const rows = this.gridRows;
+        let totalNeighbors = 0;
+
+        for (let i = 0; i < n; i++) {
+          const cx = Math.min(cols - 1, Math.floor(this.x[i] * cols));
+          const cy = Math.min(rows - 1, Math.floor(this.y[i] * rows));
+          let sum = 0;
+          let count = 0;
+
+          let uniqueCellCount = 0;
+          for (let oy = -1; oy <= 1; oy++) {
+            const yy = (cy + oy + rows) % rows;
+            for (let ox = -1; ox <= 1; ox++) {
+              const xx = (cx + ox + cols) % cols;
+              const cell = yy * cols + xx;
+              let seen = false;
+              for (let c = 0; c < uniqueCellCount; c++) {
+                if (this.cellScratch[c] === cell) { seen = true; break; }
+              }
+              if (!seen) this.cellScratch[uniqueCellCount++] = cell;
+            }
+          }
+
+          for (let c = 0; c < uniqueCellCount; c++) {
+            let j = this.gridHead[this.cellScratch[c]];
+            while (j !== -1) {
+              if (j !== i) {
+                const dx = torusDelta(this.x[j] - this.x[i]);
+                const dy = torusDelta(this.y[j] - this.y[i]);
+                if (dx * dx + dy * dy <= radiusSq) {
+                  sum += Math.sin(this.theta[j] - this.theta[i] - this.settings.lag);
+                  count++;
+                }
+              }
+              j = this.gridNext[j];
+            }
+          }
+
+          this.couplingTerm[i] = count > 0 ? sum / count : 0;
+          this.neighborCounts[i] = count;
+          totalNeighbors += count;
+        }
+        this.meanNeighbors = totalNeighbors / n;
+      }
+
+      pushHistory(force) {
+        if (!force && this.history.length && Math.abs(this.history[this.history.length - 1].time - this.time) < 0.04) return;
+        this.history.push({ time: this.time, order: this.order });
+        if (this.history.length > 360) this.history.shift();
+      }
+
+      exportState() {
+        return {
+          schema: "swarming-lil-men/firefly-kuramoto-state/v1",
+          createdUtc: new Date().toISOString(),
+          settings: { ...this.settings },
+          time: this.time,
+          rngState: this.rng.state >>> 0,
+          rngSpare: this.rng.spare,
+          flashStrength: this.flashStrength,
+          theta: Array.from(this.theta),
+          omega: Array.from(this.omega),
+          frequencyZ: Array.from(this.frequencyZ),
+          x: Array.from(this.x),
+          y: Array.from(this.y),
+          vx: Array.from(this.vx),
+          vy: Array.from(this.vy)
+        };
+      }
+
+      importState(state) {
+        if (!state || state.schema !== "swarming-lil-men/firefly-kuramoto-state/v1") {
+          throw new Error("Unsupported state schema.");
+        }
+        const n = state.theta?.length;
+        const arrays = [state.omega, state.x, state.y, state.vx, state.vy];
+        if (!Number.isInteger(n) || n < 1 || arrays.some(a => !Array.isArray(a) || a.length !== n)) {
+          throw new Error("State arrays are missing or have inconsistent lengths.");
+        }
+        // Validate the complete document before replacing any live arrays.
+        if (!Array.isArray(state.theta) || n > 800 ||
+            [state.theta, ...arrays].some(a => a.some(v => !Number.isFinite(v)))) {
+          throw new Error("State arrays must contain finite numbers and at most 800 oscillators.");
+        }
+        const settings = { ...this.settings, ...state.settings, count: n };
+        const bounds = { coupling: [0, 8], spread: [0, 2], noise: [0, .75],
+          lag: [0, 1.55], range: [.002, 1], movement: [0, .12] };
+        for (const [key, [min, max]] of Object.entries(bounds)) {
+          if (!Number.isFinite(settings[key]) || settings[key] < min || settings[key] > max)
+            throw new Error(`Invalid setting '${key}'.`);
+        }
+        if (!["global", "spatial", "ring"].includes(settings.topology) ||
+            !["random", "wave", "cluster", "chimera"].includes(settings.initMode) ||
+            !Number.isInteger(settings.seed) || settings.seed < 0 || settings.seed > 4294967295 ||
+            !Number.isFinite(state.time) || state.time < 0 ||
+            !Number.isInteger(state.rngState) || state.rngState < 1 || state.rngState > 4294967295)
+          throw new Error("Invalid topology, seed, clock or RNG state.");
+        if (state.rngSpare != null && !Number.isFinite(state.rngSpare))
+          throw new Error("Invalid cached Gaussian sample.");
+        if (state.frequencyZ !== undefined && (!Array.isArray(state.frequencyZ) ||
+            state.frequencyZ.length !== n || state.frequencyZ.some(v => !Number.isFinite(v))))
+          throw new Error("Invalid frequency deviations.");
+        if (state.flashStrength !== undefined && (!Number.isFinite(state.flashStrength) ||
+            state.flashStrength < 0 || state.flashStrength > 1))
+          throw new Error("Invalid flash state.");
+        if ([state.x, state.y].some(a => a.some(v => v < 0 || v > 1)))
+          throw new Error("Positions must be inside the unit world.");
+        this.settings = settings;
+        this.theta = Float64Array.from(state.theta);
+        this.nextTheta = new Float64Array(n);
+        this.omega = Float64Array.from(state.omega);
+        this.frequencyZ = Array.isArray(state.frequencyZ) && state.frequencyZ.length === n
+          ? Float64Array.from(state.frequencyZ)
+          : Float64Array.from(state.omega, value => this.settings.spread !== 0 ? (value - 1.8) / this.settings.spread : 0);
+        this.x = Float64Array.from(state.x);
+        this.y = Float64Array.from(state.y);
+        this.vx = Float64Array.from(state.vx);
+        this.vy = Float64Array.from(state.vy);
+        this.couplingTerm = new Float64Array(n);
+        this.neighborCounts = new Int32Array(n);
+        this.gridNext = new Int32Array(n);
+        this.cellScratch = new Int32Array(9);
+        this.rng = new XorShift32(state.rngState);
+        this.rng.spare = state.rngSpare ?? null;
+        this.flashStrength = state.flashStrength ?? 0;
+        this.time = Number(state.time) || 0;
+        this.history.length = 0;
+        this.historyClock = 0;
+        this.selected = -1;
+        this.computeOrder();
+        this.pushHistory(true);
+      }
+
+      stateHash() {
+        let h = 2166136261 >>> 0;
+        const view = new DataView(new ArrayBuffer(8));
+        const stride = Math.max(1, Math.floor(this.theta.length / 96));
+        for (let i = 0; i < this.theta.length; i += stride) {
+          view.setFloat64(0, this.theta[i], true);
+          for (let b = 0; b < 8; b++) {
+            h ^= view.getUint8(b);
+            h = Math.imul(h, 16777619) >>> 0;
+          }
+        }
+        h ^= this.rng.state;
+        h = Math.imul(h, 16777619) >>> 0;
+        return h.toString(16).padStart(8, "0");
+      }
+    }
+
+    const PRESETS = {
+      critical: {
+        label: "Critical threshold",
+        description: "All-to-all coupling near the onset of collective locking. Small K changes produce a visible macroscopic transition.",
+        settings: { topology: "global", count: 320, coupling: 1.55, spread: 0.95, noise: 0.02, lag: 0, range: 1, movement: 0.018, initMode: "random" }
+      },
+      disorder: {
+        label: "Persistent disorder",
+        description: "Natural-frequency diversity and noise overpower weak coupling, keeping phases broadly distributed.",
+        settings: { topology: "global", count: 320, coupling: 0.35, spread: 1.25, noise: 0.10, lag: 0, range: 1, movement: 0.025, initMode: "random" }
+      },
+      chorus: {
+        label: "Global chorus",
+        description: "Strong global coupling rapidly phase-locks heterogeneous oscillators into one coherent population rhythm.",
+        settings: { topology: "global", count: 360, coupling: 4.4, spread: 0.65, noise: 0.008, lag: 0, range: 1, movement: 0.016, initMode: "random" }
+      },
+      localWaves: {
+        label: "Local phase waves",
+        description: "Moving oscillators couple only within a metric radius. Coherent patches and travelling phase fronts emerge before global lock.",
+        settings: { topology: "spatial", count: 440, coupling: 5.4, spread: 0.18, noise: 0.006, lag: 0.48, range: 0.13, movement: 0.022, initMode: "wave" }
+      },
+      chimera: {
+        label: "Chimera seed",
+        description: "Identical non-local ring dynamics begin with one coherent and one incoherent region, probing partial synchrony and travelling domains.",
+        settings: { topology: "ring", count: 384, coupling: 3.6, spread: 0.025, noise: 0.002, lag: 1.34, range: 0.30, movement: 0, initMode: "chimera" }
+      },
+      fireflies: {
+        label: "Moving fireflies",
+        description: "Local coupling in a moving population. Contact-network turnover competes with synchronization and creates intermittent bursts of order.",
+        settings: { topology: "spatial", count: 360, coupling: 4.8, spread: 0.35, noise: 0.015, lag: 0.18, range: 0.18, movement: 0.055, initMode: "random" }
+      }
+    };
+
+    const DEFAULT_SETTINGS = {
+      seed: 24681357,
+      topology: "global",
+      count: 320,
+      coupling: 1.55,
+      spread: 0.95,
+      noise: 0.02,
+      lag: 0,
+      range: 1,
+      movement: 0.018,
+      initMode: "random"
+    };
+
+    const worldCanvas = document.getElementById("world");
+    const worldCtx = worldCanvas.getContext("2d", { alpha: false });
+    const historyCanvas = document.getElementById("historyChart");
+    const historyCtx = historyCanvas.getContext("2d");
+    const phaseCanvas = document.getElementById("phaseChart");
+    const phaseCtx = phaseCanvas.getContext("2d");
+
+    let sim = new FireflySimulation(DEFAULT_SETTINGS);
+    let running = true;
+    let lastFrame = performance.now();
+    let accumulator = 0;
+    const fixedDt = 1 / 60;
+    let frameCounter = 0;
+    let fps = 60;
+    let fpsClock = 0;
+    let selectedLinkCache = [];
+
+    const ui = {
+      preset: document.getElementById("preset"),
+      presetDescription: document.getElementById("presetDescription"),
+      topology: document.getElementById("topology"),
+      count: document.getElementById("count"),
+      coupling: document.getElementById("coupling"),
+      spread: document.getElementById("spread"),
+      noise: document.getElementById("noise"),
+      lag: document.getElementById("lag"),
+      range: document.getElementById("range"),
+      movement: document.getElementById("movement"),
+      seed: document.getElementById("seed"),
+      trails: document.getElementById("trails"),
+      links: document.getElementById("links"),
+      phaseColour: document.getElementById("phaseColour"),
+      playPause: document.getElementById("playPause"),
+      rangeLabel: document.getElementById("rangeLabel"),
+      orderValue: document.getElementById("orderValue"),
+      orderMeter: document.getElementById("orderMeter"),
+      phaseValue: document.getElementById("phaseValue"),
+      phaseMeter: document.getElementById("phaseMeter"),
+      neighborValue: document.getElementById("neighborValue"),
+      regimeValue: document.getElementById("regimeValue"),
+      topologyChip: document.getElementById("topologyChip"),
+      clockChip: document.getElementById("clockChip"),
+      seedChip: document.getElementById("seedChip"),
+      fpsChip: document.getElementById("fpsChip"),
+      stateHash: document.getElementById("stateHash")
+    };
+
+    const outputFormatters = {
+      count: v => `${Math.round(v)}`,
+      coupling: v => Number(v).toFixed(2),
+      spread: v => Number(v).toFixed(2),
+      noise: v => Number(v).toFixed(3),
+      lag: v => `${Number(v).toFixed(2)} rad`,
+      range: v => Number(v).toFixed(2),
+      movement: v => Number(v).toFixed(3)
+    };
+
+    function bindRange(name, live = true) {
+      const input = ui[name];
+      const out = document.getElementById(`${name}Out`);
+      const render = () => { out.textContent = outputFormatters[name](input.value); };
+      render();
+      input.addEventListener("input", () => {
+        render();
+        if (!live) return;
+        const value = name === "count" ? Number(input.value) | 0 : Number(input.value);
+        if (name === "count") {
+          sim.settings.count = value;
+        } else {
+          sim.settings[name] = value;
+          if (name === "spread" && sim.frequencyZ) {
+            for (let i = 0; i < sim.omega.length; i++) {
+              sim.omega[i] = 1.8 + value * sim.frequencyZ[i];
+            }
+          }
+        }
+      });
+      if (name === "count") {
+        input.addEventListener("change", () => sim.reset(sim.settings.seed, sim.settings.initMode));
+      }
+    }
+
+    ["count", "coupling", "spread", "noise", "lag", "range", "movement"].forEach(bindRange);
+
+    function syncUiFromSettings() {
+      const s = sim.settings;
+      for (const name of ["count", "coupling", "spread", "noise", "lag", "range", "movement"]) {
+        ui[name].value = s[name];
+        document.getElementById(`${name}Out`).textContent = outputFormatters[name](s[name]);
+      }
+      ui.topology.value = s.topology;
+      ui.seed.value = s.seed >>> 0;
+      updateRangeLabel();
+    }
+
+    function updateRangeLabel() {
+      if (ui.topology.value === "global") ui.rangeLabel.textContent = "Coupling range (ignored)";
+      else if (ui.topology.value === "ring") ui.rangeLabel.textContent = "Ring population span";
+      else ui.rangeLabel.textContent = "Spatial radius";
+    }
+
+    function applyPreset(name) {
+      const preset = PRESETS[name];
+      if (!preset) return;
+      sim.settings = { ...sim.settings, ...preset.settings, seed: Number(ui.seed.value) >>> 0 };
+      sim.reset(sim.settings.seed, preset.settings.initMode);
+      ui.preset.value = name;
+      ui.presetDescription.textContent = preset.description;
+      syncUiFromSettings();
+    }
+
+    ui.preset.addEventListener("change", () => {
+      ui.presetDescription.textContent = PRESETS[ui.preset.value].description;
+    });
+    document.getElementById("applyPreset").addEventListener("click", () => applyPreset(ui.preset.value));
+    document.getElementById("reset").addEventListener("click", () => {
+      sim.settings.seed = Number(ui.seed.value) >>> 0;
+      sim.reset(sim.settings.seed, sim.settings.initMode);
+    });
+
+    ui.topology.addEventListener("change", () => {
+      sim.settings.topology = ui.topology.value;
+      updateRangeLabel();
+      sim.reset(sim.settings.seed, sim.settings.topology === "ring" ? "random" : sim.settings.initMode);
+    });
+
+    ui.seed.addEventListener("change", () => {
+      const seed = clamp(Number(ui.seed.value) || 1, 1, 4294967295) >>> 0;
+      ui.seed.value = seed;
+      sim.settings.seed = seed;
+      sim.reset(seed, sim.settings.initMode);
+    });
+
+    function toggleRun() {
+      running = !running;
+      ui.playPause.textContent = running ? "Pause" : "Resume";
+    }
+
+    ui.playPause.addEventListener("click", toggleRun);
+    document.getElementById("disrupt").addEventListener("click", () => sim.disrupt(0.2));
+    document.getElementById("flash").addEventListener("click", () => sim.externalFlash());
+    document.getElementById("randomizeFrequencies").addEventListener("click", () => sim.regenerateFrequencies());
+
+    function downloadBlob(filename, blob) {
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+    }
+
+    document.getElementById("exportState").addEventListener("click", () => {
+      const data = JSON.stringify(sim.exportState(), null, 2);
+      downloadBlob(`firefly-state-seed-${sim.settings.seed}-t-${sim.time.toFixed(1)}.json`, new Blob([data], { type: "application/json" }));
+    });
+
+    document.getElementById("importState").addEventListener("click", () => document.getElementById("fileInput").click());
+    document.getElementById("fileInput").addEventListener("change", async event => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      try {
+        sim.importState(JSON.parse(await file.text()));
+        syncUiFromSettings();
+      } catch (error) {
+        alert(`Could not import state: ${error.message}`);
+      } finally {
+        event.target.value = "";
+      }
+    });
+
+    document.getElementById("saveImage").addEventListener("click", () => {
+      worldCanvas.toBlob(blob => {
+        if (blob) downloadBlob(`firefly-sync-${sim.stateHash()}.png`, blob);
+      }, "image/png");
+    });
+
+    document.getElementById("copySummary").addEventListener("click", async event => {
+      const text = [
+        "Firefly Synchrony Lab — Kuramoto–Sakaguchi simulation",
+        `topology=${sim.settings.topology}`,
+        `N=${sim.theta.length}`,
+        `K=${sim.settings.coupling}`,
+        `sigma=${sim.settings.spread}`,
+        `noise=${sim.settings.noise}`,
+        `alpha=${sim.settings.lag}`,
+        `range=${sim.settings.range}`,
+        `seed=${sim.settings.seed}`,
+        `time=${sim.time.toFixed(3)}`,
+        `order=${sim.order.toFixed(6)}`,
+        `stateHash=${sim.stateHash()}`
+      ].join("\n");
+      try {
+        await navigator.clipboard.writeText(text);
+        const original = event.currentTarget.textContent;
+        event.currentTarget.textContent = "Copied";
+        setTimeout(() => event.currentTarget.textContent = original, 900);
+      } catch {
+        prompt("Copy this summary:", text);
+      }
+    });
+
+    function resizeCanvas(canvas, ctx) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = clamp(window.devicePixelRatio || 1, 1, 2);
+      const w = Math.max(1, Math.floor(rect.width * dpr));
+      const h = Math.max(1, Math.floor(rect.height * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      }
+      return { width: rect.width, height: rect.height, dpr };
+    }
+
+    function phaseColor(theta, alpha = 1, lightness = 64) {
+      const hue = ((theta / TAU) * 360 + 195) % 360;
+      return `hsla(${hue.toFixed(1)}, 90%, ${lightness}%, ${alpha})`;
+    }
+
+    function drawWorld() {
+      const { width: w, height: h } = resizeCanvas(worldCanvas, worldCtx);
+      const ctx = worldCtx;
+
+      if (ui.trails.checked) {
+        ctx.fillStyle = "rgba(5, 7, 13, 0.19)";
+        ctx.fillRect(0, 0, w, h);
+      } else {
+        ctx.fillStyle = "#05070d";
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      const gradient = ctx.createRadialGradient(w * .52, h * .44, 0, w * .52, h * .44, Math.max(w, h) * .72);
+      gradient.addColorStop(0, "rgba(30, 43, 77, 0.105)");
+      gradient.addColorStop(.55, "rgba(10, 15, 28, 0.03)");
+      gradient.addColorStop(1, "rgba(0, 0, 0, 0.16)");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, w, h);
+
+      if (sim.flashStrength > 0.01) {
+        ctx.fillStyle = `rgba(220, 245, 255, ${sim.flashStrength * 0.15})`;
+        ctx.fillRect(0, 0, w, h);
+      }
+
+      if (sim.settings.topology === "spatial" && sim.settings.range < 0.35) {
+        const spacing = Math.max(28, Math.min(w, h) * sim.settings.range);
+        ctx.strokeStyle = "rgba(255,255,255,.018)";
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += spacing) { ctx.moveTo(x, 0); ctx.lineTo(x, h); }
+        for (let y = 0; y <= h; y += spacing) { ctx.moveTo(0, y); ctx.lineTo(w, y); }
+        ctx.stroke();
+      }
+
+      selectedLinkCache = [];
+      if (ui.links.checked && sim.selected >= 0 && sim.selected < sim.theta.length) {
+        drawSelectedLinks(ctx, w, h, sim.selected);
+      }
+
+      const base = clamp(Math.sqrt((w * h) / Math.max(1, sim.theta.length)) * 0.16, 1.4, 4.4);
+      ctx.globalCompositeOperation = "lighter";
+      for (let i = 0; i < sim.theta.length; i++) {
+        const px = sim.x[i] * w;
+        const py = sim.y[i] * h;
+        const pulse = 0.18 + 0.82 * Math.pow((Math.cos(sim.theta[i]) + 1) * 0.5, 3.0);
+        const radius = base * (0.65 + pulse * 0.82);
+        const colour = ui.phaseColour.checked ? phaseColor(sim.theta[i], 1, 65) : `rgba(255, 226, 132, 1)`;
+
+        const glow = ctx.createRadialGradient(px, py, 0, px, py, radius * 4.8);
+        glow.addColorStop(0, colour);
+        glow.addColorStop(.12, ui.phaseColour.checked ? phaseColor(sim.theta[i], pulse * .75, 60) : `rgba(255,215,110,${pulse * .8})`);
+        glow.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(px, py, radius * 4.8, 0, TAU);
+        ctx.fill();
+
+        ctx.fillStyle = `rgba(255,255,255,${0.36 + pulse * .64})`;
+        ctx.beginPath();
+        ctx.arc(px, py, Math.max(.8, radius * .48), 0, TAU);
+        ctx.fill();
+      }
+      ctx.globalCompositeOperation = "source-over";
+
+      if (sim.selected >= 0 && sim.selected < sim.theta.length) {
+        const px = sim.x[sim.selected] * w;
+        const py = sim.y[sim.selected] * h;
+        ctx.strokeStyle = "rgba(255,255,255,.85)";
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(px, py, base * 4.1, 0, TAU);
+        ctx.stroke();
+
+        if (sim.settings.topology === "spatial") {
+          const r = sim.settings.range * Math.min(w, h);
+          ctx.setLineDash([4, 6]);
+          ctx.strokeStyle = "rgba(140,214,255,.26)";
+          ctx.beginPath();
+          ctx.arc(px, py, r, 0, TAU);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
+      }
+
+      drawMeanPhaseCompass(ctx, w - 58, h - 58, 34);
+    }
+
+    function drawSelectedLinks(ctx, w, h, index) {
+      const n = sim.theta.length;
+      const selectedX = sim.x[index];
+      const selectedY = sim.y[index];
+      const candidates = [];
+
+      if (sim.settings.topology === "global") {
+        const stride = Math.max(1, Math.floor(n / 56));
+        for (let j = 0; j < n; j += stride) if (j !== index) candidates.push(j);
+      } else if (sim.settings.topology === "ring") {
+        const k = Math.max(1, Math.floor(n * clamp(sim.settings.range, .002, .5) * .5));
+        for (let d = 1; d <= k; d++) {
+          candidates.push((index - d + n) % n, (index + d) % n);
+        }
+      } else {
+        const r2 = sim.settings.range * sim.settings.range;
+        for (let j = 0; j < n; j++) {
+          if (j === index) continue;
+          const dx = torusDelta(sim.x[j] - selectedX);
+          const dy = torusDelta(sim.y[j] - selectedY);
+          if (dx * dx + dy * dy <= r2) candidates.push(j);
+        }
+      }
+
+      const maxLinks = 92;
+      const stride = Math.max(1, Math.ceil(candidates.length / maxLinks));
+      ctx.lineWidth = 0.8;
+      for (let c = 0; c < candidates.length; c += stride) {
+        const j = candidates[c];
+        let dx = sim.x[j] - selectedX;
+        let dy = sim.y[j] - selectedY;
+        if (dx > .5) dx -= 1;
+        if (dx < -.5) dx += 1;
+        if (dy > .5) dy -= 1;
+        if (dy < -.5) dy += 1;
+        const phaseSimilarity = (Math.cos(sim.theta[j] - sim.theta[index]) + 1) * .5;
+        ctx.strokeStyle = phaseColor(sim.theta[j], .08 + phaseSimilarity * .28, 65);
+        ctx.beginPath();
+        ctx.moveTo(selectedX * w, selectedY * h);
+        ctx.lineTo((selectedX + dx) * w, (selectedY + dy) * h);
+        ctx.stroke();
+      }
+    }
+
+    function drawMeanPhaseCompass(ctx, x, y, r) {
+      ctx.save();
+      ctx.translate(x, y);
+      ctx.fillStyle = "rgba(4,7,13,.62)";
+      ctx.strokeStyle = "rgba(255,255,255,.13)";
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, TAU);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.beginPath();
+      ctx.moveTo(-r * .72, 0); ctx.lineTo(r * .72, 0);
+      ctx.moveTo(0, -r * .72); ctx.lineTo(0, r * .72);
+      ctx.stroke();
+
+      const len = r * .78 * sim.order;
+      ctx.strokeStyle = phaseColor(sim.meanPhase, .92, 68);
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(Math.cos(sim.meanPhase) * len, Math.sin(sim.meanPhase) * len);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,.8)";
+      ctx.beginPath();
+      ctx.arc(0, 0, 2.2, 0, TAU);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawHistory() {
+      const { width: w, height: h } = resizeCanvas(historyCanvas, historyCtx);
+      const ctx = historyCtx;
+      ctx.clearRect(0, 0, w, h);
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.lineWidth = 1;
+      for (let k = 0; k <= 4; k++) {
+        const y = (h - 8) * k / 4 + 4;
+        ctx.beginPath(); ctx.moveTo(4, y); ctx.lineTo(w - 4, y); ctx.stroke();
+      }
+
+      const data = sim.history;
+      if (data.length < 2) return;
+      const minT = data[0].time;
+      const maxT = data[data.length - 1].time;
+      const span = Math.max(1e-6, maxT - minT);
+      const gradient = ctx.createLinearGradient(0, 0, w, 0);
+      gradient.addColorStop(0, "rgba(91,128,255,.85)");
+      gradient.addColorStop(.5, "rgba(183,125,255,.92)");
+      gradient.addColorStop(1, "rgba(111,236,211,.92)");
+      ctx.strokeStyle = gradient;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      data.forEach((p, i) => {
+        const x = 5 + ((p.time - minT) / span) * (w - 10);
+        const y = h - 5 - p.order * (h - 10);
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.stroke();
+    }
+
+    function drawPhaseHistogram() {
+      const { width: w, height: h } = resizeCanvas(phaseCanvas, phaseCtx);
+      const ctx = phaseCtx;
+      ctx.clearRect(0, 0, w, h);
+      const bins = new Uint16Array(24);
+      for (let i = 0; i < sim.theta.length; i++) {
+        bins[Math.min(bins.length - 1, Math.floor(sim.theta[i] / TAU * bins.length))]++;
+      }
+      let max = 1;
+      for (const value of bins) max = Math.max(max, value);
+      const gap = 2;
+      const bw = (w - gap * (bins.length - 1)) / bins.length;
+      for (let i = 0; i < bins.length; i++) {
+        const bh = (bins[i] / max) * (h - 12);
+        ctx.fillStyle = phaseColor((i + .5) / bins.length * TAU, .78, 61);
+        ctx.fillRect(i * (bw + gap), h - bh, bw, bh);
+      }
+    }
+
+    function updateStats() {
+      const r = sim.order;
+      const phaseDegrees = (sim.meanPhase / TAU * 360 + 360) % 360;
+      ui.orderValue.textContent = r.toFixed(3);
+      ui.orderMeter.style.width = `${r * 100}%`;
+      ui.phaseValue.textContent = `${phaseDegrees.toFixed(0)}°`;
+      ui.phaseMeter.style.width = `${phaseDegrees / 3.6}%`;
+      ui.neighborValue.textContent = sim.meanNeighbors.toFixed(1);
+      ui.regimeValue.textContent = r < .25 ? "disordered" : r < .60 ? "clustered" : r < .88 ? "coherent" : "locked";
+      ui.regimeValue.style.color = r < .25 ? "var(--muted)" : r < .60 ? "var(--warn)" : "var(--good)";
+      ui.topologyChip.textContent = sim.settings.topology.toUpperCase();
+      ui.clockChip.textContent = `t = ${sim.time.toFixed(1)} s`;
+      ui.seedChip.textContent = `seed ${sim.settings.seed >>> 0}`;
+      ui.fpsChip.textContent = `${fps.toFixed(0)} fps`;
+      ui.stateHash.textContent = `state ${sim.stateHash()}`;
+    }
+
+    function frame(now) {
+      const elapsed = clamp((now - lastFrame) / 1000, 0, .1);
+      lastFrame = now;
+      fpsClock += elapsed;
+      frameCounter++;
+      if (fpsClock >= .5) {
+        fps = frameCounter / fpsClock;
+        fpsClock = 0;
+        frameCounter = 0;
+      }
+
+      if (running) {
+        accumulator = Math.min(accumulator + elapsed, fixedDt * 8);
+        while (accumulator >= fixedDt) {
+          sim.step(fixedDt);
+          accumulator -= fixedDt;
+        }
+      }
+
+      drawWorld();
+      drawHistory();
+      drawPhaseHistogram();
+      updateStats();
+      requestAnimationFrame(frame);
+    }
+
+    function canvasCoordinates(event) {
+      const rect = worldCanvas.getBoundingClientRect();
+      return {
+        x: clamp((event.clientX - rect.left) / rect.width, 0, 1),
+        y: clamp((event.clientY - rect.top) / rect.height, 0, 1)
+      };
+    }
+
+    worldCanvas.addEventListener("click", event => {
+      const p = canvasCoordinates(event);
+      let best = -1;
+      let bestSq = Infinity;
+      for (let i = 0; i < sim.theta.length; i++) {
+        const dx = torusDelta(sim.x[i] - p.x);
+        const dy = torusDelta(sim.y[i] - p.y);
+        const d2 = dx * dx + dy * dy;
+        if (d2 < bestSq) { bestSq = d2; best = i; }
+      }
+      sim.selected = best;
+    });
+
+    worldCanvas.addEventListener("dblclick", event => {
+      event.preventDefault();
+      const p = canvasCoordinates(event);
+      sim.localDisturbance(p.x, p.y);
+    });
+
+    window.addEventListener("keydown", event => {
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
+      if (event.code === "Space") { event.preventDefault(); toggleRun(); }
+      else if (event.key.toLowerCase() === "r") sim.reset(sim.settings.seed, sim.settings.initMode);
+      else if (event.key.toLowerCase() === "d") sim.disrupt(.2);
+      else if (event.key.toLowerCase() === "f") sim.externalFlash();
+      else if (event.key === "1") applyPreset("critical");
+      else if (event.key === "2") applyPreset("disorder");
+      else if (event.key === "3") applyPreset("chorus");
+      else if (event.key === "4") applyPreset("localWaves");
+      else if (event.key === "5") applyPreset("chimera");
+    });
+
+    function runSelfTest() {
+      const settings = { ...DEFAULT_SETTINGS, count: 48, seed: 123456789, topology: "spatial", range: .24, coupling: 2.1, noise: .03, movement: .01 };
+      const a = new FireflySimulation(settings);
+      const b = new FireflySimulation(settings);
+      for (let i = 0; i < 180; i++) { a.step(fixedDt); b.step(fixedDt); }
+      if (a.rng.state !== b.rng.state || a.theta.length !== b.theta.length) return false;
+      for (let i = 0; i < a.theta.length; i++) {
+        if (a.theta[i] !== b.theta[i] || a.x[i] !== b.x[i] || a.y[i] !== b.y[i]) return false;
+      }
+      return true;
+    }
+
+    const selfTestBadge = document.getElementById("selfTestBadge");
+    try {
+      const passed = runSelfTest();
+      selfTestBadge.textContent = passed ? "Determinism self-check passed" : "Self-check failed";
+      selfTestBadge.classList.toggle("good", passed);
+      if (!passed) selfTestBadge.style.color = "var(--danger)";
+    } catch (error) {
+      selfTestBadge.textContent = "Self-check error";
+      selfTestBadge.classList.remove("good");
+      selfTestBadge.title = error.message;
+    }
+
+    ui.presetDescription.textContent = PRESETS.critical.description;
+    syncUiFromSettings();
+    resizeCanvas(worldCanvas, worldCtx);
+    worldCtx.fillStyle = "#05070d";
+    worldCtx.fillRect(0, 0, worldCanvas.width, worldCanvas.height);
+
+    window.__fireflyDemo = { sim, PRESETS, fixedDt, runSelfTest };
+    const snapshotMode = new URLSearchParams(window.location.search).has("snapshot");
+    if (snapshotMode) {
+      for (let i = 0; i < 180; i++) sim.step(fixedDt);
+      drawWorld();
+      drawHistory();
+      drawPhaseHistogram();
+      updateStats();
+      document.documentElement.dataset.demoReady = "true";
+    } else {
+      requestAnimationFrame(frame);
+    }
+  </script>
+</body>
+</html>

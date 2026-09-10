@@ -7,6 +7,11 @@ Standalone browser-based demonstrations of swarm algorithms and steering behavio
 
 ## Available Demos
 
+### [Firefly Synchrony](./firefly-synchrony/)
+Phase-coupled oscillators: global, spatial and ring coupling.
+
+**[Launch demo](./firefly-synchrony/index.html)** · [Integration plan](./firefly-synchrony/docs/IMPLEMENTATION_PLAN.md) · [Verification](./firefly-synchrony/VERIFICATION.md)
+
 ### [Boids Basic](./boids-basic/)
 A beautiful implementation of Craig Reynolds' Boids algorithm with:
 - Real-time parameter adjustment
@@ -17,6 +22,11 @@ A beautiful implementation of Craig Reynolds' Boids algorithm with:
 
 **[Launch Demo](./boids-basic/index.html)**
 
+### [Turing Morphogenesis](./turing-morphogenesis/)
+Gray–Scott reaction–diffusion fields with editable chemistry and boundaries.
+
+**[Launch demo](./turing-morphogenesis/index.html)** · [Integration plan](./turing-morphogenesis/docs/IMPLEMENTATION_PLAN.md) · [Verification](./turing-morphogenesis/VERIFICATION.md)
+
 ### [Self-Propelled Particles (Vicsek Model)](./self-propelled-particles/)
 An interactive demonstration of the Vicsek model showing phase transitions in active matter:
 - Real-time order-disorder phase transitions
@@ -26,6 +36,11 @@ An interactive demonstration of the Vicsek model showing phase transitions in ac
 - Educational tool for statistical mechanics and emergent behavior
 
 **[Launch Demo](./self-propelled-particles/index.html)**
+
+### [Avalanche Lab](./avalanche-lab/)
+Integer sandpiles with threshold cascades, dissipative sinks and exact mass accounting.
+
+**[Launch demo](./avalanche-lab/index.html)** · [Integration plan](./avalanche-lab/docs/IMPLEMENTATION_PLAN.md) · [Verification](./avalanche-lab/VERIFICATION.md)
 
 ### [Ant Colony Optimization](./ant-colony-optimization/)
 An interactive demonstration of stigmergy-based pathfinding (Dorigo, 1992):
@@ -96,7 +111,7 @@ Planned standalone implementations:
 - [ ] **Obstacle Avoidance**: Steering around static/dynamic obstacles
 - [ ] **Flow Fields**: Following vector fields
 - [ ] **Particle Life**: Chemistry-inspired attraction/repulsion matrix
-- [ ] **Kuramoto Model**: Phase-coupled oscillators (firefly synchronization)
+- [x] **Kuramoto Model**: [Firefly Synchrony](./firefly-synchrony/)
 
 ## Contributing
 
