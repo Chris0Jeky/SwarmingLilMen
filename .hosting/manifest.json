@@ -1,0 +1,15 @@
+{
+  "schema_version":1,"reviewed_on":"2026-09-10","repository":"Chris0Jeky/SwarmingLilMen","stable_id":"swarminglilmen","runtime_class":"local",
+  "public_origin":null,"origin_evidence":"not-configured",
+  "target":"Native/headless simulation and existing standalone js-demos; static publishing only",
+  "source_paths":["README.md","CLAUDE.md"],
+  "persistent_state":["Local simulation and replay outputs"],
+  "invariants":["Native renderer and standalone browser demos remain distinct","No speculative engine rewrite or always-on server","No private traces or profiler output in public assets","Unit tests are not rendering or throughput evidence"],
+  "gates":["Reviewed demonstration artifact allowlist","Deterministic/headless acceptance where applicable","Separate static publication approval"],
+  "tasks":[
+    {"id":"SL1","goal":"Prepare a truthful static demonstration surface","acceptance":"Existing js-demos are labelled separately from native/headless downloads and captured demonstrations"},
+    {"id":"SL2","goal":"Bound the public artifact selection","acceptance":"No raw private runs, local paths or unreviewed profiler output are published"},
+    {"id":"SL3","goal":"Preserve simulation evidence and engine boundaries","acceptance":"Relevant existing tests pass; no unmeasured FPS claim or silent legacy/canonical engine replacement"}
+  ],
+  "activation_authorized":false
+}
