@@ -1,0 +1,1093 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1" />
+<title>Ecogenesis — Artificial Life Observatory</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #070a12;
+    --panel: rgba(12, 18, 31, .94);
+    --panel2: rgba(18, 27, 45, .92);
+    --line: rgba(146, 171, 211, .18);
+    --text: #e9f0ff;
+    --muted: #91a0b8;
+    --accent: #6df2c2;
+    --accent2: #8aa7ff;
+    --danger: #ff6d86;
+    --warn: #ffc96d;
+    --ok: #6df2c2;
+    --shadow: 0 22px 80px rgba(0,0,0,.36);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; overflow: hidden; background: var(--bg); color: var(--text); font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  body::before {
+    content: ""; position: fixed; inset: 0; pointer-events: none;
+    background:
+      radial-gradient(circle at 18% 0%, rgba(75,110,200,.18), transparent 33%),
+      radial-gradient(circle at 92% 18%, rgba(30,183,139,.12), transparent 34%),
+      linear-gradient(180deg, #080c16, #05070d 65%);
+  }
+  button, select, input { font: inherit; }
+  button, select, input[type="number"], input[type="text"] {
+    border: 1px solid var(--line); color: var(--text); background: rgba(255,255,255,.045);
+    border-radius: 9px; min-height: 34px;
+  }
+  button { padding: 7px 11px; cursor: pointer; transition: .16s ease; }
+  button:hover { background: rgba(255,255,255,.09); border-color: rgba(138,167,255,.45); }
+  button.primary { background: linear-gradient(135deg, rgba(109,242,194,.22), rgba(138,167,255,.18)); border-color: rgba(109,242,194,.46); }
+  button.danger { color: #ffdbe1; border-color: rgba(255,109,134,.4); }
+  button.small { min-height: 29px; padding: 4px 8px; font-size: 12px; }
+  button.active { background: rgba(109,242,194,.16); border-color: rgba(109,242,194,.55); color: #dffff4; }
+  input[type="range"] { width: 100%; accent-color: #75e9c0; }
+  select, input[type="number"], input[type="text"] { padding: 6px 8px; }
+  .app { position: relative; height: 100%; display: grid; grid-template-rows: auto 1fr; }
+  .topbar {
+    position: relative; z-index: 20; min-height: 62px; display: flex; align-items: center; gap: 14px;
+    padding: 9px 13px; border-bottom: 1px solid var(--line); background: rgba(7,10,18,.86); backdrop-filter: blur(18px);
+  }
+  .brand { display: flex; align-items: center; gap: 11px; min-width: 260px; }
+  .brand-mark { width: 36px; height: 36px; border-radius: 12px; position: relative; overflow: hidden; border: 1px solid rgba(109,242,194,.42); background: radial-gradient(circle at 35% 30%, #b7ffea, #31c99b 15%, #152444 48%, #090b15 72%); box-shadow: 0 0 24px rgba(72,229,180,.2); }
+  .brand-mark::before, .brand-mark::after { content: ""; position: absolute; border-radius: 50%; border: 1px solid rgba(185,255,234,.5); }
+  .brand-mark::before { inset: 7px; }
+  .brand-mark::after { inset: 13px; background: rgba(194,255,236,.75); box-shadow: 0 0 13px #6df2c2; }
+  .brand h1 { margin: 0; font-size: 16px; letter-spacing: .16em; font-weight: 800; }
+  .brand p { margin: 2px 0 0; color: var(--muted); font-size: 11px; letter-spacing: .05em; }
+  .toolbar { flex: 1; display: flex; gap: 8px; align-items: center; min-width: 0; }
+  .toolbar .group { display: flex; gap: 6px; align-items: center; padding-right: 8px; border-right: 1px solid var(--line); }
+  .toolbar .group:last-child { border-right: 0; }
+  .toolbar label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .08em; }
+  .toolbar select { max-width: 190px; }
+  .timebox { margin-left: auto; display: grid; grid-template-columns: auto auto; column-gap: 8px; row-gap: 1px; align-items: center; padding: 6px 10px; border: 1px solid var(--line); border-radius: 10px; background: rgba(255,255,255,.03); }
+  .timebox strong { font-size: 13px; }
+  .timebox span { color: var(--muted); font-size: 10px; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 10px var(--ok); }
+  .workspace { min-height: 0; display: grid; grid-template-columns: minmax(0,1fr) 370px; gap: 0; }
+  .world-wrap { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #050811; }
+  #world { width: 100%; height: 100%; display: block; cursor: crosshair; }
+  .world-vignette { position: absolute; inset: 0; pointer-events: none; box-shadow: inset 0 0 90px rgba(0,0,0,.56); }
+  .hud { position: absolute; inset: 12px auto auto 12px; display: grid; grid-template-columns: repeat(4, minmax(95px,1fr)); gap: 7px; max-width: 610px; pointer-events: none; }
+  .metric { border: 1px solid var(--line); border-radius: 11px; padding: 8px 10px; background: rgba(5,9,17,.73); backdrop-filter: blur(8px); box-shadow: 0 8px 28px rgba(0,0,0,.18); }
+  .metric span { display: block; color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .09em; }
+  .metric strong { display: block; margin-top: 2px; font-size: 16px; font-variant-numeric: tabular-nums; }
+  .metric small { color: #b6c2d7; font-size: 10px; }
+  .legend { position: absolute; left: 12px; bottom: 12px; display: flex; flex-wrap: wrap; gap: 6px; max-width: calc(100% - 390px); pointer-events: none; }
+  .chip { display: flex; align-items: center; gap: 6px; padding: 5px 8px; border-radius: 999px; background: rgba(5,9,17,.75); border: 1px solid var(--line); color: #cad5e8; font-size: 10px; backdrop-filter: blur(7px); }
+  .swatch { width: 8px; height: 8px; border-radius: 50%; }
+  .timeline { position: absolute; right: 12px; bottom: 12px; width: 350px; height: 152px; border: 1px solid var(--line); border-radius: 13px; background: rgba(5,9,17,.78); backdrop-filter: blur(10px); overflow: hidden; }
+  .timeline-head { height: 31px; display: flex; align-items: center; justify-content: space-between; padding: 0 9px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 10px; text-transform: uppercase; letter-spacing: .08em; }
+  .timeline canvas { width: 100%; height: 120px; display: block; }
+  .notification { position: absolute; top: 12px; right: 12px; width: 320px; display: grid; gap: 6px; pointer-events: none; }
+  .toast { animation: toastin .25s ease; border: 1px solid var(--line); border-left: 3px solid var(--accent); border-radius: 9px; background: rgba(8,13,24,.9); padding: 8px 10px; font-size: 11px; box-shadow: var(--shadow); }
+  .toast.warn { border-left-color: var(--warn); }
+  .toast.danger { border-left-color: var(--danger); }
+  @keyframes toastin { from { transform: translateY(-5px); opacity: 0; } }
+  .sidebar { min-height: 0; display: grid; grid-template-rows: auto 1fr; border-left: 1px solid var(--line); background: var(--panel); backdrop-filter: blur(22px); }
+  .tabs { display: grid; grid-template-columns: repeat(5,1fr); border-bottom: 1px solid var(--line); }
+  .tab { min-height: 42px; border: 0; border-radius: 0; padding: 5px 3px; font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: .07em; background: transparent; }
+  .tab.active { color: var(--text); background: linear-gradient(180deg, rgba(109,242,194,.08), transparent); box-shadow: inset 0 -2px var(--accent); }
+  .panels { min-height: 0; overflow: auto; scrollbar-color: rgba(135,159,198,.3) transparent; }
+  .panel { display: none; padding: 12px; }
+  .panel.active { display: block; }
+  .section { border: 1px solid var(--line); border-radius: 12px; margin-bottom: 10px; overflow: hidden; background: rgba(255,255,255,.018); }
+  .section h2 { margin: 0; padding: 9px 10px; border-bottom: 1px solid var(--line); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; color: #cfd9eb; background: rgba(255,255,255,.02); }
+  .section-body { padding: 10px; }
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; font-size: 11px; }
+  .kv .key { color: var(--muted); }
+  .kv .val { color: #eaf1ff; font-variant-numeric: tabular-nums; text-align: right; }
+  .control { margin-bottom: 10px; }
+  .control:last-child { margin-bottom: 0; }
+  .control-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 4px; font-size: 11px; }
+  .control-head span:first-child { color: #c6d2e6; }
+  .control-head output { color: var(--accent); font-variant-numeric: tabular-nums; }
+  .hint { color: var(--muted); font-size: 10px; line-height: 1.45; }
+  .button-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 6px; }
+  .button-grid.three { grid-template-columns: repeat(3,1fr); }
+  .button-grid button { font-size: 10px; }
+  .species-list { max-height: 270px; overflow: auto; display: grid; gap: 6px; }
+  .species-row { display: grid; grid-template-columns: 8px 1fr auto; gap: 8px; align-items: center; padding: 6px 7px; border: 1px solid var(--line); border-radius: 8px; cursor: pointer; background: rgba(255,255,255,.02); }
+  .species-row:hover { background: rgba(255,255,255,.05); }
+  .species-row .dot { width: 8px; height: 24px; border-radius: 5px; }
+  .species-row strong { display: block; font-size: 11px; }
+  .species-row small { display: block; color: var(--muted); font-size: 9px; }
+  .species-row b { font-size: 12px; font-variant-numeric: tabular-nums; }
+  .mini-canvas { width: 100%; height: 185px; display: block; background: rgba(0,0,0,.16); }
+  .inspector-empty { color: var(--muted); font-size: 12px; text-align: center; padding: 28px 10px; }
+  .creature-head { display: grid; grid-template-columns: 50px 1fr; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .avatar { width: 50px; height: 50px; border-radius: 50%; border: 1px solid var(--line); display: grid; place-items: center; background: radial-gradient(circle, rgba(255,255,255,.13), transparent 68%); }
+  .avatar span { font-size: 23px; }
+  .creature-head h3 { margin: 0; font-size: 14px; }
+  .creature-head p { margin: 3px 0 0; color: var(--muted); font-size: 10px; }
+  .trait { display: grid; grid-template-columns: 88px 1fr 36px; gap: 6px; align-items: center; margin: 5px 0; font-size: 9px; }
+  .trait span:first-child { color: var(--muted); }
+  .bar { height: 6px; border-radius: 4px; overflow: hidden; background: rgba(255,255,255,.06); }
+  .bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #6df2c2, #8aa7ff); }
+  .events { display: grid; gap: 6px; }
+  .event { border-left: 2px solid rgba(138,167,255,.55); padding: 5px 7px; background: rgba(255,255,255,.02); border-radius: 0 7px 7px 0; }
+  .event b { display: block; font-size: 10px; }
+  .event span { color: var(--muted); font-size: 9px; }
+  .experiment-box { padding: 9px; border: 1px dashed rgba(138,167,255,.34); border-radius: 9px; background: rgba(88,119,196,.06); }
+  .status-line { display: flex; gap: 7px; align-items: center; margin: 6px 0; font-size: 10px; color: var(--muted); }
+  .status-line b { color: var(--text); }
+  .kbd { border: 1px solid var(--line); border-bottom-width: 2px; padding: 1px 5px; border-radius: 5px; background: rgba(255,255,255,.04); font-size: 9px; color: #d9e4f7; }
+  .modal { position: fixed; inset: 0; z-index: 100; display: none; place-items: center; background: rgba(1,3,8,.72); backdrop-filter: blur(8px); }
+  .modal.open { display: grid; }
+  .modal-card { width: min(760px, calc(100% - 30px)); max-height: calc(100% - 34px); overflow: auto; border: 1px solid var(--line); border-radius: 16px; background: #0c1220; box-shadow: var(--shadow); }
+  .modal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+  .modal-head h2 { margin: 0; font-size: 14px; }
+  .modal-body { padding: 14px; color: #bdc9dc; font-size: 12px; line-height: 1.6; }
+  .modal-body code, .modal-body pre { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .modal-body pre { padding: 10px; overflow: auto; border: 1px solid var(--line); border-radius: 9px; background: #070b14; color: #d6e5ff; }
+  .footer-note { color: #6f7e95; font-size: 9px; line-height: 1.45; margin-top: 10px; }
+  @media (max-width: 1100px) {
+    .brand { min-width: 210px; }
+    .brand p { display: none; }
+    .workspace { grid-template-columns: 1fr 320px; }
+    .toolbar .group:nth-last-child(-n+2) { display: none; }
+    .hud { grid-template-columns: repeat(2, minmax(110px,1fr)); max-width: 310px; }
+  }
+  @media (max-width: 760px) {
+    html, body { overflow: auto; }
+    .app { height: auto; min-height: 100%; }
+    .topbar { flex-wrap: wrap; }
+    .brand { min-width: 100%; }
+    .workspace { grid-template-columns: 1fr; grid-template-rows: 66vh auto; }
+    .sidebar { border-left: 0; border-top: 1px solid var(--line); min-height: 700px; }
+    .timeline { display: none; }
+    .legend { max-width: calc(100% - 24px); }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <div><h1>ECOGENESIS</h1><p>Artificial Life Observatory · ecology, heredity and evolving adaptation</p></div>
+    </div>
+    <div class="toolbar">
+      <div class="group">
+        <label for="preset">World</label>
+        <select id="preset">
+          <option value="genesis">Genesis basin</option>
+          <option value="archipelago">Archipelago radiation</option>
+          <option value="armsrace">Predator–prey arms race</option>
+          <option value="seasons">Seasonal bottleneck</option>
+          <option value="cambrian">Cambrian mutation pulse</option>
+          <option value="recovery">Mass-extinction recovery</option>
+        </select>
+        <input id="seed" type="number" value="424242" min="1" step="1" style="width:92px" title="Deterministic seed" />
+        <button id="newWorld" class="primary">New world</button>
+      </div>
+      <div class="group">
+        <button id="playPause" class="primary">Pause</button>
+        <button id="stepOne">Step</button>
+        <button id="runYear">+ 1 year</button>
+      </div>
+      <div class="group">
+        <label for="speed">Speed</label>
+        <select id="speed">
+          <option value="1">1×</option><option value="2">2×</option><option value="4" selected>4×</option>
+          <option value="8">8×</option><option value="16">16×</option><option value="32">32×</option><option value="64">64×</option>
+        </select>
+      </div>
+      <div class="group">
+        <label for="mapMode">Map</label>
+        <select id="mapMode">
+          <option value="ecology">Living terrain</option>
+          <option value="plants">Plant biomass</option>
+          <option value="temperature">Temperature</option>
+          <option value="moisture">Moisture</option>
+          <option value="nutrients">Soil nutrients</option>
+          <option value="carrion">Carrion & decay</option>
+          <option value="elevation">Elevation</option>
+        </select>
+        <select id="colorMode">
+          <option value="species">Colour by species</option>
+          <option value="trophic">Colour by trophic niche</option>
+          <option value="energy">Colour by energy</option>
+          <option value="generation">Colour by generation</option>
+          <option value="infection">Colour by infection</option>
+        </select>
+      </div>
+      <div class="timebox">
+        <div class="status-dot" id="runDot"></div><strong id="timeLabel">Year 0 · Day 0</strong>
+        <span></span><span id="seasonLabel">Early spring · north warming</span>
+      </div>
+    </div>
+  </header>
+  <main class="workspace">
+    <section class="world-wrap" id="worldWrap">
+      <canvas id="world"></canvas>
+      <div class="world-vignette"></div>
+      <div class="hud">
+        <div class="metric"><span>Population</span><strong id="mPopulation">0</strong><small id="mPopDelta">initializing</small></div>
+        <div class="metric"><span>Living species</span><strong id="mSpecies">0</strong><small id="mDiversity">diversity 0.00</small></div>
+        <div class="metric"><span>Plant biomass</span><strong id="mPlants">0%</strong><small id="mFertility">soil cycle</small></div>
+        <div class="metric"><span>Max generation</span><strong id="mGeneration">0</strong><small id="mEvolution">no births yet</small></div>
+        <div class="metric"><span>Herbivore / Omni</span><strong id="mHerb">0 / 0</strong><small>resource consumers</small></div>
+        <div class="metric"><span>Predators</span><strong id="mPredators">0</strong><small id="mKills">0 kills</small></div>
+        <div class="metric"><span>Births / deaths</span><strong id="mBirthDeath">0 / 0</strong><small id="mTurnover">this year</small></div>
+        <div class="metric"><span>System health</span><strong id="mHealth">Stable</strong><small id="mDisease">infection 0%</small></div>
+      </div>
+      <div class="legend" id="legend"></div>
+      <div class="timeline">
+        <div class="timeline-head"><span>Population & biomass history</span><span id="chartScale">live</span></div>
+        <canvas id="historyChart"></canvas>
+      </div>
+      <div class="notification" id="notifications"></div>
+    </section>
+    <aside class="sidebar">
+      <nav class="tabs">
+        <button class="tab active" data-panel="overview">Overview</button>
+        <button class="tab" data-panel="evolution">Evolution</button>
+        <button class="tab" data-panel="inspector">Inspect</button>
+        <button class="tab" data-panel="controls">Control</button>
+        <button class="tab" data-panel="events">History</button>
+      </nav>
+      <div class="panels">
+        <section class="panel active" id="panel-overview">
+          <div class="section"><h2>Planetary state</h2><div class="section-body kv" id="planetaryKv"></div></div>
+          <div class="section"><h2>Trophic structure</h2><canvas id="trophicChart" class="mini-canvas"></canvas></div>
+          <div class="section"><h2>Experiment status</h2><div class="section-body">
+            <div class="status-line"><span class="status-dot" id="detDot"></span><span>Replay check: <b id="detText">running</b></span></div>
+            <div class="status-line"><span class="status-dot" id="finiteDot"></span><span>Numeric state: <b id="finiteText">checking</b></span></div>
+            <div class="status-line"><span class="status-dot" id="capacityDot"></span><span>Population bound: <b id="capacityText">checking</b></span></div>
+            <div class="experiment-box hint">The same seed, preset, parameters and ordered interventions reproduce the same state hash in the same browser/runtime. Use the experiment panel below to export a checkpoint or copy provenance.</div>
+          </div></div>
+          <div class="section"><h2>Quick interventions</h2><div class="section-body button-grid three">
+            <button data-shock="bloom">Bloom</button><button data-shock="drought">Drought</button><button data-shock="winter">Deep winter</button>
+            <button data-shock="plague">Plague</button><button data-shock="meteor" class="danger">Meteor</button><button data-shock="mutation">Mutation pulse</button>
+          </div></div>
+        </section>
+        <section class="panel" id="panel-evolution">
+          <div class="section"><h2>Living species</h2><div class="section-body"><div class="species-list" id="speciesList"></div></div></div>
+          <div class="section"><h2>Phylogeny</h2><canvas id="phylogenyChart" class="mini-canvas"></canvas></div>
+          <div class="section"><h2>Trait space · size × speed</h2><canvas id="traitScatter" class="mini-canvas"></canvas></div>
+          <div class="section"><h2>Evolution controls</h2><div class="section-body">
+            <div class="control"><div class="control-head"><span>Mutation strength</span><output id="mutationOut"></output></div><input id="mutationStrength" type="range" min="0" max="2.5" step="0.05" value="1" /></div>
+            <div class="control"><div class="control-head"><span>Speciation distance</span><output id="speciationOut"></output></div><input id="speciationThreshold" type="range" min="0.05" max="0.4" step="0.005" value="0.18" /></div>
+            <div class="control"><div class="control-head"><span>Sexual mixing</span><output id="sexualOut"></output></div><input id="sexualMix" type="range" min="0" max="1" step="0.05" value="0.65" /></div>
+            <div class="hint">Species are operational genome clusters, not taxonomic claims. Newborns join the nearest living centroid or branch when their normalized genome distance exceeds the selected threshold.</div>
+          </div></div>
+        </section>
+        <section class="panel" id="panel-inspector">
+          <div id="inspectorEmpty" class="inspector-empty">Click an organism to inspect its sensors, energy, genome, ancestry and evolved controller.</div>
+          <div id="inspectorContent" style="display:none">
+            <div class="creature-head"><div class="avatar" id="creatureAvatar"><span>◈</span></div><div><h3 id="creatureTitle">Organism</h3><p id="creatureSub"></p></div></div>
+            <div class="section"><h2>Current state</h2><div class="section-body kv" id="creatureKv"></div></div>
+            <div class="section"><h2>Heritable traits</h2><div class="section-body" id="traitBars"></div></div>
+            <div class="section"><h2>Recent neural intent</h2><div class="section-body kv" id="brainKv"></div></div>
+            <div class="section"><h2>Ancestry</h2><div class="section-body events" id="ancestryList"></div></div>
+            <div class="button-grid three"><button id="cloneSelected">Clone</button><button id="mutateSelected">Mutate</button><button id="removeSelected" class="danger">Cull</button></div>
+          </div>
+        </section>
+        <section class="panel" id="panel-controls">
+          <div class="section"><h2>Ecology</h2><div class="section-body">
+            <div class="control"><div class="control-head"><span>Plant regrowth</span><output id="plantOut"></output></div><input id="plantGrowth" type="range" min="0.25" max="2.5" step="0.05" value="1" /></div>
+            <div class="control"><div class="control-head"><span>Season amplitude</span><output id="seasonOut"></output></div><input id="seasonAmplitude" type="range" min="0" max="1.5" step="0.05" value="1" /></div>
+            <div class="control"><div class="control-head"><span>Predation lethality</span><output id="predationOut"></output></div><input id="predationLethality" type="range" min="0.25" max="2.5" step="0.05" value="1" /></div>
+            <div class="control"><div class="control-head"><span>Disease transmission</span><output id="diseaseOut"></output></div><input id="diseaseTransmission" type="range" min="0" max="2.5" step="0.05" value="1" /></div>
+            <div class="control"><div class="control-head"><span>Population ceiling</span><output id="capacityOut"></output></div><input id="populationCap" type="range" min="200" max="2200" step="50" value="1200" /></div>
+          </div></div>
+          <div class="section"><h2>World interaction tool</h2><div class="section-body">
+            <select id="toolMode" style="width:100%; margin-bottom:7px">
+              <option value="inspect">Inspect / select</option>
+              <option value="random">Spawn evolved random organism</option>
+              <option value="herbivore">Spawn herbivore founder</option>
+              <option value="predator">Spawn predator founder</option>
+              <option value="omnivore">Spawn omnivore founder</option>
+              <option value="bloom">Paint plant bloom</option>
+              <option value="fertility">Enrich soil</option>
+              <option value="sterilize">Sterilize patch</option>
+              <option value="meteor">Local extinction</option>
+            </select>
+            <div class="control"><div class="control-head"><span>Brush radius</span><output id="brushOut"></output></div><input id="brushRadius" type="range" min="12" max="180" step="2" value="58" /></div>
+            <div class="hint">Click or drag on the planet. Right-click always inspects. The simulation records interventions in the event history but does not pretend they are endogenous events.</div>
+          </div></div>
+          <div class="section"><h2>Visualisation</h2><div class="section-body button-grid">
+            <button id="toggleTrails" class="active">Motion traces</button><button id="toggleSensors">Selected sensors</button>
+            <button id="toggleGrid">Field grid</button><button id="toggleEvents" class="active">Birth/attack events</button>
+          </div></div>
+          <div class="section"><h2>Experiment I/O</h2><div class="section-body button-grid">
+            <button id="exportState">Export checkpoint</button><button id="importState">Import checkpoint</button>
+            <button id="copySummary">Copy provenance</button><button id="saveImage">Save image</button>
+            <input id="importFile" type="file" accept="application/json" hidden />
+          </div></div>
+          <button id="openAbout" style="width:100%">Model, equations and limitations</button>
+        </section>
+        <section class="panel" id="panel-events">
+          <div class="section"><h2>World history</h2><div class="section-body events" id="eventLog"></div></div>
+          <div class="section"><h2>Run counters</h2><div class="section-body kv" id="counterKv"></div></div>
+          <div class="section"><h2>Keyboard</h2><div class="section-body hint">
+            <span class="kbd">Space</span> pause · <span class="kbd">.</span> step · <span class="kbd">Y</span> run one year · <span class="kbd">B</span> bloom · <span class="kbd">D</span> drought · <span class="kbd">P</span> plague · <span class="kbd">M</span> meteor · <span class="kbd">Esc</span> clear selection
+          </div></div>
+        </section>
+      </div>
+    </aside>
+  </main>
+</div>
+<div class="modal" id="aboutModal">
+  <div class="modal-card">
+    <div class="modal-head"><h2>Ecogenesis model notes</h2><button id="closeAbout">Close</button></div>
+    <div class="modal-body">
+      <p><b>Ecogenesis is an artificial-life sandbox, not a calibrated biological forecast.</b> Organisms inherit morphology, diet, thermal niche, defence, immunity, reproductive strategy and a tiny neural controller. Selection follows from energy acquisition, survival and reproduction inside a procedurally generated seasonal world.</p>
+      <p>The simulation advances in explicit phases:</p>
+      <pre>environment → spatial index → bounded observations → neural intents
+→ proportional resource allocation → kinematics/metabolism
+→ simultaneous damage → disease → reproduction → death/nutrient return
+→ metrics, lineage and rendering</pre>
+      <p>Plants convert an external growth budget into biomass. Grazing and scavenging transfer that biomass into organisms. Death returns biomass as carrion, which decays into soil nutrients. Because sunlight and background nutrient regeneration are external inputs, this is not a closed mass-conserving chemistry.</p>
+      <p>“Species” are online genome clusters maintained for observation. They are useful for detecting lineage splitting but are not formal biological species. Neural controllers begin from viable heuristics and then mutate and recombine; this supports adaptation without claiming open-ended intelligence.</p>
+      <p>Determinism is scoped to this exact JavaScript implementation and browser/runtime. Floating-point, canvas and platform differences are not promised to be bit-identical across browsers. The displayed fingerprint covers every value that can influence future simulation evolution; it is an FNV-1a run fingerprint, not a cryptographic signature.</p>
+      <p><b>Scriptable API</b></p>
+      <pre>Ecogenesis.reset({ preset: "archipelago", seed: 424242, paused: true });
+Ecogenesis.run(500);
+Ecogenesis.shock("drought");
+console.log(Ecogenesis.snapshot());
+const cp = Ecogenesis.checkpoint();
+Ecogenesis.restore(cp);</pre>
+    </div>
+  </div>
+</div>
+<script>
+(() => {
+"use strict";
+
+// ---------- deterministic utilities ----------
+const TAU = Math.PI * 2;
+const WORLD_W = 1600;
+const WORLD_H = 900;
+const ENV_W = 160;
+const ENV_H = 90;
+const YEAR_TICKS = 1800;
+const DT = 0.22;
+const CELL = WORLD_W / ENV_W;
+const INPUTS = 19;
+const OUTPUTS = 4;
+const TRAIT_COUNT = 21;
+const MAX_HISTORY = 260;
+const MAX_EVENT_LOG = 120;
+const EPS = 1e-9;
+
+const clamp = (v, lo=0, hi=1) => v < lo ? lo : (v > hi ? hi : v);
+const lerp = (a,b,t) => a + (b-a)*t;
+const smoothstep = t => { t = clamp(t); return t*t*(3-2*t); };
+const wrap = (v, max) => ((v % max) + max) % max;
+const shortest = (d, span) => d > span/2 ? d-span : (d < -span/2 ? d+span : d);
+const format = (n,d=1) => Number.isFinite(n) ? n.toFixed(d) : "—";
+const human = n => n >= 1e6 ? (n/1e6).toFixed(2)+"m" : n >= 1e3 ? (n/1e3).toFixed(1)+"k" : Math.round(n).toString();
+const sigmoid = x => 1/(1+Math.exp(-x));
+
+function hashString(s) {
+  let h = 2166136261 >>> 0;
+  for (let i=0;i<s.length;i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+function mix32(x) {
+  x = Math.imul(x ^ (x >>> 16), 0x7feb352d);
+  x = Math.imul(x ^ (x >>> 15), 0x846ca68b);
+  return (x ^ (x >>> 16)) >>> 0;
+}
+class RNG {
+  constructor(seed=1) { this.state = (seed >>> 0) || 0x6d2b79f5; this._spare = null; }
+  u32() { let x=this.state; x ^= x<<13; x ^= x>>>17; x ^= x<<5; this.state=x>>>0; return this.state; }
+  next() { return this.u32()/4294967296; }
+  range(a,b) { return a+(b-a)*this.next(); }
+  int(n) { return Math.floor(this.next()*n); }
+  chance(p) { return this.next() < p; }
+  normal() {
+    if (this._spare !== null) { const v=this._spare; this._spare=null; return v; }
+    let u=0,v=0,s=0;
+    do { u=this.range(-1,1); v=this.range(-1,1); s=u*u+v*v; } while (s<=0 || s>=1);
+    const m=Math.sqrt(-2*Math.log(s)/s); this._spare=v*m; return u*m;
+  }
+  fork(label) { return new RNG(mix32(this.state ^ hashString(String(label)))); }
+}
+function hashNoise(ix, iy, seed) { return mix32((ix*374761393) ^ (iy*668265263) ^ seed) / 4294967295; }
+function valueNoise(x,y,seed) {
+  const x0=Math.floor(x), y0=Math.floor(y), tx=smoothstep(x-x0), ty=smoothstep(y-y0);
+  const a=hashNoise(x0,y0,seed), b=hashNoise(x0+1,y0,seed), c=hashNoise(x0,y0+1,seed), d=hashNoise(x0+1,y0+1,seed);
+  return lerp(lerp(a,b,tx),lerp(c,d,tx),ty);
+}
+function fbm(x,y,seed) {
+  let s=0,a=.56,f=1,n=0;
+  for(let o=0;o<4;o++){ s += valueNoise(x*f,y*f,seed+o*1013)*a; n+=a; a*=.5; f*=2.03; }
+  return s/n;
+}
+function hsl(h,s,l,a=1){ return `hsla(${((h%1)+1)%1*360},${s}%,${l}%,${a})`; }
+function distanceSq(ax,ay,bx,by,wrapWorld=false){
+  let dx=bx-ax, dy=by-ay;
+  if(wrapWorld){dx=shortest(dx,WORLD_W);dy=shortest(dy,WORLD_H);}
+  return dx*dx+dy*dy;
+}
+
+// ---------- genome ----------
+const T = Object.freeze({
+  SIZE:0, SPEED:1, SENSOR:2, PLANT:3, PREDATION:4, AGGRESSION:5, SOCIAL:6,
+  THERMAL_OPT:7, THERMAL_TOL:8, AQUATIC:9, REPRO:10, BROOD:11, MUT_RATE:12,
+  DEFENSE:13, DIGESTION:14, HUE:15, TURN:16, EXPLORE:17, CAMOUFLAGE:18,
+  IMMUNITY:19, LONGEVITY:20
+});
+const TRAITS = [
+  ["Body size",T.SIZE],["Speed",T.SPEED],["Sensor range",T.SENSOR],["Plant digestion",T.PLANT],
+  ["Predation",T.PREDATION],["Aggression",T.AGGRESSION],["Sociality",T.SOCIAL],["Thermal optimum",T.THERMAL_OPT],
+  ["Thermal tolerance",T.THERMAL_TOL],["Aquatic adaptation",T.AQUATIC],["Reproduction threshold",T.REPRO],
+  ["Brood investment",T.BROOD],["Mutation rate",T.MUT_RATE],["Defence",T.DEFENSE],["Digestive efficiency",T.DIGESTION],
+  ["Colour locus",T.HUE],["Turning agility",T.TURN],["Exploration",T.EXPLORE],["Camouflage",T.CAMOUFLAGE],
+  ["Immunity",T.IMMUNITY],["Longevity",T.LONGEVITY]
+];
+function baseGenome(kind,rng){
+  const g=new Float32Array(TRAIT_COUNT);
+  const presets={
+    herbivore:[.34,.57,.58,.93,.06,.16,.62,.55,.55,.12,.52,.28,.075,.36,.78,.31,.64,.46,.43,.43,.52],
+    predator:[.77,.81,.78,.05,.95,.86,-.10,.54,.48,.08,.67,.36,.065,.74,.72,.01,.68,.42,.55,.37,.56],
+    omnivore:[.52,.66,.62,.58,.48,.48,.28,.52,.56,.22,.59,.31,.085,.48,.82,.12,.59,.55,.48,.48,.55],
+    aquatic:[.44,.61,.66,.72,.28,.31,.35,.48,.62,.91,.58,.30,.09,.43,.84,.57,.62,.50,.50,.52,.58],
+    random:Array.from({length:TRAIT_COUNT},()=>rng.next())
+  };
+  const p=presets[kind]||presets.random;
+  for(let i=0;i<TRAIT_COUNT;i++){
+    const center=p[i];
+    if(i===T.SOCIAL) g[i]=clamp(center+rng.normal()*.07,-1,1);
+    else g[i]=clamp(center+rng.normal()*.055);
+  }
+  return g;
+}
+function buildBrain(g,rng){
+  const w=new Float32Array(INPUTS*OUTPUTS);
+  for(let i=0;i<w.length;i++) w[i]=rng.normal()*.08;
+  const set=(o,i,v)=>w[o*INPUTS+i]=v+rng.normal()*.05;
+  // inputs: bias, energyNeed, maturity, plant, foodForward, foodSide, prey, preySide,
+  // threat, threatSide, kin, kinSide, crowd, tempMismatch, tempSide, waterAhead,
+  // infection, previousTurn, previousThrust
+  set(0,5,2.8*g[T.PLANT]); set(0,7,3.0*g[T.PREDATION]); set(0,9,-3.7);
+  set(0,11,1.8*g[T.SOCIAL]); set(0,14,2.2); set(0,17,.35);
+  set(1,0,-.2); set(1,1,2.0); set(1,3,-.55*g[T.PLANT]); set(1,6,.8*g[T.PREDATION]);
+  set(1,8,1.8); set(1,12,.7); set(1,15,-2.2*(1-g[T.AQUATIC])); set(1,18,.45);
+  set(2,0,-1.2+1.6*g[T.AGGRESSION]); set(2,1,.6); set(2,6,3.7*g[T.PREDATION]); set(2,8,-.55); set(2,10,-.35*g[T.SOCIAL]);
+  set(3,0,-1.4); set(3,1,-2.0); set(3,2,2.2); set(3,10,2.7); set(3,12,-1.4); set(3,16,-1.1);
+  return w;
+}
+function crossoverGenome(a,b,rng,mutationStrength){
+  const g=new Float32Array(TRAIT_COUNT);
+  const brain=new Float32Array(a.brain.length);
+  const rate=clamp((a.g[T.MUT_RATE]+b.g[T.MUT_RATE])*.5,0,.35);
+  for(let i=0;i<TRAIT_COUNT;i++){
+    let v=rng.chance(.5)?a.g[i]:b.g[i];
+    if(rng.chance(rate*mutationStrength)) v += rng.normal()*.055*mutationStrength;
+    if(rng.chance(.0015*mutationStrength)) v += rng.normal()*.22;
+    g[i]=i===T.SOCIAL?clamp(v,-1,1):clamp(v);
+  }
+  for(let i=0;i<brain.length;i++){
+    let v=rng.chance(.5)?a.brain[i]:b.brain[i];
+    if(rng.chance(rate*.42*mutationStrength)) v += rng.normal()*.13*mutationStrength;
+    if(rng.chance(.0009*mutationStrength)) v = rng.normal()*.8;
+    brain[i]=clamp(v,-4,4);
+  }
+  return {g,brain};
+}
+function mutateClone(a,rng,strength=1){ return crossoverGenome(a,a,rng,strength); }
+function signatureOf(g,brain){
+  const idx=[T.SIZE,T.SPEED,T.SENSOR,T.PLANT,T.PREDATION,T.AGGRESSION,T.SOCIAL,T.THERMAL_OPT,T.THERMAL_TOL,T.AQUATIC,T.REPRO,T.DEFENSE,T.CAMOUFLAGE,T.IMMUNITY];
+  const s=idx.map(i=>g[i]);
+  for(let o=0;o<OUTPUTS;o++){
+    let mean=0,abs=0;
+    for(let i=0;i<INPUTS;i++){ const v=brain[o*INPUTS+i]; mean+=v; abs+=Math.abs(v); }
+    s.push(clamp((mean/INPUTS+2)/4),clamp(abs/INPUTS/2));
+  }
+  return s;
+}
+function genomeDistance(sa,sb){
+  let d=0;
+  const n=Math.min(sa.length,sb.length);
+  for(let i=0;i<n;i++){const q=sa[i]-sb[i];d+=q*q;}
+  return Math.sqrt(d/n);
+}
+
+// ---------- environment ----------
+class Environment {
+  constructor(seed,preset){
+    this.seed=seed>>>0; this.preset=preset;
+    const n=ENV_W*ENV_H;
+    this.elevation=new Float32Array(n); this.moistBase=new Float32Array(n); this.fertility=new Float32Array(n);
+    this.plants=new Float32Array(n); this.nutrients=new Float32Array(n); this.carrion=new Float32Array(n);
+    this.tempBase=new Float32Array(n); this.temperature=new Float32Array(n); this.moisture=new Float32Array(n);
+    this.water=new Uint8Array(n); this.consumedPlant=new Float32Array(n); this.consumedCarrion=new Float32Array(n);
+    this.touched=[]; this.seaLevel=.38; this.generate(preset);
+  }
+  idxCell(cx,cy){ return clamp(cy|0,0,ENV_H-1)*ENV_W+clamp(cx|0,0,ENV_W-1); }
+  idxWorld(x,y){ return this.idxCell(Math.floor(clamp(x,0,WORLD_W-EPS)/CELL),Math.floor(clamp(y,0,WORLD_H-EPS)/CELL)); }
+  sample(arr,x,y){
+    x=clamp(x,0,WORLD_W-EPS)/CELL; y=clamp(y,0,WORLD_H-EPS)/CELL;
+    const x0=Math.floor(x), y0=Math.floor(y), x1=Math.min(x0+1,ENV_W-1), y1=Math.min(y0+1,ENV_H-1);
+    const tx=x-x0, ty=y-y0;
+    return lerp(lerp(arr[y0*ENV_W+x0],arr[y0*ENV_W+x1],tx),lerp(arr[y1*ENV_W+x0],arr[y1*ENV_W+x1],tx),ty);
+  }
+  generate(preset){
+    const opt={
+      genesis:{sea:.35,radial:.56,rough:1,plant:.72}, archipelago:{sea:.50,radial:.25,rough:1.5,plant:.7},
+      armsrace:{sea:.29,radial:.72,rough:.9,plant:.78}, seasons:{sea:.34,radial:.60,rough:1.0,plant:.67},
+      cambrian:{sea:.39,radial:.45,rough:1.3,plant:.83}, recovery:{sea:.37,radial:.53,rough:1.1,plant:.32}
+    }[preset]||{sea:.35,radial:.56,rough:1,plant:.72};
+    this.seaLevel=opt.sea;
+    const rng=new RNG(this.seed^0xa571c3);
+    for(let y=0;y<ENV_H;y++) for(let x=0;x<ENV_W;x++){
+      const i=y*ENV_W+x, nx=x/ENV_W, ny=y/ENV_H;
+      const dx=nx-.5,dy=ny-.5,rad=Math.sqrt(dx*dx+dy*dy)/.707;
+      let e=fbm(nx*3.15*opt.rough,ny*3.15*opt.rough,this.seed^0x51f15e);
+      e=.66*e+.34*fbm(nx*7.7,ny*7.7,this.seed^0xa34c1d);
+      e += (1-rad)*opt.radial-.34*opt.radial;
+      if(preset==="archipelago") e += Math.sin(nx*TAU*3.1)*Math.sin(ny*TAU*2.4)*.08;
+      e=clamp(e);
+      const m=clamp(.18+.82*fbm(nx*4.8+8.3,ny*4.8-3.2,this.seed^0x8fca22)-e*.18);
+      const lat=1-Math.abs(ny-.5)*1.55;
+      const temp=clamp(.12+.86*lat-e*.30+(fbm(nx*6+12,ny*6+5,this.seed^0x73aa91)-.5)*.14);
+      const water=e<opt.sea?1:0;
+      let fert=clamp(.12+m*.77-(Math.abs(e-.52)*.55));
+      if(water) fert=clamp(.18+m*.55);
+      this.elevation[i]=e;this.moistBase[i]=m;this.fertility[i]=fert;this.tempBase[i]=temp;this.water[i]=water;
+      this.nutrients[i]=clamp(.35+fert*.55+rng.normal()*.06,0,1.3);
+      const cap=this.capacityAt(i);
+      this.plants[i]=clamp(cap*(opt.plant*(.72+.28*rng.next())),0,1.4);
+      this.carrion[i]=0;this.temperature[i]=temp;this.moisture[i]=m;
+    }
+  }
+  capacityAt(i){ return this.water[i] ? .22+.50*this.fertility[i] : .38+1.00*this.fertility[i]; }
+  markConsume(i,plant,carrion){
+    if(this.consumedPlant[i]===0 && this.consumedCarrion[i]===0) this.touched.push(i);
+    this.consumedPlant[i]+=plant; this.consumedCarrion[i]+=carrion;
+  }
+  resolveConsumption(sim,agents,decisions){
+    // demand totals are already accumulated. Allocate proportionally without order advantage.
+    for(let ai=0;ai<agents.length;ai++){
+      const a=agents[ai],d=decisions[ai]; if(!d||a.dead)continue;
+      const i=d.cell;
+      if(d.plantDemand>0){
+        const total=this.consumedPlant[i]; const available=this.plants[i];
+        const eaten=total>0?Math.min(d.plantDemand,available*d.plantDemand/total):0;
+        a.energy=Math.min(a.maxEnergy,a.energy+eaten*(34+26*a.g[T.DIGESTION]));sim.counters.grazed+=eaten;
+      }
+      if(d.carrionDemand>0){
+        const total=this.consumedCarrion[i]; const available=this.carrion[i];
+        const eaten=total>0?Math.min(d.carrionDemand,available*d.carrionDemand/total):0;
+        a.energy=Math.min(a.maxEnergy,a.energy+eaten*(42+34*a.g[T.DIGESTION]));sim.counters.scavenged+=eaten;
+      }
+    }
+    for(const i of this.touched){
+      this.plants[i]=Math.max(0,this.plants[i]-Math.min(this.plants[i],this.consumedPlant[i]));
+      this.carrion[i]=Math.max(0,this.carrion[i]-Math.min(this.carrion[i],this.consumedCarrion[i]));
+      this.consumedPlant[i]=0;this.consumedCarrion[i]=0;
+    }
+    this.touched.length=0;
+  }
+  update(sim){
+    const season=Math.sin((sim.tick/YEAR_TICKS)*TAU);
+    const growthMult=sim.params.plantGrowth*(1+sim.events.bloom*.9);
+    const drought=sim.events.drought, cold=sim.events.winter;
+    const n=this.plants.length;
+    for(let i=0;i<n;i++){
+      const y=(i/ENV_W)|0;
+      const hemi=y<ENV_H/2?1:-1;
+      const temp=clamp(this.tempBase[i]+hemi*season*.12*sim.params.seasonAmplitude-cold*.28);
+      const rainSeason=.87+.13*Math.sin((sim.tick/YEAR_TICKS)*TAU+hemi*.7);
+      const moist=clamp(this.moistBase[i]*rainSeason*(1-drought*.68)+.04*(1-drought));
+      this.temperature[i]=temp;this.moisture[i]=moist;
+      const cap=this.capacityAt(i)*(0.74+.26*this.nutrients[i]);
+      const tempFit=Math.exp(-Math.pow((temp-.56)/.34,2));
+      const waterFit=this.water[i] ? .72 : 1;
+      const p=this.plants[i];
+      const growth=.0105*growthMult*this.fertility[i]*moist*tempFit*waterFit*p*(1-p/(cap+EPS));
+      this.plants[i]=clamp(p+growth*DT,0,1.45);
+      const decay=this.carrion[i]*.0045*DT*(.5+temp);
+      this.carrion[i]=Math.max(0,this.carrion[i]-decay);
+      this.nutrients[i]=clamp(this.nutrients[i]+decay*.72+.00012*DT-growth*.04,0,1.4);
+    }
+  }
+  addCarrion(x,y,amount){const i=this.idxWorld(x,y);this.carrion[i]=clamp(this.carrion[i]+amount,0,2.2);this.nutrients[i]=clamp(this.nutrients[i]+amount*.08,0,1.4);}
+  paint(x,y,radius,mode){
+    const cx=x/CELL,cy=y/CELL,r=radius/CELL,rr=r*r;
+    for(let yy=Math.max(0,Math.floor(cy-r));yy<=Math.min(ENV_H-1,Math.ceil(cy+r));yy++)
+      for(let xx=Math.max(0,Math.floor(cx-r));xx<=Math.min(ENV_W-1,Math.ceil(cx+r));xx++){
+        const dx=xx+.5-cx,dy=yy+.5-cy;if(dx*dx+dy*dy>rr)continue;const i=yy*ENV_W+xx;const fall=1-Math.sqrt(dx*dx+dy*dy)/(r+EPS);
+        if(mode==="bloom")this.plants[i]=clamp(this.plants[i]+.7*fall,0,1.45);
+        else if(mode==="fertility"){this.nutrients[i]=clamp(this.nutrients[i]+.7*fall,0,1.4);this.fertility[i]=clamp(this.fertility[i]+.24*fall);}
+        else if(mode==="sterilize"){this.plants[i]*=(1-.92*fall);this.nutrients[i]*=(1-.55*fall);this.carrion[i]*=(1-.8*fall);}
+        else if(mode==="meteor"){this.plants[i]*=(1-.98*fall);this.nutrients[i]=clamp(this.nutrients[i]+.12*fall,0,1.4);}
+      }
+  }
+  mean(arr){let s=0;for(let i=0;i<arr.length;i++)s+=arr[i];return s/arr.length;}
+}
+
+// ---------- spatial index ----------
+class SpatialGrid {
+  constructor(cell=74){this.cell=cell;this.cols=Math.ceil(WORLD_W/cell);this.rows=Math.ceil(WORLD_H/cell);this.buckets=Array.from({length:this.cols*this.rows},()=>[]);}
+  rebuild(agents){for(const b of this.buckets)b.length=0;for(let i=0;i<agents.length;i++){const a=agents[i];const cx=clamp(Math.floor(a.x/this.cell),0,this.cols-1),cy=clamp(Math.floor(a.y/this.cell),0,this.rows-1);this.buckets[cy*this.cols+cx].push(i);}}
+  nearby(x,y,radius,wrapWorld){
+    const out=[];const reach=Math.ceil(radius/this.cell);const cx=Math.floor(x/this.cell),cy=Math.floor(y/this.cell);
+    for(let oy=-reach;oy<=reach;oy++)for(let ox=-reach;ox<=reach;ox++){
+      let xx=cx+ox,yy=cy+oy;
+      if(wrapWorld){xx=(xx%this.cols+this.cols)%this.cols;yy=(yy%this.rows+this.rows)%this.rows;}
+      else if(xx<0||yy<0||xx>=this.cols||yy>=this.rows)continue;
+      const b=this.buckets[yy*this.cols+xx];for(let k=0;k<b.length;k++)out.push(b[k]);
+    }
+    return out;
+  }
+}
+
+// ---------- organism and species ----------
+class Organism {
+  constructor(sim,kind,x,y,parentA=null,parentB=null,inherit=null){
+    this.id=sim.nextId++; this.parentA=parentA?parentA.id:0;this.parentB=parentB?parentB.id:0;
+    this.birthTick=sim.tick;this.deathTick=0;this.generation=parentA?Math.max(parentA.generation,parentB?parentB.generation:parentA.generation)+1:0;
+    this.x=x;this.y=y;this.angle=sim.rng.range(0,TAU);this.vx=0;this.vy=0;this.age=0;this.dead=false;this.deathCause="";
+    if(inherit){this.g=inherit.g;this.brain=inherit.brain;}else{this.g=baseGenome(kind,sim.rng);this.brain=buildBrain(this.g,sim.rng);}
+    this.signature=signatureOf(this.g,this.brain);
+    this.size=4.2+this.g[T.SIZE]*10.5;this.maxSpeed=(23+this.g[T.SPEED]*82)/(0.82+this.size*.025);
+    this.sensor=42+this.g[T.SENSOR]*132;this.maxEnergy=58+this.size*this.size*1.7;
+    this.energy=this.maxEnergy*sim.rng.range(.62,.9);this.health=60+this.g[T.DEFENSE]*70;this.maxHealth=this.health;
+    this.infection=0;this.reproCooldown=sim.rng.range(180,480);this.attackCooldown=0;this.lastReproTick=-99999;
+    this.memory=new Float32Array(OUTPUTS);this.decision=null;this.speciesId=0;this.lineageRoot=parentA?parentA.lineageRoot:this.id;
+  }
+  trophic(){const d=this.g[T.PLANT]-this.g[T.PREDATION];return d>.22?"herbivore":d<-.22?"predator":"omnivore";}
+  maturity(){return YEAR_TICKS*(.17+.26*this.g[T.LONGEVITY]);}
+  lifespan(){return YEAR_TICKS*(2.4+6.6*this.g[T.LONGEVITY]);}
+  ready(sim){return !this.dead&&this.age>this.maturity()&&this.reproCooldown<=0&&this.energy>this.maxEnergy*(.48+.38*this.g[T.REPRO])&&sim.agents.length<sim.params.populationCap;}
+  name(){return `E${this.id.toString(36).toUpperCase()}`;}
+}
+class Species {
+  constructor(id,parentId,tick,signature,hue){this.id=id;this.parentId=parentId;this.bornTick=tick;this.extinctTick=0;this.signature=signature.slice();this.hue=hue;this.count=0;this.births=0;this.deaths=0;this.maxGeneration=0;this.centroidWeight=1;}
+}
+
+// ---------- simulation ----------
+class Simulation {
+  constructor(opts={}){this.reset(opts);}
+  reset(opts={}){
+    this.preset=opts.preset||"genesis";this.seed=(opts.seed>>>0)||424242;this.rng=new RNG(this.seed);
+    this.tick=0;this.nextId=1;this.nextSpeciesId=1;this.agents=[];this.species=new Map();this.archive=new Map();this.grid=new SpatialGrid(72);
+    this.params={plantGrowth:1,seasonAmplitude:1,predationLethality:1,diseaseTransmission:1,mutationStrength:1,speciationThreshold:.18,sexualMix:.65,populationCap:1200,wrapWorld:false};
+    this.events={drought:0,winter:0,bloom:0,mutationPulse:0};
+    this.counters={births:0,deaths:0,kills:0,grazed:0,scavenged:0,attacks:0,infections:0,recoveries:0,speciesBorn:0,speciesExtinct:0,interventions:0};
+    this.yearCounters={births:0,deaths:0,kills:0};this.history=[];this.eventLog=[];this.visualEvents=[];this.selectedId=0;this.silent=false;
+    this.env=new Environment(this.seed,this.preset);
+    this.configurePreset(this.preset);
+    this.seedLife();this.recountSpecies();this.sampleHistory();this.log("Genesis",`World ${this.seed} initialized with ${this.agents.length} organisms`,"system");
+  }
+  configurePreset(p){
+    if(p==="archipelago"){this.params.seasonAmplitude=.75;this.params.mutationStrength=1.15;this.params.speciationThreshold=.145;}
+    if(p==="armsrace"){this.params.predationLethality=1.3;this.params.plantGrowth=1.2;this.params.mutationStrength=1.2;}
+    if(p==="seasons"){this.params.seasonAmplitude=1.45;this.params.plantGrowth=.9;}
+    if(p==="cambrian"){this.params.mutationStrength=2.15;this.params.speciationThreshold=.12;this.params.plantGrowth=1.35;this.params.populationCap=1600;}
+    if(p==="recovery"){this.params.plantGrowth=1.65;this.params.mutationStrength=1.5;this.params.populationCap=1500;}
+  }
+  randomLand(preferWater=false){
+    for(let k=0;k<1000;k++){const x=this.rng.range(18,WORLD_W-18),y=this.rng.range(18,WORLD_H-18),i=this.env.idxWorld(x,y);if((!!this.env.water[i])===preferWater)return{x,y};}
+    return{x:this.rng.range(20,WORLD_W-20),y:this.rng.range(20,WORLD_H-20)};
+  }
+  createFounder(kind,count,preferWater=false){
+    const founderGenome=baseGenome(kind,this.rng), founderBrain=buildBrain(founderGenome,this.rng);
+    const sig=signatureOf(founderGenome,founderBrain);const sid=this.newSpecies(0,sig,founderGenome[T.HUE]);
+    for(let i=0;i<count;i++){
+      const p=this.randomLand(preferWater);const g=new Float32Array(founderGenome),brain=new Float32Array(founderBrain);
+      for(let j=0;j<g.length;j++){if(j===T.SOCIAL)g[j]=clamp(g[j]+this.rng.normal()*.025,-1,1);else g[j]=clamp(g[j]+this.rng.normal()*.025);}
+      for(let j=0;j<brain.length;j++)brain[j]+=this.rng.normal()*.025;
+      const a=new Organism(this,kind,p.x,p.y,null,null,{g,brain});a.speciesId=sid;this.agents.push(a);this.recordBirth(a);
+    }
+  }
+  seedLife(){
+    if(this.preset==="archipelago"){this.createFounder("herbivore",150);this.createFounder("aquatic",95,true);this.createFounder("omnivore",42);this.createFounder("predator",25);}
+    else if(this.preset==="armsrace"){this.createFounder("herbivore",220);this.createFounder("omnivore",45);this.createFounder("predator",55);}
+    else if(this.preset==="cambrian"){this.createFounder("herbivore",190);this.createFounder("omnivore",95);this.createFounder("predator",34);this.createFounder("aquatic",55,true);}
+    else if(this.preset==="recovery"){this.createFounder("herbivore",44);this.createFounder("omnivore",18);this.createFounder("predator",5);}
+    else {this.createFounder("herbivore",185);this.createFounder("omnivore",52);this.createFounder("predator",27);}
+  }
+  newSpecies(parentId,signature,hue){
+    const id=this.nextSpeciesId++;const s=new Species(id,parentId,this.tick,signature,hue);
+    this.species.set(id,s);this.counters.speciesBorn++;
+    if(parentId&& !this.silent){this.log("Speciation",`Species S${id} branched from S${parentId}`,"evolution");this.emit("speciation",null,null,hue);}
+    return id;
+  }
+  assignSpecies(child,parent){
+    const sig=child.signature;let best=null,bestD=Infinity;
+    for(const s of this.species.values()){
+      if(s.extinctTick)continue;const d=genomeDistance(sig,s.signature);if(d<bestD){bestD=d;best=s;}
+    }
+    if(!best || (bestD>this.params.speciationThreshold && (this.species.get(parent.speciesId)?.count||0)>=7)){
+      return this.newSpecies(parent.speciesId,sig,child.g[T.HUE]);
+    }
+    const rate=1/(Math.min(150,best.centroidWeight)+1);for(let i=0;i<sig.length;i++)best.signature[i]=lerp(best.signature[i],sig[i],rate);best.centroidWeight++;
+    return best.id;
+  }
+  recordBirth(a){
+    this.archive.set(a.id,{id:a.id,parentA:a.parentA,parentB:a.parentB,birthTick:a.birthTick,deathTick:0,generation:a.generation,speciesId:a.speciesId,cause:"",traits:[a.g[T.SIZE],a.g[T.SPEED],a.g[T.PLANT],a.g[T.PREDATION]]});
+    if(this.archive.size>12000){const first=this.archive.keys().next().value;if(first!==a.id)this.archive.delete(first);}
+  }
+  log(title,text,type="info"){
+    if(this.silent)return;this.eventLog.unshift({tick:this.tick,title,text,type});if(this.eventLog.length>MAX_EVENT_LOG)this.eventLog.length=MAX_EVENT_LOG;
+  }
+  emit(type,a,b,hue=0){
+    if(this.silent)return;const x=a?a.x:(b?b.x:WORLD_W/2),y=a?a.y:(b?b.y:WORLD_H/2);this.visualEvents.push({type,x,y,x2:b?b.x:x,y2:b?b.y:y,hue,life:1});if(this.visualEvents.length>260)this.visualEvents.splice(0,40);
+  }
+  neural(a,inputs){
+    const out=new Float32Array(OUTPUTS);
+    for(let o=0;o<OUTPUTS;o++){let sum=0;const off=o*INPUTS;for(let i=0;i<INPUTS;i++)sum+=a.brain[off+i]*inputs[i];out[o]=Math.tanh(sum);}
+    return out;
+  }
+  senseDecide(a,ai){
+    const g=a.g,wrapWorld=this.params.wrapWorld;const sensor=a.sensor;const cand=this.grid.nearby(a.x,a.y,sensor,wrapWorld);
+    let prey=-1,preyD=Infinity,threat=-1,threatD=Infinity,kin=-1,kinD=Infinity,mate=-1,mateD=Infinity,crowd=0,infectious=0;
+    let crowdX=0,crowdY=0;
+    const fwdX=Math.cos(a.angle),fwdY=Math.sin(a.angle);
+    for(const oi of cand){if(oi===ai)continue;const o=this.agents[oi];if(o.dead)continue;let dx=o.x-a.x,dy=o.y-a.y;if(wrapWorld){dx=shortest(dx,WORLD_W);dy=shortest(dy,WORLD_H);}const d2=dx*dx+dy*dy;if(d2>sensor*sensor)continue;const d=Math.sqrt(d2)+EPS;crowd++;crowdX-=dx/(d2+80);crowdY-=dy/(d2+80);if(o.infection>.32)infectious+=1-d/sensor;
+      const preyScore=(a.g[T.PREDATION]>.15 && o.size<a.size*(.72+.32*a.g[T.AGGRESSION])) ? d : Infinity;
+      if(preyScore<preyD){preyD=d;prey=oi;}
+      const threatScore=(o.g[T.PREDATION]*o.g[T.AGGRESSION]>.30 && o.size>a.size*(.82+.32*a.g[T.DEFENSE])) ? d : Infinity;
+      if(threatScore<threatD){threatD=d;threat=oi;}
+      if(o.speciesId===a.speciesId && d<kinD){kinD=d;kin=oi;}
+      if(a.ready(this)&&o.ready(this)&&genomeDistance(a.signature,o.signature)<this.params.speciationThreshold*1.45&&d<Math.min(sensor,65)&&d<mateD){mateD=d;mate=oi;}
+    }
+    const ahead=30+a.sensor*.26,leftAngle=a.angle-.62,rightAngle=a.angle+.62;
+    const sampleFood=(x,y)=>{const i=this.env.idxWorld(clamp(x,0,WORLD_W-EPS),clamp(y,0,WORLD_H-EPS));return this.env.plants[i]*g[T.PLANT]+this.env.carrion[i]*g[T.PREDATION]*1.3;};
+    const here=sampleFood(a.x,a.y),forward=sampleFood(a.x+fwdX*ahead,a.y+fwdY*ahead),left=sampleFood(a.x+Math.cos(leftAngle)*ahead,a.y+Math.sin(leftAngle)*ahead),right=sampleFood(a.x+Math.cos(rightAngle)*ahead,a.y+Math.sin(rightAngle)*ahead);
+    const relSide=(idx)=>{if(idx<0)return 0;let dx=this.agents[idx].x-a.x,dy=this.agents[idx].y-a.y;if(wrapWorld){dx=shortest(dx,WORLD_W);dy=shortest(dy,WORLD_H);}const inv=1/(Math.sqrt(dx*dx+dy*dy)+EPS);return fwdX*dy*inv-fwdY*dx*inv;};
+    const tempHere=this.env.sample(this.env.temperature,a.x,a.y),tempLeft=this.env.sample(this.env.temperature,a.x+Math.cos(leftAngle)*ahead,a.y+Math.sin(leftAngle)*ahead),tempRight=this.env.sample(this.env.temperature,a.x+Math.cos(rightAngle)*ahead,a.y+Math.sin(rightAngle)*ahead);
+    const waterAhead=this.env.water[this.env.idxWorld(a.x+fwdX*ahead,a.y+fwdY*ahead)]?1:0;
+    const inputs=new Float32Array(INPUTS);
+    inputs[0]=1;inputs[1]=clamp(1-a.energy/a.maxEnergy);inputs[2]=a.age>a.maturity()?1:0;inputs[3]=clamp(here/1.5);inputs[4]=clamp((forward-here+1)/2);inputs[5]=clamp((right-left+1)/2*2-1,-1,1);
+    inputs[6]=prey>=0?1-clamp(preyD/sensor):0;inputs[7]=relSide(prey);inputs[8]=threat>=0?1-clamp(threatD/sensor):0;inputs[9]=relSide(threat);inputs[10]=kin>=0?1-clamp(kinD/sensor):0;inputs[11]=relSide(kin);
+    inputs[12]=clamp(crowd/14);inputs[13]=clamp((tempHere-g[T.THERMAL_OPT])/.5,-1,1);inputs[14]=clamp((tempRight-tempLeft)*4,-1,1);inputs[15]=waterAhead;inputs[16]=a.infection;inputs[17]=a.memory[0];inputs[18]=a.memory[1];
+    const out=this.neural(a,inputs);a.memory.set(out);
+    const cell=this.env.idxWorld(a.x,a.y), hunger=clamp(1-a.energy/a.maxEnergy);
+    const plantDemand=Math.max(0,g[T.PLANT])*(.007+.018*hunger)*(a.size/8)*DT;
+    const carrionDemand=Math.max(0,g[T.PREDATION])*(.006+.020*hunger)*(a.size/8)*DT;
+    this.env.markConsume(cell,plantDemand,carrionDemand);
+    return {turn:out[0],thrust:(out[1]+1)/2,attack:out[2],mate:out[3],prey,threat,kin,mateTarget:mate,preyD,threatD,kinD,cell,plantDemand,carrionDemand,crowd,crowdX,crowdY,infectious,inputs};
+  }
+  applyMovement(a,d){
+    const g=a.g;const i=d.cell;const inWater=!!this.env.water[i];const terrain=inWater?(.18+.82*g[T.AQUATIC]):(.72+.28*(1-g[T.AQUATIC]));
+    const temp=this.env.temperature[i],mismatch=Math.abs(temp-g[T.THERMAL_OPT]);const tempFit=Math.exp(-Math.pow(mismatch/(.09+.48*g[T.THERMAL_TOL]),2));
+    const turnRate=(.045+.12*g[T.TURN]);a.angle+=d.turn*turnRate*DT*5.4;
+    const desiredSpeed=a.maxSpeed*(.08+.92*d.thrust)*terrain*(.42+.58*tempFit);
+    const tx=Math.cos(a.angle)*desiredSpeed,ty=Math.sin(a.angle)*desiredSpeed;const response=.08+.18*g[T.TURN];a.vx=lerp(a.vx,tx,response);a.vy=lerp(a.vy,ty,response);
+    // weak evolved crowd pressure is kept outside the neural controller to prevent exact overlap singularities
+    a.vx+=d.crowdX*18*(1-.45*g[T.SOCIAL]);a.vy+=d.crowdY*18*(1-.45*g[T.SOCIAL]);
+    a.x+=a.vx*DT;a.y+=a.vy*DT;
+    if(this.params.wrapWorld){a.x=wrap(a.x,WORLD_W);a.y=wrap(a.y,WORLD_H);}else{
+      if(a.x<2){a.x=2;a.vx=Math.abs(a.vx);a.angle=Math.atan2(a.vy,a.vx);}if(a.x>WORLD_W-2){a.x=WORLD_W-2;a.vx=-Math.abs(a.vx);a.angle=Math.atan2(a.vy,a.vx);}
+      if(a.y<2){a.y=2;a.vy=Math.abs(a.vy);a.angle=Math.atan2(a.vy,a.vx);}if(a.y>WORLD_H-2){a.y=WORLD_H-2;a.vy=-Math.abs(a.vy);a.angle=Math.atan2(a.vy,a.vx);}
+    }
+    const speed=Math.sqrt(a.vx*a.vx+a.vy*a.vy);const basal=.0034*Math.pow(a.size,1.55)*(1+.32*g[T.IMMUNITY]);const move=.000012*speed*speed*(.7+a.size*.06);const thermal=.008*mismatch*(1-g[T.THERMAL_TOL]);const aquaticPenalty=inWater?(1-g[T.AQUATIC])*.012:g[T.AQUATIC]*.0025;
+    a.energy-=DT*(basal+move+thermal+aquaticPenalty+a.infection*.025);a.age+=1;a.reproCooldown-=1;a.attackCooldown-=1;
+    if(a.energy>a.maxEnergy*.72)a.health=Math.min(a.maxHealth,a.health+DT*(.005+.012*g[T.DEFENSE]));
+    if(a.energy<=0){a.dead=true;a.deathCause="starvation";}else if(a.health<=0){a.dead=true;a.deathCause="predation";}else if(a.age>a.lifespan()*(.85+.3*this.rng.next())){a.dead=true;a.deathCause="age";}
+  }
+  resolveAttacks(decisions){
+    const n=this.agents.length,damage=new Float32Array(n),intents=[];
+    for(let i=0;i<n;i++){const a=this.agents[i],d=decisions[i];if(a.dead||d.prey<0||d.attack<.35||a.attackCooldown>0)continue;const target=this.agents[d.prey];if(target.dead)continue;const reach=a.size+target.size+7;if(d.preyD>reach)continue;const power=(.6+3.2*a.g[T.PREDATION]+1.8*a.g[T.AGGRESSION]+a.size*.12)*this.params.predationLethality;const hit=power*(.65+.35*this.rng.next())*(1-.48*target.g[T.DEFENSE])*(1-.28*target.g[T.CAMOUFLAGE]);if(hit<=0)continue;damage[d.prey]+=hit;intents.push({attacker:i,target:d.prey,hit});a.attackCooldown=8+16*(1-a.g[T.AGGRESSION]);a.energy-=.15+.08*a.size;this.counters.attacks++;}
+    for(let i=0;i<n;i++)if(damage[i]>0){const target=this.agents[i];target.health-=damage[i];if(target.health<=0&&!target.dead){target.dead=true;target.deathCause="predation";}}
+    for(const it of intents){const a=this.agents[it.attacker],t=this.agents[it.target];if(a.dead)continue;a.energy=Math.min(a.maxEnergy,a.energy+it.hit*(.45+.35*a.g[T.DIGESTION]));this.emit("attack",a,t,a.g[T.HUE]);}
+  }
+  resolveDisease(decisions){
+    for(let i=0;i<this.agents.length;i++){
+      const a=this.agents[i],d=decisions[i];if(a.dead)continue;
+      if(d.infectious>0&&a.infection<.05&&this.rng.chance(.0013*d.infectious*this.params.diseaseTransmission*(1-a.g[T.IMMUNITY]))){a.infection=.08;this.counters.infections++;}
+      if(a.infection>0){a.infection=clamp(a.infection+DT*(.0018*(1-a.g[T.IMMUNITY])-.00125*a.g[T.IMMUNITY]));if(a.infection>.72)a.health-=DT*.018*(1-a.g[T.IMMUNITY]);if(this.rng.chance(.0005+.0018*a.g[T.IMMUNITY])){a.infection=0;this.counters.recoveries++;}}
+      if(a.health<=0&&!a.dead){a.dead=true;a.deathCause=a.infection>0?"disease":"collapse";}
+    }
+  }
+  resolveReproduction(decisions){
+    if(this.agents.length>=this.params.populationCap)return;
+    const used=new Uint8Array(this.agents.length),births=[];
+    for(let i=0;i<this.agents.length;i++){
+      const a=this.agents[i],d=decisions[i];if(!a.ready(this)||used[i]||d.mate<-.1)continue;
+      let partner=null,pi=-1;
+      if(d.mateTarget>=0&&this.rng.chance(this.params.sexualMix)){const b=this.agents[d.mateTarget];if(b.ready(this)&&!used[d.mateTarget]){partner=b;pi=d.mateTarget;}}
+      if(!partner && this.tick-a.lastReproTick<YEAR_TICKS*.5 && !this.rng.chance(.003))continue;
+      const other=partner||a;const strength=this.params.mutationStrength*(1+this.events.mutationPulse*.9);const inherited=crossoverGenome(a,other,this.rng,strength);
+      const ang=this.rng.range(0,TAU),dist=a.size+this.rng.range(4,14);let x=a.x+Math.cos(ang)*dist,y=a.y+Math.sin(ang)*dist;x=clamp(x,2,WORLD_W-2);y=clamp(y,2,WORLD_H-2);
+      const child=new Organism(this,"random",x,y,a,other,inherited);child.speciesId=this.assignSpecies(child,a);
+      const invest=a.energy*(.12+.28*a.g[T.BROOD]);a.energy-=invest;child.energy=Math.min(child.maxEnergy,invest*.72);
+      a.reproCooldown=360+520*a.g[T.REPRO];a.lastReproTick=this.tick;used[i]=1;
+      if(partner){partner.energy-=Math.min(partner.energy*.12,invest*.35);partner.reproCooldown=a.reproCooldown;partner.lastReproTick=this.tick;used[pi]=1;}
+      births.push(child);this.emit("birth",a,child,child.g[T.HUE]);
+      if(this.agents.length+births.length>=this.params.populationCap)break;
+    }
+    for(const c of births){this.agents.push(c);this.counters.births++;this.yearCounters.births++;this.recordBirth(c);const s=this.species.get(c.speciesId);if(s){s.births++;s.maxGeneration=Math.max(s.maxGeneration,c.generation);}}
+  }
+  processDeaths(){
+    if(!this.agents.some(a=>a.dead))return;
+    const survivors=[];
+    for(const a of this.agents){
+      if(!a.dead){survivors.push(a);continue;}
+      this.env.addCarrion(a.x,a.y,.14+a.size*.028+a.energy/a.maxEnergy*.08);this.counters.deaths++;this.yearCounters.deaths++;if(a.deathCause==="predation"){this.counters.kills++;this.yearCounters.kills++;}
+      const rec=this.archive.get(a.id);if(rec){rec.deathTick=this.tick;rec.cause=a.deathCause;}const s=this.species.get(a.speciesId);if(s)s.deaths++;this.emit("death",a,null,a.g[T.HUE]);
+      if(a.id===this.selectedId)this.selectedId=0;
+    }
+    this.agents=survivors;
+  }
+  recountSpecies(){
+    for(const s of this.species.values())s.count=0;
+    for(const a of this.agents){const s=this.species.get(a.speciesId);if(s){s.count++;s.maxGeneration=Math.max(s.maxGeneration,a.generation);}}
+    for(const s of this.species.values())if(!s.extinctTick&&s.count===0){s.extinctTick=this.tick;this.counters.speciesExtinct++;if(this.tick>10)this.log("Extinction",`Species S${s.id} disappeared after ${format((this.tick-s.bornTick)/YEAR_TICKS,2)} years`,"evolution");}
+  }
+  step(count=1){
+    for(let z=0;z<count;z++){
+      if(this.agents.length===0){this.tick++;if(this.tick%2===0)this.env.update(this);continue;}
+      this.tick++;this.events.drought=Math.max(0,this.events.drought-.00022);this.events.winter=Math.max(0,this.events.winter-.00024);this.events.bloom=Math.max(0,this.events.bloom-.00035);this.events.mutationPulse=Math.max(0,this.events.mutationPulse-.0005);
+      if(this.tick%2===0)this.env.update(this);
+      this.grid.rebuild(this.agents);const decisions=new Array(this.agents.length);
+      for(let i=0;i<this.agents.length;i++)decisions[i]=this.senseDecide(this.agents[i],i);
+      this.env.resolveConsumption(this,this.agents,decisions);
+      for(let i=0;i<this.agents.length;i++){this.agents[i].decision=decisions[i];this.applyMovement(this.agents[i],decisions[i]);}
+      this.resolveAttacks(decisions);this.resolveDisease(decisions);this.resolveReproduction(decisions);this.processDeaths();
+      if(this.tick%30===0)this.recountSpecies();
+      if(this.tick%45===0)this.sampleHistory();
+      if(this.tick%YEAR_TICKS===0){this.log("Year complete",`${this.yearCounters.births} births, ${this.yearCounters.deaths} deaths, ${this.yearCounters.kills} predation deaths`,"system");this.yearCounters={births:0,deaths:0,kills:0};}
+      if(this.agents.length>this.params.populationCap){this.agents.sort((a,b)=>b.energy/a.maxEnergy-a.energy/a.maxEnergy);for(let i=this.params.populationCap;i<this.agents.length;i++){this.agents[i].dead=true;this.agents[i].deathCause="capacity";}this.processDeaths();}
+    }
+  }
+  sampleHistory(){
+    const m=this.metrics();this.history.push({tick:this.tick,total:m.population,herb:m.herbivores,omni:m.omnivores,pred:m.predators,plants:m.plantMean,species:m.speciesLiving,diversity:m.diversity,infection:m.infection});if(this.history.length>MAX_HISTORY)this.history.shift();
+  }
+  metrics(){
+    let herb=0,omni=0,pred=0,energy=0,infected=0,maxGen=0,meanGen=0;const speciesCounts=new Map();
+    for(const a of this.agents){const t=a.trophic();if(t==="herbivore")herb++;else if(t==="predator")pred++;else omni++;energy+=a.energy/a.maxEnergy;if(a.infection>.05)infected++;maxGen=Math.max(maxGen,a.generation);meanGen+=a.generation;speciesCounts.set(a.speciesId,(speciesCounts.get(a.speciesId)||0)+1);}
+    let entropy=0;for(const n of speciesCounts.values()){const p=n/Math.max(1,this.agents.length);entropy-=p*Math.log(p);}const diversity=speciesCounts.size>1?entropy/Math.log(speciesCounts.size):0;
+    return {population:this.agents.length,herbivores:herb,omnivores:omni,predators:pred,meanEnergy:this.agents.length?energy/this.agents.length:0,infection:this.agents.length?infected/this.agents.length:0,maxGeneration:maxGen,meanGeneration:this.agents.length?meanGen/this.agents.length:0,speciesLiving:speciesCounts.size,diversity,plantMean:this.env.mean(this.env.plants),nutrientMean:this.env.mean(this.env.nutrients),carrionMean:this.env.mean(this.env.carrion),temperatureMean:this.env.mean(this.env.temperature),moistureMean:this.env.mean(this.env.moisture)};
+  }
+  shock(type,x=WORLD_W/2,y=WORLD_H/2,radius=170){
+    this.counters.interventions++;
+    if(type==="bloom"){this.events.bloom=1;this.env.paint(x,y,radius*2,"bloom");this.log("Intervention",`Plant bloom injected near (${Math.round(x)}, ${Math.round(y)})`,"intervention");}
+    else if(type==="drought"){this.events.drought=1;this.log("Intervention","Planet-wide drought started","intervention");}
+    else if(type==="winter"){this.events.winter=1;this.log("Intervention","Abrupt deep-winter anomaly started","intervention");}
+    else if(type==="plague"){let n=0;for(const a of this.agents)if(this.rng.chance(.13)){a.infection=Math.max(a.infection,.18);n++;}this.counters.infections+=n;this.log("Intervention",`Novel pathogen seeded in ${n} organisms`,"intervention");}
+    else if(type==="mutation"){this.events.mutationPulse=1;this.log("Intervention","Temporary high-mutation window opened","intervention");}
+    else if(type==="meteor"){let killed=0;for(const a of this.agents)if(distanceSq(a.x,a.y,x,y,false)<radius*radius){a.dead=true;a.deathCause="impact";killed++;}this.env.paint(x,y,radius,"meteor");this.processDeaths();this.log("Intervention",`Impact removed ${killed} organisms and scorched the field`,"intervention");this.emit("meteor",{x,y,g:new Float32Array([0])},null,.02);}
+  }
+  spawn(kind,x,y,inherit=null){const a=new Organism(this,kind,x,y,null,null,inherit);const sig=signatureOf(a.g,a.brain);a.speciesId=this.newSpecies(0,sig,a.g[T.HUE]);this.agents.push(a);this.recordBirth(a);return a;}
+  selected(){return this.agents.find(a=>a.id===this.selectedId)||null;}
+  nearest(x,y,max=40){let best=null,bd=max*max;for(const a of this.agents){const d=distanceSq(x,y,a.x,a.y,false);if(d<bd){bd=d;best=a;}}return best;}
+  finiteCheck(){
+    for(const a of this.agents){const vals=[a.x,a.y,a.vx,a.vy,a.energy,a.health,a.infection,a.age];for(const v of vals)if(!Number.isFinite(v))return false;for(const v of a.g)if(!Number.isFinite(v))return false;for(const v of a.brain)if(!Number.isFinite(v))return false;}for(const arr of [this.env.plants,this.env.nutrients,this.env.carrion,this.env.temperature])for(const v of arr)if(!Number.isFinite(v))return false;return true;
+  }
+  stateHash(){
+    // FNV-1a over every value that can influence future simulation evolution. This is a
+    // deterministic run fingerprint, not a cryptographic integrity signature.
+    let h=2166136261>>>0;const buf=new ArrayBuffer(8),dv=new DataView(buf);
+    const u32=v=>{h^=(v>>>0);h=Math.imul(h,16777619)>>>0;};
+    const f64=v=>{dv.setFloat64(0,Number(v),true);u32(dv.getUint32(0,true));u32(dv.getUint32(4,true));};
+    const text=v=>{const q=String(v);u32(q.length);for(let i=0;i<q.length;i++)u32(q.charCodeAt(i));};
+    const f32arr=arr=>{u32(arr.length);const bits=new Uint32Array(arr.buffer,arr.byteOffset,arr.length);for(let i=0;i<bits.length;i++)u32(bits[i]);};
+    text(this.preset);u32(this.seed);u32(this.tick);u32(this.nextId);u32(this.nextSpeciesId);u32(this.rng.state);f64(this.rng._spare===null?Number.NaN:this.rng._spare);
+    for(const key of Object.keys(this.params).sort()){text(key);const v=this.params[key];typeof v==="boolean"?u32(v?1:0):f64(v);}
+    for(const key of Object.keys(this.events).sort()){text(key);f64(this.events[key]);}
+    const ordered=[...this.agents].sort((a,b)=>a.id-b.id);u32(ordered.length);
+    for(const a of ordered){
+      u32(a.id);u32(a.parentA);u32(a.parentB);u32(a.birthTick);u32(a.generation);u32(a.speciesId);u32(a.lineageRoot);
+      for(const v of [a.x,a.y,a.angle,a.vx,a.vy,a.age,a.energy,a.health,a.maxHealth,a.infection,a.reproCooldown,a.attackCooldown,a.lastReproTick])f64(v);
+      f32arr(a.g);f32arr(a.brain);f32arr(a.memory);
+    }
+    const species=[...this.species.values()].sort((a,b)=>a.id-b.id);u32(species.length);
+    for(const sp of species){u32(sp.id);u32(sp.parentId);u32(sp.bornTick);u32(sp.extinctTick);u32(sp.count);u32(sp.births);u32(sp.deaths);u32(sp.maxGeneration);f64(sp.hue);f64(sp.centroidWeight);u32(sp.signature.length);for(const v of sp.signature)f64(v);}
+    for(const arr of [this.env.plants,this.env.nutrients,this.env.carrion,this.env.temperature,this.env.moisture,this.env.fertility])f32arr(arr);
+    return h.toString(16).toUpperCase().padStart(8,"0");
+  }
+  validateCheckpoint(cp){
+    const fail=msg=>{throw new Error(`Invalid Ecogenesis checkpoint: ${msg}`);};
+    if(!cp||typeof cp!=="object"||cp.schema!=="ecogenesis/v1")fail("unsupported schema");
+    if(!Number.isInteger(cp.seed)||cp.seed<0||!Number.isInteger(cp.tick)||cp.tick<0)fail("invalid seed or tick");
+    if(!Number.isInteger(cp.nextId)||cp.nextId<1||!Number.isInteger(cp.nextSpeciesId)||cp.nextSpeciesId<1)fail("invalid identity counters");
+    if(!cp.rng||!Number.isInteger(cp.rng.state))fail("missing RNG state");
+    if(cp.rng.spare!==null&&cp.rng.spare!==undefined&&!Number.isFinite(cp.rng.spare))fail("non-finite RNG spare");
+    if(!cp.params||!cp.events||!cp.counters||!cp.yearCounters)fail("missing runtime state");
+    for(const [group,obj] of [["parameters",cp.params],["events",cp.events],["counters",cp.counters],["year counters",cp.yearCounters]])for(const [k,v] of Object.entries(obj)){if(typeof v!=="boolean"&&!Number.isFinite(v))fail(`${group}.${k} is non-finite`);}
+    if(!cp.env||typeof cp.env!=="object")fail("missing environment fields");
+    const fieldLength=ENV_W*ENV_H;
+    for(const key of ["plants","nutrients","carrion","temperature","moisture","fertility"]){const arr=cp.env[key];if(!Array.isArray(arr)||arr.length!==fieldLength)fail(`field ${key} has wrong length`);for(let i=0;i<arr.length;i++)if(!Number.isFinite(arr[i]))fail(`field ${key}[${i}] is non-finite`);}
+    if(!Array.isArray(cp.agents)||cp.agents.length>5000)fail("invalid organism collection");
+    const ids=new Set();let maxId=0;
+    for(const [i,a] of cp.agents.entries()){
+      if(!a||!Number.isInteger(a.id)||a.id<1||ids.has(a.id))fail(`invalid or duplicate organism id at index ${i}`);ids.add(a.id);maxId=Math.max(maxId,a.id);
+      for(const key of ["parentA","parentB","birthTick","generation","speciesId","lineageRoot"])if(!Number.isInteger(a[key])||a[key]<0)fail(`organism ${a.id}.${key} is invalid`);
+      for(const key of ["x","y","angle","vx","vy","age","energy","health","maxHealth","infection","reproCooldown","attackCooldown","lastReproTick"])if(!Number.isFinite(a[key]))fail(`organism ${a.id}.${key} is non-finite`);
+      if(!Array.isArray(a.g)||a.g.length!==TRAIT_COUNT||a.g.some(v=>!Number.isFinite(v)))fail(`organism ${a.id} genome is malformed`);
+      if(!Array.isArray(a.brain)||a.brain.length!==INPUTS*OUTPUTS||a.brain.some(v=>!Number.isFinite(v)))fail(`organism ${a.id} controller is malformed`);
+      if(!Array.isArray(a.memory)||a.memory.length!==OUTPUTS||a.memory.some(v=>!Number.isFinite(v)))fail(`organism ${a.id} memory is malformed`);
+    }
+    if(cp.nextId<=maxId)fail("nextId would collide with an existing organism");
+    if(!Array.isArray(cp.species))fail("missing species records");const speciesIds=new Set();let maxSpecies=0;
+    for(const sp of cp.species){if(!sp||!Number.isInteger(sp.id)||sp.id<1||speciesIds.has(sp.id))fail("invalid or duplicate species id");speciesIds.add(sp.id);maxSpecies=Math.max(maxSpecies,sp.id);if(!Array.isArray(sp.signature)||!sp.signature.length||sp.signature.some(v=>!Number.isFinite(v)))fail(`species ${sp.id} signature is malformed`);for(const key of ["parentId","bornTick","extinctTick","count","births","deaths","maxGeneration"])if(!Number.isFinite(sp[key]))fail(`species ${sp.id}.${key} is invalid`);if(!Number.isFinite(sp.hue)||!Number.isFinite(sp.centroidWeight))fail(`species ${sp.id} metadata is non-finite`);}
+    if(cp.nextSpeciesId<=maxSpecies)fail("nextSpeciesId would collide with an existing species");for(const a of cp.agents)if(!speciesIds.has(a.speciesId))fail(`organism ${a.id} references unknown species ${a.speciesId}`);
+    if(!Array.isArray(cp.archive)||!Array.isArray(cp.history)||!Array.isArray(cp.eventLog))fail("missing observational records");
+    return true;
+  }
+  checkpoint(){
+    return {schema:"ecogenesis/v1",preset:this.preset,seed:this.seed,tick:this.tick,nextId:this.nextId,nextSpeciesId:this.nextSpeciesId,rng:{state:this.rng.state,spare:this.rng._spare},params:{...this.params},events:{...this.events},counters:{...this.counters},yearCounters:{...this.yearCounters},env:{plants:Array.from(this.env.plants),nutrients:Array.from(this.env.nutrients),carrion:Array.from(this.env.carrion),temperature:Array.from(this.env.temperature),moisture:Array.from(this.env.moisture),fertility:Array.from(this.env.fertility)},agents:this.agents.map(a=>({id:a.id,parentA:a.parentA,parentB:a.parentB,birthTick:a.birthTick,generation:a.generation,x:a.x,y:a.y,angle:a.angle,vx:a.vx,vy:a.vy,age:a.age,energy:a.energy,health:a.health,maxHealth:a.maxHealth,infection:a.infection,reproCooldown:a.reproCooldown,attackCooldown:a.attackCooldown,lastReproTick:a.lastReproTick,speciesId:a.speciesId,lineageRoot:a.lineageRoot,g:Array.from(a.g),brain:Array.from(a.brain),memory:Array.from(a.memory)})),species:[...this.species.values()].map(s=>({...s,signature:Array.from(s.signature)})),archive:[...this.archive.entries()].map(([id,r])=>[id,{...r,traits:Array.isArray(r.traits)?[...r.traits]:[]}]),history:this.history.map(x=>({...x})),eventLog:this.eventLog.map(x=>({...x})),selectedId:this.selectedId};
+  }
+  restore(cp){
+    this.validateCheckpoint(cp);
+    this.preset=cp.preset;this.seed=cp.seed>>>0;this.rng=new RNG(1);this.rng.state=cp.rng.state>>>0;this.rng._spare=cp.rng.spare??null;this.tick=cp.tick|0;this.nextId=cp.nextId|0;this.nextSpeciesId=cp.nextSpeciesId|0;this.params={...cp.params};this.events={...cp.events};this.counters={...cp.counters};this.yearCounters={...cp.yearCounters};this.env=new Environment(this.seed,this.preset);
+    for(const key of ["plants","nutrients","carrion","temperature","moisture","fertility"]){if(!Array.isArray(cp.env[key])||cp.env[key].length!==this.env[key].length)throw new Error(`Malformed field ${key}`);this.env[key].set(cp.env[key]);}
+    this.agents=cp.agents.map(o=>{const a=Object.create(Organism.prototype);Object.assign(a,o);a.g=Float32Array.from(o.g);a.brain=Float32Array.from(o.brain);a.memory=Float32Array.from(o.memory);a.signature=signatureOf(a.g,a.brain);a.size=4.2+a.g[T.SIZE]*10.5;a.maxSpeed=(23+a.g[T.SPEED]*82)/(.82+a.size*.025);a.sensor=42+a.g[T.SENSOR]*132;a.maxEnergy=58+a.size*a.size*1.7;a.dead=false;a.decision=null;return a;});
+    this.species=new Map(cp.species.map(o=>{const s=Object.assign(Object.create(Species.prototype),o);s.signature=Array.from(o.signature);return[s.id,s];}));this.archive=new Map(cp.archive.map(([id,r])=>[id,{...r,traits:Array.isArray(r.traits)?[...r.traits]:[]}]));this.history=cp.history.map(x=>({...x}));this.eventLog=cp.eventLog.map(x=>({...x}));this.selectedId=cp.selectedId||0;this.grid=new SpatialGrid(72);this.visualEvents=[];if(!this.finiteCheck())throw new Error("Checkpoint contains non-finite numerical state");
+  }
+  snapshot(){const m=this.metrics();return {schema:"ecogenesis-snapshot/v1",preset:this.preset,seed:this.seed,tick:this.tick,year:this.tick/YEAR_TICKS,stateHash:this.stateHash(),...m,counters:{...this.counters},parameters:{...this.params}};}
+}
+
+// ---------- renderer ----------
+const dom={};
+for(const id of ["world","worldWrap","preset","seed","newWorld","playPause","stepOne","runYear","speed","mapMode","colorMode","runDot","timeLabel","seasonLabel","mPopulation","mPopDelta","mSpecies","mDiversity","mPlants","mFertility","mGeneration","mEvolution","mHerb","mPredators","mKills","mBirthDeath","mTurnover","mHealth","mDisease","legend","historyChart","chartScale","notifications","planetaryKv","trophicChart","detDot","detText","finiteDot","finiteText","capacityDot","capacityText","speciesList","phylogenyChart","traitScatter","mutationStrength","mutationOut","speciationThreshold","speciationOut","sexualMix","sexualOut","inspectorEmpty","inspectorContent","creatureAvatar","creatureTitle","creatureSub","creatureKv","traitBars","brainKv","ancestryList","cloneSelected","mutateSelected","removeSelected","plantGrowth","plantOut","seasonAmplitude","seasonOut","predationLethality","predationOut","diseaseTransmission","diseaseOut","populationCap","capacityOut","toolMode","brushRadius","brushOut","toggleTrails","toggleSensors","toggleGrid","toggleEvents","exportState","importState","copySummary","saveImage","importFile","openAbout","eventLog","counterKv","aboutModal","closeAbout"])dom[id]=document.getElementById(id);
+const ctx=dom.world.getContext("2d",{alpha:false});const terrain=document.createElement("canvas");terrain.width=ENV_W;terrain.height=ENV_H;const tctx=terrain.getContext("2d");const trail=document.createElement("canvas");const trctx=trail.getContext("2d");
+let sim=new Simulation({preset:dom.preset.value,seed:+dom.seed.value});let running=true,fastForwarding=false,last=performance.now(),accum=0,frames=0,uiClock=0,paintDown=false,mouse={x:0,y:0};
+const view={trails:true,sensors:false,grid:false,events:true};
+
+function resize(){const r=dom.worldWrap.getBoundingClientRect(),dpr=Math.min(2,devicePixelRatio||1);dom.world.width=Math.max(1,Math.floor(r.width*dpr));dom.world.height=Math.max(1,Math.floor(r.height*dpr));ctx.setTransform(dpr,0,0,dpr,0,0);trail.width=dom.world.width;trail.height=dom.world.height;trctx.setTransform(dpr,0,0,dpr,0,0);}
+function canvasTransform(){const r=dom.world.getBoundingClientRect(),scale=Math.min(r.width/WORLD_W,r.height/WORLD_H),ox=(r.width-WORLD_W*scale)/2,oy=(r.height-WORLD_H*scale)/2;return{r,scale,ox,oy};}
+function screenToWorld(clientX,clientY){const t=canvasTransform();return{x:clamp((clientX-t.r.left-t.ox)/t.scale,0,WORLD_W),y:clamp((clientY-t.r.top-t.oy)/t.scale,0,WORLD_H)};}
+function updateTerrain(){
+  const mode=dom.mapMode.value,img=tctx.createImageData(ENV_W,ENV_H),d=img.data;
+  for(let i=0;i<ENV_W*ENV_H;i++){
+    let r=0,g=0,b=0;const e=sim.env.elevation[i],p=sim.env.plants[i]/1.45,m=sim.env.moisture[i],n=sim.env.nutrients[i]/1.4,temp=sim.env.temperature[i],c=sim.env.carrion[i]/2.2,w=sim.env.water[i];
+    if(mode==="ecology"){
+      if(w){r=5+14*e;g=24+55*m+40*p;b=46+88*m+45*p;}else{r=18+45*e+18*n;g=34+82*p+32*n;b=20+28*m+12*p;}
+    }else if(mode==="plants"){r=5+28*(1-p);g=16+210*p;b=18+72*p;}
+    else if(mode==="temperature"){r=30+220*temp;g=38+130*(1-Math.abs(temp-.55)*1.6);b=45+200*(1-temp);}
+    else if(mode==="moisture"){r=18+40*(1-m);g=24+105*m;b=40+190*m;}
+    else if(mode==="nutrients"){r=24+155*n;g=20+110*n;b=38+105*(1-n);}
+    else if(mode==="carrion"){r=22+220*c;g=18+58*(1-c);b=26+120*c;}
+    else {r=22+195*e;g=28+170*e;b=38+120*e;}
+    d[i*4]=clamp(r,0,255);d[i*4+1]=clamp(g,0,255);d[i*4+2]=clamp(b,0,255);d[i*4+3]=255;
+  }
+  tctx.putImageData(img,0,0);
+}
+function organismColor(a){
+  const mode=dom.colorMode.value;
+  if(mode==="trophic"){const t=a.trophic();return t==="herbivore"?"#7ef0a2":t==="predator"?"#ff758d":"#ffd477";}
+  if(mode==="energy"){const q=clamp(a.energy/a.maxEnergy);return hsl(.01+.34*q,80,55);}
+  if(mode==="generation")return hsl(.62-a.generation*.035,78,60);
+  if(mode==="infection")return hsl(.34-.26*a.infection,82,56);
+  const s=sim.species.get(a.speciesId);return hsl(s?s.hue:a.g[T.HUE],78,60);
+}
+function drawOrganism(a,t){
+  const x=t.ox+a.x*t.scale,y=t.oy+a.y*t.scale,rad=Math.max(2.2,a.size*t.scale*.72),col=organismColor(a),trophic=a.trophic();
+  ctx.save();ctx.translate(x,y);ctx.rotate(a.angle);ctx.globalAlpha=.94;ctx.fillStyle=col;ctx.strokeStyle="rgba(255,255,255,.42)";ctx.lineWidth=Math.max(.4,.7*t.scale);
+  ctx.beginPath();
+  if(trophic==="predator"){ctx.moveTo(rad*1.65,0);ctx.lineTo(-rad*.75,rad*.82);ctx.lineTo(-rad*.35,0);ctx.lineTo(-rad*.75,-rad*.82);}
+  else if(trophic==="herbivore"){ctx.moveTo(rad*1.35,0);ctx.quadraticCurveTo(-rad*.2,rad,-rad,0);ctx.quadraticCurveTo(-rad*.2,-rad,rad*1.35,0);}
+  else{ctx.moveTo(rad*1.25,0);ctx.lineTo(rad*.1,rad*.82);ctx.lineTo(-rad*.9,0);ctx.lineTo(rad*.1,-rad*.82);}
+  ctx.closePath();ctx.fill();ctx.stroke();
+  if(a.infection>.05){ctx.strokeStyle=`rgba(213,99,255,${.25+.55*a.infection})`;ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(0,0,rad*(1.25+a.infection*.5),0,TAU);ctx.stroke();}
+  ctx.restore();
+}
+function drawSelected(a,t){
+  const x=t.ox+a.x*t.scale,y=t.oy+a.y*t.scale;ctx.save();ctx.strokeStyle="rgba(230,249,255,.9)";ctx.lineWidth=1;ctx.setLineDash([5,5]);ctx.beginPath();ctx.arc(x,y,a.sensor*t.scale,0,TAU);ctx.stroke();ctx.setLineDash([]);
+  const d=a.decision;if(d&&view.sensors){for(const [idx,col] of [[d.prey,"rgba(255,104,128,.8)"],[d.threat,"rgba(255,206,91,.8)"],[d.kin,"rgba(105,231,198,.8)"],[d.mateTarget,"rgba(154,143,255,.8)"]])if(idx>=0&&sim.agents[idx]){const o=sim.agents[idx];ctx.strokeStyle=col;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(t.ox+o.x*t.scale,t.oy+o.y*t.scale);ctx.stroke();}}
+  ctx.strokeStyle="white";ctx.lineWidth=1.5;ctx.beginPath();ctx.arc(x,y,Math.max(7,a.size*t.scale*1.35),0,TAU);ctx.stroke();ctx.restore();
+}
+function drawVisualEvents(t,dt){
+  if(!view.events){sim.visualEvents.length=0;return;}
+  for(let i=sim.visualEvents.length-1;i>=0;i--){const e=sim.visualEvents[i];e.life-=dt*.0013;if(e.life<=0){sim.visualEvents.splice(i,1);continue;}const x=t.ox+e.x*t.scale,y=t.oy+e.y*t.scale;ctx.save();ctx.globalAlpha=clamp(e.life);if(e.type==="attack"){ctx.strokeStyle="#ff6d86";ctx.lineWidth=1.2;ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(t.ox+e.x2*t.scale,t.oy+e.y2*t.scale);ctx.stroke();}
+    else if(e.type==="birth"){ctx.strokeStyle=hsl(e.hue,90,72,e.life);ctx.beginPath();ctx.arc(x,y,(1-e.life)*22+4,0,TAU);ctx.stroke();}
+    else if(e.type==="death"){ctx.strokeStyle="rgba(255,166,92,.8)";ctx.beginPath();ctx.moveTo(x-6,y-6);ctx.lineTo(x+6,y+6);ctx.moveTo(x+6,y-6);ctx.lineTo(x-6,y+6);ctx.stroke();}
+    else if(e.type==="meteor"){ctx.strokeStyle="rgba(255,209,105,.9)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(x,y,(1-e.life)*180*t.scale,0,TAU);ctx.stroke();}
+    else if(e.type==="speciation"){ctx.strokeStyle=hsl(e.hue,90,70,e.life);ctx.beginPath();ctx.arc(x,y,(1-e.life)*45+6,0,TAU);ctx.stroke();}
+    ctx.restore();}
+}
+function drawGrid(t){if(!view.grid)return;ctx.save();ctx.strokeStyle="rgba(255,255,255,.055)";ctx.lineWidth=.5;for(let x=0;x<=WORLD_W;x+=CELL){ctx.beginPath();ctx.moveTo(t.ox+x*t.scale,t.oy);ctx.lineTo(t.ox+x*t.scale,t.oy+WORLD_H*t.scale);ctx.stroke();}for(let y=0;y<=WORLD_H;y+=CELL){ctx.beginPath();ctx.moveTo(t.ox,t.oy+y*t.scale);ctx.lineTo(t.ox+WORLD_W*t.scale,t.oy+y*t.scale);ctx.stroke();}ctx.restore();}
+function render(nowDelta){
+  updateTerrain();const t=canvasTransform(),r=t.r;ctx.fillStyle="#03050a";ctx.fillRect(0,0,r.width,r.height);ctx.imageSmoothingEnabled=true;ctx.drawImage(terrain,t.ox,t.oy,WORLD_W*t.scale,WORLD_H*t.scale);
+  if(view.trails){trctx.fillStyle="rgba(3,5,10,.065)";trctx.fillRect(0,0,r.width,r.height);for(const a of sim.agents){trctx.fillStyle=organismColor(a);trctx.globalAlpha=.16;trctx.fillRect(t.ox+a.x*t.scale,t.oy+a.y*t.scale,1.2,1.2);}trctx.globalAlpha=1;ctx.globalCompositeOperation="screen";ctx.globalAlpha=.48;ctx.drawImage(trail,0,0,r.width,r.height);ctx.globalAlpha=1;ctx.globalCompositeOperation="source-over";}
+  drawGrid(t);for(const a of sim.agents)drawOrganism(a,t);const selected=sim.selected();if(selected)drawSelected(selected,t);drawVisualEvents(t,nowDelta);
+}
+function drawLineChart(canvas,series){
+  const dpr=Math.min(2,devicePixelRatio||1),rect=canvas.getBoundingClientRect();if(!rect.width||!rect.height)return;canvas.width=Math.floor(rect.width*dpr);canvas.height=Math.floor(rect.height*dpr);const c=canvas.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);const w=rect.width,h=rect.height;c.clearRect(0,0,w,h);c.strokeStyle="rgba(255,255,255,.08)";c.lineWidth=1;for(let i=1;i<4;i++){const y=i*h/4;c.beginPath();c.moveTo(0,y);c.lineTo(w,y);c.stroke();}
+  let max=1;for(const s of series)for(const v of s.values)max=Math.max(max,v);for(const s of series){c.strokeStyle=s.color;c.lineWidth=s.width||1.4;c.beginPath();s.values.forEach((v,i)=>{const x=i/Math.max(1,s.values.length-1)*w,y=h-4-(v/max)*(h-10);i?c.lineTo(x,y):c.moveTo(x,y);});c.stroke();}
+}
+function drawHistory(){const h=sim.history;drawLineChart(dom.historyChart,[{values:h.map(x=>x.total),color:"#e8f0ff",width:1.8},{values:h.map(x=>x.herb),color:"#67e995"},{values:h.map(x=>x.pred),color:"#ff6d86"},{values:h.map(x=>x.plants*450),color:"#74c8ff"}]);dom.chartScale.textContent=`${format((h.at(-1)?.tick||0)/YEAR_TICKS,1)} y`;}
+function drawTrophic(){const m=sim.metrics(),total=Math.max(1,m.population),canvas=dom.trophicChart,dpr=Math.min(2,devicePixelRatio||1),r=canvas.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;const c=canvas.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,r.width,r.height);const cx=r.width*.5,cy=r.height*.48,rad=Math.min(r.width,r.height)*.32;let start=-Math.PI/2;for(const [v,col,label] of [[m.herbivores,"#6df2a0","Herbivores"],[m.omnivores,"#ffd477","Omnivores"],[m.predators,"#ff6d86","Predators"]]){const a=v/total*TAU;c.beginPath();c.moveTo(cx,cy);c.arc(cx,cy,rad,start,start+a);c.closePath();c.fillStyle=col;c.fill();start+=a;}c.beginPath();c.arc(cx,cy,rad*.57,0,TAU);c.fillStyle="#0b101d";c.fill();c.fillStyle="#edf3ff";c.textAlign="center";c.font="700 19px system-ui";c.fillText(total,cx,cy+5);c.font="10px system-ui";c.fillStyle="#8f9db5";c.fillText("organisms",cx,cy+20);c.textAlign="left";let yy=r.height-14;for(const [v,col,label] of [[m.herbivores,"#6df2a0","H"],[m.omnivores,"#ffd477","O"],[m.predators,"#ff6d86","P"]]){c.fillStyle=col;c.fillRect(12,yy-7,8,8);c.fillStyle="#b7c3d7";c.fillText(`${label} ${v}`,25,yy);yy-=15;}}
+function drawSpecies(){
+  const living=[...sim.species.values()].filter(s=>!s.extinctTick&&s.count>0).sort((a,b)=>b.count-a.count);dom.speciesList.innerHTML=living.slice(0,24).map(s=>`<div class="species-row" data-species="${s.id}"><span class="dot" style="background:${hsl(s.hue,78,60)}"></span><span><strong>S${s.id}${s.parentId?` · branch of S${s.parentId}`:" · founder"}</strong><small>born y${format(s.bornTick/YEAR_TICKS,2)} · gen ${s.maxGeneration}</small></span><b>${s.count}</b></div>`).join("")||`<div class="hint">No living species.</div>`;
+  dom.speciesList.querySelectorAll("[data-species]").forEach(el=>el.onclick=()=>{const sid=+el.dataset.species;const a=sim.agents.find(x=>x.speciesId===sid);if(a){sim.selectedId=a.id;switchPanel("inspector");updateInspector();}});
+}
+function drawPhylogeny(){const canvas=dom.phylogenyChart,dpr=Math.min(2,devicePixelRatio||1),r=canvas.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;const c=canvas.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,r.width,r.height);const species=[...sim.species.values()].slice(-45),maxTick=Math.max(1,sim.tick),rowH=Math.max(5,(r.height-18)/Math.max(1,species.length));const pos=new Map();species.forEach((s,i)=>{const x=10+s.bornTick/maxTick*(r.width-25),y=10+i*rowH;pos.set(s.id,{x,y});if(s.parentId&&pos.has(s.parentId)){const p=pos.get(s.parentId);c.strokeStyle="rgba(180,199,230,.22)";c.beginPath();c.moveTo(p.x,p.y);c.lineTo(x,y);c.stroke();}c.fillStyle=hsl(s.hue,78,60,s.extinctTick?.35:1);c.beginPath();c.arc(x,y,Math.max(2,Math.min(7,2+Math.sqrt(s.count))),0,TAU);c.fill();});c.fillStyle="#76869e";c.font="9px system-ui";c.fillText("time →",r.width-42,r.height-5);}
+function drawScatter(){const canvas=dom.traitScatter,dpr=Math.min(2,devicePixelRatio||1),r=canvas.getBoundingClientRect();canvas.width=r.width*dpr;canvas.height=r.height*dpr;const c=canvas.getContext("2d");c.setTransform(dpr,0,0,dpr,0,0);c.clearRect(0,0,r.width,r.height);c.strokeStyle="rgba(255,255,255,.12)";c.beginPath();c.moveTo(28,8);c.lineTo(28,r.height-22);c.lineTo(r.width-8,r.height-22);c.stroke();const step=Math.max(1,Math.floor(sim.agents.length/450));for(let i=0;i<sim.agents.length;i+=step){const a=sim.agents[i],x=30+a.g[T.SIZE]*(r.width-42),y=r.height-24-a.g[T.SPEED]*(r.height-36),s=sim.species.get(a.speciesId);c.fillStyle=hsl(s?s.hue:a.g[T.HUE],78,60,.62);c.fillRect(x-1.5,y-1.5,3,3);}c.fillStyle="#7d8da6";c.font="9px system-ui";c.fillText("speed",3,12);c.fillText("size →",r.width-42,r.height-5);}
+function switchPanel(name){document.querySelectorAll(".tab").forEach(x=>x.classList.toggle("active",x.dataset.panel===name));document.querySelectorAll(".panel").forEach(x=>x.classList.toggle("active",x.id===`panel-${name}`));}
+function updateInspector(){
+  const a=sim.selected();dom.inspectorEmpty.style.display=a?"none":"block";dom.inspectorContent.style.display=a?"block":"none";if(!a)return;const s=sim.species.get(a.speciesId),t=a.trophic();dom.creatureTitle.textContent=`${a.name()} · Species S${a.speciesId}`;dom.creatureSub.textContent=`${t} · generation ${a.generation} · born year ${format(a.birthTick/YEAR_TICKS,2)}`;dom.creatureAvatar.style.borderColor=hsl(s?s.hue:a.g[T.HUE],80,60);dom.creatureAvatar.querySelector("span").style.color=hsl(s?s.hue:a.g[T.HUE],80,65);
+  dom.creatureKv.innerHTML=kvHtml({Energy:`${format(a.energy,1)} / ${format(a.maxEnergy,1)}`,Health:`${format(a.health,1)} / ${format(a.maxHealth,1)}`,Age:`${format(a.age/YEAR_TICKS,2)} years`,Infection:`${format(a.infection*100,1)}%`,Position:`${Math.round(a.x)}, ${Math.round(a.y)}`,Speed:format(Math.sqrt(a.vx*a.vx+a.vy*a.vy),1),Sensor:`${format(a.sensor,0)} units`,Parents:a.parentA?`${a.parentA}${a.parentB!==a.parentA?` + ${a.parentB}`:""}`:"founder"});
+  dom.traitBars.innerHTML=TRAITS.map(([name,i])=>{const raw=a.g[i],q=i===T.SOCIAL?(raw+1)/2:raw;return `<div class="trait"><span>${name}</span><span class="bar"><i style="width:${clamp(q)*100}%"></i></span><b>${format(raw,2)}</b></div>`}).join("");
+  const d=a.decision||{};dom.brainKv.innerHTML=kvHtml({Turn:format(d.turn,3),Thrust:format(d.thrust,3),Attack:format(d.attack,3),Mate:format(d.mate,3),Neighbours:d.crowd??0,"Nearest prey":d.prey>=0?sim.agents[d.prey]?.name()||"moved":"none","Nearest threat":d.threat>=0?sim.agents[d.threat]?.name()||"moved":"none"});
+  const rows=[];let id=a.id;for(let depth=0;depth<6;depth++){const rec=sim.archive.get(id);if(!rec)break;rows.push(`<div class="event"><b>${depth?`Ancestor ${rec.id}`:`${a.name()} lineage`}</b><span>S${rec.speciesId} · gen ${rec.generation} · born y${format(rec.birthTick/YEAR_TICKS,2)}${rec.deathTick?` · died ${rec.cause}`:""}</span></div>`);if(!rec.parentA||rec.parentA===id)break;id=rec.parentA;}dom.ancestryList.innerHTML=rows.join("")||`<div class="hint">No retained ancestry.</div>`;
+}
+function kvHtml(obj){return Object.entries(obj).map(([k,v])=>`<span class="key">${k}</span><span class="val">${v}</span>`).join("");}
+function updateUI(){
+  const m=sim.metrics(),fingerprint=sim.stateHash(),year=sim.tick/YEAR_TICKS,day=Math.floor((year-Math.floor(year))*360),seasonPhase=((sim.tick%YEAR_TICKS)/YEAR_TICKS);const seasons=["Early spring","Late spring","Summer","Autumn","Early winter","Deep winter"];dom.timeLabel.textContent=`Year ${Math.floor(year)} · Day ${day}`;dom.seasonLabel.textContent=`${seasons[Math.floor(seasonPhase*seasons.length)%seasons.length]} · ${Math.sin(seasonPhase*TAU)>=0?"north warming":"south warming"}`;
+  dom.mPopulation.textContent=human(m.population);const prev=sim.history.length>1?sim.history[sim.history.length-2].total:m.population;dom.mPopDelta.textContent=`${m.population-prev>=0?"+":""}${m.population-prev} recent`;dom.mSpecies.textContent=m.speciesLiving;dom.mDiversity.textContent=`diversity ${format(m.diversity,2)}`;dom.mPlants.textContent=`${format(m.plantMean/1.45*100,0)}%`;dom.mFertility.textContent=`nutrients ${format(m.nutrientMean/1.4*100,0)}%`;dom.mGeneration.textContent=m.maxGeneration;dom.mEvolution.textContent=`mean gen ${format(m.meanGeneration,1)}`;dom.mHerb.textContent=`${m.herbivores} / ${m.omnivores}`;dom.mPredators.textContent=m.predators;dom.mKills.textContent=`${sim.counters.kills} predation deaths`;dom.mBirthDeath.textContent=`${sim.counters.births} / ${sim.counters.deaths}`;dom.mTurnover.textContent=`${sim.yearCounters.births} / ${sim.yearCounters.deaths} this year`;dom.mDisease.textContent=`infection ${format(m.infection*100,1)}%`;
+  const health=m.population===0?"Extinct":m.infection>.35?"Epidemic":m.plantMean<.12?"Famine":m.population>sim.params.populationCap*.92?"Crowded":"Stable";dom.mHealth.textContent=health;dom.runDot.style.background=running?"var(--ok)":"var(--warn)";dom.runDot.style.boxShadow=`0 0 10px ${running?"var(--ok)":"var(--warn)"}`;
+  dom.legend.innerHTML=[["Herbivore","#7ef0a2"],["Omnivore","#ffd477"],["Predator","#ff758d"],["Infected","#d563ff"]].map(([l,c])=>`<span class="chip"><i class="swatch" style="background:${c}"></i>${l}</span>`).join("")+`<span class="chip">Fingerprint ${fingerprint}</span>`;
+  dom.planetaryKv.innerHTML=kvHtml({Seed:sim.seed,Tick:sim.tick,"Mean temperature":format(m.temperatureMean,3),"Mean moisture":format(m.moistureMean,3),"Plant biomass":format(m.plantMean,3),"Carrion pool":format(m.carrionMean,4),"Mean energy":format(m.meanEnergy*100,1)+"%","State fingerprint":fingerprint});
+  dom.counterKv.innerHTML=kvHtml({Births:sim.counters.births,Deaths:sim.counters.deaths,"Predation deaths":sim.counters.kills,Attacks:sim.counters.attacks,"Infection onsets":sim.counters.infections,Recoveries:sim.counters.recoveries,"Species originated":sim.counters.speciesBorn,"Species extinct":sim.counters.speciesExtinct,Interventions:sim.counters.interventions});
+  dom.finiteText.textContent=sim.finiteCheck()?"finite":"non-finite error";dom.finiteDot.style.background=sim.finiteCheck()?"var(--ok)":"var(--danger)";dom.capacityText.textContent=`${m.population} / ${sim.params.populationCap}`;dom.capacityDot.style.background=m.population<=sim.params.populationCap?"var(--ok)":"var(--danger)";
+  drawHistory();drawTrophic();drawSpecies();drawPhylogeny();drawScatter();updateInspector();renderEvents();syncControls(false);
+}
+function renderEvents(){dom.eventLog.innerHTML=sim.eventLog.slice(0,70).map(e=>`<div class="event"><b>${e.title}</b><span>y${format(e.tick/YEAR_TICKS,2)} · ${e.text}</span></div>`).join("")||`<div class="hint">No events.</div>`;}
+function toast(text,type="info"){const el=document.createElement("div");el.className=`toast ${type}`;el.textContent=text;dom.notifications.appendChild(el);setTimeout(()=>el.remove(),4200);}
+function syncControls(read=true){
+  const pairs=[[dom.mutationStrength,"mutationStrength",dom.mutationOut,v=>format(v,2)+"×"],[dom.speciationThreshold,"speciationThreshold",dom.speciationOut,v=>format(v,3)],[dom.sexualMix,"sexualMix",dom.sexualOut,v=>format(v*100,0)+"%"],[dom.plantGrowth,"plantGrowth",dom.plantOut,v=>format(v,2)+"×"],[dom.seasonAmplitude,"seasonAmplitude",dom.seasonOut,v=>format(v,2)+"×"],[dom.predationLethality,"predationLethality",dom.predationOut,v=>format(v,2)+"×"],[dom.diseaseTransmission,"diseaseTransmission",dom.diseaseOut,v=>format(v,2)+"×"],[dom.populationCap,"populationCap",dom.capacityOut,v=>Math.round(v)]];
+  for(const [el,key,out,fmt] of pairs){if(read)sim.params[key]=+el.value;else el.value=sim.params[key];out.value=fmt(sim.params[key]);}dom.brushOut.value=`${dom.brushRadius.value} u`;
+}
+function resetWorld(){const preset=dom.preset.value,seed=(+dom.seed.value>>>0)||1;sim=new Simulation({preset,seed});running=true;dom.playPause.textContent="Pause";trctx.clearRect(0,0,trail.width,trail.height);syncControls(false);updateUI();runSelfCheck();toast(`World ${seed} generated · ${preset}`);}
+async function runSelfCheck(){
+  dom.detText.textContent="running";dom.detDot.style.background="var(--warn)";
+  try{const cp=sim.checkpoint(),oldSilent=sim.silent;sim.silent=true;sim.step(18);const a=sim.stateHash();sim.restore(cp);sim.silent=true;sim.step(18);const b=sim.stateHash();sim.restore(cp);sim.silent=oldSilent;const ok=a===b;dom.detText.textContent=ok?`pass · ${a}`:`FAIL ${a}/${b}`;dom.detDot.style.background=ok?"var(--ok)":"var(--danger)";window.__ecogenesisSelfCheck={ok,hashA:a,hashB:b};}catch(e){dom.detText.textContent="error";dom.detDot.style.background="var(--danger)";window.__ecogenesisSelfCheck={ok:false,error:String(e)};}
+}
+function worldAction(ev){const p=screenToWorld(ev.clientX,ev.clientY),tool=ev.button===2?"inspect":dom.toolMode.value,r=+dom.brushRadius.value;mouse=p;if(tool==="inspect"){const a=sim.nearest(p.x,p.y,Math.max(18,r*.4));sim.selectedId=a?a.id:0;updateInspector();if(a)switchPanel("inspector");}
+  else if(["random","herbivore","predator","omnivore"].includes(tool)){const a=sim.spawn(tool,p.x,p.y);sim.selectedId=a.id;sim.log("Intervention",`${tool} founder ${a.name()} introduced`,"intervention");toast(`${a.name()} introduced`);}
+  else if(["bloom","fertility","sterilize"].includes(tool)){sim.env.paint(p.x,p.y,r,tool);}
+  else if(tool==="meteor")sim.shock("meteor",p.x,p.y,r);
+}
+function download(name,text,type="application/json"){const blob=new Blob([text],{type}),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
+
+// ---------- event wiring ----------
+window.addEventListener("resize",()=>{resize();updateUI();});
+document.querySelectorAll(".tab").forEach(b=>b.onclick=()=>switchPanel(b.dataset.panel));
+dom.newWorld.onclick=resetWorld;dom.playPause.onclick=()=>{if(fastForwarding)return;running=!running;dom.playPause.textContent=running?"Pause":"Resume";};dom.stepOne.onclick=()=>{if(fastForwarding)return;sim.step(1);updateUI();};dom.runYear.onclick=async()=>{
+  if(fastForwarding)return;fastForwarding=true;const was=running;running=false;dom.runYear.disabled=true;dom.newWorld.disabled=true;const start=sim.tick,target=start+YEAR_TICKS;
+  while(sim.tick<target){sim.step(Math.min(20,target-sim.tick));const progress=(sim.tick-start)/YEAR_TICKS;dom.runYear.textContent=`${Math.round(progress*100)}%`;if(((sim.tick-start)%120)===0)updateUI();await new Promise(resolve=>setTimeout(resolve,0));}
+  fastForwarding=false;running=was;dom.runYear.disabled=false;dom.newWorld.disabled=false;dom.runYear.textContent="+ 1 year";dom.playPause.textContent=running?"Pause":"Resume";updateUI();toast("Advanced one simulated year");
+};
+document.querySelectorAll("[data-shock]").forEach(b=>b.onclick=()=>{sim.shock(b.dataset.shock);updateUI();toast(`${b.textContent} applied`,b.dataset.shock==="meteor"?"danger":"warn");});
+for(const el of [dom.mutationStrength,dom.speciationThreshold,dom.sexualMix,dom.plantGrowth,dom.seasonAmplitude,dom.predationLethality,dom.diseaseTransmission,dom.populationCap,dom.brushRadius])el.addEventListener("input",()=>{syncControls(true);updateUI();});
+dom.toggleTrails.onclick=()=>{view.trails=!view.trails;dom.toggleTrails.classList.toggle("active",view.trails);if(!view.trails)trctx.clearRect(0,0,trail.width,trail.height);};dom.toggleSensors.onclick=()=>{view.sensors=!view.sensors;dom.toggleSensors.classList.toggle("active",view.sensors);};dom.toggleGrid.onclick=()=>{view.grid=!view.grid;dom.toggleGrid.classList.toggle("active",view.grid);};dom.toggleEvents.onclick=()=>{view.events=!view.events;dom.toggleEvents.classList.toggle("active",view.events);};
+dom.world.addEventListener("pointerdown",e=>{paintDown=true;dom.world.setPointerCapture(e.pointerId);worldAction(e);});dom.world.addEventListener("pointermove",e=>{mouse=screenToWorld(e.clientX,e.clientY);if(paintDown&&!["inspect","random","herbivore","predator","omnivore","meteor"].includes(dom.toolMode.value))worldAction(e);});dom.world.addEventListener("pointerup",()=>paintDown=false);dom.world.addEventListener("pointercancel",()=>paintDown=false);dom.world.addEventListener("contextmenu",e=>e.preventDefault());
+dom.cloneSelected.onclick=()=>{const a=sim.selected();if(!a)return;const inh={g:new Float32Array(a.g),brain:new Float32Array(a.brain)},c=new Organism(sim,"random",clamp(a.x+12,2,WORLD_W-2),clamp(a.y+12,2,WORLD_H-2),a,a,inh);c.speciesId=a.speciesId;sim.agents.push(c);sim.recordBirth(c);sim.counters.births++;toast(`Cloned ${a.name()} as ${c.name()}`);};
+dom.mutateSelected.onclick=()=>{const a=sim.selected();if(!a)return;const inh=mutateClone(a,sim.rng,2.2),c=new Organism(sim,"random",clamp(a.x+14,2,WORLD_W-2),clamp(a.y-14,2,WORLD_H-2),a,a,inh);c.speciesId=sim.assignSpecies(c,a);sim.agents.push(c);sim.recordBirth(c);sim.counters.births++;sim.selectedId=c.id;toast(`Mutated descendant ${c.name()} created`);};
+dom.removeSelected.onclick=()=>{const a=sim.selected();if(!a)return;a.dead=true;a.deathCause="culled";sim.processDeaths();updateUI();toast("Selected organism culled","danger");};
+dom.exportState.onclick=()=>{if(sim.agents.length>1900&& !confirm("This checkpoint is large. Export anyway?"))return;download(`ecogenesis-${sim.seed}-t${sim.tick}.json`,JSON.stringify(sim.checkpoint()));toast("Checkpoint exported");};
+dom.importState.onclick=()=>dom.importFile.click();dom.importFile.onchange=async()=>{try{const cp=JSON.parse(await dom.importFile.files[0].text());sim.restore(cp);dom.preset.value=sim.preset;dom.seed.value=sim.seed;syncControls(false);updateUI();toast("Checkpoint restored");}catch(e){toast(`Import failed: ${e.message}`,"danger");}finally{dom.importFile.value="";}};
+dom.copySummary.onclick=async()=>{const text=JSON.stringify({...sim.snapshot(),userAgent:navigator.userAgent,model:"Ecogenesis artificial-life demo"},null,2);try{await navigator.clipboard.writeText(text);toast("Provenance copied");}catch{download("ecogenesis-provenance.json",text);}};
+dom.saveImage.onclick=()=>{const a=document.createElement("a");a.download=`ecogenesis-${sim.seed}-t${sim.tick}.png`;a.href=dom.world.toDataURL("image/png");a.click();};
+dom.openAbout.onclick=()=>dom.aboutModal.classList.add("open");dom.closeAbout.onclick=()=>dom.aboutModal.classList.remove("open");dom.aboutModal.onclick=e=>{if(e.target===dom.aboutModal)dom.aboutModal.classList.remove("open");};
+window.addEventListener("keydown",e=>{if(e.target.matches("input,select"))return;if(e.code==="Space"){e.preventDefault();dom.playPause.click();}else if(e.key===".")dom.stepOne.click();else if(e.key.toLowerCase()==="y")dom.runYear.click();else if(e.key.toLowerCase()==="b")sim.shock("bloom");else if(e.key.toLowerCase()==="d")sim.shock("drought");else if(e.key.toLowerCase()==="p")sim.shock("plague");else if(e.key.toLowerCase()==="m")sim.shock("meteor");else if(e.key==="Escape"){sim.selectedId=0;updateInspector();}});
+
+// ---------- public API ----------
+window.Ecogenesis={
+  reset:(o={})=>{dom.preset.value=o.preset||dom.preset.value;dom.seed.value=o.seed??dom.seed.value;resetWorld();if(o.paused){running=false;dom.playPause.textContent="Resume";}return sim.snapshot();},
+  pause:()=>{running=false;dom.playPause.textContent="Resume";return sim.snapshot();},
+  resume:()=>{if(!fastForwarding){running=true;dom.playPause.textContent="Pause";}return sim.snapshot();},
+  run:n=>{sim.step(Math.max(0,n|0));updateUI();return sim.snapshot();},
+  shock:(name,x,y,r)=>{sim.shock(name,x,y,r);updateUI();return sim.snapshot();},
+  snapshot:()=>sim.snapshot(),checkpoint:()=>sim.checkpoint(),restore:cp=>{sim.restore(cp);updateUI();return sim.snapshot();},
+  select:id=>{sim.selectedId=id|0;updateInspector();return sim.selected();},
+  spawn:(kind,x,y)=>{const a=sim.spawn(kind||"random",x??WORLD_W/2,y??WORLD_H/2);updateUI();return a.id;},
+  finite:()=>sim.finiteCheck(),hash:()=>sim.stateHash(),get simulation(){return sim;}
+};
+
+function loop(now){const delta=Math.min(80,now-last);last=now;if(running){accum+=delta;const speed=+dom.speed.value,steps=Math.min(96,Math.floor(accum/16)*speed);if(steps>0){sim.step(steps);accum=Math.max(0,accum-Math.floor(steps/speed)*16);}}render(delta);frames++;uiClock+=delta;if(uiClock>450){uiClock=0;updateUI();}requestAnimationFrame(loop);}
+
+resize();syncControls(false);updateUI();runSelfCheck();requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>

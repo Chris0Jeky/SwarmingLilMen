@@ -14,6 +14,7 @@
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
   changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at
   `f005277` as this block is written.
+- Standalone browser addition (2026-09-09): [Ecogenesis](js-demos/ecogenesis/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/ecogenesis/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - GitHub: public repository; Wave 0 and Wave 1 work is tracked by epic #10. The repository CI
   workflow supplies Release build/test checks (excluding the `Performance` category) on ubuntu
   and windows for pushes and pull requests targeting `main`. No branch-protection ruleset exists,
