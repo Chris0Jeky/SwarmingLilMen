@@ -895,13 +895,19 @@ class Simulation {
   }
   validateCheckpoint(cp){
     const fail=msg=>{throw new Error(`Invalid Ecogenesis checkpoint: ${msg}`);};
+    const exactKeys=(group,obj,keys)=>{if(!obj||typeof obj!=="object"||Array.isArray(obj))fail(`missing ${group}`);const actual=Object.keys(obj).sort(),expected=[...keys].sort();if(actual.length!==expected.length||actual.some((key,i)=>key!==expected[i]))fail(`${group} has an incompatible schema`);};
+    const finiteFields=(group,obj,keys)=>{for(const key of keys)if(!Number.isFinite(obj[key]))fail(`${group}.${key} is non-finite`);};
     if(!cp||typeof cp!=="object"||cp.schema!=="ecogenesis/v1")fail("unsupported schema");
+    if(typeof cp.preset!=="string")fail("invalid preset");
     if(!Number.isInteger(cp.seed)||cp.seed<0||!Number.isInteger(cp.tick)||cp.tick<0)fail("invalid seed or tick");
     if(!Number.isInteger(cp.nextId)||cp.nextId<1||!Number.isInteger(cp.nextSpeciesId)||cp.nextSpeciesId<1)fail("invalid identity counters");
-    if(!cp.rng||!Number.isInteger(cp.rng.state))fail("missing RNG state");
+    exactKeys("RNG state",cp.rng,["state","spare"]);if(!Number.isInteger(cp.rng.state))fail("missing RNG state");
     if(cp.rng.spare!==null&&cp.rng.spare!==undefined&&!Number.isFinite(cp.rng.spare))fail("non-finite RNG spare");
-    if(!cp.params||!cp.events||!cp.counters||!cp.yearCounters)fail("missing runtime state");
-    for(const [group,obj] of [["parameters",cp.params],["events",cp.events],["counters",cp.counters],["year counters",cp.yearCounters]])for(const [k,v] of Object.entries(obj)){if(typeof v!=="boolean"&&!Number.isFinite(v))fail(`${group}.${k} is non-finite`);}
+    exactKeys("parameters",cp.params,["plantGrowth","seasonAmplitude","predationLethality","diseaseTransmission","mutationStrength","speciationThreshold","sexualMix","populationCap","wrapWorld"]);finiteFields("parameters",cp.params,["plantGrowth","seasonAmplitude","predationLethality","diseaseTransmission","mutationStrength","speciationThreshold","sexualMix","populationCap"]);if(typeof cp.params.wrapWorld!=="boolean"||!Number.isInteger(cp.params.populationCap)||cp.params.populationCap<1||cp.params.populationCap>5000)fail("invalid population parameters");
+    exactKeys("events",cp.events,["drought","winter","bloom","mutationPulse"]);finiteFields("events",cp.events,["drought","winter","bloom","mutationPulse"]);
+    const counterKeys=["births","deaths","kills","grazed","scavenged","attacks","infections","recoveries","speciesBorn","speciesExtinct","interventions"];
+    exactKeys("counters",cp.counters,counterKeys);finiteFields("counters",cp.counters,counterKeys);
+    exactKeys("year counters",cp.yearCounters,["births","deaths","kills"]);finiteFields("year counters",cp.yearCounters,["births","deaths","kills"]);
     if(!cp.env||typeof cp.env!=="object")fail("missing environment fields");
     const fieldLength=ENV_W*ENV_H;
     for(const key of ["plants","nutrients","carrion","temperature","moisture","fertility"]){const arr=cp.env[key];if(!Array.isArray(arr)||arr.length!==fieldLength)fail(`field ${key} has wrong length`);for(let i=0;i<arr.length;i++)if(!Number.isFinite(arr[i]))fail(`field ${key}[${i}] is non-finite`);}
@@ -919,7 +925,8 @@ class Simulation {
     if(!Array.isArray(cp.species))fail("missing species records");const speciesIds=new Set();let maxSpecies=0;
     for(const sp of cp.species){if(!sp||!Number.isInteger(sp.id)||sp.id<1||speciesIds.has(sp.id))fail("invalid or duplicate species id");speciesIds.add(sp.id);maxSpecies=Math.max(maxSpecies,sp.id);if(!Array.isArray(sp.signature)||!sp.signature.length||sp.signature.some(v=>!Number.isFinite(v)))fail(`species ${sp.id} signature is malformed`);for(const key of ["parentId","bornTick","extinctTick","count","births","deaths","maxGeneration"])if(!Number.isFinite(sp[key]))fail(`species ${sp.id}.${key} is invalid`);if(!Number.isFinite(sp.hue)||!Number.isFinite(sp.centroidWeight))fail(`species ${sp.id} metadata is non-finite`);}
     if(cp.nextSpeciesId<=maxSpecies)fail("nextSpeciesId would collide with an existing species");for(const a of cp.agents)if(!speciesIds.has(a.speciesId))fail(`organism ${a.id} references unknown species ${a.speciesId}`);
-    if(!Array.isArray(cp.archive)||!Array.isArray(cp.history)||!Array.isArray(cp.eventLog))fail("missing observational records");
+    if(!Array.isArray(cp.archive)||!Array.isArray(cp.history)||!Array.isArray(cp.eventLog)||cp.eventLog.length>MAX_EVENT_LOG)fail("missing observational records");
+    for(const [i,event] of cp.eventLog.entries())if(!event||!Number.isInteger(event.tick)||event.tick<0||typeof event.title!=="string"||typeof event.text!=="string"||typeof event.type!=="string")fail(`event ${i} is malformed`);
     return true;
   }
   checkpoint(){
@@ -1031,7 +1038,11 @@ function updateUI(){
   dom.finiteText.textContent=sim.finiteCheck()?"finite":"non-finite error";dom.finiteDot.style.background=sim.finiteCheck()?"var(--ok)":"var(--danger)";dom.capacityText.textContent=`${m.population} / ${sim.params.populationCap}`;dom.capacityDot.style.background=m.population<=sim.params.populationCap?"var(--ok)":"var(--danger)";
   drawHistory();drawTrophic();drawSpecies();drawPhylogeny();drawScatter();updateInspector();renderEvents();syncControls(false);
 }
-function renderEvents(){dom.eventLog.innerHTML=sim.eventLog.slice(0,70).map(e=>`<div class="event"><b>${e.title}</b><span>y${format(e.tick/YEAR_TICKS,2)} · ${e.text}</span></div>`).join("")||`<div class="hint">No events.</div>`;}
+function renderEvents(){
+  dom.eventLog.replaceChildren();
+  for(const e of sim.eventLog.slice(0,70)){const item=document.createElement("div"),title=document.createElement("b"),detail=document.createElement("span");item.className="event";title.textContent=e.title;detail.textContent=`y${format(e.tick/YEAR_TICKS,2)} · ${e.text}`;item.append(title,detail);dom.eventLog.append(item);}
+  if(!sim.eventLog.length){const empty=document.createElement("div");empty.className="hint";empty.textContent="No events.";dom.eventLog.append(empty);}
+}
 function toast(text,type="info"){const el=document.createElement("div");el.className=`toast ${type}`;el.textContent=text;dom.notifications.appendChild(el);setTimeout(()=>el.remove(),4200);}
 function syncControls(read=true){
   const pairs=[[dom.mutationStrength,"mutationStrength",dom.mutationOut,v=>format(v,2)+"×"],[dom.speciationThreshold,"speciationThreshold",dom.speciationOut,v=>format(v,3)],[dom.sexualMix,"sexualMix",dom.sexualOut,v=>format(v*100,0)+"%"],[dom.plantGrowth,"plantGrowth",dom.plantOut,v=>format(v,2)+"×"],[dom.seasonAmplitude,"seasonAmplitude",dom.seasonOut,v=>format(v,2)+"×"],[dom.predationLethality,"predationLethality",dom.predationOut,v=>format(v,2)+"×"],[dom.diseaseTransmission,"diseaseTransmission",dom.diseaseOut,v=>format(v,2)+"×"],[dom.populationCap,"populationCap",dom.capacityOut,v=>Math.round(v)]];

@@ -1,10 +1,10 @@
 # PR verification: Ecogenesis
 
-Checked 9 September 2026 against the packaged HTML. Repository baseline: `9afdb571bab88f87ad8415241668513c58708c90`.
+Checked 10 September 2026 against the reviewed HTML. Repository baseline: `9afdb571bab88f87ad8415241668513c58708c90`.
 
-- Packaged HTML SHA-256: `bcaeba0e60a0d0b62b24cdcdeed1b4e0d24c89e1d5d0a6fc300dd417778676a6`.
+- Reviewed HTML SHA-256: `6c242fa72870931a5d09e6920963edd88c33696b88aa37ccafddd58952150f43`.
 - `node tests/static_check.cjs`: inline scripts and smoke script parse; standalone dependency checks pass.
-- `python tests/browser_smoke.py`: **16 passed checks**, Chromium `144.0.7559.96`, Python Playwright 1.57.0.
+- `python tests/browser_smoke.py`: **18 passed checks**, Chromium `143.0.7499.4`, Python Playwright 1.57.0.
 - HTML loaded by its exact text in a real browser, not by replacing its model with test doubles.
 - No unexpected page errors, console errors/warnings or runtime network requests.
 
@@ -15,6 +15,8 @@ Checked 9 September 2026 against the packaged HTML. Repository baseline: `9afdb5
 - checkpoint restores numeric state
 - restored RNG and recurrent state reproduce future
 - malformed genome rejected before live mutation
+- incomplete runtime parameters rejected before live mutation
+- imported event text renders as text rather than executable HTML
 - bounded endurance run remains finite
 - reproduction actually executes
 - population remains inside configured ceiling
