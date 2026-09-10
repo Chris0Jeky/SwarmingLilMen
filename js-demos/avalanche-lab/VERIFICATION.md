@@ -1,10 +1,10 @@
 # PR verification: Avalanche Lab
 
-Checked 9 September 2026 against the packaged HTML. Repository baseline: `9afdb571bab88f87ad8415241668513c58708c90`.
+Checked 10 September 2026 against the reviewed HTML. Repository baseline: `9afdb571bab88f87ad8415241668513c58708c90`.
 
-- Packaged HTML SHA-256: `77df388c7d4a0a28286117721531f9133c7520d21aeb2670c3caca1f22d49feb`.
+- Reviewed HTML SHA-256: `f573e8cf7baa23a54ef83b4b1afd2c2f67e17d719638cc4d0d73c517782faf20`.
 - `node tests/static_check.cjs`: inline scripts and smoke script parse; standalone dependency checks pass.
-- `python tests/browser_smoke.py`: **11 passed checks**, Chromium `144.0.7559.96`, Python Playwright 1.57.0.
+- `python tests/browser_smoke.py`: **11 passed checks**, Chromium `143.0.7499.4`, Python Playwright 1.57.0.
 - HTML loaded by its exact text in a real browser, not by replacing its model with test doubles.
 - No unexpected page errors, console errors/warnings or runtime network requests.
 

@@ -720,22 +720,11 @@
     const w = sim.width, h = sim.height;
     const x = idx % w, y = Math.floor(idx / w);
     const a = sim.avalanche;
-    const neighbours = [
-      x > 0 ? idx - 1 : -1,
-      x < w - 1 ? idx + 1 : -1,
-      y > 0 ? idx - w : -1,
-      y < h - 1 ? idx + w : -1
-    ];
-    for (let k = 0; k < 4; k++) {
-      const n = neighbours[k];
-      if (n < 0 || sim.sinks[n]) {
-        sim.totalDissipated++;
-        if (a) { a.dissipated++; }
-      } else {
-        sim.heights[n]++;
-        enqueue(n, depth + 1);
-      }
-    }
+    const left = x > 0 ? idx - 1 : -1, right = x < w - 1 ? idx + 1 : -1, up = y > 0 ? idx - w : -1, down = y < h - 1 ? idx + w : -1;
+    if (left < 0 || sim.sinks[left]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[left]++; enqueue(left, depth + 1); }
+    if (right < 0 || sim.sinks[right]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[right]++; enqueue(right, depth + 1); }
+    if (up < 0 || sim.sinks[up]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[up]++; enqueue(up, depth + 1); }
+    if (down < 0 || sim.sinks[down]) { sim.totalDissipated++; if (a) a.dissipated++; } else { sim.heights[down]++; enqueue(down, depth + 1); }
   }
 
   function processTopplings(budget) {
