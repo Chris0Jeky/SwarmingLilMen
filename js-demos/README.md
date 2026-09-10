@@ -22,6 +22,11 @@ A beautiful implementation of Craig Reynolds' Boids algorithm with:
 
 **[Launch Demo](./boids-basic/index.html)**
 
+### [Turing Morphogenesis](./turing-morphogenesis/)
+Gray–Scott reaction–diffusion fields with editable chemistry and boundaries.
+
+**[Launch demo](./turing-morphogenesis/index.html)** · [Integration plan](./turing-morphogenesis/docs/IMPLEMENTATION_PLAN.md) · [Verification](./turing-morphogenesis/VERIFICATION.md)
+
 ### [Self-Propelled Particles (Vicsek Model)](./self-propelled-particles/)
 An interactive demonstration of the Vicsek model showing phase transitions in active matter:
 - Real-time order-disorder phase transitions
