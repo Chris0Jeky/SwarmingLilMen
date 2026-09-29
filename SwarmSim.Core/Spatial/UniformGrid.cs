@@ -108,8 +108,23 @@ public sealed class UniformGrid
     /// <param name="x">Agent X positions</param>
     /// <param name="y">Agent Y positions</param>
     /// <param name="count">Number of active agents</param>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="x"/> or <paramref name="y"/> is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="count"/> is negative or exceeds the grid capacity or input lengths.</exception>
     public void Rebuild(float[] x, float[] y, int count)
     {
+        // Validate before mutating so a bad call leaves the prior index intact.
+        if (x is null)
+            throw new ArgumentNullException(nameof(x));
+        if (y is null)
+            throw new ArgumentNullException(nameof(y));
+        if (count < 0)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count must be non-negative.");
+        if (count > _next.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds grid capacity.");
+        if (count > x.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds x array length.");
+        if (count > y.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds y array length.");
         // Clear all cells
         Array.Fill(_head, -1);
 
