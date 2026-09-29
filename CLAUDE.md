@@ -84,11 +84,13 @@ here rather than referenced.
 - **Update `PROJECT_STATUS.md` when a verified fact or the priority queue changes** — test counts,
   measured hashes, implementation status. Its top block is what the validator and the rest of the
   docs are told to trust, so a change that leaves it stale silently misleads every later session.
-- **Do not vendor a `.claude` hook into this repo.** The floor arrives from the global PreToolUse
-  hook; a second repo-level hook can double-dispatch. This repo deliberately declares none.
-- **Committed permissions belong in `.claude/settings.json`; personal bypasses belong in gitignored
-  `.claude/settings.local.json`.** The committed file already sets `defaultMode: bypassPermissions`,
-  so widening it further is a repo-wide decision, not a personal convenience.
+- **Do not vendor a `.claude` hook into this repo.** Whether a user-scope floor runs depends on the
+  host (none on DESKTOP-IHKOOJS; Kraspyon keeps one), and a second repo-level hook would double-dispatch
+  there. Act as if nothing catches an irreversible command.
+- **Committed permissions belong in `.claude/settings.json`; personal overrides belong in gitignored
+  `.claude/settings.local.json`; bypass comes only from user settings or a launch flag.** A project
+  or local `defaultMode` of bypass is ignored (Claude Code 2.1.257+), so widening committed
+  permissions is a repo-wide decision, not a personal convenience.
 - **CI validates GitHub's head/base merge ref, not your exact branch head.** Incorporate the latest
   `main` before merging, and use the workflow's `workflow_dispatch` when an exact-head rerun matters.
 
@@ -105,4 +107,4 @@ here rather than referenced.
 - Snapshot interpolation needs matching capture/mutation versions and array lengths; world
   mutation outside `SimulationRunner.Advance()` routes through `NotifyWorldMutated()`.
 - Complexity hotspots `SwarmSim.Render/Program.cs` (~2,010 lines) and `Canonical/CanonicalWorld.cs` (~755): add a narrow testable seam rather than growing them. Both grow steadily — treat the figures as scale, not as a value to keep in sync.
-- Never stash/reset/clean/switch a checkout to get a clean tree — T1's floor does not guard work-loss, and the main checkout is usually parked on a live feature branch.
+- Never stash/reset/clean/switch a checkout to get a clean tree — no floor guards work-loss here, and the main checkout is usually parked on a live feature branch.

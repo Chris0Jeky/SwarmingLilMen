@@ -386,6 +386,21 @@ public class CanonicalBoidsTests
     }
 
     [Fact]
+    public void CanonicalWorld_TryAddBoid_ReturnsFalseAtCapacity()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 1
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+
+        Assert.True(world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f)));
+        Assert.False(world.TryAddBoid(new Vec2(5f, 0f), new Vec2(1f, 0f)));
+        Assert.Equal(1, world.Count);
+    }
+
+    [Fact]
     public void CanonicalWorld_Step_RejectsNonPositiveDeltaTime()
     {
         var settings = new CanonicalWorldSettings
