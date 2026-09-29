@@ -87,10 +87,10 @@ here rather than referenced.
 - **Do not vendor a `.claude` hook into this repo.** Whether a user-scope floor runs depends on the
   host (none on DESKTOP-IHKOOJS; Kraspyon keeps one), and a second repo-level hook would double-dispatch
   there. Act as if nothing catches an irreversible command.
-- **Committed permissions belong in `.claude/settings.json`; personal bypasses belong in gitignored
-  `.claude/settings.local.json`.** A project or local `defaultMode` of
-  bypass is ignored (Claude Code 2.1.257+; bypass comes from user settings or a launch flag), so
-  widening committed permissions is a repo-wide decision, not a personal convenience.
+- **Committed permissions belong in `.claude/settings.json`; personal overrides belong in gitignored
+  `.claude/settings.local.json`; bypass comes only from user settings or a launch flag.** A project
+  or local `defaultMode` of bypass is ignored (Claude Code 2.1.257+), so widening committed
+  permissions is a repo-wide decision, not a personal convenience.
 - **CI validates GitHub's head/base merge ref, not your exact branch head.** Incorporate the latest
   `main` before merging, and use the workflow's `workflow_dispatch` when an exact-head rerun matters.
 
