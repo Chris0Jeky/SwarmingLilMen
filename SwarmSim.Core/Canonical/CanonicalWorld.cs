@@ -35,6 +35,48 @@ public sealed class CanonicalWorld
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
         Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
+        if (!float.IsFinite(settings.TargetSpeed) || settings.TargetSpeed <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.TargetSpeed,
+                "TargetSpeed must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.SenseRadius) || settings.SenseRadius <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SenseRadius,
+                "SenseRadius must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.MaxForce) || settings.MaxForce <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.MaxForce,
+                "MaxForce must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.FieldOfView) || settings.FieldOfView <= 0f || settings.FieldOfView > 360f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.FieldOfView,
+                "FieldOfView must be finite and in (0, 360].");
+        }
+        if (!float.IsFinite(settings.WorldWidth) || settings.WorldWidth <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WorldWidth,
+                "WorldWidth must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.WorldHeight) || settings.WorldHeight <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WorldHeight,
+                "WorldHeight must be finite and positive.");
+        }
         if (!float.IsFinite(settings.MaxTurnRateDegPerSecond) || settings.MaxTurnRateDegPerSecond < 0f)
         {
             throw new ArgumentOutOfRangeException(

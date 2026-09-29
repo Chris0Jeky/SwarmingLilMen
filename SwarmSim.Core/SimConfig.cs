@@ -221,19 +221,19 @@ public sealed class SimConfig
 
         if (Seed > Rng.MaxSupportedSeed)
             errors.Add($"Seed must be between 0 and {Rng.MaxSupportedSeed}, inclusive");
-        if (WorldWidth <= 0) errors.Add("WorldWidth must be positive");
-        if (WorldHeight <= 0) errors.Add("WorldHeight must be positive");
-        if (FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
-        if (MaxSpeed <= 0) errors.Add("MaxSpeed must be positive");
-        if (MaxForce <= 0) errors.Add("MaxForce must be positive");
-        if (GridCellSize <= 0) errors.Add("GridCellSize must be positive");
-        if (SenseRadius <= 0) errors.Add("SenseRadius must be positive");
-        if (FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
+        if (!float.IsFinite(WorldWidth) || WorldWidth <= 0) errors.Add("WorldWidth must be positive");
+        if (!float.IsFinite(WorldHeight) || WorldHeight <= 0) errors.Add("WorldHeight must be positive");
+        if (!float.IsFinite(FixedDeltaTime) || FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
+        if (!float.IsFinite(MaxSpeed) || MaxSpeed <= 0) errors.Add("MaxSpeed must be positive");
+        if (!float.IsFinite(MaxForce) || MaxForce <= 0) errors.Add("MaxForce must be positive");
+        if (!float.IsFinite(GridCellSize) || GridCellSize <= 0) errors.Add("GridCellSize must be positive");
+        if (!float.IsFinite(SenseRadius) || SenseRadius <= 0) errors.Add("SenseRadius must be positive");
+        if (!float.IsFinite(FieldOfView) || FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
         if (InitialCapacity <= 0) errors.Add("InitialCapacity must be positive");
         if (MaxCapacity < InitialCapacity) errors.Add("MaxCapacity must be >= InitialCapacity");
 
-        if (Friction < 0 || Friction > 1) errors.Add("Friction must be in [0, 1]");
-        if (MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
+        if (!float.IsFinite(Friction) || Friction < 0 || Friction > 1) errors.Add("Friction must be in [0, 1]");
+        if (!float.IsFinite(MutationRate) || MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
 
         int groups = AggressionMatrix.GetLength(0);
         if (AggressionMatrix.GetLength(1) != groups)
