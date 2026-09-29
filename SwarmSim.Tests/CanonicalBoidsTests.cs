@@ -384,4 +384,23 @@ public class CanonicalBoidsTests
         Assert.Equal(2, snapshot.WhiskerCounts.Length);
         Assert.True(snapshot.NearestDistances[0] > 0f, "Nearest distance should be populated");
     }
+
+    [Fact]
+    public void CanonicalWorld_Step_RejectsNonPositiveDeltaTime()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 1f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 5f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.Step(0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.Step(-1f));
+    }
 }
