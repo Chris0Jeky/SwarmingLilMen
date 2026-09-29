@@ -149,6 +149,37 @@ public class CanonicalBoidsTests
     }
 
     [Fact]
+    public void CanonicalWorld_PriorityDroop_ReducesSpeed()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 2f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 6f,
+            SeparationRadius = 3f,
+            SeparationPriorityRadiusFactor = 0.33f,
+            SeparationSpeedDroop = 0.5f,
+            SeparationPriorityRampInTime = 0.08f,
+            WanderStrength = 0f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(1.5f, 0f), new Vec2(-1f, 0f));
+
+        float deltaTime = 0.1f;
+        world.Step(deltaTime);
+
+        float blend = MathF.Min(1f, deltaTime / settings.SeparationPriorityRampInTime);
+        float expectedSpeed = settings.TargetSpeed * (1f - settings.SeparationSpeedDroop * blend);
+
+        var boid = world.Boids[0];
+        Assert.InRange(boid.Velocity.Length, expectedSpeed - 0.05f, expectedSpeed + 0.05f);
+    }
+
+    [Fact]
     public void SeparationRule_RepelsCloseNeighbor()
     {
         var rule = new SeparationRule(weight: 1f, radius: 5f);
