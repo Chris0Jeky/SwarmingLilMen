@@ -7,7 +7,9 @@ a non-Claude runtime.
 ## Codex delta
 
 - **The estate's global laws reach Codex through `~/.codex/AGENTS.md`** when the estate profile is
-  installed (the Claude rendering is `~/.claude/rules/laws.md`). Also read the registry `~/.claude/ESTATE.md`, and `BLUEPRINT.md` in the active
+  installed (the Claude rendering is `~/.claude/rules/laws.md`). If `~/.codex/AGENTS.md` is absent,
+  read `~/.claude/rules/laws.md`; if neither exists, the fail-safe floor below binds and merge is
+  human-only. Also read the registry `~/.claude/ESTATE.md`, and `BLUEPRINT.md` in the active
   `agent-harness` checkout (its path is recorded in `ESTATE.md`, not hardcoded here).
 - **Deny floor.** No Claude floor runs on DESKTOP-IHKOOJS (owner decisions of 2026-09-07/09-20);
   Kraspyon keeps a user-scope hook.
@@ -37,9 +39,9 @@ They are the entire policy in that case, and they still bind when the estate pro
 - **Never commit secrets**, tokens, credentials, private data, generated profiler or test output,
   or agent-attribution trailers. This repository is public and its history is permanent.
 - **Publishing is scoped.** Local edits, builds, tests, commits, branch pushes, and pull requests
-  are in scope. Without the estate profile, merging to `main`, repository settings, releases, and
-  anything that leaves this repository are not — `authority.merge` in `.agent-harness/tier.json`
-  presumes the estate laws, so without them merge is human-only. With the profile present, merging
-  follows `authority.merge` behind global law 2's gate.
+  are in scope. Repository settings, releases, and anything that leaves this repository are not.
+  Merging to `main` is human-only without the estate profile (`authority.merge` in
+  `.agent-harness/tier.json` presumes the estate laws); with the profile present it follows
+  `authority.merge` behind global law 2's gate.
 - **No unproven claims.** Run the check that proves the claim, and state plainly what you did not
   verify — a green unit suite is not renderer, benchmark, or throughput evidence here.
