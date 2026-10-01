@@ -56,8 +56,8 @@ public sealed class SimulationRunner
     /// </summary>
     public int Advance(double elapsedSeconds)
     {
-        if (elapsedSeconds < 0)
-            throw new ArgumentOutOfRangeException(nameof(elapsedSeconds), "Elapsed time must be non-negative.");
+        if (!double.IsFinite(elapsedSeconds) || elapsedSeconds < 0)
+            throw new ArgumentOutOfRangeException(nameof(elapsedSeconds), "Elapsed time must be finite and non-negative.");
 
         _accumulatorSeconds += elapsedSeconds;
         int steps = 0;

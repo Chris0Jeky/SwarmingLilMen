@@ -231,6 +231,7 @@ public sealed class SimConfig
         if (!float.IsFinite(FieldOfView) || FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
         if (InitialCapacity <= 0) errors.Add("InitialCapacity must be positive");
         if (MaxCapacity < InitialCapacity) errors.Add("MaxCapacity must be >= InitialCapacity");
+        if (CompactionInterval < 1) errors.Add("CompactionInterval must be >= 1");
 
         if (!float.IsFinite(Friction) || Friction < 0 || Friction > 1) errors.Add("Friction must be in [0, 1]");
         if (!float.IsFinite(MutationRate) || MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
