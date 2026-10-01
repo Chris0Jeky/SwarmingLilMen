@@ -261,8 +261,7 @@ public sealed class CanonicalWorld
 
     public void Step(float deltaTime)
     {
-        if (deltaTime <= 0f)
-            throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta time must be positive.");
+        if (!float.IsFinite(deltaTime) || deltaTime <= 0f) throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta time must be finite and positive.");
 
         var current = _activeBoids.AsSpan(0, Count);
         _spatialIndex.Rebuild(current);
