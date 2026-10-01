@@ -176,6 +176,9 @@ public sealed class World
         byte group = 0,
         Genome? genome = null)
     {
+        // -1 also covers non-finite coordinates.
+        if (!float.IsFinite(x) || !float.IsFinite(y))
+            return -1;
         if (Count >= Capacity)
             return -1;
 

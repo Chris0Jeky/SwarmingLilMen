@@ -212,6 +212,8 @@ public sealed class CanonicalWorld
 
     public bool TryAddBoid(Vec2 position, Vec2 velocity, byte group = 0)
     {
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(velocity.X) || !float.IsFinite(velocity.Y))
+            return false;
         if (Count >= _activeBoids.Length)
             return false;
 
@@ -252,6 +254,8 @@ public sealed class CanonicalWorld
     public void SetVelocity(int index, Vec2 velocity)
     {
         if (index < 0 || index >= Count)
+            return;
+        if (!float.IsFinite(velocity.X) || !float.IsFinite(velocity.Y))
             return;
 
         Vec2 normalizedVelocity = velocity.WithLength(Settings.TargetSpeed);
