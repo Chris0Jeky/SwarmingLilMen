@@ -207,7 +207,8 @@ public sealed class CanonicalWorld
 
     public void AddRule(IRule rule)
     {
-        _rules.Add(rule ?? throw new ArgumentNullException(nameof(rule)));
+        ArgumentNullException.ThrowIfNull(rule);
+        _rules.Add(rule);
     }
 
     public bool TryAddBoid(Vec2 position, Vec2 velocity, byte group = 0)
