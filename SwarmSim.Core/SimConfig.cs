@@ -273,6 +273,10 @@ public sealed class SimConfig
         if (config is null)
             throw new InvalidOperationException($"Failed to deserialize config file '{filePath}'.");
 
+        var errors = config.Validate();
+        if (errors.Count > 0)
+            throw new ArgumentException($"Invalid config: {string.Join(", ", errors)}");
+
         return config;
     }
 }
