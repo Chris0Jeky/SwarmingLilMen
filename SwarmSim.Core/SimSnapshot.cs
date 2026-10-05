@@ -67,6 +67,8 @@ public sealed class SimSnapshot
     /// </summary>
     public static SimSnapshot FromWorld(World world, long captureVersion, long mutationVersion)
     {
+        ArgumentNullException.ThrowIfNull(world);
+
         int agentCount = world.Count;
 
         var posX = new float[agentCount];
