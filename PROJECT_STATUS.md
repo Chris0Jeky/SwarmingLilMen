@@ -10,6 +10,12 @@
 
 ## Verified Live State (2026-08-08)
 
+- CLI failure exits (branch verification, 2026-10-05): unknown presets exit 2 and
+  config-load failures exit 1; help, preset listing, and a 20-agent headless run exit 0.
+  Process exits were checked directly, and both error regression tests fail with zero
+  returns restored. Release build is warning-free and the non-Performance gate passes
+  234 tests on this branch. Windowed renderer and BenchmarkDotNet were not run.
+
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
   changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at

@@ -422,33 +422,33 @@ internal static class Program
             CompactionInterval = template.CompactionInterval
         };
     }
-    private static void Main(string[] args)
+    internal static int Main(string[] args)
     {
         _cliOptions = CommandLineOptions.Parse(args);
 
         if (_cliOptions.RunMinimalTest)
         {
             MinimalTest.Run();
-            return;
+            return 0;
         }
 
         if (_cliOptions.ShowVersion)
         {
             PrintVersionInfo();
-            return;
+            return 0;
         }
 
         if (_cliOptions.ListPresets)
         {
             PrintPresetList();
-            return;
+            return 0;
         }
 
         if (_cliOptions.ShowHelp)
         {
             Console.WriteLine(CommandLineOptions.GetHelpText());
             PrintPresetList();
-            return;
+            return 0;
         }
 
         if (!string.IsNullOrWhiteSpace(_cliOptions.ConfigFile))
@@ -463,7 +463,7 @@ internal static class Program
             catch (Exception ex)
             {
                 Console.WriteLine($"Failed to load config '{_cliOptions.ConfigFile}': {ex.Message}");
-                return;
+                return 1;
             }
         }
         else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName) &&
@@ -476,7 +476,7 @@ internal static class Program
         else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName))
         {
             Console.WriteLine($"Unknown preset '{_cliOptions.PresetName}'. Use --list-presets to view options.");
-            return;
+            return 2;
         }
 
         _initialAgentCount = _cliOptions.AgentCount ?? _initialAgentCount;
@@ -484,13 +484,13 @@ internal static class Program
         if (_cliOptions.BenchmarkMode)
         {
             RunBenchmark(_initialAgentCount);
-            return;
+            return 0;
         }
 
         if (_cliOptions.UseCanonicalMode)
         {
             RunCanonicalMode();
-            return;
+            return 0;
         }
 
         PrintStartupBanner(_initialAgentCount);
@@ -553,6 +553,7 @@ internal static class Program
         }
 
         Raylib.CloseWindow();
+        return 0;
     }
 
     private static World CreateWorldWithCurrentParams()
