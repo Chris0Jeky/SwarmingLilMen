@@ -236,6 +236,12 @@ public sealed class SimConfig
         if (!float.IsFinite(Friction) || Friction < 0 || Friction > 1) errors.Add("Friction must be in [0, 1]");
         if (!float.IsFinite(MutationRate) || MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
 
+        if (AggressionMatrix is null)
+        {
+            errors.Add("AggressionMatrix must not be null");
+            return errors;
+        }
+
         int groups = AggressionMatrix.GetLength(0);
         if (AggressionMatrix.GetLength(1) != groups)
             errors.Add("AggressionMatrix must be square");
