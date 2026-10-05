@@ -255,10 +255,13 @@ public sealed class World
     /// <summary>
     /// Marks an agent as dead. The slot will be recycled in the next compaction.
     /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="idx"/> is less than 0 or greater than or equal to <see cref="Count"/>.
+    /// </exception>
     public void MarkDead(int idx)
     {
         if (idx < 0 || idx >= Count)
-            return;
+            throw new ArgumentOutOfRangeException(nameof(idx));
 
         State[idx] = State[idx].SetFlag(AgentState.Dead);
     }
