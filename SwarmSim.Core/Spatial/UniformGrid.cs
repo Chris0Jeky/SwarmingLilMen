@@ -76,9 +76,9 @@ public sealed class UniformGrid
     /// <param name="capacity">Maximum number of agents</param>
     public UniformGrid(float cellSize, float worldWidth, float worldHeight, int capacity)
     {
-        if (cellSize <= 0f)
+        if (!float.IsFinite(cellSize) || cellSize <= 0f)
             throw new ArgumentException("Cell size must be positive", nameof(cellSize));
-        if (worldWidth <= 0f || worldHeight <= 0f)
+        if (!float.IsFinite(worldWidth) || !float.IsFinite(worldHeight) || worldWidth <= 0f || worldHeight <= 0f)
             throw new ArgumentException("World dimensions must be positive");
         if (capacity <= 0)
             throw new ArgumentException("Capacity must be positive", nameof(capacity));
