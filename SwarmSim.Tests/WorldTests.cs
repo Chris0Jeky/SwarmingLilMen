@@ -117,6 +117,42 @@ public class WorldTests
     }
 
     [Fact]
+    public void MarkDead_Negative_Throws()
+    {
+        // Arrange
+        var world = new World(new SimConfig(), seed: 42u);
+        world.AddAgent(0f, 0f);
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.MarkDead(-1));
+    }
+
+    [Fact]
+    public void MarkDead_AtCount_Throws()
+    {
+        // Arrange
+        var world = new World(new SimConfig(), seed: 42u);
+        world.AddAgent(0f, 0f);
+
+        // Act & Assert
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.MarkDead(world.Count));
+    }
+
+    [Fact]
+    public void MarkDead_Valid_MarksDead()
+    {
+        // Arrange
+        var world = new World(new SimConfig(), seed: 42u);
+        int idx = world.AddAgent(0f, 0f);
+
+        // Act
+        world.MarkDead(idx);
+
+        // Assert
+        Assert.True(world.State[idx].HasFlag(AgentState.Dead));
+    }
+
+    [Fact]
     public void CompactDeadAgents_RemovesDeadAgents()
     {
         // Arrange
