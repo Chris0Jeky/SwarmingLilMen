@@ -192,6 +192,9 @@ public sealed class UniformGrid
     /// <returns>Number of agents found (may exceed maxResults)</returns>
     public int Query3x3(float x, float y, Span<int> buffer, int maxResults)
     {
+        if (maxResults > buffer.Length)
+            throw new ArgumentOutOfRangeException(nameof(maxResults), "maxResults exceeds buffer length.");
+
         int count = 0;
 
         // Get center cell coordinates
