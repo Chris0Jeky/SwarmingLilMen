@@ -10,6 +10,12 @@
 
 ## Verified Live State (2026-08-08)
 
+- Genome argument validation (branch verification, 2026-10-07): `Mutate` rejects
+  null RNGs, non-finite or out-of-range mutation rates, and non-finite noise deviations.
+  Both new regressions fail with the guards removed and pass with them present.
+  Release build and the non-Performance suite pass on this branch. There were no
+  pre-existing Genome test classes; renderer UI and BenchmarkDotNet were not run.
+
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
   changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at
