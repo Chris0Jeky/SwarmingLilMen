@@ -3,7 +3,7 @@
   "public_origin":null,"origin_evidence":"not-configured",
   "target":"Native/headless simulation and existing standalone js-demos; static publishing only",
   "source_paths":["README.md","CLAUDE.md"],
-  "persistent_state":["Local simulation and replay outputs"],
+  "persistent_state":["Native renderer CSV snapshots","Firefly, avalanche-lab and turing-morphogenesis JSON and PNG exports"],
   "invariants":["Native renderer and standalone browser demos remain distinct","No speculative engine rewrite or always-on server","No private traces or profiler output in public assets","Unit tests are not rendering or throughput evidence"],
   "gates":["Reviewed demonstration artifact allowlist","Deterministic/headless acceptance where applicable","Separate static publication approval"],
   "tasks":[
