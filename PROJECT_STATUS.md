@@ -16,6 +16,12 @@
   Release build and the non-Performance suite pass on this branch. There were no
   pre-existing Genome test classes; renderer UI and BenchmarkDotNet were not run.
 
+- Grid buffer validation (branch verification, 2026-10-05): `Query3x3` rejects
+  `maxResults` above the supplied span length before scanning. The new regression fails
+  without the guard; all 28 `UniformGridTests` pass with it. Release build is warning-free
+  and the non-Performance gate passes 228 tests on this branch. Renderer UI and
+  BenchmarkDotNet were not run for this change.
+
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
   changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at
