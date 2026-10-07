@@ -296,6 +296,7 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 SpatialQueryResult query = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
+                _instrumentation.RecordTruncation(i, query.IsTruncated);
                 int neighborCount = query.Count;
                 float fieldOfViewDegrees = Settings.FieldOfView;
 
