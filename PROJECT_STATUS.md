@@ -16,6 +16,13 @@
   Release build and the non-Performance suite pass on this branch. There were no
   pre-existing Genome test classes; renderer UI and BenchmarkDotNet were not run.
 
+- Circle spawn argument validation (branch verification, 2026-10-07): negative
+  counts and non-finite centers or radii throw before spawning. All ten new
+  validation cases fail with the guards removed; all 35 `WorldTests` pass with
+  them present, including valid spawning. Release build and the non-Performance
+  suite pass on this branch. Huge-count capacity behavior is unchanged and outside
+  this change's contract; renderer UI and BenchmarkDotNet were not run.
+
 - Grid buffer validation (branch verification, 2026-10-05): `Query3x3` rejects
   `maxResults` above the supplied span length before scanning. The new regression fails
   without the guard; all 28 `UniformGridTests` pass with it. Release build is warning-free
