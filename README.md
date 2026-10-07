@@ -77,8 +77,10 @@ dotnet restore
 # Build the solution
 dotnet build
 
-# Run tests
-dotnet test
+# CI test gate. --no-build is valid only immediately after the Release build on the next line.
+# Category=Performance timing facts run Release-only and are reported-only evidence; the gate excludes them.
+dotnet build SwarmingLilMen.sln -c Release
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
 ### Running the Simulation
@@ -139,6 +141,8 @@ Available presets:
   fast-loose      - Fast & Loose :: Higher speed ceiling with lighter cohesion
   slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
+
+Combining `--benchmark` with `--canonical` still measures the legacy world, because `RunBenchmark` in `SwarmSim.Render/Program.cs` returns before the canonical branch.
 
 > **Known executable-help defect:**
 >
@@ -224,6 +228,9 @@ SwarmingLilMen/
 │   ├── AgentState.cs       # Behavioral state flags
 │   ├── SimConfig.cs        # Configuration system
 │   ├── World.cs            # Main simulation with SoA data
+│   ├── Systems/            # Legacy per-tick sense, behavior, wander, and integrate
+│   ├── Spatial/            # Uniform grid for neighbor queries
+│   ├── Diagnostics/        # Ordered kinematic hash
 │   ├── Canonical/          # New canonical boids implementation
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Render/        # Raylib-cs visualization
@@ -319,8 +326,9 @@ var custom = new SimConfig
 ## 🧪 Testing
 
 ```bash
-# Run all tests
-dotnet test
+# CI gate (same commands as Quick Start). Category=Performance timing facts run Release-only and are reported-only evidence.
+dotnet build SwarmingLilMen.sln -c Release
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 
 # Run with detailed output
 dotnet test -v detailed

@@ -66,13 +66,13 @@ configuration. The earlier parameter-editor narrative is retained as a dated his
 ## Presets & CLI
 
 - **Command-line flags**:
-  - `--preset <name>` – Start with a preset configuration (use `--list-presets` to see options)
-  - `--config <file>` – Load configuration from JSON (see `configs/` directory)
-  - `--agent-count <n>` – Override the initial agent count
-  - `--benchmark` – Run a headless benchmark (no window)
+  - `-p`, `--preset <name>` – Start with a preset configuration (use `--list-presets` to see options)
+  - `-c`, `--config <file>` – Load configuration from JSON (see `configs/` directory)
+  - `-n`, `--agent-count <n>` – Override the initial agent count
+  - `-b`, `--benchmark` – Run a headless benchmark (no window)
   - `--canonical` – Launch the opt-in single-group canonical renderer
   - `--minimal` – Launch the minimal debugging harness
-  - `--help`, `--version`, `--list-presets` – Self-documenting flags
+  - `-h`, `--help` (also `/?`), `-v`, `--version`, `-l`, `--list-presets` – Self-documenting flags
 
 The legacy help/parameter panels and canonical footer currently display `1-7` although input accepts
 keys **1-8**, and the canonical **H** panel lists only its minimal R/H/Esc subset. This split
