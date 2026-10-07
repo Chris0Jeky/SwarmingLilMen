@@ -111,7 +111,8 @@ public class CanonicalScenarioTests
     public void Alignment_IsolatedBoidKeepsVelocity()
     {
         // Milestone 4 (alignment). A boid with no neighbors has no alignment steer.
-        // Integration renormalizes the same heading, and this setup stays bit-exact.
+        // Integration renormalizes the same heading through trig round trips, so the assertion uses a
+        // tolerance (1e-4 over 90 steps) rather than bit equality, which can differ across platforms.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 4,
@@ -135,8 +136,8 @@ public class CanonicalScenarioTests
             world.Step(1f / 60f);
 
         Vec2 after = world.Boids[0].Velocity;
-        Assert.Equal(before.X, after.X);
-        Assert.Equal(before.Y, after.Y);
+        Assert.Equal(before.X, after.X, 1e-4f);
+        Assert.Equal(before.Y, after.Y, 1e-4f);
     }
 
     [Fact]
