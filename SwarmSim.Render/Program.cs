@@ -1513,13 +1513,19 @@ internal static class Program
     }
 
     /// <summary>
-    /// Gets the query capacity the interaction overlay must use so it observes exactly the
-    /// neighbours the simulation steered with. The overlay owns a fixed 128-entry buffer, but
+    /// Gets the query capacity the interaction overlay must use so it matches the simulation's
+    /// per-boid candidate CAP. The overlay owns a fixed 128-entry buffer, but
     /// <see cref="CanonicalWorld.Step"/> caps candidates at
     /// <see cref="CanonicalWorld.EffectiveMaxNeighbors"/> (16 for the renderer's mapped config).
     /// Querying with the wider buffer would draw neighbours steering discarded and would report
     /// no truncation in exactly the cases where the simulation did truncate.
     /// </summary>
+    /// <remarks>
+    /// This matches the cap only, not what the tick experienced: the overlay's truncation label
+    /// comes from a fresh post-step re-query that can differ from what the tick saw (positions
+    /// moved after the query, so truncation is re-evaluated against current positions). The value
+    /// the tick actually recorded is <see cref="RuleInstrumentation.QueryTruncated"/>.
+    /// </remarks>
     /// <param name="bufferLength">Entries available in the overlay's own buffers.</param>
     /// <param name="effectiveMaxNeighbors">The simulation's own per-boid candidate cap.</param>
     /// <returns>The smaller of the two, never negative.</returns>
