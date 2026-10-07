@@ -74,6 +74,32 @@ tuning one and wondering why nothing changed.
 These fields are read from `SimConfig` only by the canonical renderer path; the similarly named
 legacy crowding controls retain their existing legacy semantics.
 
+## Canonical settings accepted ranges
+
+These are the only `CanonicalWorld` constructor range checks on `CanonicalWorldSettings`. A failing check throws `ArgumentOutOfRangeException` with parameter name `settings`. No check compares one field with another.
+
+| Field | Accepted range |
+| --- | --- |
+| `Seed` | 0 through 2147483647, inclusive |
+| `TargetSpeed` | finite and positive |
+| `SenseRadius` | finite and positive |
+| `MaxForce` | finite and positive |
+| `FieldOfView` | finite and in (0, 360] |
+| `WorldWidth` | finite and positive |
+| `WorldHeight` | finite and positive |
+| `MaxTurnRateDegPerSecond` | finite and non-negative |
+| `WanderStrength` | finite and non-negative |
+| `WanderRate` | finite and non-negative |
+| `WhiskerTimeHorizon` | finite |
+| `WhiskerWeight` | finite and non-negative |
+| `SeparationPriorityRadiusFactor` | finite |
+| `SeparationPriorityExitFactor` | finite |
+| `SeparationPriorityBoost` | finite and non-negative |
+| `SeparationSpeedDroop` | finite and between 0 and 1, inclusive |
+| `SeparationPriorityHoldTime` | finite |
+| `SeparationPriorityRampInTime` | finite |
+| `SeparationPriorityRampOutTime` | finite |
+
 ## Energy / Combat (Phase 3+ — reserved, not yet active)
 - **AttackDamage / AttackRadius / AttackCooldown** – Intended to enable combat behaviour when aggression matrices are non-zero. No system reads them today.
 - **BaseDrain, MoveCost** – Intended to control metabolism. No system reads them today, so energy neither drains nor gates death.
