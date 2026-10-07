@@ -354,7 +354,7 @@ Genome[] Genomes;          // Genetics
 
 ### Systems Pipeline
 The active legacy path rebuilds the uniform grid, then runs these systems in sequence each tick
-(`SwarmSim.Core/World.cs:119-137,294-320`):
+(`SwarmSim.Core/World.cs` (`World.Tick`)):
 1. **SenseSystem** - Query same-group neighbors and aggregate boids inputs
 2. **BehaviorSystem** - Convert separation, alignment, and cohesion inputs to steering
 3. **WanderSystem** - Optional wander contribution

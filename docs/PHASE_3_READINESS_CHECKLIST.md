@@ -336,7 +336,7 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
     | 50k    | 162.815                 | Heavier legacy BenchmarkDotNet-like steering weights |
 
     These stopwatch samples come from separate test cases and are not valid inputs to a future
-    legacy/canonical speedup calculation (`SwarmSim.Tests/PerformanceTests.cs:15-99`).
+    legacy/canonical speedup calculation (`SwarmSim.Tests/PerformanceTests.cs`).
 
 - [ ] **Identify Regressions**
   - If canonical is slower, profile with dotTrace
@@ -347,7 +347,7 @@ Ensure the canonical implementation meets or exceeds the legacy performance.
 
 - [ ] **Zero-Allocation Verification**
   - Current canonical `Step()` does not satisfy this target because perception-snapshot refresh
-    allocates three arrays (`SwarmSim.Core/Canonical/CanonicalWorld.cs:496-508`).
+    allocates three arrays (`SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld.UpdatePerceptionSnapshot`)).
   ```csharp
   [Fact]
   public void CanonicalWorld_Step_AllocatesNothing()

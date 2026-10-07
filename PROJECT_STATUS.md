@@ -418,7 +418,7 @@ SwarmSim.Benchmarks/    - BenchmarkDotNet suite (references Core)
 1. `SenseSystem` → 2. `BehaviorSystem` → 3. optional `WanderSystem` → 4. `IntegrateSystem`
 
 Combat, forage, reproduction, metabolism, and lifecycle systems are future Phase 3+ work
-(`SwarmSim.Core/World.cs:119-144`).
+(`SwarmSim.Core/World.cs` (`World.Initialize`)).
 
 ### Data Layout (SoA)
 Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Fx[]`, `Fy[]`, `Energy[]`, `Health[]`, `Age[]`,
