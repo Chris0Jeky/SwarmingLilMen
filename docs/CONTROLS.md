@@ -79,4 +79,4 @@ keys **1-8**, and the canonical **H** panel lists only its minimal R/H/Esc subse
 reference includes the missing canonical O/Tab controls and scopes legacy-only actions; executable
 synchronization and regression coverage are tracked in
 [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39)
-(`SwarmSim.Render/Program.cs:596-749,1231-1277,1340-1380,1447-1455,1553-1612,1687-1704`).
+(`SwarmSim.Render/Program.cs` (`Program.HandleInput`, `Program.DrawUI`, `Program.DrawHelpOverlay`, `Program.RunCanonicalMode`, `Program.ProcessCanonicalParameters`)).

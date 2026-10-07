@@ -144,7 +144,7 @@ Try changing these in SimConfig:
 - `CohesionWeight` - Move toward group center (0.3-3)
 
 `SimConfig` and the live parameter editor allow wider experiments; these ranges only summarize the
-five registered renderer presets (`SwarmSim.Render/Program.cs:110-215`).
+five registered renderer presets (`SwarmSim.Render/Program.cs` (`Presets`)).
 
 **Reserved Phase 3 energy settings** (only initial values are active today):
 - `InitialEnergy` - Starting energy (50-200)
