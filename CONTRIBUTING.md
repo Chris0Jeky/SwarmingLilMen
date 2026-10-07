@@ -104,7 +104,7 @@ Projects: SwarmSim.Tests
 Name: Benchmarks (Release)
 Project: SwarmSim.Benchmarks
 Configuration: Release
-Arguments: (optional) --filter *
+Arguments: none (both suites), --grid, or --tick. These are not forwarded to BenchmarkDotNet; --filter does nothing.
 ```
 
 **4. CPU Profile**
@@ -157,7 +157,13 @@ SwarmingLilMen.sln
 │   ├── Genome.cs           - Agent genetics (readonly record struct)
 │   ├── AgentState.cs       - Behavioral flags
 │   ├── SimConfig.cs        - Configuration with validation
-│   ├── World.cs            - Main simulation (SoA layout)
+│   ├── World.cs            - Legacy Structure-of-Arrays simulation
+│   ├── SimulationRunner.cs - Fixed-step advance; publishes a snapshot after each tick
+│   ├── SimSnapshot.cs      - Immutable per-tick copy for rendering or analytics
+│   ├── Canonical/          - Reynolds-style per-boid successor engine (--canonical)
+│   ├── Spatial/            - Legacy uniform grid for neighbor queries
+│   ├── Systems/            - Stateless per-tick systems over the legacy World
+│   ├── Diagnostics/        - Ordered kinematic hash of agent positions and velocities
 │   └── Utils/
 │       ├── Rng.cs          - Deterministic RNG
 │       └── MathUtils.cs    - Vector math utilities
@@ -165,6 +171,8 @@ SwarmingLilMen.sln
 ├── SwarmSim.Tests/         - Tests (references Core)
 └── SwarmSim.Benchmarks/    - Benchmarks (references Core)
 ```
+
+New Phase 3+ behavior belongs in `Core/Canonical/`, the Reynolds-style successor engine. The legacy Structure-of-Arrays `World.cs` plus `Systems/` still drives the default renderer and the benchmarks, and receives work only when a task concerns legacy parity, comparison, or removal. Neither engine is removed without a recorded migration decision.
 
 ### Key Design Principles
 
@@ -211,7 +219,7 @@ public interface ISimSystem
 1. **Pull latest changes**: `git pull origin main`
 2. **Create feature branch**: `git checkout -b feature/my-feature`
 3. **Make changes** to code
-4. **Run tests**: `dotnet test` (ensure all pass)
+4. **Run tests** (CI gate; ensure all pass): `dotnet build SwarmingLilMen.sln --configuration Release`, then `dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true`
 5. **Run simulation**: `dotnet run --project SwarmSim.Render`
 6. **Profile if needed**: Use Rider's CPU/Memory profilers
 7. **Update PROJECT_STATUS.md**: Check off completed items
@@ -220,7 +228,7 @@ public interface ISimSystem
 10. **Create Pull Request** (when ready)
 
 ### Before Committing
-- [ ] All tests pass: `dotnet test`
+- [ ] All tests pass (CI gate): `dotnet build SwarmingLilMen.sln --configuration Release`, then `dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true`
 - [ ] Solution builds: `dotnet build`
 - [ ] No warnings in build output
 - [ ] Performance verified if hot path changed: Run benchmarks
