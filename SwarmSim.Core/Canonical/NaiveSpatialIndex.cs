@@ -28,6 +28,12 @@ public sealed class NaiveSpatialIndex : ISpatialIndex
     }
 
     /// <inheritdoc />
+    public float WorldWidth => _worldWidth;
+
+    /// <inheritdoc />
+    public float WorldHeight => _worldHeight;
+
+    /// <inheritdoc />
     public void Initialize(int capacity)
     {
         if (capacity <= 0)
@@ -55,10 +61,10 @@ public sealed class NaiveSpatialIndex : ISpatialIndex
             throw new InvalidOperationException("NaiveSpatialIndex must be rebuilt before querying.");
         if (!float.IsFinite(radius) || radius < 0f)
             throw new ArgumentOutOfRangeException(nameof(radius), "Radius must be finite and non-negative.");
-        if (boids.Length > _capacity)
-            throw new ArgumentException("Boid count exceeds initialized capacity.", nameof(boids));
         if (selfIndex < 0 || selfIndex >= boids.Length)
             return new SpatialQueryResult(0, false);
+        if (boids.Length > _capacity)
+            throw new ArgumentException("Boid count exceeds initialized capacity.", nameof(boids));
 
         float radiusSq = radius * radius;
         int count = 0;
