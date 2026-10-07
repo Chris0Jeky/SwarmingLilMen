@@ -164,6 +164,13 @@ public sealed class CanonicalWorld
                 "SeparationPriorityRampOutTime must be finite.");
         }
 
+        if (spatialIndex.WorldWidth != settings.WorldWidth || spatialIndex.WorldHeight != settings.WorldHeight)
+        {
+            throw new ArgumentException(
+                "Spatial index world extents must exactly equal CanonicalWorldSettings.WorldWidth and WorldHeight.",
+                nameof(spatialIndex));
+        }
+
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];
         _nextBoids = new Boid[capacity];

@@ -33,6 +33,18 @@ public readonly struct SpatialQueryResult
 public interface ISpatialIndex
 {
     /// <summary>
+    /// Gets the toroidal world width this index was constructed with.
+    /// <see cref="CanonicalWorld"/> requires this to equal <see cref="CanonicalWorldSettings.WorldWidth"/>.
+    /// </summary>
+    float WorldWidth { get; }
+
+    /// <summary>
+    /// Gets the toroidal world height this index was constructed with.
+    /// <see cref="CanonicalWorld"/> requires this to equal <see cref="CanonicalWorldSettings.WorldHeight"/>.
+    /// </summary>
+    float WorldHeight { get; }
+
+    /// <summary>
     /// Allocates or resets this index for at most <paramref name="capacity"/> boids.
     /// </summary>
     /// <param name="capacity">Maximum active boid count accepted by <see cref="Rebuild"/>.</param>
