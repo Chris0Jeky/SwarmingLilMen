@@ -148,6 +148,8 @@ public sealed class UniformGrid
     /// <param name="callback">Called for each agent index found</param>
     public void Query3x3(float x, float y, Action<int> callback)
     {
+        ArgumentNullException.ThrowIfNull(callback);
+
         // Get center cell coordinates
         int centerCol = (int)(x / CellSize);
         int centerRow = (int)(y / CellSize);
