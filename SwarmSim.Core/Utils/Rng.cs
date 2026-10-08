@@ -81,8 +81,21 @@ public sealed class Rng
     /// <summary>
     /// Returns a random float in [minValue, maxValue).
     /// </summary>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="minValue"/> is greater than <paramref name="maxValue"/>.
+    /// </exception>
     public float NextFloat(float minValue, float maxValue)
-        => minValue + _random.NextSingle() * (maxValue - minValue);
+    {
+        if (minValue > maxValue)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(minValue),
+                minValue,
+                "minValue must be less than or equal to maxValue.");
+        }
+
+        return minValue + _random.NextSingle() * (maxValue - minValue);
+    }
 
     /// <summary>
     /// Returns a random double in [0.0, 1.0).
@@ -98,7 +111,21 @@ public sealed class Rng
     /// Returns a random boolean with given probability of true.
     /// </summary>
     /// <param name="probability">Probability of returning true (0.0 to 1.0)</param>
-    public bool NextBool(float probability) => NextFloat() < probability;
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown when <paramref name="probability"/> is outside 0.0 to 1.0, inclusive.
+    /// </exception>
+    public bool NextBool(float probability)
+    {
+        if (probability < 0f || probability > 1f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(probability),
+                probability,
+                "Probability must be between 0.0 and 1.0, inclusive.");
+        }
+
+        return NextFloat() < probability;
+    }
 
     /// <summary>
     /// Returns a random value from a Gaussian (normal) distribution.
