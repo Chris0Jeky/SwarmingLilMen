@@ -10,6 +10,16 @@
 
 ## Verified Live State (2026-08-08)
 
+- RNG range-helper validation (branch verification, 2026-10-08): `NextFloat`
+  rejects inverted bounds and `NextBool` rejects probabilities below zero or
+  above one before consuming randomness. All three rejection cases fail without
+  the guards; all 15 `RngTests` pass with them, including equal bounds and
+  probability endpoints. NaN and non-finite float-bound behavior is unchanged.
+  Release build passes without warnings and the non-Performance gate passes
+  all 393 tests on this branch.
+  The inherited `Category=Unit` filter matches no tests and is not proof.
+  Renderer UI and BenchmarkDotNet were not run for this change.
+
 - Genome argument validation (branch verification, 2026-10-07): `Mutate` rejects
   null RNGs, non-finite or out-of-range mutation rates, and non-finite noise deviations.
   Both new regressions fail with the guards removed and pass with them present.
