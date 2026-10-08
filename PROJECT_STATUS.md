@@ -10,6 +10,12 @@
 
 ## Verified Live State (2026-08-08)
 
+- Steering clamp coverage (branch verification, 2026-10-09): the new
+  `MathUtilsSteeringTests` case passes with the existing implementation and fails
+  when either force or speed clamping is removed, or speed clamping is moved before
+  velocity integration. Production behavior is unchanged. Renderer UI and
+  BenchmarkDotNet were not run for this test-only change.
+
 - Minimum-image folding regression (branch verification, 2026-10-08):
   `MathUtilsWrapTests` checks both signed displacements across the periodic seam.
   The regression fails with the folding branches removed and passes with them
