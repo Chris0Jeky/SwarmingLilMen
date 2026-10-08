@@ -10,6 +10,13 @@
 
 ## Verified Live State (2026-08-08)
 
+- Minimum-image folding regression (branch verification, 2026-10-08):
+  `MathUtilsWrapTests` checks both signed displacements across the periodic seam.
+  The regression fails with the folding branches removed and passes with them
+  restored. Release build passes with zero warnings/errors; the current
+  non-Performance gate passes all 397 tests on this branch.
+  Renderer UI and BenchmarkDotNet were not run for this change.
+
 - RNG range-helper validation (branch verification, 2026-10-08): `NextFloat`
   rejects inverted bounds and `NextBool` rejects probabilities below zero or
   above one before consuming randomness. All three rejection cases fail without
