@@ -1,5 +1,5 @@
 {
-  "schema_version":1,"reviewed_on":"2026-10-11","repository":"Chris0Jeky/SwarmingLilMen","stable_id":"swarminglilmen","runtime_class":"local",
+  "schema_version":1,"reviewed_on":"2026-10-11","repository":"Chris0Jeky/SwarmingLilMen","stable_id":"swarminglilmen","runtime_class":"static",
   "public_origin":"https://chris0jeky.github.io/SwarmingLilMen/","origin_evidence":"github-pages-live-2026-10-11 (owner go-live approval in chat; pages-demos.yml run 38128281974)",
   "target":"Native/headless simulation and existing standalone js-demos; static demo publication LIVE at public_origin since 2026-10-11 (owner-approved), deployed by manual dispatch of pages-demos.yml from main; rollback = disable GitHub Pages. See .hosting/README.md",
   "source_paths":["README.md","CLAUDE.md",".hosting/publish-allowlist.txt",".hosting/build_site.py",".github/workflows/pages-demos.yml"],
