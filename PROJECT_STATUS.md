@@ -10,6 +10,13 @@
 
 ## Verified Live State (2026-08-08)
 
+- Browser demos published (2026-10-11): the seven standalone js-demos are live on GitHub Pages at
+  https://chris0jeky.github.io/SwarmingLilMen/, approved by the owner after a preview. The site is built
+  only from `.hosting/publish-allowlist.txt` and deployed by manual dispatch of `pages-demos.yml` from
+  main (run 38128281974). The index and all seven demo paths answered 200, and READMEs and docs 404.
+  The native C# engine is not hosted. Rollback: disable Pages.
+
+
 - Steering clamp coverage (branch verification, 2026-10-09): the new
   `MathUtilsSteeringTests` case passes with the existing implementation and fails
   when either force or speed clamping is removed, or speed clamping is moved before
