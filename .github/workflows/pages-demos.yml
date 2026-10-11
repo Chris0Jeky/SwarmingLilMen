@@ -19,6 +19,7 @@ concurrency:
 jobs:
   build:
     name: Build _site
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
