@@ -41,6 +41,18 @@ class BuildSiteTests(unittest.TestCase):
         self.assertIn('href="a/index.html"', index)
         self.assertIn("Demo A", index)
 
+    def test_symlinked_entry_fails(self):
+        tmp, root = make_repo(["js-demos/a/index.html"], {"excluded.txt": "secret"})
+        self.addCleanup(tmp.cleanup)
+        (root / "js-demos/a").mkdir(parents=True)
+        try:
+            (root / "js-demos/a/index.html").symlink_to(root / "excluded.txt")
+        except OSError:
+            self.skipTest("cannot create symlinks on this host")
+        errors = build_site.build(root, root / "_site")
+        self.assertTrue(any("symlink" in e for e in errors), errors)
+        self.assertFalse((root / "_site").exists())
+
     def test_missing_allowlisted_file_fails(self):
         _, errors = self.build(["js-demos/a/index.html"], {})
         self.assertTrue(any("missing" in e for e in errors), errors)

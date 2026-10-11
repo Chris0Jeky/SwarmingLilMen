@@ -42,8 +42,13 @@ def check_entry(root, rel):
         return f"{rel}: must be a normalised repo-relative path under {PREFIX}"
     if Path(rel).suffix.lower() not in EXTS or BAD_SEGMENTS & set(parts) or any(p.startswith(".") for p in parts):
         return f"{rel}: not a publishable runtime asset type or location"
-    if not (root / rel).is_file():
+    path = root / rel
+    if any(q.is_symlink() for q in [path, *path.parents] if q != root and root in q.parents):
+        return f"{rel}: symlinks are not published"
+    if not path.is_file():
         return f"{rel}: allowlisted file is missing"
+    if root.resolve() / PREFIX.rstrip("/") not in path.resolve().parents:
+        return f"{rel}: resolves outside {PREFIX}"
     return None
 
 
