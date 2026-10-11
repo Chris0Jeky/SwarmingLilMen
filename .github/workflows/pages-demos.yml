@@ -1,8 +1,8 @@
 # Static publication of the js-demos to GitHub Pages.
 #
-# INERT: prepared, not live. This workflow runs only when someone dispatches it by hand, and it cannot
-# deploy until (1) the owner has approved go-live after seeing the built site and (2) GitHub Pages is
-# enabled for this repository with source "GitHub Actions". Until then a dispatch fails at deploy-pages.
+# LIVE since 2026-10-11 (owner-approved go-live; GitHub Pages source "GitHub Actions"; public URL
+# https://chris0jeky.github.io/SwarmingLilMen/). This workflow runs only when someone dispatches it by hand,
+# from main. Rollback: disable GitHub Pages for the repository. See .hosting/README.md.
 # Do not add push, pull_request or schedule triggers here without a new owner decision.
 name: Publish demos (Pages)
 
