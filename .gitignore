@@ -47,3 +47,6 @@ dist/
 .DS_Store
 Thumbs.db
 [Cc][Aa][Pp][Tt][Uu][Rr][Ee]*.[Jj][Pp][Gg]
+
+# Static demo site build output (.hosting/build_site.py)
+_site/
