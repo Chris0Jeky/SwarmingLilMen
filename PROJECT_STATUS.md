@@ -17,6 +17,13 @@
   The native C# engine is not hosted. Rollback: disable Pages.
 
 
+- Legacy-grid dead-agent fix (branch verification, 2026-10-13): `World.Tick` now rebuilds the legacy
+  grid through a `UniformGrid.Rebuild` overload that skips `AgentState.Dead`, so recently-dead agents not yet
+  compacted cannot exhaust the bounded 256-slot neighbor buffer in `SenseSystem` (owner issue #132).
+  `LegacyGridDeadBufferTests.DeadAgentsDoNotExhaustNeighborBuffer` has 3 cases (compaction intervals 2, 600,
+  1000000). This docs-only entry records the fix; no build or test was run for this edit.
+  Renderer UI and BenchmarkDotNet were not run.
+
 - Steering clamp coverage (branch verification, 2026-10-09): the new
   `MathUtilsSteeringTests` case passes with the existing implementation and fails
   when either force or speed clamping is removed, or speed clamping is moved before
