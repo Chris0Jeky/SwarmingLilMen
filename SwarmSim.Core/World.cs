@@ -333,8 +333,9 @@ public sealed class World
     {
         float dt = Config.FixedDeltaTime;
 
-        // Rebuild spatial grid (O(n) operation)
-        Grid.Rebuild(X, Y, Count);
+        // Rebuild spatial grid (O(n) operation), excluding not-yet-compacted dead agents
+        // so they cannot exhaust the bounded legacy neighbor buffer in SenseSystem.
+        Grid.Rebuild(X, Y, State, Count);
 
         // Clear force accumulators
         ClearForces();
