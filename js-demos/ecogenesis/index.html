@@ -369,6 +369,8 @@ const OUTPUTS = 4;
 const TRAIT_COUNT = 21;
 const MAX_HISTORY = 260;
 const MAX_EVENT_LOG = 120;
+const MAX_ARCHIVE = 12000;
+const MAX_SPECIES = 12000;
 const EPS = 1e-9;
 
 const clamp = (v, lo=0, hi=1) => v < lo ? lo : (v > hi ? hi : v);
@@ -721,7 +723,7 @@ class Simulation {
   }
   recordBirth(a){
     this.archive.set(a.id,{id:a.id,parentA:a.parentA,parentB:a.parentB,birthTick:a.birthTick,deathTick:0,generation:a.generation,speciesId:a.speciesId,cause:"",traits:[a.g[T.SIZE],a.g[T.SPEED],a.g[T.PLANT],a.g[T.PREDATION]]});
-    if(this.archive.size>12000){const first=this.archive.keys().next().value;if(first!==a.id)this.archive.delete(first);}
+    if(this.archive.size>MAX_ARCHIVE){const first=this.archive.keys().next().value;if(first!==a.id)this.archive.delete(first);}
   }
   log(title,text,type="info"){
     if(this.silent)return;this.eventLog.unshift({tick:this.tick,title,text,type});if(this.eventLog.length>MAX_EVENT_LOG)this.eventLog.length=MAX_EVENT_LOG;
@@ -922,22 +924,39 @@ class Simulation {
       if(!Array.isArray(a.memory)||a.memory.length!==OUTPUTS||a.memory.some(v=>!Number.isFinite(v)))fail(`organism ${a.id} memory is malformed`);
     }
     if(cp.nextId<=maxId)fail("nextId would collide with an existing organism");
-    if(!Array.isArray(cp.species))fail("missing species records");const speciesIds=new Set();let maxSpecies=0;
+    if(!Array.isArray(cp.species)||cp.species.length>MAX_SPECIES)fail("invalid species collection");const speciesIds=new Set();let maxSpecies=0;
     for(const sp of cp.species){if(!sp||!Number.isInteger(sp.id)||sp.id<1||speciesIds.has(sp.id))fail("invalid or duplicate species id");speciesIds.add(sp.id);maxSpecies=Math.max(maxSpecies,sp.id);if(!Array.isArray(sp.signature)||!sp.signature.length||sp.signature.some(v=>!Number.isFinite(v)))fail(`species ${sp.id} signature is malformed`);for(const key of ["parentId","bornTick","extinctTick","count","births","deaths","maxGeneration"])if(!Number.isFinite(sp[key]))fail(`species ${sp.id}.${key} is invalid`);if(!Number.isFinite(sp.hue)||!Number.isFinite(sp.centroidWeight))fail(`species ${sp.id} metadata is non-finite`);}
     if(cp.nextSpeciesId<=maxSpecies)fail("nextSpeciesId would collide with an existing species");for(const a of cp.agents)if(!speciesIds.has(a.speciesId))fail(`organism ${a.id} references unknown species ${a.speciesId}`);
-    if(!Array.isArray(cp.archive)||!Array.isArray(cp.history)||!Array.isArray(cp.eventLog)||cp.eventLog.length>MAX_EVENT_LOG)fail("missing observational records");
+    if(cp.species.some(sp=>sp.signature.length!==22))fail("invalid species signature length");
+    if(cp.selectedId!==null&&cp.selectedId!==0&&(!Number.isSafeInteger(cp.selectedId)||!ids.has(cp.selectedId)))fail("invalid selected organism");
+    if(!Array.isArray(cp.archive)||cp.archive.length>MAX_ARCHIVE||!Array.isArray(cp.history)||cp.history.length>MAX_HISTORY||!Array.isArray(cp.eventLog)||cp.eventLog.length>MAX_EVENT_LOG)fail("invalid observational collections");
+    const archiveIds=new Set();
+    for(const entry of cp.archive){
+      if(!Array.isArray(entry)||entry.length!==2)fail("malformed archive entry");const [id,rec]=entry;
+      if(!Number.isSafeInteger(id)||id<1||archiveIds.has(id))fail("invalid or duplicate archive id");archiveIds.add(id);
+      exactKeys("archive record",rec,["id","parentA","parentB","birthTick","deathTick","generation","speciesId","cause","traits"]);
+      if(rec.id!==id||!Number.isSafeInteger(rec.speciesId)||rec.speciesId<1)fail(`archive ${id} has invalid identities`);
+      for(const key of ["parentA","parentB","birthTick","deathTick","generation"])if(!Number.isSafeInteger(rec[key])||rec[key]<0)fail(`archive ${id}.${key} is invalid`);
+      if(typeof rec.cause!=="string"||rec.cause.length>256)fail(`archive ${id} cause is malformed`);
+      if(!Array.isArray(rec.traits)||rec.traits.length!==4||rec.traits.some(v=>!Number.isFinite(v)))fail(`archive ${id} traits are malformed`);
+    }
+    const historyKeys=["tick","total","herb","omni","pred","plants","species","diversity","infection"];
+    for(const row of cp.history){exactKeys("history record",row,historyKeys);finiteFields("history record",row,historyKeys);}
     for(const [i,event] of cp.eventLog.entries())if(!event||!Number.isInteger(event.tick)||event.tick<0||typeof event.title!=="string"||typeof event.text!=="string"||typeof event.type!=="string")fail(`event ${i} is malformed`);
     return true;
   }
   checkpoint(){
-    return {schema:"ecogenesis/v1",preset:this.preset,seed:this.seed,tick:this.tick,nextId:this.nextId,nextSpeciesId:this.nextSpeciesId,rng:{state:this.rng.state,spare:this.rng._spare},params:{...this.params},events:{...this.events},counters:{...this.counters},yearCounters:{...this.yearCounters},env:{plants:Array.from(this.env.plants),nutrients:Array.from(this.env.nutrients),carrion:Array.from(this.env.carrion),temperature:Array.from(this.env.temperature),moisture:Array.from(this.env.moisture),fertility:Array.from(this.env.fertility)},agents:this.agents.map(a=>({id:a.id,parentA:a.parentA,parentB:a.parentB,birthTick:a.birthTick,generation:a.generation,x:a.x,y:a.y,angle:a.angle,vx:a.vx,vy:a.vy,age:a.age,energy:a.energy,health:a.health,maxHealth:a.maxHealth,infection:a.infection,reproCooldown:a.reproCooldown,attackCooldown:a.attackCooldown,lastReproTick:a.lastReproTick,speciesId:a.speciesId,lineageRoot:a.lineageRoot,g:Array.from(a.g),brain:Array.from(a.brain),memory:Array.from(a.memory)})),species:[...this.species.values()].map(s=>({...s,signature:Array.from(s.signature)})),archive:[...this.archive.entries()].map(([id,r])=>[id,{...r,traits:Array.isArray(r.traits)?[...r.traits]:[]}]),history:this.history.map(x=>({...x})),eventLog:this.eventLog.map(x=>({...x})),selectedId:this.selectedId};
+    return {schema:"ecogenesis/v1",preset:this.preset,seed:this.seed,tick:this.tick,nextId:this.nextId,nextSpeciesId:this.nextSpeciesId,rng:{state:this.rng.state,spare:this.rng._spare},params:{...this.params},events:{...this.events},counters:{...this.counters},yearCounters:{...this.yearCounters},env:{plants:Array.from(this.env.plants),nutrients:Array.from(this.env.nutrients),carrion:Array.from(this.env.carrion),temperature:Array.from(this.env.temperature),moisture:Array.from(this.env.moisture),fertility:Array.from(this.env.fertility)},agents:this.agents.map(a=>({id:a.id,parentA:a.parentA,parentB:a.parentB,birthTick:a.birthTick,generation:a.generation,x:a.x,y:a.y,angle:a.angle,vx:a.vx,vy:a.vy,age:a.age,energy:a.energy,health:a.health,maxHealth:a.maxHealth,infection:a.infection,reproCooldown:a.reproCooldown,attackCooldown:a.attackCooldown,lastReproTick:a.lastReproTick,speciesId:a.speciesId,lineageRoot:a.lineageRoot,g:Array.from(a.g),brain:Array.from(a.brain),memory:Array.from(a.memory)})),species:[...this.species.values()].map(s=>({...s,signature:Array.from(s.signature)})),archive:[...this.archive.entries()].map(([id,r])=>[id,{...r,traits:Array.isArray(r.traits)?[...r.traits]:[]}]),history:this.history.map(x=>({...x})),eventLog:this.eventLog.map(x=>({...x})),selectedId:this.selectedId||null};
   }
   restore(cp){
     this.validateCheckpoint(cp);
-    this.preset=cp.preset;this.seed=cp.seed>>>0;this.rng=new RNG(1);this.rng.state=cp.rng.state>>>0;this.rng._spare=cp.rng.spare??null;this.tick=cp.tick|0;this.nextId=cp.nextId|0;this.nextSpeciesId=cp.nextSpeciesId|0;this.params={...cp.params};this.events={...cp.events};this.counters={...cp.counters};this.yearCounters={...cp.yearCounters};this.env=new Environment(this.seed,this.preset);
-    for(const key of ["plants","nutrients","carrion","temperature","moisture","fertility"]){if(!Array.isArray(cp.env[key])||cp.env[key].length!==this.env[key].length)throw new Error(`Malformed field ${key}`);this.env[key].set(cp.env[key]);}
-    this.agents=cp.agents.map(o=>{const a=Object.create(Organism.prototype);Object.assign(a,o);a.g=Float32Array.from(o.g);a.brain=Float32Array.from(o.brain);a.memory=Float32Array.from(o.memory);a.signature=signatureOf(a.g,a.brain);a.size=4.2+a.g[T.SIZE]*10.5;a.maxSpeed=(23+a.g[T.SPEED]*82)/(.82+a.size*.025);a.sensor=42+a.g[T.SENSOR]*132;a.maxEnergy=58+a.size*a.size*1.7;a.dead=false;a.decision=null;return a;});
-    this.species=new Map(cp.species.map(o=>{const s=Object.assign(Object.create(Species.prototype),o);s.signature=Array.from(o.signature);return[s.id,s];}));this.archive=new Map(cp.archive.map(([id,r])=>[id,{...r,traits:Array.isArray(r.traits)?[...r.traits]:[]}]));this.history=cp.history.map(x=>({...x}));this.eventLog=cp.eventLog.map(x=>({...x}));this.selectedId=cp.selectedId||0;this.grid=new SpatialGrid(72);this.visualEvents=[];if(!this.finiteCheck())throw new Error("Checkpoint contains non-finite numerical state");
+    const next=Object.create(Simulation.prototype);
+    next.preset=cp.preset;next.seed=cp.seed>>>0;next.rng=new RNG(1);next.rng.state=cp.rng.state>>>0;next.rng._spare=cp.rng.spare??null;next.tick=cp.tick;next.nextId=cp.nextId;next.nextSpeciesId=cp.nextSpeciesId;next.params={...cp.params};next.events={...cp.events};next.counters={...cp.counters};next.yearCounters={...cp.yearCounters};next.env=new Environment(next.seed,next.preset);
+    for(const key of ["plants","nutrients","carrion","temperature","moisture","fertility"])next.env[key].set(cp.env[key]);
+    next.agents=cp.agents.map(o=>{const a=Object.create(Organism.prototype);for(const key of ["id","parentA","parentB","birthTick","generation","x","y","angle","vx","vy","age","energy","health","maxHealth","infection","reproCooldown","attackCooldown","lastReproTick","speciesId","lineageRoot"])a[key]=o[key];a.g=Float32Array.from(o.g);a.brain=Float32Array.from(o.brain);a.memory=Float32Array.from(o.memory);a.signature=signatureOf(a.g,a.brain);a.size=4.2+a.g[T.SIZE]*10.5;a.maxSpeed=(23+a.g[T.SPEED]*82)/(.82+a.size*.025);a.sensor=42+a.g[T.SENSOR]*132;a.maxEnergy=58+a.size*a.size*1.7;a.dead=false;a.decision=null;return a;});
+    next.species=new Map(cp.species.map(o=>{const s=Object.create(Species.prototype);for(const key of ["id","parentId","bornTick","extinctTick","hue","count","births","deaths","maxGeneration","centroidWeight"])s[key]=o[key];s.signature=Array.from(o.signature);return[s.id,s];}));next.archive=new Map(cp.archive.map(([id,r])=>[id,{...r,traits:[...r.traits]}]));next.history=cp.history.map(x=>({...x}));next.eventLog=cp.eventLog.map(x=>({...x}));next.selectedId=cp.selectedId??0;next.grid=new SpatialGrid(72);next.visualEvents=[];
+    if(!next.finiteCheck()||next.agents.some(a=>a.memory.some(v=>!Number.isFinite(v)))||[next.env.moisture,next.env.fertility].some(arr=>arr.some(v=>!Number.isFinite(v))))throw new Error("Checkpoint contains non-finite numerical state");
+    Object.assign(this,next);
   }
   snapshot(){const m=this.metrics();return {schema:"ecogenesis-snapshot/v1",preset:this.preset,seed:this.seed,tick:this.tick,year:this.tick/YEAR_TICKS,stateHash:this.stateHash(),...m,counters:{...this.counters},parameters:{...this.params}};}
 }
@@ -1025,7 +1044,9 @@ function updateInspector(){
   dom.creatureKv.innerHTML=kvHtml({Energy:`${format(a.energy,1)} / ${format(a.maxEnergy,1)}`,Health:`${format(a.health,1)} / ${format(a.maxHealth,1)}`,Age:`${format(a.age/YEAR_TICKS,2)} years`,Infection:`${format(a.infection*100,1)}%`,Position:`${Math.round(a.x)}, ${Math.round(a.y)}`,Speed:format(Math.sqrt(a.vx*a.vx+a.vy*a.vy),1),Sensor:`${format(a.sensor,0)} units`,Parents:a.parentA?`${a.parentA}${a.parentB!==a.parentA?` + ${a.parentB}`:""}`:"founder"});
   dom.traitBars.innerHTML=TRAITS.map(([name,i])=>{const raw=a.g[i],q=i===T.SOCIAL?(raw+1)/2:raw;return `<div class="trait"><span>${name}</span><span class="bar"><i style="width:${clamp(q)*100}%"></i></span><b>${format(raw,2)}</b></div>`}).join("");
   const d=a.decision||{};dom.brainKv.innerHTML=kvHtml({Turn:format(d.turn,3),Thrust:format(d.thrust,3),Attack:format(d.attack,3),Mate:format(d.mate,3),Neighbours:d.crowd??0,"Nearest prey":d.prey>=0?sim.agents[d.prey]?.name()||"moved":"none","Nearest threat":d.threat>=0?sim.agents[d.threat]?.name()||"moved":"none"});
-  const rows=[];let id=a.id;for(let depth=0;depth<6;depth++){const rec=sim.archive.get(id);if(!rec)break;rows.push(`<div class="event"><b>${depth?`Ancestor ${rec.id}`:`${a.name()} lineage`}</b><span>S${rec.speciesId} · gen ${rec.generation} · born y${format(rec.birthTick/YEAR_TICKS,2)}${rec.deathTick?` · died ${rec.cause}`:""}</span></div>`);if(!rec.parentA||rec.parentA===id)break;id=rec.parentA;}dom.ancestryList.innerHTML=rows.join("")||`<div class="hint">No retained ancestry.</div>`;
+  dom.ancestryList.replaceChildren();let id=a.id;
+  for(let depth=0;depth<6;depth++){const rec=sim.archive.get(id);if(!rec)break;const item=document.createElement("div"),title=document.createElement("b"),detail=document.createElement("span");item.className="event";title.textContent=depth?`Ancestor ${rec.id}`:`${a.name()} lineage`;detail.textContent=`S${rec.speciesId} · gen ${rec.generation} · born y${format(rec.birthTick/YEAR_TICKS,2)}${rec.deathTick?` · died ${rec.cause}`:""}`;item.append(title,detail);dom.ancestryList.append(item);if(!rec.parentA||rec.parentA===id)break;id=rec.parentA;}
+  if(!dom.ancestryList.childElementCount){const empty=document.createElement("div");empty.className="hint";empty.textContent="No retained ancestry.";dom.ancestryList.append(empty);}
 }
 function kvHtml(obj){return Object.entries(obj).map(([k,v])=>`<span class="key">${k}</span><span class="val">${v}</span>`).join("");}
 function updateUI(){

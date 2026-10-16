@@ -10,6 +10,12 @@
 
 ## Verified Live State (2026-08-08)
 
+- Ecogenesis checkpoint hardening (2026-10-16, local PR #73 edits): ancestry uses text nodes;
+  archive/selection validation and collection caps reject malformed imports; restore stages state
+  before applying it and copies known organism/species fields. Static checks and 47 browser checks
+  pass with installed Playwright 1.62.0; workflow pin 1.57.0 remains unverified locally. See
+  `js-demos/ecogenesis/VERIFICATION.md`. These edits have not been published or deployed.
+
 - Browser demos published (2026-10-11): the seven standalone js-demos are live on GitHub Pages at
   https://chris0jeky.github.io/SwarmingLilMen/, approved by the owner after a preview. The site is built
   only from `.hosting/publish-allowlist.txt` and deployed by manual dispatch of `pages-demos.yml` from
