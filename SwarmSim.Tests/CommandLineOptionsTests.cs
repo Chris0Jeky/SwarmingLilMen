@@ -54,6 +54,83 @@ public class CommandLineOptionsTests
         Assert.Contains("--config", options.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("--config", "--benchmark")]
+    [InlineData("-n", "--preset")]
+    [InlineData("--preset", "-b")]
+    [InlineData("-c", "--agent-count")]
+    public void Parse_OptionNameAfterValueOption_ErrorNamesTheOptionLackingAValue(string option, string next)
+    {
+        var options = CommandLineOptions.Parse(new[] { option, next });
+
+        Assert.NotNull(options.Error);
+        Assert.Contains(option + " requires a value", options.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("Invalid value", options.Error, StringComparison.Ordinal);
+        Assert.Null(options.ConfigFile);
+        Assert.Null(options.PresetName);
+        Assert.Null(options.AgentCount);
+    }
+
+    [Fact]
+    public void Parse_UnrecognisedOption_ErrorNamesIt()
+    {
+        var options = CommandLineOptions.Parse(new[] { "--agnet-count", "5" });
+
+        Assert.NotNull(options.Error);
+        Assert.Contains("--agnet-count", options.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_UnexpectedPositional_ErrorNamesIt()
+    {
+        var options = CommandLineOptions.Parse(new[] { "--benchmark", "extra" });
+
+        Assert.NotNull(options.Error);
+        Assert.Contains("'extra'", options.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("--preset", "")]
+    [InlineData("-p", "  ")]
+    [InlineData("--config", "")]
+    [InlineData("-c", " ")]
+    public void Parse_EmptyValue_ErrorNamesOption(string option, string value)
+    {
+        var options = CommandLineOptions.Parse(new[] { option, value });
+
+        Assert.NotNull(options.Error);
+        Assert.Contains(option, options.Error, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("+5", 5)]
+    [InlineData(" 5", 5)]
+    [InlineData("5 ", 5)]
+    [InlineData("5\r", 5)]
+    [InlineData(" +12\r\n", 12)]
+    public void Parse_AgentCount_AcceptsWhitespaceAndLeadingPlus(string text, int expected)
+    {
+        var options = CommandLineOptions.Parse(new[] { "-n", text });
+
+        Assert.Null(options.Error);
+        Assert.Equal(expected, options.AgentCount);
+    }
+
+    [Theory]
+    [InlineData("+0")]
+    [InlineData("-5")]
+    [InlineData("1,000")]
+    [InlineData("1e3")]
+    [InlineData("+ 5")]
+    [InlineData("")]
+    public void Parse_AgentCount_StillRejectsNonPositiveAndNonIntegers(string text)
+    {
+        var options = CommandLineOptions.Parse(new[] { "-n", text });
+
+        Assert.NotNull(options.Error);
+        Assert.Null(options.AgentCount);
+    }
+
     [Fact]
     public void Parse_RecognizesHelpAndListFlags()
     {

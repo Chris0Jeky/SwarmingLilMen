@@ -19,7 +19,7 @@ namespace SwarmSim.Render;
         public int? AgentCount { get; private set; }
         public bool UseCanonicalMode { get; private set; }
 
-        /// <summary>First usage error (missing or malformed option value); null when the arguments parsed cleanly.</summary>
+        /// <summary>First usage error (missing, empty or malformed option value, unrecognised option, unexpected argument); null when the arguments parsed cleanly.</summary>
         public string? Error { get; private set; }
 
     public static CommandLineOptions Parse(string[] args)
@@ -58,25 +58,33 @@ namespace SwarmSim.Render;
 
                 case "--preset":
                 case "-p":
-                    if (TryGetValue(args, ref i, out var preset))
+                    if (!TryGetValue(args, ref i, out var preset))
                     {
-                        options.PresetName = preset;
+                        options.Fail($"{arg} requires a value.");
+                    }
+                    else if (string.IsNullOrWhiteSpace(preset))
+                    {
+                        options.Fail($"{arg} requires a non-empty value.");
                     }
                     else
                     {
-                        options.Fail($"{arg} requires a value.");
+                        options.PresetName = preset;
                     }
                     break;
 
                 case "--config":
                 case "-c":
-                    if (TryGetValue(args, ref i, out var configPath))
+                    if (!TryGetValue(args, ref i, out var configPath))
                     {
-                        options.ConfigFile = configPath;
+                        options.Fail($"{arg} requires a value.");
+                    }
+                    else if (string.IsNullOrWhiteSpace(configPath))
+                    {
+                        options.Fail($"{arg} requires a non-empty value.");
                     }
                     else
                     {
-                        options.Fail($"{arg} requires a value.");
+                        options.ConfigFile = configPath;
                     }
                     break;
 
@@ -86,7 +94,7 @@ namespace SwarmSim.Render;
                     {
                         options.Fail($"{arg} requires a value.");
                     }
-                    else if (int.TryParse(countText, NumberStyles.None, CultureInfo.InvariantCulture, out int count) &&
+                    else if (int.TryParse(countText, CountStyles, CultureInfo.InvariantCulture, out int count) &&
                              count > 0)
                     {
                         options.AgentCount = count;
@@ -99,6 +107,14 @@ namespace SwarmSim.Render;
 
                 case "--minimal":
                     options.RunMinimalTest = true;
+                    break;
+
+                default:
+                    // The program takes no positional arguments, so anything unmatched is a mistake
+                    // (typically a mistyped option) that must not silently run with defaults.
+                    options.Fail(arg.StartsWith('-')
+                        ? $"Unrecognised option '{arg}'."
+                        : $"Unexpected argument '{arg}'.");
                     break;
             }
         }
@@ -139,11 +155,22 @@ namespace SwarmSim.Render;
         return sb.ToString();
     }
 
+    // Leading/trailing white (incl. a captured CR) and a leading sign; no thousands separators or exponents.
+    private const NumberStyles CountStyles =
+        NumberStyles.AllowLeadingWhite | NumberStyles.AllowTrailingWhite | NumberStyles.AllowLeadingSign;
+
+    // Every token Parse matches by name. A value-taking option followed by one of these has lost its value.
+    private static readonly HashSet<string> KnownOptions = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "--help", "-h", "/?", "--version", "-v", "--list-presets", "-l", "--benchmark", "-b",
+        "--canonical", "--preset", "-p", "--config", "-c", "--agent-count", "-n", "--minimal"
+    };
+
     private void Fail(string message) => Error ??= message;
 
     private static bool TryGetValue(string[] args, ref int index, out string value)
     {
-        if (index + 1 < args.Length)
+        if (index + 1 < args.Length && !KnownOptions.Contains(args[index + 1]))
         {
             value = args[++index];
             return true;
