@@ -1,0 +1,12 @@
+{
+  "source": "Conversation simulation artifact supplied by the repository owner",
+  "originalFile": "turing_morphogenesis_lab.html",
+  "originalSHA256": "6659a749505348fb584face927984945b1d8ee2a81b3766c35d2c3c9bf72db56",
+  "reviewedBase": "9afdb571bab88f87ad8415241668513c58708c90",
+  "license": "GPL-3.0-only; repository LICENSE and RELICENSING.md govern this import",
+  "nativePort": false,
+  "originalEvidence": "Previous validation claims remain historical; VERIFICATION.md records the checks rerun for this PR.",
+  "packagedSHA256": "e78cae81518046080e1281dab2b15c4c6aa76cefbe2c90c5e4921d9f530dd1f2",
+  "changesDuringImport": "Atomic checkpoint validation",
+  "verification": "VERIFICATION.md"
+}

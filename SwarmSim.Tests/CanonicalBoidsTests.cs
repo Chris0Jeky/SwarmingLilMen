@@ -149,6 +149,37 @@ public class CanonicalBoidsTests
     }
 
     [Fact]
+    public void CanonicalWorld_PriorityDroop_ReducesSpeed()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 2f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 6f,
+            SeparationRadius = 3f,
+            SeparationPriorityRadiusFactor = 0.33f,
+            SeparationSpeedDroop = 0.5f,
+            SeparationPriorityRampInTime = 0.08f,
+            WanderStrength = 0f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f));
+        world.TryAddBoid(new Vec2(1.5f, 0f), new Vec2(-1f, 0f));
+
+        float deltaTime = 0.1f;
+        world.Step(deltaTime);
+
+        float blend = MathF.Min(1f, deltaTime / settings.SeparationPriorityRampInTime);
+        float expectedSpeed = settings.TargetSpeed * (1f - settings.SeparationSpeedDroop * blend);
+
+        var boid = world.Boids[0];
+        Assert.InRange(boid.Velocity.Length, expectedSpeed - 0.05f, expectedSpeed + 0.05f);
+    }
+
+    [Fact]
     public void SeparationRule_RepelsCloseNeighbor()
     {
         var rule = new SeparationRule(weight: 1f, radius: 5f);
@@ -323,7 +354,48 @@ public class CanonicalBoidsTests
         var snapshot = world.CapturePerceptionSnapshot();
 
         Assert.True(snapshot.WhiskerCounts.Length == 3, "Whisker counts should be captured for all agents");
-        Assert.True(snapshot.WhiskerCounts[0] >= 0, "Whisker count should be non-negative");
+        // lookAhead = TargetSpeed (5) * WhiskerTimeHorizon (0.5) = 2.5, so neighbors at
+        // along ~10/15 lie outside the whisker corridor and the correct count is 0.
+        Assert.Equal(0, snapshot.WhiskerCounts[0]);
+    }
+
+    [Fact]
+    public void CanonicalWorld_WhiskerCounts_CountsHeadOnNeighbor()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 8,
+            TargetSpeed = 5f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 20f,
+            SeparationRadius = 5f,
+            WhiskerTimeHorizon = 0.5f,
+            FixedDeltaTime = 1f / 60f
+        };
+
+        // Head-on neighbor inside the corridor: along = 2 <= lookAhead (2.5), lateral = 0.
+        var headOn = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        headOn.TryAddBoid(new Vec2(100f, 100f), new Vec2(1f, 0f));
+        headOn.TryAddBoid(new Vec2(102f, 100f), new Vec2(1f, 0f));
+
+        headOn.Step(settings.FixedDeltaTime);
+        var headOnSnapshot = headOn.CapturePerceptionSnapshot();
+
+        Assert.Equal(2, headOnSnapshot.WhiskerCounts.Length);
+        Assert.Equal(1, headOnSnapshot.WhiskerCounts[0]);
+
+        // Lateral-outside neighbor: (100,108) is 8 off to the side (whiskerRadius 5)
+        // and not ahead, so the corridor check excludes it.
+        var lateral = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        lateral.TryAddBoid(new Vec2(100f, 100f), new Vec2(1f, 0f));
+        lateral.TryAddBoid(new Vec2(100f, 108f), new Vec2(1f, 0f));
+
+        lateral.Step(settings.FixedDeltaTime);
+        var lateralSnapshot = lateral.CapturePerceptionSnapshot();
+
+        Assert.Equal(2, lateralSnapshot.WhiskerCounts.Length);
+        Assert.Equal(0, lateralSnapshot.WhiskerCounts[0]);
     }
 
     [Fact]
@@ -352,5 +424,39 @@ public class CanonicalBoidsTests
         Assert.Equal(2, snapshot.NearestAngles.Length);
         Assert.Equal(2, snapshot.WhiskerCounts.Length);
         Assert.True(snapshot.NearestDistances[0] > 0f, "Nearest distance should be populated");
+    }
+
+    [Fact]
+    public void CanonicalWorld_TryAddBoid_ReturnsFalseAtCapacity()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 1
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+
+        Assert.True(world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f)));
+        Assert.False(world.TryAddBoid(new Vec2(5f, 0f), new Vec2(1f, 0f)));
+        Assert.Equal(1, world.Count);
+    }
+
+    [Fact]
+    public void CanonicalWorld_Step_RejectsNonPositiveDeltaTime()
+    {
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 4,
+            TargetSpeed = 1f,
+            MaxForce = 1f,
+            FieldOfView = 360f,
+            SenseRadius = 5f
+        };
+
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        world.TryAddBoid(Vec2.Zero, new Vec2(1f, 0f));
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.Step(0f));
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.Step(-1f));
     }
 }

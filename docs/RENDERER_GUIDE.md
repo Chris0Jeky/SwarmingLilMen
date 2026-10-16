@@ -19,7 +19,7 @@ incomplete (`CommandLineOptions.Parse`, `--canonical` case):
 dotnet run --project SwarmSim.Render -- --canonical
 ```
 
-Use `--agent-count N` to override the initial legacy count. Run `--help` for the authoritative CLI.
+Use `--agent-count N` to override the initial population for the legacy window, the canonical renderer, and the headless `--benchmark` run (`Program.Main` writes `Program._initialAgentCount` before `Program.RunBenchmark` or `Program.RunCanonicalMode`; `Program.CreateCanonicalWorld` spawns that many boids). Run `--help` for the authoritative CLI.
 
 ## What the Legacy Renderer Shows
 

@@ -1,0 +1,12 @@
+# Static demo publication allowlist: exactly the files copied to _site/ by .hosting/build_site.py.
+# One repo-relative path per line. Each demo is a single self-contained index.html (inline CSS and JS,
+# no external references), so nothing else is needed at runtime. Anything not listed is not published:
+# README/VERIFICATION/docs, tests, source-provenance.json, requirements-test.txt, REPO_AGENT_PROMPT.md.
+# build_site.py fails if a listed file is missing or a listed page references a local file not listed here.
+js-demos/ant-colony-optimization/index.html
+js-demos/avalanche-lab/index.html
+js-demos/boids-basic/index.html
+js-demos/firefly-synchrony/index.html
+js-demos/particle-swarm-optimization/index.html
+js-demos/self-propelled-particles/index.html
+js-demos/turing-morphogenesis/index.html

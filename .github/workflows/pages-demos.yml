@@ -1,0 +1,56 @@
+# Static publication of the js-demos to GitHub Pages.
+#
+# LIVE since 2026-10-11 (owner-approved go-live; GitHub Pages source "GitHub Actions"; public URL
+# https://chris0jeky.github.io/SwarmingLilMen/). This workflow runs only when someone dispatches it by hand,
+# from main. Rollback: disable GitHub Pages for the repository. See .hosting/README.md.
+# Do not add push, pull_request or schedule triggers here without a new owner decision.
+name: Publish demos (Pages)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build _site
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the allowlist check
+        run: python3 -m unittest discover -s .hosting -p "test_*.py"
+
+      - name: Build _site from the allowlist
+        run: python3 .hosting/build_site.py
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+        with:
+          path: _site
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

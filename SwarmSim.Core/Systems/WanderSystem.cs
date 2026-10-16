@@ -15,6 +15,8 @@ public sealed class WanderSystem : ISimSystem
 
     public WanderSystem(float wanderStrength = 20f)
     {
+        if (!float.IsFinite(wanderStrength) || wanderStrength < 0)
+            throw new ArgumentOutOfRangeException(nameof(wanderStrength), "WanderStrength must be finite and >= 0");
         _wanderStrength = wanderStrength;
     }
 

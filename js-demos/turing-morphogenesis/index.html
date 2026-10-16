@@ -1,0 +1,1920 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="dark" />
+  <title>Turing Morphogenesis Lab — Reaction–Diffusion Emergence</title>
+  <style>
+    :root {
+      --bg: #06080f;
+      --panel: rgba(12, 17, 28, 0.94);
+      --panel-2: rgba(18, 25, 40, 0.84);
+      --line: rgba(255,255,255,.10);
+      --line-strong: rgba(255,255,255,.18);
+      --text: #edf3ff;
+      --muted: #9ba9c1;
+      --accent: #72e0d1;
+      --accent-2: #b49cff;
+      --good: #79e7ac;
+      --warn: #ffd179;
+      --danger: #ff8b9b;
+      --shadow: 0 20px 60px rgba(0,0,0,.38);
+      --radius: 16px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 74% 14%, rgba(62, 203, 185, .10), transparent 35%),
+        radial-gradient(circle at 12% 84%, rgba(140, 96, 255, .10), transparent 34%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    button, select, input { font: inherit; }
+
+    .app {
+      display: grid;
+      grid-template-columns: 310px minmax(380px, 1fr) 330px;
+      grid-template-rows: 74px minmax(0, 1fr) 30px;
+      width: 100%;
+      height: 100%;
+      gap: 10px;
+      padding: 10px;
+    }
+
+    header {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+      padding: 0 18px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(18, 26, 42, .93), rgba(10, 14, 24, .84));
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+    }
+
+    .brand {
+      min-width: 0;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .brand-mark {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      flex: 0 0 auto;
+      overflow: hidden;
+      border-radius: 13px;
+      border: 1px solid rgba(255,255,255,.20);
+      background:
+        radial-gradient(circle at 28% 30%, #d9fff7 0 4%, #48d7c2 5% 13%, transparent 14%),
+        radial-gradient(circle at 67% 34%, #fff1c4 0 5%, #ff8d76 6% 14%, transparent 15%),
+        radial-gradient(circle at 49% 73%, #eee6ff 0 5%, #a985ff 6% 16%, transparent 17%),
+        linear-gradient(145deg, #102a38, #24153f);
+      box-shadow: 0 0 26px rgba(86, 214, 194, .30);
+    }
+
+    .brand-mark::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(90deg, transparent 0 7px, rgba(255,255,255,.05) 8px);
+      mix-blend-mode: screen;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(18px, 2vw, 26px);
+      letter-spacing: -.035em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .subtitle {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .badges {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .badge {
+      padding: 6px 9px;
+      border-radius: 999px;
+      border: 1px solid var(--line-strong);
+      background: rgba(255,255,255,.045);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 750;
+      letter-spacing: .02em;
+      white-space: nowrap;
+    }
+
+    .badge.good {
+      color: var(--good);
+      border-color: rgba(121,231,172,.35);
+      background: rgba(121,231,172,.08);
+    }
+
+    .badge.warn {
+      color: var(--warn);
+      border-color: rgba(255,209,121,.35);
+      background: rgba(255,209,121,.08);
+    }
+
+    aside, main { min-width: 0; min-height: 0; }
+
+    .panel {
+      height: 100%;
+      overflow: auto;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(16px);
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,.17) transparent;
+    }
+
+    .panel::-webkit-scrollbar { width: 8px; }
+    .panel::-webkit-scrollbar-thumb { background: rgba(255,255,255,.16); border-radius: 9px; }
+
+    .section {
+      margin-bottom: 16px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .section:last-child { margin-bottom: 0; border-bottom: 0; }
+
+    .section-title {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin: 0 0 10px;
+      color: #dce9ff;
+      font-size: 12px;
+      font-weight: 850;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+    }
+
+    .section-title small {
+      color: var(--muted);
+      font-size: 10px;
+      font-weight: 650;
+      text-transform: none;
+      letter-spacing: normal;
+    }
+
+    .field { margin: 10px 0; }
+
+    .field-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 5px;
+      color: #cad7ed;
+      font-size: 12px;
+    }
+
+    .field-head output {
+      color: var(--accent);
+      font-variant-numeric: tabular-nums;
+      font-weight: 800;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      height: 5px;
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+
+    input[type="number"], select {
+      width: 100%;
+      min-height: 36px;
+      padding: 7px 9px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      outline: none;
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+    }
+
+    select option { color: #111827; }
+
+    input:focus, select:focus {
+      border-color: rgba(114,224,209,.60);
+      box-shadow: 0 0 0 3px rgba(114,224,209,.09);
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .button-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    button {
+      min-height: 36px;
+      padding: 8px 10px;
+      border: 1px solid var(--line-strong);
+      border-radius: 9px;
+      background: rgba(255,255,255,.055);
+      color: #e9f1ff;
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+
+    button:hover {
+      transform: translateY(-1px);
+      border-color: rgba(255,255,255,.32);
+      background: rgba(255,255,255,.09);
+    }
+
+    button:active { transform: translateY(0); }
+
+    button.primary {
+      border-color: rgba(114,224,209,.46);
+      background: linear-gradient(135deg, rgba(50,173,158,.34), rgba(92,109,220,.24));
+    }
+
+    button.danger {
+      color: #ffd8de;
+      border-color: rgba(255,139,155,.32);
+      background: rgba(255,139,155,.07);
+    }
+
+    .hint {
+      margin: 8px 0 0;
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    .preset-note {
+      margin-top: 8px;
+      min-height: 48px;
+      padding: 9px 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.025);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.45;
+    }
+
+    main.stage {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: #03060b;
+      box-shadow: var(--shadow);
+    }
+
+    #world {
+      width: 100%;
+      height: 100%;
+      display: block;
+      cursor: crosshair;
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #02050a;
+    }
+
+    .stage-overlay {
+      position: absolute;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .stage-overlay.top-left { top: 12px; left: 12px; }
+    .stage-overlay.top-right { top: 12px; right: 12px; text-align: right; }
+    .stage-overlay.bottom-left { bottom: 12px; left: 12px; }
+
+    .glass-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      max-width: min(520px, calc(100vw - 40px));
+      margin-bottom: 6px;
+      padding: 7px 9px;
+      border: 1px solid rgba(255,255,255,.13);
+      border-radius: 9px;
+      background: rgba(3,7,14,.70);
+      color: #dce8fb;
+      font-size: 11px;
+      line-height: 1.35;
+      box-shadow: 0 8px 25px rgba(0,0,0,.25);
+      backdrop-filter: blur(9px);
+    }
+
+    .glass-label strong { color: var(--accent); font-variant-numeric: tabular-nums; }
+
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      background: var(--good);
+      box-shadow: 0 0 12px var(--good);
+    }
+
+    .status-dot.paused { background: var(--warn); box-shadow: 0 0 12px var(--warn); }
+    .status-dot.failed { background: var(--danger); box-shadow: 0 0 12px var(--danger); }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    .metric {
+      min-width: 0;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(255,255,255,.028);
+    }
+
+    .metric .label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+    }
+
+    .metric .value {
+      margin-top: 4px;
+      overflow: hidden;
+      color: #eef5ff;
+      font-size: 18px;
+      font-weight: 850;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .metric .sub {
+      margin-top: 2px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .chart-wrap {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(0,0,0,.18);
+    }
+
+    #historyChart, #phasePlane {
+      width: 100%;
+      display: block;
+    }
+
+    #historyChart { height: 135px; }
+    #phasePlane { height: 150px; cursor: crosshair; }
+
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px 12px;
+      margin-top: 7px;
+      color: var(--muted);
+      font-size: 10px;
+    }
+
+    .legend-item { display: inline-flex; align-items: center; gap: 5px; }
+    .legend-swatch { width: 14px; height: 3px; border-radius: 3px; background: var(--accent); }
+    .legend-swatch.second { background: var(--accent-2); }
+
+    .formula {
+      overflow-x: auto;
+      padding: 10px;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: rgba(255,255,255,.025);
+      color: #dbe7fa;
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-size: 11px;
+      line-height: 1.55;
+      white-space: pre-wrap;
+    }
+
+    .explain {
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    .explain strong { color: #dce9ff; }
+
+    .event-log {
+      display: grid;
+      gap: 5px;
+      max-height: 145px;
+      overflow: auto;
+      padding-right: 4px;
+      font-size: 10px;
+    }
+
+    .event {
+      padding: 6px 8px;
+      border-left: 2px solid rgba(114,224,209,.55);
+      border-radius: 0 7px 7px 0;
+      background: rgba(255,255,255,.025);
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    footer {
+      grid-column: 1 / -1;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      min-width: 0;
+      padding: 0 10px;
+      color: #7f8ba2;
+      font-size: 10px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+
+    footer span { overflow: hidden; text-overflow: ellipsis; }
+
+    .toast {
+      position: fixed;
+      z-index: 20;
+      left: 50%;
+      bottom: 46px;
+      transform: translate(-50%, 12px);
+      max-width: min(520px, calc(100vw - 24px));
+      padding: 9px 12px;
+      border: 1px solid rgba(255,255,255,.18);
+      border-radius: 10px;
+      background: rgba(11,16,27,.94);
+      color: #e9f2ff;
+      box-shadow: var(--shadow);
+      font-size: 12px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .18s ease, transform .18s ease;
+    }
+
+    .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+    @media (max-width: 1080px) {
+      .app { grid-template-columns: 275px minmax(360px, 1fr); }
+      .right-panel { display: none; }
+    }
+
+    @media (max-width: 760px) {
+      html, body { overflow: auto; }
+      .app {
+        display: flex;
+        flex-direction: column;
+        height: auto;
+        min-height: 100%;
+      }
+      header { min-height: 78px; }
+      .badges { display: none; }
+      .left-panel { order: 2; height: auto; }
+      main.stage { order: 1; min-height: 58vh; }
+      .right-panel { display: block; order: 3; height: auto; }
+      footer { order: 4; min-height: 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"></div>
+        <div>
+          <h1>Turing Morphogenesis Lab</h1>
+          <div class="subtitle">Gray–Scott reaction–diffusion · patterns without agents, leaders, or templates</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge">Standalone HTML</span>
+        <span class="badge">Periodic / sealed fields</span>
+        <span class="badge good" id="determinismBadge">Replay check: running</span>
+      </div>
+    </header>
+
+    <aside class="left-panel">
+      <div class="panel">
+        <section class="section">
+          <div class="section-title">Pattern preset <small>exploratory regimes</small></div>
+          <select id="presetSelect" aria-label="Pattern preset">
+            <option value="mitosis">Mitosis-like splitting</option>
+            <option value="coral">Coral growth</option>
+            <option value="maze">Maze / labyrinth</option>
+            <option value="worms">Worm trails</option>
+            <option value="solitons">Pulsating solitons</option>
+            <option value="spots">Sparse spots</option>
+            <option value="moving">Moving spots</option>
+            <option value="chaos">Chaotic texture</option>
+          </select>
+          <div class="preset-note" id="presetNote"></div>
+          <div class="button-grid" style="margin-top:8px">
+            <button class="primary" id="applyPresetBtn">Apply + reseed</button>
+            <button id="reseedBtn">Same parameters, new seed</button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Reaction chemistry</div>
+          <div class="field">
+            <div class="field-head"><label for="feed">Feed rate F</label><output id="feedOut"></output></div>
+            <input id="feed" type="range" min="0.005" max="0.090" step="0.0001" />
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="kill">Kill rate K</label><output id="killOut"></output></div>
+            <input id="kill" type="range" min="0.030" max="0.075" step="0.0001" />
+          </div>
+          <div class="row">
+            <div class="field">
+              <div class="field-head"><label for="diffA">Diffusion A</label><output id="diffAOut"></output></div>
+              <input id="diffA" type="range" min="0.20" max="1.50" step="0.01" />
+            </div>
+            <div class="field">
+              <div class="field-head"><label for="diffB">Diffusion B</label><output id="diffBOut"></output></div>
+              <input id="diffB" type="range" min="0.05" max="1.00" step="0.01" />
+            </div>
+          </div>
+          <p class="hint">Unequal diffusion destabilises a uniform field. B consumes A and helps create more B; feed and kill prevent the reaction from simply exhausting itself.</p>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Integration</div>
+          <div class="field">
+            <div class="field-head"><label for="timeStep">Δt per iteration</label><output id="timeStepOut"></output></div>
+            <input id="timeStep" type="range" min="0.10" max="1.25" step="0.01" />
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="stepsPerFrame">Iterations / frame</label><output id="stepsPerFrameOut"></output></div>
+            <input id="stepsPerFrame" type="range" min="1" max="24" step="1" />
+          </div>
+          <div class="row">
+            <div>
+              <div class="field-head"><label for="resolution">Field resolution</label></div>
+              <select id="resolution">
+                <option value="160x100">160 × 100</option>
+                <option value="220x140" selected>220 × 140</option>
+                <option value="300x190">300 × 190</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-head"><label for="boundary">Boundary</label></div>
+              <select id="boundary">
+                <option value="torus">Toroidal</option>
+                <option value="sealed">Sealed / no-flux</option>
+              </select>
+            </div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Brush and display</div>
+          <div class="row">
+            <div>
+              <div class="field-head"><label for="brushMode">Brush</label></div>
+              <select id="brushMode">
+                <option value="inject">Inject reagent B</option>
+                <option value="erase">Restore reagent A</option>
+                <option value="perturb">Random perturbation</option>
+              </select>
+            </div>
+            <div>
+              <div class="field-head"><label for="fieldView">Visualised field</label></div>
+              <select id="fieldView">
+                <option value="b">B concentration</option>
+                <option value="a-deficit">A depletion</option>
+                <option value="reaction">Reaction rate A·B²</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <div class="field-head"><label for="brushRadius">Brush radius</label><output id="brushRadiusOut"></output></div>
+            <input id="brushRadius" type="range" min="1" max="24" step="1" value="8" />
+          </div>
+          <div class="row">
+            <div>
+              <div class="field-head"><label for="palette">Palette</label></div>
+              <select id="palette">
+                <option value="abyss">Abyss cyan</option>
+                <option value="coral">Coral ember</option>
+                <option value="verdant">Verdant</option>
+                <option value="violet">Violet bloom</option>
+                <option value="mono">Monochrome</option>
+              </select>
+            </div>
+            <div class="field" style="margin:0">
+              <div class="field-head"><label for="contrast">Contrast</label><output id="contrastOut"></output></div>
+              <input id="contrast" type="range" min="0.50" max="4.00" step="0.05" />
+            </div>
+          </div>
+          <p class="hint">Drag on the field. Hold <strong>Shift</strong> to erase, <strong>Alt</strong> to perturb, or double-click to inject a ring.</p>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Run control</div>
+          <div class="button-grid">
+            <button class="primary" id="playBtn">Pause</button>
+            <button id="stepBtn">Single iteration</button>
+            <button id="nucleiBtn">Add nuclei</button>
+            <button id="shockBtn">Chemical shock</button>
+            <button class="danger" id="clearBtn">Clear field</button>
+            <button id="resetBtn">Reset preset</button>
+          </div>
+          <div class="field" style="margin-top:12px">
+            <div class="field-head"><label for="seedInput">Deterministic seed</label></div>
+            <input id="seedInput" type="number" min="1" max="4294967295" step="1" value="24051995" />
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Export</div>
+          <div class="button-grid">
+            <button id="copySummaryBtn">Copy run summary</button>
+            <button id="savePngBtn">Save image</button>
+            <button id="exportStateBtn">Export state</button>
+            <button id="importStateBtn">Import state</button>
+          </div>
+          <input id="stateFile" type="file" accept="application/json,.json" hidden />
+          <p class="hint">State export includes both concentration fields, parameters, iteration, boundary mode and seed. Operational timing is intentionally excluded from the fingerprint.</p>
+        </section>
+      </div>
+    </aside>
+
+    <main class="stage" aria-label="Reaction diffusion simulation field">
+      <canvas id="world"></canvas>
+      <div class="stage-overlay top-left">
+        <div class="glass-label"><span class="status-dot" id="runDot"></span><span id="runLabel">Running</span></div><br />
+        <div class="glass-label">Iteration <strong id="iterationOverlay">0</strong> · grid <strong id="gridOverlay">220×140</strong></div>
+      </div>
+      <div class="stage-overlay top-right">
+        <div class="glass-label">F <strong id="feedOverlay">0.0367</strong> · K <strong id="killOverlay">0.0649</strong></div><br />
+        <div class="glass-label">State <strong id="hashOverlay">--------</strong></div>
+      </div>
+      <div class="stage-overlay bottom-left">
+        <div class="glass-label" id="interactionHint">Drag to inject reagent B · double-click to seed a ring</div>
+      </div>
+    </main>
+
+    <aside class="right-panel">
+      <div class="panel">
+        <section class="section">
+          <div class="section-title">Live field metrics <small>sampled, not control variables</small></div>
+          <div class="metric-grid">
+            <div class="metric"><div class="label">Mean A</div><div class="value" id="meanA">1.000</div><div class="sub">substrate</div></div>
+            <div class="metric"><div class="label">Mean B</div><div class="value" id="meanB">0.000</div><div class="sub">activator</div></div>
+            <div class="metric"><div class="label">B variance</div><div class="value" id="varianceB">0.0000</div><div class="sub">pattern contrast</div></div>
+            <div class="metric"><div class="label">Active area</div><div class="value" id="activeArea">0.0%</div><div class="sub">B ≥ 0.18</div></div>
+            <div class="metric"><div class="label">Edge density</div><div class="value" id="edgeDensity">0.000</div><div class="sub">mean local gradient</div></div>
+            <div class="metric"><div class="label">Entropy</div><div class="value" id="entropy">0.000</div><div class="sub">16-bin B distribution</div></div>
+          </div>
+          <div class="metric" style="margin-top:8px">
+            <div class="label">Heuristic pattern state</div>
+            <div class="value" id="regime" style="font-size:16px">seeded field</div>
+            <div class="sub" id="regimeSub">A descriptive label, not a scientific phase classifier.</div>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Activity history</div>
+          <div class="chart-wrap"><canvas id="historyChart" width="300" height="135"></canvas></div>
+          <div class="legend">
+            <span class="legend-item"><span class="legend-swatch"></span> active area</span>
+            <span class="legend-item"><span class="legend-swatch second"></span> normalized edge density</span>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Feed–kill plane <small>click to move</small></div>
+          <div class="chart-wrap"><canvas id="phasePlane" width="300" height="150"></canvas></div>
+          <p class="hint">Nearby points can settle into radically different morphologies. The named presets are orientation markers, not hard phase boundaries.</p>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Model</div>
+          <div class="formula">∂A/∂t = Dₐ∇²A − AB² + F(1−A)
+∂B/∂t = Dᵦ∇²B + AB² − (K+F)B</div>
+          <div class="explain" style="margin-top:9px">
+            <strong>A</strong> is replenished substrate. <strong>B</strong> consumes A and autocatalytically creates more B. B is removed faster than A is replenished. Because A and B diffuse at different rates, tiny local differences can amplify into spots, stripes, fronts and splitting domains.
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">Event log</div>
+          <div class="event-log" id="eventLog"></div>
+        </section>
+      </div>
+    </aside>
+
+    <footer>
+      <span>Space pause · N nuclei · X shock · R reset · C clear · S save PNG</span>
+      <span id="perfFooter">Initialising field…</span>
+    </footer>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+  <script>
+    "use strict";
+
+    const PRESETS = {
+      mitosis: {
+        name: "Mitosis-like splitting",
+        feed: 0.0367, kill: 0.0649, diffA: 1.0, diffB: 0.5, dt: 1.0, steps: 10,
+        seedMode: "cluster", palette: "abyss", contrast: 2.0,
+        note: "Compact domains grow and repeatedly divide. A strong demonstration that repeated form can arise without a stored geometric template."
+      },
+      coral: {
+        name: "Coral growth",
+        feed: 0.0545, kill: 0.0620, diffA: 1.0, diffB: 0.5, dt: 1.0, steps: 10,
+        seedMode: "scatter", palette: "coral", contrast: 2.25,
+        note: "Branching, crowded fronts resembling coral or mineral growth. Increase K slightly to thin the branches."
+      },
+      maze: {
+        name: "Maze / labyrinth",
+        feed: 0.0290, kill: 0.0570, diffA: 1.0, diffB: 0.5, dt: 1.0, steps: 12,
+        seedMode: "speckle", palette: "verdant", contrast: 2.1,
+        note: "Connected stripes and labyrinthine domains. Small changes near this point can turn stripes into spots or collapse the pattern."
+      },
+      worms: {
+        name: "Worm trails",
+        feed: 0.0780, kill: 0.0610, diffA: 1.0, diffB: 0.5, dt: 0.85, steps: 12,
+        seedMode: "lines", palette: "violet", contrast: 2.25,
+        note: "Short moving or curling filaments. The higher feed rate replenishes substrate aggressively around active fronts."
+      },
+      solitons: {
+        name: "Pulsating solitons",
+        feed: 0.0250, kill: 0.0600, diffA: 1.0, diffB: 0.5, dt: 1.0, steps: 12,
+        seedMode: "rings", palette: "violet", contrast: 2.3,
+        note: "Localized structures that can breathe, collide or decay. Use sealed boundaries to watch reflected fronts."
+      },
+      spots: {
+        name: "Sparse spots",
+        feed: 0.0140, kill: 0.0540, diffA: 1.0, diffB: 0.5, dt: 1.0, steps: 14,
+        seedMode: "scatter", palette: "abyss", contrast: 2.7,
+        note: "Widely separated spot-like domains. Evolution is slower here; raise iterations per frame for quicker convergence."
+      },
+      moving: {
+        name: "Moving spots",
+        feed: 0.0140, kill: 0.0470, diffA: 1.0, diffB: 0.5, dt: 0.9, steps: 14,
+        seedMode: "scatter", palette: "coral", contrast: 2.4,
+        note: "Mobile or deforming localized structures. Perturb one side of a spot to break symmetry and induce drift."
+      },
+      chaos: {
+        name: "Chaotic texture",
+        feed: 0.0260, kill: 0.0510, diffA: 1.0, diffB: 0.5, dt: 1.0, steps: 12,
+        seedMode: "noise", palette: "coral", contrast: 1.9,
+        note: "An irregular, continuously reorganising field. Good for testing whether metrics distinguish activity from stable morphology."
+      }
+    };
+
+    const ui = {};
+    [
+      "world", "presetSelect", "presetNote", "applyPresetBtn", "reseedBtn",
+      "feed", "feedOut", "kill", "killOut", "diffA", "diffAOut", "diffB", "diffBOut",
+      "timeStep", "timeStepOut", "stepsPerFrame", "stepsPerFrameOut", "resolution", "boundary",
+      "brushMode", "fieldView", "brushRadius", "brushRadiusOut", "palette", "contrast", "contrastOut",
+      "playBtn", "stepBtn", "nucleiBtn", "shockBtn", "clearBtn", "resetBtn", "seedInput",
+      "copySummaryBtn", "savePngBtn", "exportStateBtn", "importStateBtn", "stateFile",
+      "determinismBadge", "runDot", "runLabel", "iterationOverlay", "gridOverlay", "feedOverlay",
+      "killOverlay", "hashOverlay", "interactionHint", "meanA", "meanB", "varianceB", "activeArea",
+      "edgeDensity", "entropy", "regime", "regimeSub", "historyChart", "phasePlane", "eventLog",
+      "perfFooter", "toast"
+    ].forEach(id => ui[id] = document.getElementById(id));
+
+    const worldCtx = ui.world.getContext("2d", { alpha: false });
+    const historyCtx = ui.historyChart.getContext("2d");
+    const phaseCtx = ui.phasePlane.getContext("2d");
+
+    class XorShift32 {
+      constructor(seed) {
+        this.state = (seed >>> 0) || 0x6d2b79f5;
+      }
+      nextUint() {
+        let x = this.state >>> 0;
+        x ^= x << 13;
+        x ^= x >>> 17;
+        x ^= x << 5;
+        this.state = x >>> 0;
+        return this.state;
+      }
+      next() { return this.nextUint() / 4294967296; }
+      range(min, max) { return min + (max - min) * this.next(); }
+      int(min, maxExclusive) { return min + Math.floor(this.next() * (maxExclusive - min)); }
+    }
+
+    const clamp01 = value => value < 0 ? 0 : value > 1 ? 1 : value;
+    const clamp = (value, min, max) => value < min ? min : value > max ? max : value;
+
+    let gridW = 220;
+    let gridH = 140;
+    let fieldA = new Float32Array(gridW * gridH);
+    let fieldB = new Float32Array(gridW * gridH);
+    let nextA = new Float32Array(gridW * gridH);
+    let nextB = new Float32Array(gridW * gridH);
+    let imageData = worldCtx.createImageData(gridW, gridH);
+    let rng = new XorShift32(24051995);
+    let iteration = 0;
+    let simulatedTime = 0;
+    let running = true;
+    let simulationHealthy = true;
+    let pointerDown = false;
+    let currentPreset = "mitosis";
+    let lastFrameTime = performance.now();
+    let smoothedFps = 0;
+    let lastMetricAt = 0;
+    let lastHashAt = 0;
+    let currentHash = "--------";
+    let lastStepMs = 0;
+    let toastTimer = 0;
+    let eventCounter = 0;
+    const history = [];
+    const maxHistory = 190;
+
+    const config = {
+      feed: PRESETS.mitosis.feed,
+      kill: PRESETS.mitosis.kill,
+      diffA: PRESETS.mitosis.diffA,
+      diffB: PRESETS.mitosis.diffB,
+      dt: PRESETS.mitosis.dt,
+      stepsPerFrame: PRESETS.mitosis.steps,
+      boundary: "torus",
+      brushMode: "inject",
+      brushRadius: 8,
+      palette: PRESETS.mitosis.palette,
+      contrast: PRESETS.mitosis.contrast,
+      fieldView: "b",
+      seed: 24051995
+    };
+
+    const PALETTE_STOPS = {
+      abyss: [
+        [0.00, [2, 5, 12]], [0.20, [8, 29, 49]], [0.48, [11, 111, 124]],
+        [0.74, [72, 221, 202]], [1.00, [241, 255, 225]]
+      ],
+      coral: [
+        [0.00, [10, 4, 13]], [0.20, [54, 15, 52]], [0.50, [158, 41, 79]],
+        [0.77, [244, 111, 72]], [1.00, [255, 238, 169]]
+      ],
+      verdant: [
+        [0.00, [2, 8, 8]], [0.22, [8, 49, 43]], [0.52, [20, 137, 89]],
+        [0.78, [116, 221, 126]], [1.00, [238, 255, 208]]
+      ],
+      violet: [
+        [0.00, [5, 4, 13]], [0.22, [34, 21, 70]], [0.52, [105, 65, 172]],
+        [0.78, [195, 136, 255]], [1.00, [244, 234, 255]]
+      ],
+      mono: [
+        [0.00, [2, 3, 5]], [0.30, [37, 42, 51]], [0.65, [143, 153, 166]],
+        [1.00, [250, 252, 255]]
+      ]
+    };
+
+    let paletteLut = new Uint8ClampedArray(256 * 3);
+
+    function buildPaletteLut() {
+      const stops = PALETTE_STOPS[config.palette] || PALETTE_STOPS.abyss;
+      for (let i = 0; i < 256; i++) {
+        const t = i / 255;
+        let left = stops[0];
+        let right = stops[stops.length - 1];
+        for (let s = 0; s < stops.length - 1; s++) {
+          if (t >= stops[s][0] && t <= stops[s + 1][0]) {
+            left = stops[s];
+            right = stops[s + 1];
+            break;
+          }
+        }
+        const span = Math.max(1e-9, right[0] - left[0]);
+        const u = clamp01((t - left[0]) / span);
+        const base = i * 3;
+        paletteLut[base] = Math.round(left[1][0] + (right[1][0] - left[1][0]) * u);
+        paletteLut[base + 1] = Math.round(left[1][1] + (right[1][1] - left[1][1]) * u);
+        paletteLut[base + 2] = Math.round(left[1][2] + (right[1][2] - left[1][2]) * u);
+      }
+    }
+
+    function parseResolution(value) {
+      const match = /^(\d+)x(\d+)$/.exec(value);
+      if (!match) return [220, 140];
+      return [Number(match[1]), Number(match[2])];
+    }
+
+    function normalizedSeed(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return 24051995;
+      return (Math.max(1, Math.floor(n)) >>> 0) || 1;
+    }
+
+    function allocateField(width, height) {
+      gridW = width;
+      gridH = height;
+      fieldA = new Float32Array(width * height);
+      fieldB = new Float32Array(width * height);
+      nextA = new Float32Array(width * height);
+      nextB = new Float32Array(width * height);
+      ui.world.width = width;
+      ui.world.height = height;
+      imageData = worldCtx.createImageData(width, height);
+      worldCtx.imageSmoothingEnabled = false;
+      ui.gridOverlay.textContent = `${width}×${height}`;
+    }
+
+    function clearConcentrations() {
+      fieldA.fill(1);
+      fieldB.fill(0);
+      nextA.fill(1);
+      nextB.fill(0);
+      iteration = 0;
+      simulatedTime = 0;
+      history.length = 0;
+      simulationHealthy = true;
+      updateRunState();
+    }
+
+    function indexOf(x, y) { return y * gridW + x; }
+
+    function wrapCoordinate(value, size) {
+      let v = value % size;
+      if (v < 0) v += size;
+      return v;
+    }
+
+    function injectDisc(cx, cy, radius, strength = 1, mode = "inject") {
+      const r = Math.max(1, radius);
+      const r2 = r * r;
+      const minX = Math.floor(cx - r);
+      const maxX = Math.ceil(cx + r);
+      const minY = Math.floor(cy - r);
+      const maxY = Math.ceil(cy + r);
+      for (let yy = minY; yy <= maxY; yy++) {
+        let y = yy;
+        if (config.boundary === "torus") y = wrapCoordinate(y, gridH);
+        else if (y < 0 || y >= gridH) continue;
+        for (let xx = minX; xx <= maxX; xx++) {
+          let x = xx;
+          if (config.boundary === "torus") x = wrapCoordinate(x, gridW);
+          else if (x < 0 || x >= gridW) continue;
+          const dx = xx - cx;
+          const dy = yy - cy;
+          const d2 = dx * dx + dy * dy;
+          if (d2 > r2) continue;
+          const falloff = (1 - Math.sqrt(d2) / r) * strength;
+          const i = indexOf(x, y);
+          if (mode === "erase") {
+            fieldB[i] = Math.max(0, fieldB[i] - falloff * 1.5);
+            fieldA[i] = Math.min(1, fieldA[i] + falloff);
+          } else if (mode === "perturb") {
+            fieldB[i] = clamp01(fieldB[i] + rng.range(-0.5, 0.5) * falloff);
+            fieldA[i] = clamp01(fieldA[i] + rng.range(-0.25, 0.25) * falloff);
+          } else {
+            fieldB[i] = Math.max(fieldB[i], clamp01(falloff));
+            fieldA[i] = Math.min(fieldA[i], clamp01(1 - falloff * 0.72));
+          }
+        }
+      }
+    }
+
+    function injectRing(cx, cy, radius, thickness = 2.2) {
+      const outer = radius + thickness;
+      const inner = Math.max(0, radius - thickness);
+      const outer2 = outer * outer;
+      const inner2 = inner * inner;
+      for (let yy = Math.floor(cy - outer); yy <= Math.ceil(cy + outer); yy++) {
+        let y = yy;
+        if (config.boundary === "torus") y = wrapCoordinate(y, gridH);
+        else if (y < 0 || y >= gridH) continue;
+        for (let xx = Math.floor(cx - outer); xx <= Math.ceil(cx + outer); xx++) {
+          let x = xx;
+          if (config.boundary === "torus") x = wrapCoordinate(x, gridW);
+          else if (x < 0 || x >= gridW) continue;
+          const dx = xx - cx;
+          const dy = yy - cy;
+          const d2 = dx * dx + dy * dy;
+          if (d2 < inner2 || d2 > outer2) continue;
+          const i = indexOf(x, y);
+          fieldB[i] = Math.max(fieldB[i], 0.9);
+          fieldA[i] = Math.min(fieldA[i], 0.25);
+        }
+      }
+    }
+
+    function seedInitialPattern(mode) {
+      const minDim = Math.min(gridW, gridH);
+      if (mode === "cluster") {
+        injectDisc(gridW * 0.5, gridH * 0.5, minDim * 0.10, 1);
+        injectDisc(gridW * 0.45, gridH * 0.47, minDim * 0.035, 1);
+        injectDisc(gridW * 0.55, gridH * 0.53, minDim * 0.035, 1);
+      } else if (mode === "scatter") {
+        const count = Math.max(12, Math.floor(gridW * gridH / 2300));
+        for (let i = 0; i < count; i++) {
+          injectDisc(rng.range(0, gridW), rng.range(0, gridH), rng.range(2.5, 6.5), rng.range(.65, 1));
+        }
+      } else if (mode === "speckle") {
+        for (let i = 0; i < fieldB.length; i++) {
+          if (rng.next() < 0.025) {
+            fieldB[i] = rng.range(.55, 1);
+            fieldA[i] = rng.range(0, .5);
+          }
+        }
+      } else if (mode === "lines") {
+        for (let line = 0; line < 5; line++) {
+          const y0 = gridH * (line + 1) / 6 + rng.range(-4, 4);
+          for (let x = 0; x < gridW; x += 3) {
+            const y = y0 + Math.sin(x * .08 + line) * 5;
+            injectDisc(x, y, 2.4, .9);
+          }
+        }
+      } else if (mode === "rings") {
+        injectRing(gridW * .5, gridH * .5, minDim * .19, 2.8);
+        injectRing(gridW * .5, gridH * .5, minDim * .08, 2.2);
+        injectDisc(gridW * .5, gridH * .5, 3, 1);
+      } else if (mode === "noise") {
+        for (let i = 0; i < fieldB.length; i++) {
+          const n = rng.next();
+          if (n < .16) {
+            fieldB[i] = rng.range(.08, .62);
+            fieldA[i] = rng.range(.42, 1);
+          }
+        }
+      }
+
+      for (let i = 0; i < fieldB.length; i++) {
+        const jitter = rng.range(-0.012, 0.012);
+        fieldB[i] = clamp01(fieldB[i] + jitter);
+        fieldA[i] = clamp01(fieldA[i] - Math.max(0, jitter * .6));
+      }
+    }
+
+    function resetField(reason = "reset") {
+      const [w, h] = parseResolution(ui.resolution.value);
+      if (w !== gridW || h !== gridH) allocateField(w, h);
+      config.seed = normalizedSeed(ui.seedInput.value);
+      ui.seedInput.value = String(config.seed);
+      rng = new XorShift32(config.seed);
+      clearConcentrations();
+      const preset = PRESETS[currentPreset];
+      seedInitialPattern(preset?.seedMode || "scatter");
+      updateMetrics(true);
+      renderField();
+      logEvent(`${preset?.name || "Custom chemistry"} ${reason}; seed ${config.seed}, grid ${gridW}×${gridH}.`);
+    }
+
+    function evolveOnce(srcA, srcB, dstA, dstB, width, height, p, boundaryMode) {
+      const torus = boundaryMode === "torus";
+      let healthy = true;
+      for (let y = 0; y < height; y++) {
+        const ym = y === 0 ? (torus ? height - 1 : 0) : y - 1;
+        const yp = y === height - 1 ? (torus ? 0 : height - 1) : y + 1;
+        const row = y * width;
+        const rowM = ym * width;
+        const rowP = yp * width;
+        for (let x = 0; x < width; x++) {
+          const xm = x === 0 ? (torus ? width - 1 : 0) : x - 1;
+          const xp = x === width - 1 ? (torus ? 0 : width - 1) : x + 1;
+          const i = row + x;
+          const a = srcA[i];
+          const b = srcB[i];
+
+          const lapA =
+            -a +
+            .20 * (srcA[row + xm] + srcA[row + xp] + srcA[rowM + x] + srcA[rowP + x]) +
+            .05 * (srcA[rowM + xm] + srcA[rowM + xp] + srcA[rowP + xm] + srcA[rowP + xp]);
+          const lapB =
+            -b +
+            .20 * (srcB[row + xm] + srcB[row + xp] + srcB[rowM + x] + srcB[rowP + x]) +
+            .05 * (srcB[rowM + xm] + srcB[rowM + xp] + srcB[rowP + xm] + srcB[rowP + xp]);
+
+          const reaction = a * b * b;
+          let aa = a + (p.diffA * lapA - reaction + p.feed * (1 - a)) * p.dt;
+          let bb = b + (p.diffB * lapB + reaction - (p.kill + p.feed) * b) * p.dt;
+          if (!Number.isFinite(aa) || !Number.isFinite(bb)) {
+            aa = 1;
+            bb = 0;
+            healthy = false;
+          }
+          dstA[i] = clamp01(aa);
+          dstB[i] = clamp01(bb);
+        }
+      }
+      return healthy;
+    }
+
+    function advanceIterations(count) {
+      const p = config;
+      const started = performance.now();
+      let healthy = true;
+      for (let s = 0; s < count; s++) {
+        healthy = evolveOnce(fieldA, fieldB, nextA, nextB, gridW, gridH, p, config.boundary) && healthy;
+        [fieldA, nextA] = [nextA, fieldA];
+        [fieldB, nextB] = [nextB, fieldB];
+        iteration++;
+        simulatedTime += p.dt;
+      }
+      lastStepMs = performance.now() - started;
+      if (!healthy && simulationHealthy) {
+        simulationHealthy = false;
+        running = false;
+        logEvent("Non-finite chemistry detected and contained. The run was paused; reduce Δt or diffusion.");
+        showToast("Simulation became unstable and was paused.");
+        updateRunState();
+      }
+    }
+
+    function visualScalar(i) {
+      if (config.fieldView === "a-deficit") return 1 - fieldA[i];
+      if (config.fieldView === "reaction") return clamp01(fieldA[i] * fieldB[i] * fieldB[i] * 7.5);
+      return fieldB[i];
+    }
+
+    function renderField() {
+      const pixels = imageData.data;
+      const gamma = config.contrast;
+      for (let i = 0, p = 0; i < fieldB.length; i++, p += 4) {
+        let v = visualScalar(i);
+        v = clamp01(Math.pow(clamp01(v * 1.75), 1 / Math.max(.1, gamma)));
+        const lutIndex = Math.min(255, Math.max(0, Math.floor(v * 255))) * 3;
+        pixels[p] = paletteLut[lutIndex];
+        pixels[p + 1] = paletteLut[lutIndex + 1];
+        pixels[p + 2] = paletteLut[lutIndex + 2];
+        pixels[p + 3] = 255;
+      }
+      worldCtx.putImageData(imageData, 0, 0);
+    }
+
+    function hashState(a = fieldA, b = fieldB, width = gridW, height = gridH, iter = iteration) {
+      let hash = 0x811c9dc5;
+      const mix = value => {
+        hash ^= value >>> 0;
+        hash = Math.imul(hash, 0x01000193) >>> 0;
+      };
+      mix(width); mix(height); mix(iter);
+      const wordsA = new Uint32Array(a.buffer, a.byteOffset, a.length);
+      const wordsB = new Uint32Array(b.buffer, b.byteOffset, b.length);
+      for (let i = 0; i < wordsA.length; i++) {
+        mix(wordsA[i]);
+        mix(wordsB[i]);
+      }
+      return hash.toString(16).padStart(8, "0").toUpperCase();
+    }
+
+    function calculateMetrics() {
+      const n = fieldB.length;
+      let sumA = 0;
+      let sumB = 0;
+      let sumB2 = 0;
+      let active = 0;
+      let edge = 0;
+      const bins = new Uint32Array(16);
+      const torus = config.boundary === "torus";
+
+      for (let y = 0; y < gridH; y++) {
+        const yp = y === gridH - 1 ? (torus ? 0 : y) : y + 1;
+        for (let x = 0; x < gridW; x++) {
+          const xp = x === gridW - 1 ? (torus ? 0 : x) : x + 1;
+          const i = y * gridW + x;
+          const a = fieldA[i];
+          const b = fieldB[i];
+          sumA += a;
+          sumB += b;
+          sumB2 += b * b;
+          if (b >= .18) active++;
+          const dx = fieldB[y * gridW + xp] - b;
+          const dy = fieldB[yp * gridW + x] - b;
+          edge += Math.sqrt(dx * dx + dy * dy);
+          bins[Math.min(15, Math.floor(clamp01(b) * 16))]++;
+        }
+      }
+
+      const meanA = sumA / n;
+      const meanB = sumB / n;
+      const varianceB = Math.max(0, sumB2 / n - meanB * meanB);
+      const activeArea = active / n;
+      const edgeDensity = edge / n;
+      let entropy = 0;
+      for (let i = 0; i < bins.length; i++) {
+        if (!bins[i]) continue;
+        const probability = bins[i] / n;
+        entropy -= probability * Math.log2(probability);
+      }
+      entropy /= 4;
+
+      return { meanA, meanB, varianceB, activeArea, edgeDensity, entropy };
+    }
+
+    function classifyPattern(m) {
+      if (!simulationHealthy) return ["numerically unstable", "Reduce Δt or diffusion before continuing."];
+      if (iteration < 80) return ["seeded field", "The initial asymmetry is still diffusing into the chemistry."];
+      if (m.varianceB < .00008 && m.meanB < .015) return ["homogeneous decay", "The activator is disappearing faster than it can reproduce."];
+      if (m.activeArea < .035 && m.varianceB > .0002) return ["isolated nuclei", "Sparse, high-contrast activator domains remain."];
+      if (m.edgeDensity > .055 && m.activeArea > .18) return ["filamentary / turbulent", "Many active interfaces are moving or splitting."];
+      if (m.activeArea > .48 && m.edgeDensity < .035) return ["dense domains", "Large connected regions dominate the field."];
+      if (m.entropy > .55 && m.edgeDensity > .025) return ["mixed morphology", "Spots, fronts and filaments coexist across concentration bands."];
+      if (m.edgeDensity < .010 && m.varianceB > .001) return ["coarse domains", "Pattern boundaries are sparse relative to occupied area."];
+      return ["spots / connected fronts", "Localized domains persist and exchange substrate through diffusion."];
+    }
+
+    function updateMetrics(force = false) {
+      const now = performance.now();
+      if (!force && now - lastMetricAt < 260) return;
+      lastMetricAt = now;
+      const m = calculateMetrics();
+      ui.meanA.textContent = m.meanA.toFixed(3);
+      ui.meanB.textContent = m.meanB.toFixed(3);
+      ui.varianceB.textContent = m.varianceB.toFixed(4);
+      ui.activeArea.textContent = `${(m.activeArea * 100).toFixed(1)}%`;
+      ui.edgeDensity.textContent = m.edgeDensity.toFixed(3);
+      ui.entropy.textContent = m.entropy.toFixed(3);
+      const [label, description] = classifyPattern(m);
+      ui.regime.textContent = label;
+      ui.regimeSub.textContent = description;
+
+      history.push({ active: m.activeArea, edge: Math.min(1, m.edgeDensity / .08) });
+      if (history.length > maxHistory) history.shift();
+      drawHistory();
+
+      ui.iterationOverlay.textContent = iteration.toLocaleString();
+      ui.feedOverlay.textContent = config.feed.toFixed(4);
+      ui.killOverlay.textContent = config.kill.toFixed(4);
+    }
+
+    function drawHistory() {
+      const canvas = ui.historyChart;
+      const ctx = historyCtx;
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(4,8,15,.96)";
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.lineWidth = 1;
+      for (let y = 1; y < 4; y++) {
+        const py = (h - 16) * y / 4 + 8;
+        ctx.beginPath(); ctx.moveTo(8, py); ctx.lineTo(w - 8, py); ctx.stroke();
+      }
+      if (history.length < 2) return;
+      const plot = (key, color) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1.8;
+        ctx.beginPath();
+        for (let i = 0; i < history.length; i++) {
+          const x = 8 + i / (maxHistory - 1) * (w - 16);
+          const y = h - 8 - clamp01(history[i][key]) * (h - 16);
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      };
+      plot("active", "#72e0d1");
+      plot("edge", "#b49cff");
+    }
+
+    function drawPhasePlane() {
+      const canvas = ui.phasePlane;
+      const ctx = phaseCtx;
+      const w = canvas.width;
+      const h = canvas.height;
+      const left = 32, right = 10, top = 10, bottom = 24;
+      const minF = .005, maxF = .09, minK = .03, maxK = .075;
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = "rgba(4,8,15,.96)";
+      ctx.fillRect(0, 0, w, h);
+
+      const xFor = f => left + (f - minF) / (maxF - minF) * (w - left - right);
+      const yFor = k => top + (maxK - k) / (maxK - minK) * (h - top - bottom);
+
+      ctx.strokeStyle = "rgba(255,255,255,.08)";
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const x = left + i / 4 * (w - left - right);
+        const y = top + i / 4 * (h - top - bottom);
+        ctx.beginPath(); ctx.moveTo(x, top); ctx.lineTo(x, h - bottom); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(w - right, y); ctx.stroke();
+      }
+
+      ctx.fillStyle = "#8795ad";
+      ctx.font = "9px system-ui";
+      ctx.fillText("F", w - 13, h - 7);
+      ctx.fillText("K", 8, 12);
+      ctx.fillText("0.005", left - 9, h - 8);
+      ctx.fillText("0.090", w - right - 25, h - 8);
+      ctx.fillText(".075", 5, top + 3);
+      ctx.fillText(".030", 5, h - bottom + 3);
+
+      for (const [id, preset] of Object.entries(PRESETS)) {
+        const x = xFor(preset.feed);
+        const y = yFor(preset.kill);
+        ctx.beginPath();
+        ctx.arc(x, y, id === currentPreset ? 4.2 : 2.6, 0, Math.PI * 2);
+        ctx.fillStyle = id === currentPreset ? "#72e0d1" : "rgba(180,156,255,.66)";
+        ctx.fill();
+      }
+
+      const cx = xFor(config.feed);
+      const cy = yFor(config.kill);
+      ctx.strokeStyle = "#f2f7ff";
+      ctx.lineWidth = 1.4;
+      ctx.beginPath(); ctx.moveTo(cx - 7, cy); ctx.lineTo(cx + 7, cy); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(cx, cy - 7); ctx.lineTo(cx, cy + 7); ctx.stroke();
+    }
+
+    function setCustomParametersFromPhasePointer(event) {
+      const rect = ui.phasePlane.getBoundingClientRect();
+      const sx = ui.phasePlane.width / rect.width;
+      const sy = ui.phasePlane.height / rect.height;
+      const x = (event.clientX - rect.left) * sx;
+      const y = (event.clientY - rect.top) * sy;
+      const left = 32, right = 10, top = 10, bottom = 24;
+      const px = clamp((x - left) / (ui.phasePlane.width - left - right), 0, 1);
+      const py = clamp((y - top) / (ui.phasePlane.height - top - bottom), 0, 1);
+      config.feed = .005 + px * (.09 - .005);
+      config.kill = .075 - py * (.075 - .03);
+      ui.feed.value = String(config.feed);
+      ui.kill.value = String(config.kill);
+      currentPreset = "custom";
+      ui.presetNote.textContent = "Custom feed/kill point selected from the phase plane. Other integration and display parameters are unchanged.";
+      syncOutputs();
+      drawPhasePlane();
+      logEvent(`Phase-plane point selected: F=${config.feed.toFixed(4)}, K=${config.kill.toFixed(4)}.`);
+    }
+
+    function updateRunState() {
+      if (!simulationHealthy) {
+        ui.runDot.className = "status-dot failed";
+        ui.runLabel.textContent = "Paused — numerical instability";
+        ui.playBtn.textContent = "Resume after reset";
+        return;
+      }
+      ui.runDot.className = running ? "status-dot" : "status-dot paused";
+      ui.runLabel.textContent = running ? "Running" : "Paused";
+      ui.playBtn.textContent = running ? "Pause" : "Resume";
+    }
+
+    function toggleRunning() {
+      if (!simulationHealthy) {
+        showToast("Reset or lower Δt before resuming.");
+        return;
+      }
+      running = !running;
+      updateRunState();
+      logEvent(running ? "Simulation resumed." : "Simulation paused.");
+    }
+
+    function applyPreset(id, reseed = true) {
+      const preset = PRESETS[id];
+      if (!preset) return;
+      currentPreset = id;
+      config.feed = preset.feed;
+      config.kill = preset.kill;
+      config.diffA = preset.diffA;
+      config.diffB = preset.diffB;
+      config.dt = preset.dt;
+      config.stepsPerFrame = preset.steps;
+      config.palette = preset.palette;
+      config.contrast = preset.contrast;
+      ui.presetSelect.value = id;
+      ui.presetNote.textContent = preset.note;
+      ui.feed.value = String(config.feed);
+      ui.kill.value = String(config.kill);
+      ui.diffA.value = String(config.diffA);
+      ui.diffB.value = String(config.diffB);
+      ui.timeStep.value = String(config.dt);
+      ui.stepsPerFrame.value = String(config.stepsPerFrame);
+      ui.palette.value = config.palette;
+      ui.contrast.value = String(config.contrast);
+      buildPaletteLut();
+      syncOutputs();
+      drawPhasePlane();
+      if (reseed) resetField("preset applied");
+    }
+
+    function syncOutputs() {
+      ui.feedOut.value = config.feed.toFixed(4);
+      ui.feedOut.textContent = config.feed.toFixed(4);
+      ui.killOut.value = config.kill.toFixed(4);
+      ui.killOut.textContent = config.kill.toFixed(4);
+      ui.diffAOut.value = config.diffA.toFixed(2);
+      ui.diffAOut.textContent = config.diffA.toFixed(2);
+      ui.diffBOut.value = config.diffB.toFixed(2);
+      ui.diffBOut.textContent = config.diffB.toFixed(2);
+      ui.timeStepOut.value = config.dt.toFixed(2);
+      ui.timeStepOut.textContent = config.dt.toFixed(2);
+      ui.stepsPerFrameOut.value = String(config.stepsPerFrame);
+      ui.stepsPerFrameOut.textContent = String(config.stepsPerFrame);
+      ui.brushRadiusOut.value = `${config.brushRadius} cells`;
+      ui.brushRadiusOut.textContent = `${config.brushRadius} cells`;
+      ui.contrastOut.value = config.contrast.toFixed(2);
+      ui.contrastOut.textContent = config.contrast.toFixed(2);
+      ui.feedOverlay.textContent = config.feed.toFixed(4);
+      ui.killOverlay.textContent = config.kill.toFixed(4);
+    }
+
+    function addNuclei() {
+      const count = Math.max(4, Math.floor(gridW * gridH / 6000));
+      for (let i = 0; i < count; i++) {
+        injectDisc(rng.range(0, gridW), rng.range(0, gridH), rng.range(2.5, 6), rng.range(.7, 1));
+      }
+      logEvent(`${count} activator nuclei injected.`);
+      showToast("New nuclei added.");
+    }
+
+    function chemicalShock() {
+      for (let i = 0; i < fieldB.length; i++) {
+        if (rng.next() < .075) {
+          fieldB[i] = clamp01(fieldB[i] + rng.range(-.22, .42));
+          fieldA[i] = clamp01(fieldA[i] + rng.range(-.14, .10));
+        }
+      }
+      logEvent("Chemical shock perturbed 7.5% of field cells.");
+      showToast("Chemical shock applied.");
+    }
+
+    function clearField() {
+      clearConcentrations();
+      updateMetrics(true);
+      renderField();
+      logEvent("Field restored to homogeneous A=1, B=0.");
+      showToast("Field cleared.");
+    }
+
+    function pointerToGrid(event) {
+      const rect = ui.world.getBoundingClientRect();
+      return {
+        x: clamp((event.clientX - rect.left) / rect.width * gridW, 0, gridW - .0001),
+        y: clamp((event.clientY - rect.top) / rect.height * gridH, 0, gridH - .0001)
+      };
+    }
+
+    function paintFromPointer(event) {
+      const point = pointerToGrid(event);
+      const mode = event.shiftKey ? "erase" : event.altKey ? "perturb" : config.brushMode;
+      injectDisc(point.x, point.y, config.brushRadius, 1, mode);
+    }
+
+    function showToast(message) {
+      ui.toast.textContent = message;
+      ui.toast.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => ui.toast.classList.remove("show"), 1800);
+    }
+
+    function logEvent(message) {
+      eventCounter++;
+      const event = document.createElement("div");
+      event.className = "event";
+      event.textContent = `${String(eventCounter).padStart(2, "0")} · ${message}`;
+      ui.eventLog.prepend(event);
+      while (ui.eventLog.children.length > 9) ui.eventLog.lastChild.remove();
+    }
+
+    function floatArrayToBase64(array) {
+      const bytes = new Uint8Array(array.buffer, array.byteOffset, array.byteLength);
+      let binary = "";
+      const chunk = 0x8000;
+      for (let i = 0; i < bytes.length; i += chunk) {
+        binary += String.fromCharCode(...bytes.subarray(i, Math.min(i + chunk, bytes.length)));
+      }
+      return btoa(binary);
+    }
+
+    function base64ToFloatArray(encoded, expectedLength) {
+      const binary = atob(encoded);
+      if (binary.length !== expectedLength * 4) throw new Error("Field byte length does not match dimensions.");
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      const result = new Float32Array(bytes.buffer);
+      for (let i = 0; i < result.length; i++) {
+        if (!Number.isFinite(result[i]) || result[i] < 0 || result[i] > 1) throw new Error("Field contains an invalid concentration.");
+      }
+      return result;
+    }
+
+    function stateDocument() {
+      return {
+        schema: "swarminglilmen.reaction-diffusion-state/v1",
+        model: "gray-scott",
+        width: gridW,
+        height: gridH,
+        iteration,
+        simulatedTime,
+        preset: currentPreset,
+        config: {
+          feed: config.feed, kill: config.kill, diffA: config.diffA, diffB: config.diffB,
+          dt: config.dt, stepsPerFrame: config.stepsPerFrame, boundary: config.boundary,
+          palette: config.palette, contrast: config.contrast, fieldView: config.fieldView,
+          brushRadius: config.brushRadius, seed: config.seed
+        },
+        rngState: rng.state >>> 0,
+        fieldA: floatArrayToBase64(fieldA),
+        fieldB: floatArrayToBase64(fieldB),
+        fingerprint: hashState()
+      };
+    }
+
+    function downloadBlob(filename, blob) {
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = url;
+      anchor.download = filename;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    }
+
+    function exportState() {
+      const doc = stateDocument();
+      const blob = new Blob([JSON.stringify(doc)], { type: "application/json" });
+      downloadBlob(`morphogenesis-${currentHash.toLowerCase()}-i${iteration}.json`, blob);
+      logEvent("Full deterministic field state exported.");
+      showToast("State exported.");
+    }
+
+    async function importStateFile(file) {
+      const text = await file.text();
+      const doc = JSON.parse(text);
+      if (doc.schema !== "swarminglilmen.reaction-diffusion-state/v1" || doc.model !== "gray-scott") {
+        throw new Error("Unsupported state schema or model.");
+      }
+      const width = Number(doc.width);
+      const height = Number(doc.height);
+      if (!Number.isInteger(width) || !Number.isInteger(height) || width < 20 || height < 20 || width * height > 100000) {
+        throw new Error("Invalid or excessive field dimensions.");
+      }
+      const a = base64ToFloatArray(doc.fieldA, width * height);
+      const b = base64ToFloatArray(doc.fieldB, width * height);
+      // A malformed checkpoint must not replace the current field before rejection.
+      const importedConfig = doc.config;
+      if (!importedConfig || typeof importedConfig !== "object") throw new Error("Missing configuration.");
+      const bounds = {feed:[.005,.09],kill:[.03,.075],diffA:[.2,1.5],diffB:[.05,1],
+        dt:[.1,1.25],stepsPerFrame:[1,24],contrast:[.5,4],brushRadius:[1,24]};
+      for (const [key,[min,max]] of Object.entries(bounds)) {
+        const value = importedConfig[key];
+        if (!Number.isFinite(value) || value < min || value > max)
+          throw new Error(`Invalid checkpoint parameter '${key}'.`);
+      }
+      if (!Number.isSafeInteger(doc.iteration) || doc.iteration < 0 ||
+          !Number.isFinite(doc.simulatedTime) || doc.simulatedTime < 0 ||
+          !Number.isInteger(doc.rngState) || doc.rngState < 1 || doc.rngState > 4294967295 ||
+          !Number.isInteger(importedConfig.seed) || importedConfig.seed < 0 || importedConfig.seed > 4294967295 ||
+          !["torus","sealed"].includes(importedConfig.boundary) ||
+          !Object.hasOwn(PALETTE_STOPS, importedConfig.palette) ||
+          !["b","a-deficit","reaction"].includes(importedConfig.fieldView))
+        throw new Error("Invalid checkpoint clock, seed, boundary or view.");
+      if ([a,b].some(field => field.some(value => !Number.isFinite(value) || value < 0 || value > 1)))
+        throw new Error("Concentrations must be finite and inside [0,1].");
+      allocateField(width, height);
+      fieldA.set(a);
+      fieldB.set(b);
+      nextA.set(a);
+      nextB.set(b);
+      iteration = Math.max(0, Math.floor(Number(doc.iteration) || 0));
+      simulatedTime = Math.max(0, Number(doc.simulatedTime) || 0);
+      const c = doc.config || {};
+      config.feed = clamp(Number(c.feed), .005, .09);
+      config.kill = clamp(Number(c.kill), .03, .075);
+      config.diffA = clamp(Number(c.diffA), .2, 1.5);
+      config.diffB = clamp(Number(c.diffB), .05, 1);
+      config.dt = clamp(Number(c.dt), .1, 1.25);
+      config.stepsPerFrame = clamp(Math.round(Number(c.stepsPerFrame)), 1, 24);
+      config.boundary = c.boundary === "sealed" ? "sealed" : "torus";
+      config.palette = PALETTE_STOPS[c.palette] ? c.palette : "abyss";
+      config.contrast = clamp(Number(c.contrast), .5, 4);
+      config.fieldView = ["b", "a-deficit", "reaction"].includes(c.fieldView) ? c.fieldView : "b";
+      config.brushRadius = clamp(Math.round(Number(c.brushRadius)), 1, 24);
+      config.seed = normalizedSeed(c.seed);
+      rng = new XorShift32(config.seed);
+      rng.state = (Number(doc.rngState) >>> 0) || config.seed;
+      currentPreset = PRESETS[doc.preset] ? doc.preset : "custom";
+      simulationHealthy = true;
+      syncUiFromConfig();
+      buildPaletteLut();
+      updateRunState();
+      updateMetrics(true);
+      renderField();
+      drawPhasePlane();
+      currentHash = hashState();
+      ui.hashOverlay.textContent = currentHash;
+      logEvent(`State imported at iteration ${iteration.toLocaleString()} (${currentHash}).`);
+      showToast("State imported.");
+    }
+
+    function syncUiFromConfig() {
+      ui.feed.value = String(config.feed);
+      ui.kill.value = String(config.kill);
+      ui.diffA.value = String(config.diffA);
+      ui.diffB.value = String(config.diffB);
+      ui.timeStep.value = String(config.dt);
+      ui.stepsPerFrame.value = String(config.stepsPerFrame);
+      ui.boundary.value = config.boundary;
+      ui.palette.value = config.palette;
+      ui.contrast.value = String(config.contrast);
+      ui.fieldView.value = config.fieldView;
+      ui.brushRadius.value = String(config.brushRadius);
+      ui.seedInput.value = String(config.seed);
+      const exactResolution = `${gridW}x${gridH}`;
+      if ([...ui.resolution.options].some(o => o.value === exactResolution)) ui.resolution.value = exactResolution;
+      if (PRESETS[currentPreset]) {
+        ui.presetSelect.value = currentPreset;
+        ui.presetNote.textContent = PRESETS[currentPreset].note;
+      } else {
+        ui.presetNote.textContent = "Imported or custom parameter state.";
+      }
+      syncOutputs();
+    }
+
+    function runSummary() {
+      const m = calculateMetrics();
+      return [
+        "SwarmingLilMen — Turing Morphogenesis Lab",
+        "model: Gray-Scott reaction-diffusion",
+        `preset: ${PRESETS[currentPreset]?.name || "custom"}`,
+        `grid: ${gridW}x${gridH}`,
+        `boundary: ${config.boundary}`,
+        `seed: ${config.seed}`,
+        `iteration: ${iteration}`,
+        `simulatedTime: ${simulatedTime.toFixed(2)}`,
+        `feedF: ${config.feed.toFixed(6)}`,
+        `killK: ${config.kill.toFixed(6)}`,
+        `diffusionA: ${config.diffA.toFixed(4)}`,
+        `diffusionB: ${config.diffB.toFixed(4)}`,
+        `dt: ${config.dt.toFixed(4)}`,
+        `meanA: ${m.meanA.toFixed(6)}`,
+        `meanB: ${m.meanB.toFixed(6)}`,
+        `varianceB: ${m.varianceB.toFixed(8)}`,
+        `activeArea: ${m.activeArea.toFixed(6)}`,
+        `edgeDensity: ${m.edgeDensity.toFixed(8)}`,
+        `stateFingerprintFnv32: ${hashState()}`,
+        "scope: same HTML/JavaScript engine and IEEE-754 runtime; fingerprint excludes timing and display palette"
+      ].join("\n");
+    }
+
+    async function copySummary() {
+      const text = runSummary();
+      try {
+        await navigator.clipboard.writeText(text);
+        showToast("Run summary copied.");
+      } catch {
+        const area = document.createElement("textarea");
+        area.value = text;
+        area.style.position = "fixed";
+        area.style.opacity = "0";
+        document.body.appendChild(area);
+        area.select();
+        document.execCommand("copy");
+        area.remove();
+        showToast("Run summary copied.");
+      }
+      logEvent("Reproducibility summary copied.");
+    }
+
+    function savePng() {
+      ui.world.toBlob(blob => {
+        if (!blob) return;
+        downloadBlob(`morphogenesis-${currentHash.toLowerCase()}-i${iteration}.png`, blob);
+        showToast("Image saved.");
+        logEvent("Current concentration rendering saved as PNG.");
+      }, "image/png");
+    }
+
+    function selfTest() {
+      const width = 32;
+      const height = 20;
+      const n = width * height;
+      const p = { feed: .0367, kill: .0649, diffA: 1, diffB: .5, dt: 1 };
+      const run = () => {
+        let a = new Float32Array(n); a.fill(1);
+        let b = new Float32Array(n);
+        let na = new Float32Array(n);
+        let nb = new Float32Array(n);
+        const localRng = new XorShift32(123456789);
+        for (let y = 7; y < 13; y++) {
+          for (let x = 12; x < 20; x++) {
+            const i = y * width + x;
+            b[i] = .75 + localRng.next() * .25;
+            a[i] = .25;
+          }
+        }
+        for (let s = 0; s < 28; s++) {
+          evolveOnce(a, b, na, nb, width, height, p, "torus");
+          [a, na] = [na, a];
+          [b, nb] = [nb, b];
+        }
+        return hashState(a, b, width, height, 28);
+      };
+      const first = run();
+      const second = run();
+      const ok = first === second;
+      ui.determinismBadge.textContent = ok ? `Replay check: ${first}` : "Replay check: failed";
+      ui.determinismBadge.className = ok ? "badge good" : "badge warn";
+      logEvent(ok ? `Deterministic replay self-check passed (${first}).` : "Deterministic replay self-check failed.");
+      return ok;
+    }
+
+    function bindControls() {
+      const bindRange = (input, key, outputSync, onChange) => {
+        input.addEventListener("input", () => {
+          config[key] = key === "stepsPerFrame" || key === "brushRadius"
+            ? Math.round(Number(input.value))
+            : Number(input.value);
+          outputSync();
+          if (onChange) onChange();
+        });
+      };
+
+      bindRange(ui.feed, "feed", syncOutputs, drawPhasePlane);
+      bindRange(ui.kill, "kill", syncOutputs, drawPhasePlane);
+      bindRange(ui.diffA, "diffA", syncOutputs);
+      bindRange(ui.diffB, "diffB", syncOutputs);
+      bindRange(ui.timeStep, "dt", syncOutputs);
+      bindRange(ui.stepsPerFrame, "stepsPerFrame", syncOutputs);
+      bindRange(ui.brushRadius, "brushRadius", syncOutputs);
+      bindRange(ui.contrast, "contrast", syncOutputs);
+
+      ui.presetSelect.addEventListener("change", () => {
+        const preset = PRESETS[ui.presetSelect.value];
+        ui.presetNote.textContent = preset.note;
+      });
+      ui.applyPresetBtn.addEventListener("click", () => applyPreset(ui.presetSelect.value, true));
+      ui.reseedBtn.addEventListener("click", () => {
+        config.seed = ((Date.now() ^ Math.floor(performance.now() * 1000)) >>> 0) || 1;
+        ui.seedInput.value = String(config.seed);
+        resetField("new deterministic seed");
+      });
+      ui.seedInput.addEventListener("change", () => resetField("seed changed"));
+      ui.resolution.addEventListener("change", () => resetField("resolution changed"));
+      ui.boundary.addEventListener("change", () => {
+        config.boundary = ui.boundary.value;
+        drawPhasePlane();
+        logEvent(`Boundary changed to ${config.boundary}. Existing concentrations were preserved.`);
+      });
+      ui.brushMode.addEventListener("change", () => config.brushMode = ui.brushMode.value);
+      ui.fieldView.addEventListener("change", () => {
+        config.fieldView = ui.fieldView.value;
+        renderField();
+      });
+      ui.palette.addEventListener("change", () => {
+        config.palette = ui.palette.value;
+        buildPaletteLut();
+        renderField();
+      });
+      ui.playBtn.addEventListener("click", toggleRunning);
+      ui.stepBtn.addEventListener("click", () => {
+        advanceIterations(1);
+        updateMetrics(true);
+        renderField();
+      });
+      ui.nucleiBtn.addEventListener("click", addNuclei);
+      ui.shockBtn.addEventListener("click", chemicalShock);
+      ui.clearBtn.addEventListener("click", clearField);
+      ui.resetBtn.addEventListener("click", () => resetField("reset"));
+      ui.copySummaryBtn.addEventListener("click", copySummary);
+      ui.savePngBtn.addEventListener("click", savePng);
+      ui.exportStateBtn.addEventListener("click", exportState);
+      ui.importStateBtn.addEventListener("click", () => ui.stateFile.click());
+      ui.stateFile.addEventListener("change", async () => {
+        const file = ui.stateFile.files?.[0];
+        if (!file) return;
+        try { await importStateFile(file); }
+        catch (error) {
+          console.error(error);
+          showToast(`Import failed: ${error.message}`);
+          logEvent(`Import rejected: ${error.message}`);
+        } finally {
+          ui.stateFile.value = "";
+        }
+      });
+
+      ui.phasePlane.addEventListener("pointerdown", setCustomParametersFromPhasePointer);
+
+      ui.world.addEventListener("pointerdown", event => {
+        pointerDown = true;
+        ui.world.setPointerCapture(event.pointerId);
+        paintFromPointer(event);
+      });
+      ui.world.addEventListener("pointermove", event => {
+        if (pointerDown) paintFromPointer(event);
+      });
+      ui.world.addEventListener("pointerup", event => {
+        pointerDown = false;
+        try { ui.world.releasePointerCapture(event.pointerId); } catch { }
+      });
+      ui.world.addEventListener("pointercancel", () => pointerDown = false);
+      ui.world.addEventListener("contextmenu", event => event.preventDefault());
+      ui.world.addEventListener("dblclick", event => {
+        const point = pointerToGrid(event);
+        injectRing(point.x, point.y, config.brushRadius * 1.7, Math.max(1.4, config.brushRadius * .22));
+        logEvent("Ring-shaped activator seed injected.");
+      });
+
+      window.addEventListener("keydown", event => {
+        if (event.target instanceof HTMLInputElement || event.target instanceof HTMLSelectElement) return;
+        if (event.code === "Space") { event.preventDefault(); toggleRunning(); }
+        else if (event.key.toLowerCase() === "n") addNuclei();
+        else if (event.key.toLowerCase() === "x") chemicalShock();
+        else if (event.key.toLowerCase() === "r") resetField("keyboard reset");
+        else if (event.key.toLowerCase() === "c") clearField();
+        else if (event.key.toLowerCase() === "s") savePng();
+      });
+    }
+
+    function animate(now) {
+      const frameDelta = Math.max(1, now - lastFrameTime);
+      const fps = 1000 / frameDelta;
+      smoothedFps = smoothedFps ? smoothedFps * .90 + fps * .10 : fps;
+      lastFrameTime = now;
+
+      if (running && simulationHealthy) advanceIterations(config.stepsPerFrame);
+      renderField();
+      updateMetrics(false);
+
+      if (now - lastHashAt > 850) {
+        lastHashAt = now;
+        currentHash = hashState();
+        ui.hashOverlay.textContent = currentHash;
+      }
+
+      const iterationsPerSecond = lastStepMs > 0 ? config.stepsPerFrame / lastStepMs * 1000 : 0;
+      ui.perfFooter.textContent = `${smoothedFps.toFixed(0)} FPS · ${iterationsPerSecond.toFixed(0)} iterations/s · last batch ${lastStepMs.toFixed(1)} ms`;
+      requestAnimationFrame(animate);
+    }
+
+    function initialize() {
+      config.boundary = ui.boundary.value;
+      config.brushMode = ui.brushMode.value;
+      config.fieldView = ui.fieldView.value;
+      config.brushRadius = Number(ui.brushRadius.value || 8);
+      bindControls();
+      applyPreset("mitosis", false);
+      syncUiFromConfig();
+      buildPaletteLut();
+      resetField("initialised");
+      selfTest();
+      updateRunState();
+      drawHistory();
+      drawPhasePlane();
+      requestAnimationFrame(animate);
+    }
+
+    window.morphogenesisLab = {
+      stepMany: count => {
+        const steps = clamp(Math.floor(Number(count) || 0), 0, 10000);
+        advanceIterations(steps);
+        updateMetrics(true);
+        renderField();
+        currentHash = hashState();
+        ui.hashOverlay.textContent = currentHash;
+        return { iteration, hash: currentHash, metrics: calculateMetrics() };
+      },
+      reset: () => resetField("API reset"),
+      applyPreset: id => applyPreset(id, true),
+      summary: runSummary,
+      getState: () => ({ iteration, hash: hashState(), metrics: calculateMetrics(), config: { ...config } })
+    };
+
+    initialize();
+  </script>
+</body>
+</html>

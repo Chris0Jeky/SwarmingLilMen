@@ -116,6 +116,31 @@ public sealed class SpatialIndexEquivalenceTests
     }
 
     [Fact]
+    public void SpatialIndexEquivalence_OutOfRangeSelfIndexPrecedesCapacityCheck()
+    {
+        // Capacity is checked after selfIndex. A span longer than the initialized capacity AND an
+        // out-of-range selfIndex must return an empty result on both indexes. Checking capacity
+        // first makes Naive throw ArgumentException here.
+        var stored = CreateBoids((10f, 10f));
+        var oversized = CreateBoids((10f, 10f), (20f, 20f));
+        var grid = new GridSpatialIndex(10f, 100f, 100f);
+        var naive = new NaiveSpatialIndex(100f, 100f);
+        var results = new int[2];
+        grid.Initialize(stored.Length);
+        naive.Initialize(stored.Length);
+        grid.Rebuild(stored);
+        naive.Rebuild(stored);
+
+        SpatialQueryResult gridQuery = grid.QueryNeighbors(oversized, selfIndex: -1, radius: 5f, results);
+        SpatialQueryResult naiveQuery = naive.QueryNeighbors(oversized, selfIndex: -1, radius: 5f, results);
+
+        Assert.Equal(0, gridQuery.Count);
+        Assert.False(gridQuery.IsTruncated);
+        Assert.Equal(gridQuery.Count, naiveQuery.Count);
+        Assert.Equal(gridQuery.IsTruncated, naiveQuery.IsTruncated);
+    }
+
+    [Fact]
     public void SpatialIndexEquivalence_QueryHotPathDoesNotAllocateAfterWarmup()
     {
         var random = new Random(8181);

@@ -6,10 +6,13 @@ a non-Claude runtime.
 
 ## Codex delta
 
-- **The estate's global laws are not auto-injected into Codex.** Read them at session start:
-  `~/.claude/CLAUDE.md`, the registry `~/.claude/ESTATE.md`, and `BLUEPRINT.md` in the active
+- **The estate's global laws reach Codex through `~/.codex/AGENTS.md`** when the estate profile is
+  installed (the Claude rendering is `~/.claude/rules/laws.md`). If `~/.codex/AGENTS.md` is absent,
+  read `~/.claude/rules/laws.md`; if neither exists, the fail-safe floor below binds and merge is
+  human-only. Also read the registry `~/.claude/ESTATE.md`, and `BLUEPRINT.md` in the active
   `agent-harness` checkout (its path is recorded in `ESTATE.md`, not hardcoded here).
-- **Deny floor.** Claude receives the irreversible-command floor from the global PreToolUse hook.
+- **Deny floor.** No Claude floor runs on DESKTOP-IHKOOJS (owner decisions of 2026-09-07/09-20);
+  Kraspyon keeps a user-scope hook.
   Codex has no global matcher, so `.codex/hooks.json` pins the same shared dispatcher
   (`~/.claude/hooks/dispatch.py --event pre --runtime codex`). That adapter is **inert until its
   exact definition is reviewed and trusted through `/hooks` in a fresh Codex session** — untrusted
@@ -35,9 +38,10 @@ They are the entire policy in that case, and they still bind when the estate pro
 - **Preserve unrelated work.** Never destroy an unclean tree merely to obtain a clean one. Ask.
 - **Never commit secrets**, tokens, credentials, private data, generated profiler or test output,
   or agent-attribution trailers. This repository is public and its history is permanent.
-- **Publishing is scoped, and merging is not in it.** Local edits, builds, tests, commits, branch
-  pushes, and pull requests are in scope. Merging to `main`, repository settings, releases, and
-  anything that leaves this repository are not — `authority.merge` in `.agent-harness/tier.json`
-  presumes the estate laws that are missing here, so without them merge is human-only.
+- **Publishing is scoped.** Local edits, builds, tests, commits, branch pushes, and pull requests
+  are in scope. Repository settings, releases, and anything that leaves this repository are not.
+  Merging to `main` is human-only without the estate profile (`authority.merge` in
+  `.agent-harness/tier.json` presumes the estate laws); with the profile present it follows
+  `authority.merge` behind global law 2's gate.
 - **No unproven claims.** Run the check that proves the claim, and state plainly what you did not
   verify — a green unit suite is not renderer, benchmark, or throughput evidence here.

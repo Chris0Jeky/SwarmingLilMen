@@ -5,6 +5,48 @@ namespace SwarmSim.Tests;
 public class RngTests
 {
     [Fact]
+    public void NextFloat_InvertedRange_ThrowsWithoutConsumingRandomness()
+    {
+        var rng = new Rng(42u);
+        var control = new Rng(42u);
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => rng.NextFloat(20f, 10f));
+
+        Assert.Equal("minValue", exception.ParamName);
+        Assert.Equal(control.NextFloat(), rng.NextFloat());
+    }
+
+    [Theory]
+    [InlineData(-0.1f)]
+    [InlineData(1.1f)]
+    public void NextBool_InvalidProbability_ThrowsWithoutConsumingRandomness(float probability)
+    {
+        var rng = new Rng(42u);
+        var control = new Rng(42u);
+
+        var exception = Assert.Throws<ArgumentOutOfRangeException>(() => rng.NextBool(probability));
+
+        Assert.Equal("probability", exception.ParamName);
+        Assert.Equal(control.NextFloat(), rng.NextFloat());
+    }
+
+    [Theory]
+    [InlineData(0f, false)]
+    [InlineData(1f, true)]
+    public void NextBool_BoundaryProbability_ReturnsExpectedValue(float probability, bool expected)
+    {
+        var rng = new Rng(42u);
+
+        Assert.Equal(expected, rng.NextBool(probability));
+    }
+
+    [Fact]
+    public void NextFloat_EqualBounds_ReturnsBound()
+    {
+        Assert.Equal(10f, new Rng(42u).NextFloat(10f, 10f));
+    }
+
+    [Fact]
     public void Determinism_SameSeed_ProducesSameSequence()
     {
         // Arrange

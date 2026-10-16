@@ -39,6 +39,12 @@ public sealed class GridSpatialIndex : ISpatialIndex
     }
 
     /// <inheritdoc />
+    public float WorldWidth => _worldWidth;
+
+    /// <inheritdoc />
+    public float WorldHeight => _worldHeight;
+
+    /// <inheritdoc />
     public void Initialize(int capacity)
     {
         if (capacity <= 0)

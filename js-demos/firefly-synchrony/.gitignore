@@ -1,0 +1,5 @@
+runs/
+__pycache__/
+.venv/
+tests/engine_results.json
+tests/browser_results.json

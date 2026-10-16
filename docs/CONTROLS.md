@@ -66,17 +66,17 @@ configuration. The earlier parameter-editor narrative is retained as a dated his
 ## Presets & CLI
 
 - **Command-line flags**:
-  - `--preset <name>` – Start with a preset configuration (use `--list-presets` to see options)
-  - `--config <file>` – Load configuration from JSON (see `configs/` directory)
-  - `--agent-count <n>` – Override the initial agent count
-  - `--benchmark` – Run a headless benchmark (no window)
+  - `-p`, `--preset <name>` – Start with a preset configuration (use `--list-presets` to see options)
+  - `-c`, `--config <file>` – Load configuration from JSON (see `configs/` directory)
+  - `-n`, `--agent-count <n>` – Override the initial agent count
+  - `-b`, `--benchmark` – Run a headless benchmark (no window)
   - `--canonical` – Launch the opt-in single-group canonical renderer
   - `--minimal` – Launch the minimal debugging harness
-  - `--help`, `--version`, `--list-presets` – Self-documenting flags
+  - `-h`, `--help` (also `/?`), `-v`, `--version`, `-l`, `--list-presets` – Self-documenting flags
 
 The legacy help/parameter panels and canonical footer currently display `1-7` although input accepts
 keys **1-8**, and the canonical **H** panel lists only its minimal R/H/Esc subset. This split
 reference includes the missing canonical O/Tab controls and scopes legacy-only actions; executable
 synchronization and regression coverage are tracked in
 [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39)
-(`SwarmSim.Render/Program.cs:596-749,1231-1277,1340-1380,1447-1455,1553-1612,1687-1704`).
+(`SwarmSim.Render/Program.cs` (`Program.HandleInput`, `Program.DrawUI`, `Program.DrawHelpOverlay`, `Program.RunCanonicalMode`, `Program.ProcessCanonicalParameters`)).

@@ -47,6 +47,12 @@ public readonly record struct Genome(
     /// <param name="mutationStdDev">Standard deviation of mutation noise</param>
     public Genome Mutate(Rng rng, float mutationRate = 0.1f, float mutationStdDev = 0.2f)
     {
+        ArgumentNullException.ThrowIfNull(rng);
+        if (float.IsNaN(mutationRate) || float.IsInfinity(mutationRate) || mutationRate < 0f || mutationRate > 1f)
+            throw new ArgumentOutOfRangeException(nameof(mutationRate), mutationRate, "Mutation rate must be a finite value in [0, 1].");
+        if (float.IsNaN(mutationStdDev) || float.IsInfinity(mutationStdDev))
+            throw new ArgumentOutOfRangeException(nameof(mutationStdDev), mutationStdDev, "Mutation standard deviation must be a finite value.");
+
         float MutateFloat(float value, float min, float max)
         {
             if (rng.NextFloat() > mutationRate)

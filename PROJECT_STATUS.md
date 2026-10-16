@@ -10,6 +10,62 @@
 
 ## Verified Live State (2026-08-08)
 
+- Browser demos published (2026-10-11): the seven standalone js-demos are live on GitHub Pages at
+  https://chris0jeky.github.io/SwarmingLilMen/, approved by the owner after a preview. The site is built
+  only from `.hosting/publish-allowlist.txt` and deployed by manual dispatch of `pages-demos.yml` from
+  main (run 38128281974). The index and all seven demo paths answered 200, and READMEs and docs 404.
+  The native C# engine is not hosted. Rollback: disable Pages.
+
+
+- Legacy-grid dead-agent fix (branch verification, 2026-10-13): `World.Tick` now rebuilds the legacy
+  grid through a `UniformGrid.Rebuild` overload that skips `AgentState.Dead`, so recently-dead agents not yet
+  compacted cannot exhaust the bounded 256-slot neighbor buffer in `SenseSystem` (owner issue #132).
+  `LegacyGridDeadBufferTests.DeadAgentsDoNotExhaustNeighborBuffer` has 3 cases (compaction intervals 2, 600,
+  1000000). This docs-only entry records the fix; no build or test was run for this edit.
+  Renderer UI and BenchmarkDotNet were not run.
+
+- Steering clamp coverage (branch verification, 2026-10-09): the new
+  `MathUtilsSteeringTests` case passes with the existing implementation and fails
+  when either force or speed clamping is removed, or speed clamping is moved before
+  velocity integration. Production behavior is unchanged. Renderer UI and
+  BenchmarkDotNet were not run for this test-only change.
+
+- Minimum-image folding regression (branch verification, 2026-10-08):
+  `MathUtilsWrapTests` checks both signed displacements across the periodic seam.
+  The regression fails with the folding branches removed and passes with them
+  restored. Release build passes with zero warnings/errors; the current
+  non-Performance gate passes all 397 tests on this branch.
+  Renderer UI and BenchmarkDotNet were not run for this change.
+
+- RNG range-helper validation (branch verification, 2026-10-08): `NextFloat`
+  rejects inverted bounds and `NextBool` rejects probabilities below zero or
+  above one before consuming randomness. All three rejection cases fail without
+  the guards; all 15 `RngTests` pass with them, including equal bounds and
+  probability endpoints. NaN and non-finite float-bound behavior is unchanged.
+  Release build passes without warnings and the non-Performance gate passes
+  all 393 tests on this branch.
+  The inherited `Category=Unit` filter matches no tests and is not proof.
+  Renderer UI and BenchmarkDotNet were not run for this change.
+
+- Genome argument validation (branch verification, 2026-10-07): `Mutate` rejects
+  null RNGs, non-finite or out-of-range mutation rates, and non-finite noise deviations.
+  Both new regressions fail with the guards removed and pass with them present.
+  Release build and the non-Performance suite pass on this branch. There were no
+  pre-existing Genome test classes; renderer UI and BenchmarkDotNet were not run.
+
+- Circle spawn argument validation (branch verification, 2026-10-07): negative
+  counts and non-finite centers or radii throw before spawning. All ten new
+  validation cases fail with the guards removed; all 35 `WorldTests` pass with
+  them present, including valid spawning. Release build and the non-Performance
+  suite pass on this branch. Huge-count capacity behavior is unchanged and outside
+  this change's contract; renderer UI and BenchmarkDotNet were not run.
+
+- Grid buffer validation (branch verification, 2026-10-05): `Query3x3` rejects
+  `maxResults` above the supplied span length before scanning. The new regression fails
+  without the guard; all 28 `UniformGridTests` pass with it. Release build is warning-free
+  and the non-Performance gate passes 228 tests on this branch. Renderer UI and
+  BenchmarkDotNet were not run for this change.
+
 - Git: Wave 0 began from clean `main` at `8108254`, matching `origin/main`, after a dormant period
   whose last product commits landed on 2025-11-19. Wave 0 and Wave 1 have since merged product
   changes on 2026-08-07 and 2026-08-08, and #65 adopted GPL-3.0-only on 2026-08-12; `main` is at
@@ -56,6 +112,7 @@
   `double` accumulator costs nothing measurable because the walk is O(cells) per query rather than
   per neighbor, and every current caller walks at most two cells. The harness was removed. This is
   one sample per configuration, not a benchmark distribution.
+- Standalone browser addition (2026-09-09): [Avalanche Lab](js-demos/avalanche-lab/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/avalanche-lab/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - Performance-category tests are excluded from the default CI suite. When run explicitly, all four
   measurements compare matching operation horizons after warmup, gate generous machine-relative
   scaling envelopes, and emit JSON records. Release test hosts disable tiered compilation so the
@@ -71,6 +128,7 @@
   line / 44.93% branch overall**; `SwarmSim.Core` is 86.58% line / 77.03% branch and
   `SwarmSim.Render` is 29.74% line / 12.70% branch. The instrumented timing tests are intentionally
   excluded from this coverage sample; renderer automation remains the dominant gap.
+- Standalone browser addition (2026-09-09): [Turing Morphogenesis](js-demos/turing-morphogenesis/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/turing-morphogenesis/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - Active implementation: legacy SoA `World`/`Systems` remains the default renderer and benchmark
   target. Canonical boids is opt-in through `--canonical` and remains the intended future path.
   Core scaffolding and the three steering-rule implementations exist. Canonical `ISpatialIndex` now
@@ -163,6 +221,7 @@
   remains tracked in #48.
   Instrumentation UX remains partial (#40). Full prescribed milestone 3-6 scenario acceptance is
   unverified (#41). Milestones 8-10 and multi-group semantics remain incomplete.
+- Standalone browser addition (2026-09-09): [Firefly Synchrony](js-demos/firefly-synchrony/README.md). The runnable model, tests and integration notes are packaged separately from the C# engine. [Verification](js-demos/firefly-synchrony/VERIFICATION.md) records browser checks; native integration remains proposed and C# test counts are unchanged.
 - Reproducibility: legacy wander consumes the world's configured RNG; canonical construction maps
   `SimConfig.Seed` and the canonical steering settings, and each wander-enabled boid receives an
   index-derived stream at successful spawn. The supported `--minimal` legacy harness also samples
@@ -226,10 +285,12 @@
   claims `friction = 1.0`, direction-only steering, or that agents hold `MaxSpeed`; the integrator
   skips friction entirely in that mode, adds steering straight into velocity, and applies an upper
   clamp only. `WorldTests.Tick_ConstantSpeed_IgnoresFrictionAndDoesNotRestoreMaxSpeed` pins the
-  `ConstantSpeed` correction only. **The `SenseSystem` separation correction is documentation, not
-  regression-covered**: `BoidsTests.Separation_TwoCloseAgents_PushApart` asserts only that close
-  agents move apart, so nothing pins the bounded linear falloff, the `BehaviorSystem`
-  re-normalization, or the near-zero skip, and a regression in any of them would go unnoticed.
+  `ConstantSpeed` correction only. **The `SenseSystem` semantics now have regression coverage**
+  on this branch (2026-10-05): the three `SenseSeparationTests` pass on current code and each
+  detects its corresponding mutation: inverse-distance falloff, removed `BehaviorSystem`
+  re-normalization, and removed near-zero skip. Together with `BoidsTests`, 11 seam tests pass.
+  Release build is warning-free; the non-Performance gate passes 232 tests on this branch.
+  Renderer UI and BenchmarkDotNet were not run for this test-only behavior change.
   The canonical `SeparationRule`
   genuinely does combine linear falloff with `1/d`, so the canonical descriptions elsewhere in this
   file remain correct and were deliberately left alone. No executable line changed.
@@ -404,7 +465,7 @@ SwarmSim.Benchmarks/    - BenchmarkDotNet suite (references Core)
 1. `SenseSystem` → 2. `BehaviorSystem` → 3. optional `WanderSystem` → 4. `IntegrateSystem`
 
 Combat, forage, reproduction, metabolism, and lifecycle systems are future Phase 3+ work
-(`SwarmSim.Core/World.cs:119-144`).
+(`SwarmSim.Core/World.cs` (`World.Initialize`)).
 
 ### Data Layout (SoA)
 Agent arrays: `X[]`, `Y[]`, `Vx[]`, `Vy[]`, `Fx[]`, `Fy[]`, `Energy[]`, `Health[]`, `Age[]`,

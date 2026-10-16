@@ -285,6 +285,56 @@ public class UniformGridTests
     }
 
     [Fact]
+    public void Rebuild_OverCapacityCount_ThrowsAndLeavesPriorIndexIntact()
+    {
+        var grid = new UniformGrid(cellSize: 10f, worldWidth: 100f, worldHeight: 100f, capacity: 4);
+        var x = new float[] { 5f, 15f, 5f, 15f, 25f };
+        var y = new float[] { 5f, 5f, 15f, 15f, 25f };
+
+        grid.Rebuild(x, y, count: 2);
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => grid.Rebuild(x, y, count: 5));
+        Assert.Equal("count", ex.ParamName);
+
+        var found = new List<int>();
+        grid.Query3x3(5f, 5f, idx => found.Add(idx));
+        Assert.Contains(0, found);
+        Assert.Contains(1, found);
+    }
+
+    [Fact]
+    public void Rebuild_NegativeCount_ThrowsWithoutMutating()
+    {
+        var grid = new UniformGrid(cellSize: 10f, worldWidth: 100f, worldHeight: 100f, capacity: 4);
+        var x = new float[] { 5f, 15f };
+        var y = new float[] { 5f, 5f };
+
+        grid.Rebuild(x, y, count: 2);
+
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => grid.Rebuild(x, y, count: -1));
+        Assert.Equal("count", ex.ParamName);
+
+        var found = new List<int>();
+        grid.Query3x3(5f, 5f, idx => found.Add(idx));
+        Assert.Contains(0, found);
+        Assert.Contains(1, found);
+    }
+
+    [Fact]
+    public void Rebuild_CountEqualsCapacity_Succeeds()
+    {
+        var grid = new UniformGrid(cellSize: 10f, worldWidth: 100f, worldHeight: 100f, capacity: 4);
+        var x = new float[] { 5f, 15f, 5f, 15f };
+        var y = new float[] { 5f, 5f, 15f, 15f };
+
+        grid.Rebuild(x, y, count: 4);
+
+        Span<int> buffer = stackalloc int[4];
+        int count = grid.Query3x3(10f, 10f, buffer, maxResults: 4);
+        Assert.Equal(4, count);
+    }
+
+    [Fact]
     public void Query3x3_CentreCellUsesTheSameMappingRebuildBinsWith()
     {
         // Guard, not a regression: this passes on every revision so far and exists to stop a
@@ -314,5 +364,38 @@ public class UniformGridTests
 
         Assert.True(MathF.Abs(neighborX - selfX) <= cellSize, "the neighbour must be inside the sense radius");
         Assert.Contains(1, buffer.AsSpan(0, Math.Min(found, buffer.Length)).ToArray());
+    }
+
+    [Fact]
+    public void Query3x3_MaxResultsLargerThanBuffer_Throws()
+    {
+        var grid = new UniformGrid(cellSize: 10f, worldWidth: 100f, worldHeight: 100f, capacity: 100);
+        var x = new float[] { 5f, 6f, 7f, 8f, 9f };
+        var y = new float[] { 5f, 5f, 5f, 5f, 5f };
+
+        grid.Rebuild(x, y, count: 5);
+
+        var buffer = new int[4];
+        var ex = Assert.Throws<ArgumentOutOfRangeException>(() => grid.Query3x3(5f, 5f, buffer, maxResults: 100));
+        Assert.Equal("maxResults", ex.ParamName);
+    }
+
+    [Fact]
+    public void Query3x3_MatchingValues_WritesUpToMaxResults()
+    {
+        var grid = new UniformGrid(cellSize: 10f, worldWidth: 100f, worldHeight: 100f, capacity: 100);
+        var x = new float[] { 5f, 6f, 7f, 8f, 9f };
+        var y = new float[] { 5f, 5f, 5f, 5f, 5f };
+
+        grid.Rebuild(x, y, count: 5);
+
+        Span<int> buffer = stackalloc int[4];
+        int count = grid.Query3x3(5f, 5f, buffer, maxResults: 4);
+
+        Assert.Equal(5, count);
+        var results = buffer[0..4].ToArray();
+        Assert.Equal(4, results.Length);
+        foreach (var idx in results)
+            Assert.InRange(idx, 0, 4);
     }
 }

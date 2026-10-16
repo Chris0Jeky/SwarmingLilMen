@@ -35,6 +35,48 @@ public sealed class CanonicalWorld
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
         Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
+        if (!float.IsFinite(settings.TargetSpeed) || settings.TargetSpeed <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.TargetSpeed,
+                "TargetSpeed must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.SenseRadius) || settings.SenseRadius <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SenseRadius,
+                "SenseRadius must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.MaxForce) || settings.MaxForce <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.MaxForce,
+                "MaxForce must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.FieldOfView) || settings.FieldOfView <= 0f || settings.FieldOfView > 360f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.FieldOfView,
+                "FieldOfView must be finite and in (0, 360].");
+        }
+        if (!float.IsFinite(settings.WorldWidth) || settings.WorldWidth <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WorldWidth,
+                "WorldWidth must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.WorldHeight) || settings.WorldHeight <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.WorldHeight,
+                "WorldHeight must be finite and positive.");
+        }
         if (!float.IsFinite(settings.MaxTurnRateDegPerSecond) || settings.MaxTurnRateDegPerSecond < 0f)
         {
             throw new ArgumentOutOfRangeException(
@@ -122,6 +164,13 @@ public sealed class CanonicalWorld
                 "SeparationPriorityRampOutTime must be finite.");
         }
 
+        if (spatialIndex.WorldWidth != settings.WorldWidth || spatialIndex.WorldHeight != settings.WorldHeight)
+        {
+            throw new ArgumentException(
+                "Spatial index world extents must exactly equal CanonicalWorldSettings.WorldWidth and WorldHeight.",
+                nameof(spatialIndex));
+        }
+
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];
         _nextBoids = new Boid[capacity];
@@ -165,11 +214,14 @@ public sealed class CanonicalWorld
 
     public void AddRule(IRule rule)
     {
-        _rules.Add(rule ?? throw new ArgumentNullException(nameof(rule)));
+        ArgumentNullException.ThrowIfNull(rule);
+        _rules.Add(rule);
     }
 
     public bool TryAddBoid(Vec2 position, Vec2 velocity, byte group = 0)
     {
+        if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(velocity.X) || !float.IsFinite(velocity.Y))
+            return false;
         if (Count >= _activeBoids.Length)
             return false;
 
@@ -211,6 +263,8 @@ public sealed class CanonicalWorld
     {
         if (index < 0 || index >= Count)
             return;
+        if (!float.IsFinite(velocity.X) || !float.IsFinite(velocity.Y))
+            return;
 
         Vec2 normalizedVelocity = velocity.WithLength(Settings.TargetSpeed);
         var boid = _activeBoids[index];
@@ -219,8 +273,7 @@ public sealed class CanonicalWorld
 
     public void Step(float deltaTime)
     {
-        if (deltaTime <= 0f)
-            throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta time must be positive.");
+        if (!float.IsFinite(deltaTime) || deltaTime <= 0f) throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta time must be finite and positive.");
 
         var current = _activeBoids.AsSpan(0, Count);
         _spatialIndex.Rebuild(current);
@@ -250,6 +303,7 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 SpatialQueryResult query = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
+                _instrumentation.RecordTruncation(i, query.IsTruncated);
                 int neighborCount = query.Count;
                 float fieldOfViewDegrees = Settings.FieldOfView;
 
