@@ -145,8 +145,11 @@ Available presets:
 Combining `--benchmark` with `--canonical` still measures the legacy world, because `RunBenchmark` in `SwarmSim.Render/Program.cs` returns before the canonical branch.
 
 Exit codes: `0` success; `1` the `--config` file failed to load; `2` usage error — an unknown
-`--preset`, or a missing or malformed option value (for example `-n abc`, `-n 0`, or `--config`
-with no path), reported on stderr with the option and value. Unrecognised options are still ignored.
+`--preset`, an unrecognised option or unexpected argument (for example a mistyped `--agnet-count`),
+or a missing, empty or malformed option value (for example `-n abc`, `-n 0`, `--preset ""`, or
+`--config` with no path or followed by another option), reported on stderr with the option and
+value. A usage error takes precedence over `--help`, `--version` and `--list-presets`. Agent counts
+accept surrounding whitespace and a leading `+` (`-n +5`).
 
 > **Known executable-help defect:**
 >
