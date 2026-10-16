@@ -426,6 +426,12 @@ internal static class Program
     {
         _cliOptions = CommandLineOptions.Parse(args);
 
+        if (_cliOptions.Error != null)
+        {
+            Console.Error.WriteLine($"{_cliOptions.Error} Use --help for usage.");
+            return 2;
+        }
+
         if (_cliOptions.RunMinimalTest)
         {
             MinimalTest.Run();

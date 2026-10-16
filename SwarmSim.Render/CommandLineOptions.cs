@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text;
 
 namespace SwarmSim.Render;
@@ -17,6 +18,9 @@ namespace SwarmSim.Render;
         public string? ConfigFile { get; private set; }
         public int? AgentCount { get; private set; }
         public bool UseCanonicalMode { get; private set; }
+
+        /// <summary>First usage error (missing or malformed option value); null when the arguments parsed cleanly.</summary>
+        public string? Error { get; private set; }
 
     public static CommandLineOptions Parse(string[] args)
     {
@@ -58,6 +62,10 @@ namespace SwarmSim.Render;
                     {
                         options.PresetName = preset;
                     }
+                    else
+                    {
+                        options.Fail($"{arg} requires a value.");
+                    }
                     break;
 
                 case "--config":
@@ -66,15 +74,26 @@ namespace SwarmSim.Render;
                     {
                         options.ConfigFile = configPath;
                     }
+                    else
+                    {
+                        options.Fail($"{arg} requires a value.");
+                    }
                     break;
 
                 case "--agent-count":
                 case "-n":
-                    if (TryGetValue(args, ref i, out var countText) &&
-                        int.TryParse(countText, out int count) &&
-                        count > 0)
+                    if (!TryGetValue(args, ref i, out var countText))
+                    {
+                        options.Fail($"{arg} requires a value.");
+                    }
+                    else if (int.TryParse(countText, NumberStyles.None, CultureInfo.InvariantCulture, out int count) &&
+                             count > 0)
                     {
                         options.AgentCount = count;
+                    }
+                    else
+                    {
+                        options.Fail($"Invalid value '{countText}' for {arg}: expected a positive integer.");
                     }
                     break;
 
@@ -119,6 +138,8 @@ namespace SwarmSim.Render;
         sb.AppendLine("  Press F12 to view snapshot/debug information.");
         return sb.ToString();
     }
+
+    private void Fail(string message) => Error ??= message;
 
     private static bool TryGetValue(string[] args, ref int index, out string value)
     {
