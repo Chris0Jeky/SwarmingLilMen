@@ -227,6 +227,15 @@ public sealed class World
     /// </summary>
     public int SpawnAgentsInCircle(float centerX, float centerY, float radius, int count, byte group = 0)
     {
+        if (count < 0)
+            throw new ArgumentOutOfRangeException(nameof(count));
+        if (!float.IsFinite(centerX))
+            throw new ArgumentOutOfRangeException(nameof(centerX));
+        if (!float.IsFinite(centerY))
+            throw new ArgumentOutOfRangeException(nameof(centerY));
+        if (!float.IsFinite(radius))
+            throw new ArgumentOutOfRangeException(nameof(radius));
+
         int spawned = 0;
         for (int i = 0; i < count; i++)
         {
@@ -324,8 +333,9 @@ public sealed class World
     {
         float dt = Config.FixedDeltaTime;
 
-        // Rebuild spatial grid (O(n) operation)
-        Grid.Rebuild(X, Y, Count);
+        // Rebuild spatial grid (O(n) operation), excluding not-yet-compacted dead agents
+        // so they cannot exhaust the bounded legacy neighbor buffer in SenseSystem.
+        Grid.Rebuild(X, Y, State, Count);
 
         // Clear force accumulators
         ClearForces();

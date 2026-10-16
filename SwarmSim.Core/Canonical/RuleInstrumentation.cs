@@ -10,6 +10,7 @@ public sealed class RuleInstrumentation
     private readonly float[] _alignmentMagnitudes;
     private readonly float[] _cohesionMagnitudes;
     private readonly float[] _steeringMagnitudesSquared;
+    private readonly bool[] _queryTruncated;
     private int _activeCount;
 
     public RuleInstrumentation(int capacity)
@@ -23,6 +24,7 @@ public sealed class RuleInstrumentation
         _alignmentMagnitudes = new float[capacity];
         _cohesionMagnitudes = new float[capacity];
         _steeringMagnitudesSquared = new float[capacity];
+        _queryTruncated = new bool[capacity];
     }
 
     internal void Prepare(int count)
@@ -34,6 +36,7 @@ public sealed class RuleInstrumentation
         Array.Clear(_alignmentMagnitudes, 0, _activeCount);
         Array.Clear(_cohesionMagnitudes, 0, _activeCount);
         Array.Clear(_steeringMagnitudesSquared, 0, _activeCount);
+        Array.Clear(_queryTruncated, 0, _activeCount);
     }
 
     internal void SetNeighborCount(int index, int value)
@@ -46,6 +49,12 @@ public sealed class RuleInstrumentation
     {
         if (index < _activeCount)
             _neighborWeightSums[index] = value;
+    }
+
+    internal void RecordTruncation(int index, bool isTruncated)
+    {
+        if (index < _activeCount)
+            _queryTruncated[index] = isTruncated;
     }
 
     internal void RecordSeparation(int index, float magnitude)
@@ -93,6 +102,13 @@ public sealed class RuleInstrumentation
     /// </summary>
     public ReadOnlySpan<float> SteeringMagnitudesSquared => _steeringMagnitudesSquared.AsSpan(0, _activeCount);
 
+    /// <summary>
+    /// Gets whether each active boid's neighbor query was truncated on the most recent
+    /// <see cref="CanonicalWorld.Step"/>, that is, whether qualifying neighbors did not fit
+    /// in the simulation's per-boid candidate buffer.
+    /// </summary>
+    public ReadOnlySpan<bool> QueryTruncated => _queryTruncated.AsSpan(0, _activeCount);
+
     public float AverageNeighborWeight
     {
         get
@@ -128,6 +144,25 @@ public sealed class RuleInstrumentation
             }
 
             return (min, max, (float)total / _activeCount);
+        }
+    }
+
+    /// <summary>
+    /// Gets the number of active boids whose neighbor query was truncated on the most recent
+    /// <see cref="CanonicalWorld.Step"/>. Equals the number of true entries in
+    /// <see cref="QueryTruncated"/>.
+    /// </summary>
+    public int TruncatedCount
+    {
+        get
+        {
+            int count = 0;
+            for (int i = 0; i < _activeCount; i++)
+            {
+                if (_queryTruncated[i])
+                    count++;
+            }
+            return count;
         }
     }
 

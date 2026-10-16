@@ -235,6 +235,7 @@ public sealed class SimConfig
 
         if (!float.IsFinite(Friction) || Friction < 0 || Friction > 1) errors.Add("Friction must be in [0, 1]");
         if (!float.IsFinite(MutationRate) || MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
+        if (!float.IsFinite(WanderStrength) || WanderStrength < 0) errors.Add("WanderStrength must be finite and >= 0");
 
         if (AggressionMatrix is null)
         {

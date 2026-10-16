@@ -103,6 +103,47 @@ public class WorldTests
     }
 
     [Fact]
+    public void SpawnAgentsInCircle_NegativeCount_Throws()
+    {
+        var world = new World(new SimConfig(), seed: 42u);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.SpawnAgentsInCircle(500f, 500f, 100f, -3));
+    }
+
+    [Theory]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(float.NegativeInfinity)]
+    public void SpawnAgentsInCircle_NonFiniteCenterX_Throws(float centerX)
+    {
+        var world = new World(new SimConfig(), seed: 42u);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.SpawnAgentsInCircle(centerX, 500f, 100f, 10));
+    }
+
+    [Theory]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(float.NegativeInfinity)]
+    public void SpawnAgentsInCircle_NonFiniteCenterY_Throws(float centerY)
+    {
+        var world = new World(new SimConfig(), seed: 42u);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.SpawnAgentsInCircle(500f, centerY, 100f, 10));
+    }
+
+    [Theory]
+    [InlineData(float.NaN)]
+    [InlineData(float.PositiveInfinity)]
+    [InlineData(float.NegativeInfinity)]
+    public void SpawnAgentsInCircle_NonFiniteRadius_Throws(float radius)
+    {
+        var world = new World(new SimConfig(), seed: 42u);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => world.SpawnAgentsInCircle(500f, 500f, radius, 10));
+    }
+
+    [Fact]
     public void MarkDead_SetsDeadFlag()
     {
         // Arrange

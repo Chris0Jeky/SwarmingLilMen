@@ -291,13 +291,15 @@ public static class MathUtils
     }
 
     /// <summary>
-    /// Fast inverse square root approximation (Quake III algorithm).
-    /// Good enough for normalization when speed matters more than precision.
+    /// Reciprocal square root, computed exactly as <c>1f / MathF.Sqrt(x)</c>.
+    /// This is not an approximation, has no precision trade-off, and is not faster than <c>MathF.Sqrt</c>.
+    /// A bit-hack variant could be added only if profiling shows a bottleneck.
     /// </summary>
     public static float FastInvSqrt(float x)
     {
-        // Modern C# JIT is pretty good, so we'll use normal sqrt for now
-        // If profiling shows this is a bottleneck, we can add the bit-hack version
+        // Exact reciprocal square root: 1f / MathF.Sqrt(x).
+        // Not an approximation, no precision trade-off, and not faster than MathF.Sqrt.
+        // A bit-hack variant could be added only if profiling shows a bottleneck.
         return 1f / MathF.Sqrt(x);
     }
 

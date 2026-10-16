@@ -72,6 +72,9 @@ public sealed class SenseSystem : ISimSystem
     /// </summary>
     public void Initialize(int capacity)
     {
+        if (capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(capacity), "Capacity must be positive.");
+
         _neighborCount = new int[capacity];
         _separationX = new float[capacity];
         _separationY = new float[capacity];

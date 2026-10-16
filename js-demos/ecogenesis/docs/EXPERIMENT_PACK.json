@@ -1,0 +1,153 @@
+{
+  "schema": "ecogenesis-experiment-pack/v1",
+  "model": "ecogenesis/v1",
+  "note": "Proposed protocols for replicated research runs. The browser demo exposes the required controls but does not yet implement an automatic batch runner.",
+  "experiments": [
+    {
+      "id": "ECO-01-baseline-turnover",
+      "title": "Baseline trophic turnover",
+      "question": "Does the Genesis basin retain all three trophic niches across seeds for two simulated years?",
+      "preset": "genesis",
+      "seeds": [101, 211, 307, 419, 523, 631, 743, 857, 967, 1087, 1201, 1303],
+      "ticks": 3600,
+      "interventions": [],
+      "parameters": {
+        "plantGrowth": 1.0,
+        "predationLethality": 1.0,
+        "mutationStrength": 1.0,
+        "speciationThreshold": 0.18
+      },
+      "metrics": [
+        "population",
+        "herbivores",
+        "omnivores",
+        "predators",
+        "plantMean",
+        "births",
+        "deaths",
+        "predationDeaths",
+        "maxGeneration"
+      ],
+      "successCriterion": "Report niche persistence probability and extinction-time distribution; do not promote a single surviving seed as stability evidence."
+    },
+    {
+      "id": "ECO-02-island-radiation",
+      "title": "Archipelago adaptive radiation",
+      "question": "How do habitat fragmentation and aquatic adaptation affect lineage branching and migration?",
+      "preset": "archipelago",
+      "seeds": [1409, 1523, 1627, 1741, 1847, 1951, 2063, 2179],
+      "ticks": 5400,
+      "sweep": {
+        "speciationThreshold": [0.10, 0.14, 0.18, 0.24],
+        "mutationStrength": [0.75, 1.0, 1.5]
+      },
+      "interventions": [],
+      "metrics": [
+        "livingSpecies",
+        "speciesOrigination",
+        "speciesExtinction",
+        "aquaticTraitMean",
+        "aquaticTraitVariance",
+        "islandOccupancy",
+        "lineageDepth",
+        "genomeDiversity"
+      ],
+      "successCriterion": "Treat cluster count as algorithm-dependent; report sensitivity to the speciation threshold alongside every radiation result."
+    },
+    {
+      "id": "ECO-03-arms-race",
+      "title": "Predator–prey trait arms race",
+      "question": "Which combinations of lethality and mutation maintain coevolution rather than immediate prey or predator collapse?",
+      "preset": "armsrace",
+      "seeds": [2281, 2383, 2503, 2609, 2711, 2819, 2939, 3041],
+      "ticks": 5400,
+      "sweep": {
+        "predationLethality": [0.5, 0.8, 1.0, 1.3, 1.7],
+        "mutationStrength": [0.5, 1.0, 1.5]
+      },
+      "interventions": [],
+      "metrics": [
+        "preyBodySizeMean",
+        "preySpeedMean",
+        "preyDefenseMean",
+        "preyCamouflageMean",
+        "predatorBodySizeMean",
+        "predatorSpeedMean",
+        "predationRate",
+        "nichePersistence"
+      ],
+      "successCriterion": "Use replicated trajectories and extinction probabilities; avoid inferring adaptation from one terminal trait mean."
+    },
+    {
+      "id": "ECO-04-plague-selection",
+      "title": "Plague, immunity and demographic cost",
+      "question": "Does repeated pathogen pressure select higher immunity, and what population cost follows?",
+      "preset": "genesis",
+      "seeds": [3163, 3271, 3389, 3499, 3613, 3727, 3847, 3967],
+      "ticks": 5400,
+      "sweep": {
+        "diseaseTransmission": [0.5, 1.0, 1.5, 2.0]
+      },
+      "interventions": [
+        {"tick": 1200, "type": "plague"},
+        {"tick": 3000, "type": "plague"}
+      ],
+      "metrics": [
+        "infectionPrevalence",
+        "infectionIncidence",
+        "recoveryRate",
+        "immunityMean",
+        "immunityVariance",
+        "population",
+        "birthRate",
+        "deathRate"
+      ],
+      "successCriterion": "Compare against intervention-free controls at identical seeds and report the built-in immunity metabolic cost."
+    },
+    {
+      "id": "ECO-05-catastrophe-recovery",
+      "title": "Mass-extinction recovery and hysteresis",
+      "question": "Does post-impact ecology return to its pre-impact trophic and trait state?",
+      "preset": "genesis",
+      "seeds": [4001, 4111, 4217, 4337, 4447, 4561, 4679, 4787, 4903, 5009],
+      "ticks": 7200,
+      "interventions": [
+        {"tick": 2700, "type": "meteor", "x": 800, "y": 450, "radius": 280}
+      ],
+      "metrics": [
+        "population",
+        "plantMean",
+        "trophicComposition",
+        "genomeDiversity",
+        "livingSpecies",
+        "lineageSurvival",
+        "recoveryTime",
+        "terminalDistanceFromPreImpactState"
+      ],
+      "successCriterion": "Define recovery before running: demographic, functional and genetic recovery are separate outcomes."
+    },
+    {
+      "id": "ECO-06-cambrian-sensitivity",
+      "title": "Mutation and operational speciation sensitivity",
+      "question": "How much apparent adaptive radiation is biological turnover versus a clustering-threshold artifact?",
+      "preset": "cambrian",
+      "seeds": [5119, 5231, 5347, 5471, 5581, 5701, 5813, 5927],
+      "ticks": 3600,
+      "sweep": {
+        "mutationStrength": [0.75, 1.0, 1.5, 2.15, 2.5],
+        "speciationThreshold": [0.08, 0.10, 0.12, 0.16, 0.22, 0.30]
+      },
+      "interventions": [],
+      "metrics": [
+        "livingSpecies",
+        "singletonSpeciesFraction",
+        "speciesLifetimeDistribution",
+        "genomeDiversity",
+        "lineageDepth",
+        "traitDispersion",
+        "population"
+      ],
+      "successCriterion": "Always publish the full mutation × threshold surface; never report one cluster count without its sensitivity context."
+    }
+  ]
+}

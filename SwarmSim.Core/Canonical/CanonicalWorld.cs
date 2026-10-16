@@ -164,6 +164,13 @@ public sealed class CanonicalWorld
                 "SeparationPriorityRampOutTime must be finite.");
         }
 
+        if (spatialIndex.WorldWidth != settings.WorldWidth || spatialIndex.WorldHeight != settings.WorldHeight)
+        {
+            throw new ArgumentException(
+                "Spatial index world extents must exactly equal CanonicalWorldSettings.WorldWidth and WorldHeight.",
+                nameof(spatialIndex));
+        }
+
         int capacity = Math.Max(settings.InitialCapacity, 1);
         _activeBoids = new Boid[capacity];
         _nextBoids = new Boid[capacity];
@@ -296,6 +303,7 @@ public sealed class CanonicalWorld
             if (_rules.Count > 0)
             {
                 SpatialQueryResult query = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
+                _instrumentation.RecordTruncation(i, query.IsTruncated);
                 int neighborCount = query.Count;
                 float fieldOfViewDegrees = Settings.FieldOfView;
 

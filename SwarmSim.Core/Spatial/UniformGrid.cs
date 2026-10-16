@@ -1,3 +1,4 @@
+using SwarmSim.Core;
 using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core.Spatial;
@@ -140,6 +141,59 @@ public sealed class UniformGrid
     }
 
     /// <summary>
+    /// Rebuilds the grid from agent positions, excluding dead agents from the index.
+    /// This is the legacy neighbor path: dead slots remain in the caller's arrays until
+    /// compaction, but they must not occupy grid cells (and bounded query slots).
+    /// The 3-argument <see cref="Rebuild(float[], float[], int)"/> behavior is unchanged.
+    /// O(n) where n = agent count. No allocations.
+    /// </summary>
+    /// <param name="x">Agent X positions.</param>
+    /// <param name="y">Agent Y positions.</param>
+    /// <param name="state">Agent states; entries with <see cref="AgentState.Dead"/> are skipped.</param>
+    /// <param name="count">Number of active agents.</param>
+    /// <exception cref="ArgumentNullException">Thrown when any array is null.</exception>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown when <paramref name="count"/> is negative or exceeds the grid capacity or input lengths.</exception>
+    public void Rebuild(float[] x, float[] y, AgentState[] state, int count)
+    {
+        // Validate before mutating so a bad call leaves the prior index intact.
+        if (x is null)
+            throw new ArgumentNullException(nameof(x));
+        if (y is null)
+            throw new ArgumentNullException(nameof(y));
+        if (state is null)
+            throw new ArgumentNullException(nameof(state));
+        if (count < 0)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count must be non-negative.");
+        if (count > _next.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds grid capacity.");
+        if (count > x.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds x array length.");
+        if (count > y.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds y array length.");
+        if (count > state.Length)
+            throw new ArgumentOutOfRangeException(nameof(count), "Count exceeds state array length.");
+
+        // Clear all cells
+        Array.Fill(_head, -1);
+
+        // Insert each live agent into its cell
+        for (int i = 0; i < count; i++)
+        {
+            if (state[i].HasFlag(AgentState.Dead))
+            {
+                _next[i] = -1;
+                continue;
+            }
+
+            int cellIdx = GetCellIndex(x[i], y[i]);
+
+            // Push agent to front of cell's linked list
+            _next[i] = _head[cellIdx];
+            _head[cellIdx] = i;
+        }
+    }
+
+    /// <summary>
     /// Queries all agents in the 3×3 neighborhood around the given position.
     /// Calls the callback for each agent found (including the center cell).
     /// </summary>
@@ -148,6 +202,8 @@ public sealed class UniformGrid
     /// <param name="callback">Called for each agent index found</param>
     public void Query3x3(float x, float y, Action<int> callback)
     {
+        ArgumentNullException.ThrowIfNull(callback);
+
         // Get center cell coordinates
         int centerCol = (int)(x / CellSize);
         int centerRow = (int)(y / CellSize);
@@ -192,6 +248,9 @@ public sealed class UniformGrid
     /// <returns>Number of agents found (may exceed maxResults)</returns>
     public int Query3x3(float x, float y, Span<int> buffer, int maxResults)
     {
+        if (maxResults > buffer.Length)
+            throw new ArgumentOutOfRangeException(nameof(maxResults), "maxResults exceeds buffer length.");
+
         int count = 0;
 
         // Get center cell coordinates
