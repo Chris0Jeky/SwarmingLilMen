@@ -481,7 +481,7 @@ internal static class Program
         }
         else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName))
         {
-            Console.WriteLine($"Unknown preset '{_cliOptions.PresetName}'. Use --list-presets to view options.");
+            Console.Error.WriteLine($"Unknown preset '{_cliOptions.PresetName}'. Use --list-presets to view options.");
             return 2;
         }
 
