@@ -144,6 +144,10 @@ Available presets:
 
 Combining `--benchmark` with `--canonical` still measures the legacy world, because `RunBenchmark` in `SwarmSim.Render/Program.cs` returns before the canonical branch.
 
+Exit codes: `0` success; `1` the `--config` file failed to load; `2` usage error — an unknown
+`--preset`, or a missing or malformed option value (for example `-n abc`, `-n 0`, or `--config`
+with no path), reported on stderr with the option and value. Unrecognised options are still ignored.
+
 > **Known executable-help defect:**
 >
 > - The copied F12 instruction applies only to the legacy renderer. Canonical mode uses **O** for

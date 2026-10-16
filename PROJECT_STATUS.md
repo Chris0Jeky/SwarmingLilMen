@@ -72,6 +72,13 @@
   and the non-Performance gate passes 228 tests on this branch. Renderer UI and
   BenchmarkDotNet were not run for this change.
 
+- CLI usage errors (#146, branch verification, 2026-10-16): a missing or malformed option value
+  (`-n abc`, `-n 0`, `-n 99999999999`, `--preset`/`--config`/`--agent-count` with no value) now
+  exits 2 with the option and value on stderr instead of falling through to a success exit; the
+  scheme (0 / 1 config load / 2 usage) is in README. `CliExitCodeTests` asserts exact codes; its
+  eight malformed-value cases failed (returned 0) before the parser change. Unrecognised options
+  are still silently ignored. Windowed renderer and BenchmarkDotNet were not run.
+
 - CLI failure exits (branch verification, 2026-10-05): unknown presets exit 2 and
   config-load failures exit 1; help, preset listing, and a 20-agent headless run exit 0.
   Process exits were checked directly, and both error regression tests fail with zero
