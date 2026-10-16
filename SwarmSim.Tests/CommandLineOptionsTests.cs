@@ -28,6 +28,33 @@ public class CommandLineOptionsTests
     }
 
     [Fact]
+    public void Parse_ValidArguments_HaveNoError()
+    {
+        var options = CommandLineOptions.Parse(new[] { "--preset", "balanced", "-n", "5000", "--benchmark" });
+        Assert.Null(options.Error);
+    }
+
+    [Fact]
+    public void Parse_MalformedAgentCount_ErrorNamesOptionAndValue()
+    {
+        var options = CommandLineOptions.Parse(new[] { "-n", "abc" });
+
+        Assert.Null(options.AgentCount);
+        Assert.NotNull(options.Error);
+        Assert.Contains("-n", options.Error, StringComparison.Ordinal);
+        Assert.Contains("'abc'", options.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Parse_MissingValue_ErrorNamesOption()
+    {
+        var options = CommandLineOptions.Parse(new[] { "--config" });
+
+        Assert.NotNull(options.Error);
+        Assert.Contains("--config", options.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Parse_RecognizesHelpAndListFlags()
     {
         var options = CommandLineOptions.Parse(new[] { "--help", "--list-presets" });
