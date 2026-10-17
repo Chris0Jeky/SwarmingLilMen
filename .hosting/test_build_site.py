@@ -70,12 +70,154 @@ class BuildSiteTests(unittest.TestCase):
                                {"js-demos/a/index.html": html, "js-demos/a/s.css": "a{}", "js-demos/a/app.js": "1"})
         self.assertEqual(errors, [])
 
+    def test_unquoted_local_attributes_fail(self):
+        for tag in ("<script src=missing.js></script>", "<a href=missing.html>x</a>",
+                    "<video poster=missing.png></video>"):
+            with self.subTest(tag=tag):
+                root, errors = self.build(["js-demos/a/index.html"], {"js-demos/a/index.html": tag})
+                self.assertTrue(any("missing." in e and "not on the allowlist" in e for e in errors), errors)
+                self.assertFalse((root / "_site").exists())
+
+    def test_unquoted_remote_attributes_fail(self):
+        for url in ("https://cdn.example/x.js", "//cdn.example/x.js"):
+            with self.subTest(url=url):
+                _, errors = self.build(["js-demos/a/index.html"],
+                                       {"js-demos/a/index.html": f"<script SRC={url}></script>"})
+                self.assertTrue(any(url in e and "remote" in e for e in errors), errors)
+
+    def test_literal_js_url_assignments_fail(self):
+        url = "https://cdn.example/x.js"
+        for rel in ("js-demos/a/index.html", "js-demos/a/app.js", "js-demos/a/app.mjs"):
+            for js in (f"var s=document.createElement('script');s.src='{url}';",
+                       f'img.src = "{url}";', f"a.href='{url}';", f"video.poster='{url}';",
+                       f"const markup = `<img src='{url}'>`;"):
+                with self.subTest(rel=rel, js=js):
+                    text = PAGE.format(t="A", js=js) if rel.endswith(".html") else js
+                    root, errors = self.build([rel], {rel: text})
+                    self.assertTrue(any(url in e and "remote" in e for e in errors), errors)
+                    self.assertFalse((root / "_site").exists())
+
+    def test_namespaced_and_data_url_attributes_fail(self):
+        for rel in ("js-demos/a/index.html", "js-demos/a/image.svg"):
+            for name in ("xlink:href", "data-src", "data-href", "data-poster"):
+                for url in ("missing.png", "https://cdn.example/x.png"):
+                    with self.subTest(rel=rel, name=name, url=url):
+                        text = f"<svg><image {name}={url}></image></svg>"
+                        root, errors = self.build([rel], {rel: text})
+                        self.assertTrue(any(url in e for e in errors), errors)
+                        self.assertFalse((root / "_site").exists())
+
+    def test_srcset_candidates_are_checked(self):
+        for url in ("missing.png", "https://cdn.example/x.png"):
+            with self.subTest(url=url):
+                _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.png"],
+                    {"js-demos/a/index.html": f'<img srcset="ok.png 1x, {url} 2x">',
+                     "js-demos/a/ok.png": "image"})
+                self.assertTrue(any(url in e for e in errors), errors)
+
+    def test_imagesrcset_candidates_are_checked(self):
+        for value in ("missing.png", '"ok.png 1x, https://example.test/missing.png 2x"'):
+            with self.subTest(value=value):
+                _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.png"],
+                    {"js-demos/a/index.html": f"<link rel=preload as=image imagesrcset={value}>",
+                     "js-demos/a/ok.png": "image"})
+                self.assertTrue(any("missing.png" in e for e in errors), errors)
+
+    def test_meta_refresh_url_is_checked(self):
+        for content, url in (("0; URL='missing.html'", "missing.html"),
+                             ("0;url=https://example.test/", "https://example.test/")):
+            with self.subTest(content=content):
+                _, errors = self.build(["js-demos/a/index.html"],
+                    {"js-demos/a/index.html": f'<meta HTTP-EQUIV=Refresh content="{content}">'})
+                self.assertTrue(any(url in e for e in errors), errors)
+
+    def test_allowlisted_attribute_candidates_pass(self):
+        _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.png"],
+            {"js-demos/a/index.html": '<img src=ok.png srcset="ok.png 1x, ok.png 2x">'
+                                    '<link imagesrcset="data:image/png;base64,AA== 1x, ok.png 2x">'
+                                    '<meta http-equiv=refresh content="0; url=index.html">',
+             "js-demos/a/ok.png": "image"})
+        self.assertEqual(errors, [])
+
     def test_css_and_js_references_are_found(self):
         js = 'fetch("data.json"); const w = new Worker(\'w.js\');'
         html = "<style>a{background:url(bg.png)}</style>" + PAGE.format(t="A", js=js)
         _, errors = self.build(["js-demos/a/index.html"], {"js-demos/a/index.html": html})
         for name in ("bg.png", "data.json", "w.js"):
             self.assertTrue(any(name in e for e in errors), (name, errors))
+
+    def test_computed_fetch_fails_closed(self):
+        for js in ("fetch(variable)", "fetch ('ok.js' + variable)", "fetch(`ok.js/${variable}`)",
+                   r"fetch('ok\x2ejs')",
+                   "const message = `${fetch(variable)}`;"):
+            with self.subTest(js=js):
+                root, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.js"],
+                    {"js-demos/a/index.html": PAGE.format(t="A", js=js), "js-demos/a/ok.js": "1"})
+                self.assertTrue(any("cannot statically resolve fetch" in e for e in errors), errors)
+                self.assertFalse((root / "_site").exists())
+
+    def test_computed_import_fails_closed(self):
+        for js in ("import(variable)", "import('ok.js' + variable)", "import(`ok.js/${variable}`)"):
+            with self.subTest(js=js):
+                _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.js"],
+                    {"js-demos/a/index.html": '<script src=ok.js></script>', "js-demos/a/ok.js": js})
+                self.assertTrue(any("cannot statically resolve import" in e for e in errors), errors)
+
+    def test_multiline_import_fails_closed(self):
+        for js in ("import {\n  thing\n} from 'ok.js';", "import thing\nfrom 'ok.js';",
+                   "import(\n'ok.js'\n)"):
+            with self.subTest(js=js):
+                _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.js"],
+                    {"js-demos/a/index.html": PAGE.format(t="A", js=js), "js-demos/a/ok.js": "1"})
+                self.assertTrue(any("import" in e and "multi-line" in e for e in errors), errors)
+
+    def test_import_literal_references_are_checked(self):
+        for js in ("import('missing.js');", "import thing from 'missing.js';",
+                   "import 'https://example.test/missing.js';"):
+            with self.subTest(js=js):
+                _, errors = self.build(["js-demos/a/index.html"],
+                                       {"js-demos/a/index.html": PAGE.format(t="A", js=js)})
+                self.assertTrue(any("missing.js" in e for e in errors), errors)
+
+    def test_inline_js_attributes_are_checked(self):
+        for tag, error in (('<button onclick="fetch(variable)">load</button>', "cannot statically resolve fetch"),
+                           ('<a href="javascript:fetch(variable)">load</a>', "cannot statically resolve fetch"),
+                           ('<a href="javascript:fetch(\'https://example.test/\')">load</a>', "remote")):
+            with self.subTest(tag=tag):
+                _, errors = self.build(["js-demos/a/index.html"], {"js-demos/a/index.html": tag})
+                self.assertTrue(any(error in e for e in errors), errors)
+
+    def test_service_worker_literal_reference_is_checked(self):
+        for url in ("missing.js", "https://example.test/worker.js"):
+            with self.subTest(url=url):
+                js = f"navigator.serviceWorker.register('{url}');"
+                _, errors = self.build(["js-demos/a/index.html"],
+                                       {"js-demos/a/index.html": PAGE.format(t="A", js=js)})
+                self.assertTrue(any(url in e for e in errors), errors)
+
+    def test_computed_service_worker_fails_closed(self):
+        for arg in ("variable", "'ok.js' + variable", "`ok.js/${variable}`"):
+            with self.subTest(arg=arg):
+                _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.js"],
+                    {"js-demos/a/index.html": PAGE.format(t="A", js=f"navigator.serviceWorker.register({arg});"),
+                     "js-demos/a/ok.js": "1"})
+                self.assertTrue(any("cannot statically resolve serviceWorker.register" in e for e in errors), errors)
+
+    def test_literal_js_references_on_allowlist_pass(self):
+        for js in ("fetch('ok.js', {cache: 'no-cache'});", "fetch(`ok.js`);", "import('ok.js');",
+                   "import thing from 'ok.js';", "import 'ok.js';",
+                   "const url = import.meta.url;",
+                   "navigator.serviceWorker.register('ok.js', {scope: './'});"):
+            with self.subTest(js=js):
+                _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.js"],
+                    {"js-demos/a/index.html": PAGE.format(t="A", js=js), "js-demos/a/ok.js": "1"})
+                self.assertEqual(errors, [])
+
+    def test_js_comments_and_strings_are_not_requests(self):
+        js = "// fetch('https://example.test/')\nconst message = \"fetch('https://example.test/')\";"
+        _, errors = self.build(["js-demos/a/index.html"],
+                               {"js-demos/a/index.html": PAGE.format(t="A", js=js)})
+        self.assertEqual(errors, [])
 
     def test_remote_reference_fails(self):
         html = '<script src="https://cdn.example/x.js"></script>' + PAGE.format(t="A", js="1")

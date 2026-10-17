@@ -10,6 +10,12 @@
 
 ## Verified Live State (2026-08-08)
 
+- Hosting reference scanner (#141, branch verification, 2026-10-17): `html.parser` checks
+  quoted/unquoted attributes, source-set candidates and meta refresh URLs. Computed JS
+  fetch/import/service-worker references and multi-line imports fail before output is written.
+  Focused hosting tests pass (24 passed, one symlink test skipped on this host), including a
+  build of the seven allowlisted demos. No publication or deployment was performed.
+
 - Ecogenesis checkpoint hardening (2026-10-16, local PR #73 edits): ancestry uses text nodes;
   archive/selection validation and collection caps reject malformed imports; restore stages state
   before applying it and copies known organism/species fields. Static checks and 47 browser checks
