@@ -21,6 +21,7 @@ BAD_SEGMENTS = {"tests", "docs", "node_modules"}
 SCANNED = {".html", ".css", ".js", ".mjs", ".svg"}
 INERT = ("data:", "blob:", "mailto:", "javascript:", "about:")
 REFS = [re.compile(p, re.I | re.M) for p in (
+    r"""\b(?:src|href|poster)\s*=\s*["']([^"']+)["']""",
     r"""\burl\(\s*["']?([^)"']+?)["']?\s*\)""",
     r"""@import\s+["']([^"']+)["']""",
     r"""\bnew\s+(?:Shared)?Worker\(\s*["']([^"']+)["']""",
@@ -46,7 +47,8 @@ class AttributeRefs(HTMLParser):
         for name, value in attrs:
             if not value:
                 continue
-            if name in {"src", "href", "poster"}:
+            name = name.rsplit(":", 1)[-1]
+            if name in {"src", "href", "poster", "data-src", "data-href", "data-poster"}:
                 self.refs.append(value)
                 if value.lstrip().lower().startswith("javascript:"):
                     self.scripts.append(value.split(":", 1)[1])

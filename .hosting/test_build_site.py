@@ -85,6 +85,28 @@ class BuildSiteTests(unittest.TestCase):
                                        {"js-demos/a/index.html": f"<script SRC={url}></script>"})
                 self.assertTrue(any(url in e and "remote" in e for e in errors), errors)
 
+    def test_literal_js_url_assignments_fail(self):
+        url = "https://cdn.example/x.js"
+        for rel in ("js-demos/a/index.html", "js-demos/a/app.js", "js-demos/a/app.mjs"):
+            for js in (f"var s=document.createElement('script');s.src='{url}';",
+                       f'img.src = "{url}";', f"a.href='{url}';", f"video.poster='{url}';",
+                       f"const markup = `<img src='{url}'>`;"):
+                with self.subTest(rel=rel, js=js):
+                    text = PAGE.format(t="A", js=js) if rel.endswith(".html") else js
+                    root, errors = self.build([rel], {rel: text})
+                    self.assertTrue(any(url in e and "remote" in e for e in errors), errors)
+                    self.assertFalse((root / "_site").exists())
+
+    def test_namespaced_and_data_url_attributes_fail(self):
+        for rel in ("js-demos/a/index.html", "js-demos/a/image.svg"):
+            for name in ("xlink:href", "data-src", "data-href", "data-poster"):
+                for url in ("missing.png", "https://cdn.example/x.png"):
+                    with self.subTest(rel=rel, name=name, url=url):
+                        text = f"<svg><image {name}={url}></image></svg>"
+                        root, errors = self.build([rel], {rel: text})
+                        self.assertTrue(any(url in e for e in errors), errors)
+                        self.assertFalse((root / "_site").exists())
+
     def test_srcset_candidates_are_checked(self):
         for url in ("missing.png", "https://cdn.example/x.png"):
             with self.subTest(url=url):
