@@ -35,6 +35,10 @@ JS_DENIED = {"WebSocket", "WebSocketStream", "WebTransport", "EventSource", "sen
 # After one of these a `/` starts a regular expression; after any other identifier, number, `)` or `]` it divides.
 JS_REGEX_AFTER = {"return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do",
                   "else", "yield", "await", "default"}
+# A `/` after `}` or `)` may divide or start a regex; if the regex reading would swallow any of these, reject.
+JS_SLASH_RISK = re.compile(r"""["'`]|\b(?:""" + "|".join(sorted(JS_CALLS | JS_DENIED | {"serviceWorker", "export"})) + r")\b")
+JS_EXPORT = re.compile(r"""\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}'"`/]*\})""")
+JS_EXPORT_FROM = re.compile(r"""\s*from\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')""")
 JS_SCRIPT_TYPES = ("javascript", "ecmascript", "jscript", "livescript")
 JS_LITERAL = re.compile(r"""\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)'|`([^`\\\r\n]*)`)\s*(?=[,)])""")
 JS_IMPORT = re.compile(r"""[ \t]+(?:[^;\r\n]*?\bfrom[ \t]+)?(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')[ \t]*(?=;|\r?$)""", re.M)
@@ -49,7 +53,9 @@ class AttributeRefs(HTMLParser):
 
     def handle_starttag(self, tag, attrs):
         if tag == "script":
-            self.block = [] if script_is_executable(dict(attrs).get("type")) else None
+            # Browsers read the first duplicate attribute; being unsure which one wins, any executable one counts.
+            types = [value for name, value in attrs if name == "type"] or [None]
+            self.block = [] if any([script_is_executable(value) for value in types]) else None
         for name, value in attrs:
             if not value:
                 continue
@@ -146,11 +152,24 @@ def _literal_ref(text, construct, start, end):
     return ref
 
 
+def _slash(text, i):
+    """Index after a `/` that follows `)` or `}` and so may divide or open a regex. Treated as division;
+    rejected if the regex reading would swallow a quote or a checked name, since the two readings differ."""
+    try:
+        end = _regex(text, i)
+    except ValueError:
+        return i + 1
+    if JS_SLASH_RISK.search(text, i, end):
+        raise ValueError("cannot analyse script: a `/` after `)` or `}` may be division or a regular expression")
+    return i + 1
+
+
 def js_refs(text):
     """Yield the single literal URL of each fetch/import/Worker/... in code; raise ValueError for anything
     that cannot be resolved statically. Comments, strings, regex literals and template text are inert;
     `${...}` parts of a template are code. A heuristic lexer, not a parser: when unsure it must reject."""
     i, n, regex_ok, after_dot, templates = 0, len(text), True, False, []  # templates: open `{` count per `${`
+    either = False  # the previous token was `)` or `}`: a following `/` is ambiguous
     while i < n:
         c = text[i]
         if c.isspace():
@@ -167,8 +186,9 @@ def js_refs(text):
             i = end + 2
             continue
         dotted, after_dot = after_dot, c == "."
-        if c == "/" and regex_ok:
-            i, regex_ok = _regex(text, i), False
+        ambiguous, either = either, c in ")}"
+        if c == "/" and (regex_ok or ambiguous):
+            i, regex_ok = (_slash(text, i), True) if ambiguous else (_regex(text, i), False)
         elif c in "\"'":
             i, regex_ok = _quoted(text, i), False
         elif c == "`" or (c == "}" and templates and templates[-1] == 0):
@@ -195,6 +215,15 @@ def js_refs(text):
                 if not register:
                     raise ValueError("serviceWorker may only appear as serviceWorker.register(<literal URL>)")
                 name, i = "serviceWorker.register", register.end()
+            if name == "export" and re.match(r"\s*[*{]", text[i:]):  # `export * from`, `export {a} from`
+                head = JS_EXPORT.match(text, i)
+                if not head:
+                    raise ValueError("cannot statically resolve export reference: use a single literal URL")
+                if re.compile(r"\s*from(?![\w$])").match(text, head.end()):
+                    source = JS_EXPORT_FROM.match(text, head.end())
+                    if not source:
+                        raise ValueError("cannot statically resolve export reference: use a single literal URL")
+                    yield next(g for g in source.groups() if g is not None)
             if name in JS_CALLS - {"register"} or name == "serviceWorker.register" or (name == "register" and dotted):
                 ref = _literal_ref(text, name, start, i)
                 if ref is not None:

