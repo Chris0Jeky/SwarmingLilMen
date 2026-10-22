@@ -1,0 +1,26 @@
+# Tests only: runs the static-publication scanner suite on changes that could affect what
+# pages-demos.yml would publish. It builds nothing for Pages and deploys nothing; publication
+# stays in pages-demos.yml, which runs only by hand from main.
+name: 'Hosting scanner'
+on:
+  pull_request:
+    branches: [main]
+    paths: ['.hosting/**', 'js-demos/**', '.github/workflows/hosting-scanner.yml']
+  push:
+    branches: [main]
+    paths: ['.hosting/**', 'js-demos/**', '.github/workflows/hosting-scanner.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  scanner-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test the allowlist scanner
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python3 -m unittest discover -s .hosting -p "test_*.py"
