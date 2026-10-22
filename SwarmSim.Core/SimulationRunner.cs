@@ -53,6 +53,8 @@ public sealed class SimulationRunner
     /// <summary>
     /// Advances the simulation using elapsed wall time measured in seconds.
     /// Returns the number of ticks processed during this call.
+    /// An exception thrown by the snapshot callback propagates; the tick that triggered it
+    /// stays executed and its time stays consumed, so a later call does not replay it.
     /// </summary>
     public int Advance(double elapsedSeconds)
     {
@@ -64,8 +66,7 @@ public sealed class SimulationRunner
 
         while (_accumulatorSeconds + 1e-9 >= _fixedDeltaSeconds && steps < _maxStepsPerAdvance)
         {
-            StepInternal();
-            _accumulatorSeconds -= _fixedDeltaSeconds;
+            StepInternal(clampAtZero: false);
             steps++;
         }
 
@@ -90,8 +91,7 @@ public sealed class SimulationRunner
     /// </summary>
     public SimSnapshot Step()
     {
-        StepInternal();
-        _accumulatorSeconds = Math.Max(0, _accumulatorSeconds - _fixedDeltaSeconds);
+        StepInternal(clampAtZero: true);
         return CreateSnapshot();
     }
 
@@ -114,9 +114,17 @@ public sealed class SimulationRunner
         ResetAccumulator();
     }
 
-    private void StepInternal()
+    private void StepInternal(bool clampAtZero)
     {
         _world.Tick();
+
+        // The tick has executed: consume its time before the observer runs, so a throwing
+        // callback propagates without leaving the tick's time to be replayed. If Tick() itself
+        // throws, we never get here and the time stays in the accumulator.
+        _accumulatorSeconds -= _fixedDeltaSeconds;
+        if (clampAtZero && _accumulatorSeconds < 0)
+            _accumulatorSeconds = 0;
+
         _snapshotCallback?.Invoke(CreateSnapshot());
     }
 
