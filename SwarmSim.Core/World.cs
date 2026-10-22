@@ -237,7 +237,8 @@ public sealed class World
             throw new ArgumentOutOfRangeException(nameof(radius));
 
         int spawned = 0;
-        for (int i = 0; i < count; i++)
+        // Stop once full: further iterations could only burn RNG draws and change later spawns.
+        for (int i = 0; i < count && Count < Capacity; i++)
         {
             (float dx, float dy) = Rng.NextPointInCircle(radius);
             float x = centerX + dx;

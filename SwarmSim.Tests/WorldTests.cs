@@ -103,6 +103,31 @@ public class WorldTests
     }
 
     [Fact]
+    public void SpawnAgentsInCircle_StopsDrawingRngOnceFull()
+    {
+        var config = new SimConfig { InitialCapacity = 2, MaxCapacity = 2 };
+        var exact = new World(config, seed: 7u);
+        var over = new World(config, seed: 7u);
+
+        Assert.Equal(2, exact.SpawnAgentsInCircle(500f, 500f, 100f, count: 2));
+        Assert.Equal(2, over.SpawnAgentsInCircle(500f, 500f, 100f, count: 3));
+
+        Assert.Equal(exact.Rng.Next(), over.Rng.Next());
+        Assert.Equal(-1, over.AddRandomAgent());
+    }
+
+    [Fact]
+    public async Task SpawnAgentsInCircle_HugeCountOnTinyWorld_ReturnsPromptly()
+    {
+        var world = new World(new SimConfig { InitialCapacity = 2, MaxCapacity = 2 }, seed: 7u);
+
+        var task = Task.Run(() => world.SpawnAgentsInCircle(500f, 500f, 100f, int.MaxValue));
+
+        Assert.Same(task, await Task.WhenAny(task, Task.Delay(TimeSpan.FromSeconds(5))));
+        Assert.Equal(2, await task);
+    }
+
+    [Fact]
     public void SpawnAgentsInCircle_NegativeCount_Throws()
     {
         var world = new World(new SimConfig(), seed: 42u);
