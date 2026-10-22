@@ -10,6 +10,15 @@
 
 ## Verified Live State (2026-08-08)
 
+- Firefly/Turing checkpoint edge cases (#75/#76, worktree verification, 2026-10-22):
+  Firefly ring spans through 1.00 use unique neighbors; imported positions and live movement
+  wrap into [0,1), with phases normalized in radians. Turing fingerprints include evolution,
+  reset/brush configuration and RNG state; export names use fresh fingerprints and imported
+  custom resolutions remain selected on reset. Both static checks pass; Chromium smoke checks
+  pass (Firefly 39, Turing 38). Hosting scanner: 46 tests run, one symlink test skipped.
+  Fingerprint values change intentionally; legacy checkpoint imports remain supported.
+  No commit, publication or deployment was performed.
+
 - Hosting reference scanner (#141, branch verification, 2026-10-17): `html.parser` checks
   quoted/unquoted attributes, source-set candidates and meta refresh URLs. Computed JS
   fetch/import/service-worker references and multi-line imports fail before output is written.

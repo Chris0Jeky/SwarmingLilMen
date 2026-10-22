@@ -1192,6 +1192,11 @@
         hash = Math.imul(hash, 0x01000193) >>> 0;
       };
       mix(width); mix(height); mix(iter);
+      // Canonical order and full numeric precision; display/timing state is excluded.
+      const future = JSON.stringify([iter, config.feed, config.kill, config.diffA, config.diffB,
+        config.dt, config.boundary, config.stepsPerFrame, config.seed, config.brushMode,
+        config.brushRadius, currentPreset, rng.state >>> 0]);
+      for (let i = 0; i < future.length; i++) mix(future.charCodeAt(i));
       const wordsA = new Uint32Array(a.buffer, a.byteOffset, a.length);
       const wordsB = new Uint32Array(b.buffer, b.byteOffset, b.length);
       for (let i = 0; i < wordsA.length; i++) {
@@ -1544,7 +1549,7 @@
           feed: config.feed, kill: config.kill, diffA: config.diffA, diffB: config.diffB,
           dt: config.dt, stepsPerFrame: config.stepsPerFrame, boundary: config.boundary,
           palette: config.palette, contrast: config.contrast, fieldView: config.fieldView,
-          brushRadius: config.brushRadius, seed: config.seed
+          brushMode: config.brushMode, brushRadius: config.brushRadius, seed: config.seed
         },
         rngState: rng.state >>> 0,
         fieldA: floatArrayToBase64(fieldA),
@@ -1567,7 +1572,7 @@
     function exportState() {
       const doc = stateDocument();
       const blob = new Blob([JSON.stringify(doc)], { type: "application/json" });
-      downloadBlob(`morphogenesis-${currentHash.toLowerCase()}-i${iteration}.json`, blob);
+      downloadBlob(`morphogenesis-${doc.fingerprint.toLowerCase()}-i${doc.iteration}.json`, blob);
       logEvent("Full deterministic field state exported.");
       showToast("State exported.");
     }
@@ -1600,6 +1605,7 @@
           !Number.isInteger(doc.rngState) || doc.rngState < 1 || doc.rngState > 4294967295 ||
           !Number.isInteger(importedConfig.seed) || importedConfig.seed < 0 || importedConfig.seed > 4294967295 ||
           !["torus","sealed"].includes(importedConfig.boundary) ||
+          !["inject","erase","perturb"].includes(importedConfig.brushMode ?? "inject") ||
           !Object.hasOwn(PALETTE_STOPS, importedConfig.palette) ||
           !["b","a-deficit","reaction"].includes(importedConfig.fieldView))
         throw new Error("Invalid checkpoint clock, seed, boundary or view.");
@@ -1624,6 +1630,7 @@
       config.contrast = clamp(Number(c.contrast), .5, 4);
       config.fieldView = ["b", "a-deficit", "reaction"].includes(c.fieldView) ? c.fieldView : "b";
       config.brushRadius = clamp(Math.round(Number(c.brushRadius)), 1, 24);
+      config.brushMode = c.brushMode ?? "inject";
       config.seed = normalizedSeed(c.seed);
       rng = new XorShift32(config.seed);
       rng.state = (Number(doc.rngState) >>> 0) || config.seed;
@@ -1653,9 +1660,16 @@
       ui.contrast.value = String(config.contrast);
       ui.fieldView.value = config.fieldView;
       ui.brushRadius.value = String(config.brushRadius);
+      ui.brushMode.value = config.brushMode;
       ui.seedInput.value = String(config.seed);
       const exactResolution = `${gridW}x${gridH}`;
-      if ([...ui.resolution.options].some(o => o.value === exactResolution)) ui.resolution.value = exactResolution;
+      if (![...ui.resolution.options].some(o => o.value === exactResolution)) {
+        const option = document.createElement("option");
+        option.value = exactResolution;
+        option.textContent = `${gridW} × ${gridH} (imported)`;
+        ui.resolution.appendChild(option);
+      }
+      ui.resolution.value = exactResolution;
       if (PRESETS[currentPreset]) {
         ui.presetSelect.value = currentPreset;
         ui.presetNote.textContent = PRESETS[currentPreset].note;
@@ -1711,9 +1725,10 @@
     }
 
     function savePng() {
+      const filename = `morphogenesis-${hashState().toLowerCase()}-i${iteration}.png`;
       ui.world.toBlob(blob => {
         if (!blob) return;
-        downloadBlob(`morphogenesis-${currentHash.toLowerCase()}-i${iteration}.png`, blob);
+        downloadBlob(filename, blob);
         showToast("Image saved.");
         logEvent("Current concentration rendering saved as PNG.");
       }, "image/png");
