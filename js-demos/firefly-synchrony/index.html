@@ -697,8 +697,9 @@
     const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
     const wrapPhase = v => {
       v %= TAU;
-      return v < 0 ? v + TAU : v;
+      return v < 0 ? (v + TAU) % TAU : v;
     };
+    const wrapUnit = v => { v %= 1; return v < 0 ? (v + 1) % 1 : v; };
     const torusDelta = d => {
       d = Math.abs(d);
       return d > 0.5 ? 1 - d : d;
@@ -863,8 +864,8 @@
         if (s.topology !== "ring" && s.movement > 0) {
           const speed = s.movement;
           for (let i = 0; i < n; i++) {
-            this.x[i] = (this.x[i] + this.vx[i] * speed * dt + 1) % 1;
-            this.y[i] = (this.y[i] + this.vy[i] * speed * dt + 1) % 1;
+            this.x[i] = wrapUnit(this.x[i] + this.vx[i] * (speed * dt));
+            this.y[i] = wrapUnit(this.y[i] + this.vy[i] * (speed * dt));
           }
         }
 
@@ -928,8 +929,8 @@
 
       computeRingCoupling() {
         const n = this.theta.length;
-        const halfRange = Math.max(1, Math.floor(n * clamp(this.settings.range, 0.002, 0.5) * 0.5));
-        const denom = halfRange * 2;
+        const halfRange = Math.min(Math.floor(n / 2), Math.max(1, Math.floor(n * clamp(this.settings.range, 0.002, 1) * 0.5)));
+        const denom = Math.min(n - 1, halfRange * 2);
         let neighborTotal = 0;
         for (let i = 0; i < n; i++) {
           let sum = 0;
@@ -937,9 +938,9 @@
             const left = (i - d + n) % n;
             const right = (i + d) % n;
             sum += Math.sin(this.theta[left] - this.theta[i] - this.settings.lag);
-            sum += Math.sin(this.theta[right] - this.theta[i] - this.settings.lag);
+            if (right !== left) sum += Math.sin(this.theta[right] - this.theta[i] - this.settings.lag);
           }
-          this.couplingTerm[i] = sum / denom;
+          this.couplingTerm[i] = denom > 0 ? sum / denom : 0;
           this.neighborCounts[i] = denom;
           neighborTotal += denom;
         }
@@ -1077,14 +1078,14 @@
         if ([state.x, state.y].some(a => a.some(v => v < 0 || v > 1)))
           throw new Error("Positions must be inside the unit world.");
         this.settings = settings;
-        this.theta = Float64Array.from(state.theta);
+        this.theta = Float64Array.from(state.theta, wrapPhase);
         this.nextTheta = new Float64Array(n);
         this.omega = Float64Array.from(state.omega);
         this.frequencyZ = Array.isArray(state.frequencyZ) && state.frequencyZ.length === n
           ? Float64Array.from(state.frequencyZ)
           : Float64Array.from(state.omega, value => this.settings.spread !== 0 ? (value - 1.8) / this.settings.spread : 0);
-        this.x = Float64Array.from(state.x);
-        this.y = Float64Array.from(state.y);
+        this.x = Float64Array.from(state.x, wrapUnit);
+        this.y = Float64Array.from(state.y, wrapUnit);
         this.vx = Float64Array.from(state.vx);
         this.vy = Float64Array.from(state.vy);
         this.couplingTerm = new Float64Array(n);
@@ -1483,9 +1484,11 @@
         const stride = Math.max(1, Math.floor(n / 56));
         for (let j = 0; j < n; j += stride) if (j !== index) candidates.push(j);
       } else if (sim.settings.topology === "ring") {
-        const k = Math.max(1, Math.floor(n * clamp(sim.settings.range, .002, .5) * .5));
+        const k = Math.min(Math.floor(n / 2), Math.max(1, Math.floor(n * clamp(sim.settings.range, .002, 1) * .5)));
         for (let d = 1; d <= k; d++) {
-          candidates.push((index - d + n) % n, (index + d) % n);
+          const left = (index - d + n) % n, right = (index + d) % n;
+          candidates.push(left);
+          if (right !== left) candidates.push(right);
         }
       } else {
         const r2 = sim.settings.range * sim.settings.range;
