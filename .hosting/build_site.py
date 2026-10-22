@@ -27,9 +27,19 @@ REFS = [re.compile(p, re.I | re.M) for p in (
     r"""\bnew\s+(?:Shared)?Worker\(\s*["']([^"']+)["']""",
     r"""\bimportScripts\(\s*["']([^"']+)["']""",
 )]
-JS_TOKENS = re.compile(r"""(?P<ignored>//[^\n]*|/\*.*?\*/|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*')
-    |(?P<template>`(?:\\.|[^`\\])*`)
-    |(?P<construct>\b(?:fetch|import|serviceWorker\s*\.\s*register)\b)""", re.S | re.X)
+JS_IDENT = re.compile(r"(?:[^\W\d]|\$)(?:\w|\$)*")
+JS_NUMBER = re.compile(r"\d[\w.]*")
+# Identifiers that take one literal URL argument (checked against the allowlist) and the APIs that are never allowed.
+JS_CALLS = {"fetch", "import", "importScripts", "Worker", "SharedWorker", "register"}
+JS_DENIED = {"WebSocket", "WebSocketStream", "WebTransport", "EventSource", "sendBeacon", "XMLHttpRequest"}
+# After one of these a `/` starts a regular expression; after any other identifier, number, `)` or `]` it divides.
+JS_REGEX_AFTER = {"return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do",
+                  "else", "yield", "await", "default"}
+# A `/` after `}` or `)` may divide or start a regex; if the regex reading would swallow any of these, reject.
+JS_SLASH_RISK = re.compile(r"""["'`]|\b(?:""" + "|".join(sorted(JS_CALLS | JS_DENIED | {"serviceWorker", "export"})) + r")\b")
+JS_EXPORT = re.compile(r"""\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}'"`/]*\})""")
+JS_EXPORT_FROM = re.compile(r"""\s*from\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')""")
+JS_SCRIPT_TYPES = ("javascript", "ecmascript", "jscript", "livescript")
 JS_LITERAL = re.compile(r"""\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)'|`([^`\\\r\n]*)`)\s*(?=[,)])""")
 JS_IMPORT = re.compile(r"""[ \t]+(?:[^;\r\n]*?\bfrom[ \t]+)?(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')[ \t]*(?=;|\r?$)""", re.M)
 
@@ -39,11 +49,13 @@ class AttributeRefs(HTMLParser):
         super().__init__()
         self.refs = []
         self.scripts = []
-        self.in_script = False
+        self.block = None  # text of the executable <script> being read; None outside one
 
     def handle_starttag(self, tag, attrs):
         if tag == "script":
-            self.in_script = True
+            # Browsers read the first duplicate attribute; being unsure which one wins, any executable one counts.
+            types = [value for name, value in attrs if name == "type"] or [None]
+            self.block = [] if any([script_is_executable(value) for value in types]) else None
         for name, value in attrs:
             if not value:
                 continue
@@ -69,34 +81,159 @@ class AttributeRefs(HTMLParser):
                 self.refs.append(refresh[1].strip().strip("\"'"))
 
     def handle_endtag(self, tag):
-        if tag == "script":
-            self.in_script = False
+        if tag == "script" and self.block is not None:
+            self.scripts.append("".join(self.block))  # the parser may deliver one script in several chunks
+            self.block = None
 
     def handle_data(self, data):
-        if self.in_script:
-            self.scripts.append(data)
+        if self.block is not None:
+            self.block.append(data)
+
+    def close(self):
+        super().close()
+        self.handle_endtag("script")  # a script left open at end of input is still code
+
+
+def script_is_executable(type_attr):
+    """False only for a <script type> that is certainly a data block; anything unsure is scanned as code."""
+    kind = (type_attr or "").strip().lower()
+    if kind in {"importmap", "speculationrules"}:
+        raise ValueError(f"<script type={kind}> is not supported: it can make the browser load other resources")
+    return kind in {"", "module"} or any(word in kind for word in JS_SCRIPT_TYPES)
+
+
+def _quoted(text, i):
+    """Index after the string literal opening at text[i]; an unescaped newline or end of input is an error."""
+    quote, i = text[i], i + 1
+    while i < len(text) and text[i] != quote:
+        if text[i] in "\r\n":
+            break
+        i += 2 if text[i] == "\\" else 1
+    if i >= len(text) or text[i] != quote:
+        raise ValueError("cannot analyse script: unterminated string literal")
+    return i + 1
+
+
+def _template_text(text, i):
+    """Index after the closing backtick, or after `${`, plus whether an expression follows. Text is inert."""
+    while i < len(text):
+        if text[i] == "`":
+            return i + 1, False
+        if text.startswith("${", i):
+            return i + 2, True
+        i += 2 if text[i] == "\\" else 1
+    raise ValueError("cannot analyse script: unterminated template literal")
+
+
+def _regex(text, i):
+    """Index after the regular-expression literal opening at text[i] (flags are left to the identifier scan)."""
+    i, in_class = i + 1, False
+    while i < len(text) and text[i] not in "\r\n" and (in_class or text[i] != "/"):
+        in_class = (text[i] == "[") or (in_class and text[i] != "]")
+        i += 2 if text[i] == "\\" else 1
+    if i >= len(text) or text[i] != "/":
+        raise ValueError("cannot analyse script: unterminated regular expression literal")
+    return i + 1
+
+
+def _literal_ref(text, construct, start, end):
+    """The single literal URL argument of a fetch/import/Worker/... token, or None for import.meta."""
+    tail = text[end:]
+    if construct == "import" and re.match(r"\s*\.", tail):
+        return None  # import.meta is not a request.
+    call = re.match(r"\s*\(", tail)
+    literal = (JS_LITERAL.match(text, end + call.end()) if call else
+               JS_IMPORT.match(text, end) if construct == "import" else None)
+    hint = "; multi-line imports are unsupported" if construct == "import" else ""
+    ref = next(g for g in literal.groups() if g is not None) if literal else None
+    multi = construct == "importScripts" and literal and text[literal.end()] != ")"  # takes any number of URLs
+    if ref is None or multi or "${" in ref or (construct == "import" and "\n" in text[start:literal.end()]):
+        raise ValueError(f"cannot statically resolve {construct} reference: use a single literal URL{hint}")
+    return ref
+
+
+def _slash(text, i):
+    """Index after a `/` that follows `)` or `}` and so may divide or open a regex. Treated as division;
+    rejected if the regex reading would swallow a quote or a checked name, since the two readings differ."""
+    try:
+        end = _regex(text, i)
+    except ValueError:
+        return i + 1
+    if JS_SLASH_RISK.search(text, i, end):
+        raise ValueError("cannot analyse script: a `/` after `)` or `}` may be division or a regular expression")
+    return i + 1
 
 
 def js_refs(text):
-    for token in JS_TOKENS.finditer(text):
-        if token.lastgroup == "ignored":
+    """Yield the single literal URL of each fetch/import/Worker/... in code; raise ValueError for anything
+    that cannot be resolved statically. Comments, strings, regex literals and template text are inert;
+    `${...}` parts of a template are code. A heuristic lexer, not a parser: when unsure it must reject."""
+    i, n, regex_ok, after_dot, templates = 0, len(text), True, False, []  # templates: open `{` count per `${`
+    either = False  # the previous token was `)` or `}`: a following `/` is ambiguous
+    while i < n:
+        c = text[i]
+        if c.isspace():
+            i += 1
             continue
-        if token.lastgroup == "template":
-            # Conservatively scan interpolation code rather than treating it as inert text.
-            yield from js_refs(token.group().partition("${")[2])
+        if text.startswith("//", i):
+            end = text.find("\n", i)
+            i = n if end < 0 else end
             continue
-        construct = token.group("construct")
-        tail = text[token.end():]
-        if construct == "import" and re.match(r"\s*\.", tail):
-            continue  # import.meta is not a request.
-        call = re.match(r"\s*\(", tail)
-        literal = (JS_LITERAL.match(text, token.end() + call.end()) if call else
-                   JS_IMPORT.match(text, token.end()) if construct == "import" else None)
-        hint = "; multi-line imports are unsupported" if construct == "import" else ""
-        ref = next(g for g in literal.groups() if g is not None) if literal else None
-        if ref is None or "${" in ref or (construct == "import" and "\n" in text[token.start():literal.end()]):
-            raise ValueError(f"cannot statically resolve {construct} reference: use a single literal URL{hint}")
-        yield ref
+        if text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            if end < 0:
+                raise ValueError("cannot analyse script: unterminated comment")
+            i = end + 2
+            continue
+        dotted, after_dot = after_dot, c == "."
+        ambiguous, either = either, c in ")}"
+        if c == "/" and (regex_ok or ambiguous):
+            i, regex_ok = (_slash(text, i), True) if ambiguous else (_regex(text, i), False)
+        elif c in "\"'":
+            i, regex_ok = _quoted(text, i), False
+        elif c == "`" or (c == "}" and templates and templates[-1] == 0):
+            if c == "}":
+                templates.pop()
+            i, expression = _template_text(text, i + 1)
+            if expression:
+                templates.append(0)
+            regex_ok = expression
+        elif c in "{}" and templates:
+            templates[-1] += 1 if c == "{" else -1
+            i, regex_ok = i + 1, True
+        elif c.isdigit():
+            i, regex_ok = JS_NUMBER.match(text, i).end(), False
+        elif c == "\\":
+            raise ValueError("cannot analyse script: unicode escape in an identifier")
+        elif word := JS_IDENT.match(text, i):
+            name, start, i = word.group(), word.start(), word.end()
+            regex_ok = name in JS_REGEX_AFTER and not dotted
+            if name in JS_DENIED:
+                raise ValueError(f"forbidden network API {name}: demos must work offline")
+            if name == "serviceWorker":
+                register = re.compile(r"\s*\.\s*register\b").match(text, i)
+                if not register:
+                    raise ValueError("serviceWorker may only appear as serviceWorker.register(<literal URL>)")
+                name, i = "serviceWorker.register", register.end()
+            if name == "export" and re.match(r"\s*[*{]", text[i:]):  # `export * from`, `export {a} from`
+                head = JS_EXPORT.match(text, i)
+                if not head:
+                    raise ValueError("cannot statically resolve export reference: use a single literal URL")
+                if re.compile(r"\s*from(?![\w$])").match(text, head.end()):
+                    source = JS_EXPORT_FROM.match(text, head.end())
+                    if not source:
+                        raise ValueError("cannot statically resolve export reference: use a single literal URL")
+                    yield next(g for g in source.groups() if g is not None)
+            if name in JS_CALLS - {"register"} or name == "serviceWorker.register" or (name == "register" and dotted):
+                ref = _literal_ref(text, name, start, i)
+                if ref is not None:
+                    yield ref
+        elif c in "+-" and text.startswith(c * 2, i):
+            i += 2  # ++ and -- keep the state: `a++ / 2` divides
+        else:
+            i, regex_ok = i + 1, c not in ")]"
+    if templates:
+        raise ValueError("cannot analyse script: unterminated template expression")
 
 
 def read_allowlist(root):
