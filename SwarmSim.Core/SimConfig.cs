@@ -237,6 +237,14 @@ public sealed class SimConfig
         if (!float.IsFinite(MutationRate) || MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
         if (!float.IsFinite(WanderStrength) || WanderStrength < 0) errors.Add("WanderStrength must be finite and >= 0");
 
+        // Legacy steering inputs: negatives stay legal (existing behaviour), NaN/Infinity would poison forces.
+        if (!float.IsFinite(SeparationWeight)) errors.Add("SeparationWeight must be finite");
+        if (!float.IsFinite(AlignmentWeight)) errors.Add("AlignmentWeight must be finite");
+        if (!float.IsFinite(CohesionWeight)) errors.Add("CohesionWeight must be finite");
+        if (!float.IsFinite(CollisionAvoidanceRadius)) errors.Add("CollisionAvoidanceRadius must be finite");
+        if (!float.IsFinite(CollisionAvoidanceBoost)) errors.Add("CollisionAvoidanceBoost must be finite");
+        if (!float.IsFinite(SeparationCrowdingBoost)) errors.Add("SeparationCrowdingBoost must be finite");
+
         if (AggressionMatrix is null)
         {
             errors.Add("AggressionMatrix must not be null");
