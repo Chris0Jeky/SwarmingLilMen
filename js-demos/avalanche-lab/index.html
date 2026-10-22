@@ -674,7 +674,14 @@
   }
 
   function addAt(idx, amount = 1, mergeIntoCurrent = true) {
-    if (idx < 0 || idx >= sim.count || sim.sinks[idx]) return;
+    if (idx < 0 || idx >= sim.count) return;
+    if (sim.sinks[idx]) {
+      // Direct sink input is added and immediately dissipated, without starting an avalanche.
+      sim.totalAdded += amount;
+      sim.totalDissipated += amount;
+      if (sim.avalanche) { sim.avalanche.grainsAdded += amount; sim.avalanche.dissipated += amount; }
+      return;
+    }
     if (!sim.avalanche || !mergeIntoCurrent) beginAvalanche();
     sim.heights[idx] += amount;
     sim.totalAdded += amount;
@@ -1101,6 +1108,15 @@
   }
 
   function applyCheckpoint(p) {
+    const record = (value, name) => {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`Invalid ${name}.`);
+      return value;
+    };
+    const integer = (value, name, max = Number.MAX_SAFE_INTEGER) => {
+      if ((typeof value !== 'number' && typeof value !== 'string') || value === '' || !Number.isSafeInteger(Number(value)) || Number(value) < 0 || Number(value) > max) throw new Error(`Invalid ${name}.`);
+      return Number(value);
+    };
+    record(p, 'checkpoint');
     if (p.schemaVersion !== 1 || p.model !== 'abelian-sandpile') throw new Error('Unsupported state schema.');
     if (p.checkpointKind != null && p.checkpointKind !== 'stable') throw new Error('Only stable checkpoints are supported.');
     if (Number(p.threshold) !== THRESHOLD) throw new Error(`Checkpoint threshold must be ${THRESHOLD}.`);
@@ -1110,6 +1126,7 @@
 
     const importedHeights = new Int32Array(w * h);
     const importedSinks = new Uint8Array(w * h);
+    let importedMass = 0;
     for (let i = 0; i < importedHeights.length; i++) {
       const isSink = !!p.sinks[i];
       const raw = Number(p.heights[i]);
@@ -1118,27 +1135,56 @@
       if (!isSink && height >= THRESHOLD) throw new Error(`Checkpoint is not stable at cell ${i}.`);
       importedSinks[i] = isSink ? 1 : 0;
       importedHeights[i] = height;
+      importedMass += height;
+    }
+
+    // Stage every field used by the model or UI before touching the live simulation.
+    const seed = p.seed == null ? 1 : integer(p.seed, 'seed', 0xffffffff) || 1;
+    const rng = new XorShift32(p.rngState == null ? seed : integer(p.rngState, 'RNG state', 0xffffffff) || seed);
+    if (p.history != null && !Array.isArray(p.history)) throw new Error('Invalid history.');
+    const history = (p.history || []).map((entry, i) => {
+      record(entry, `history entry ${i}`);
+      const event = {};
+      for (const key of ['id','grainsAdded','topplings','area','depth','dissipated','maxQueue']) event[key] = integer(entry[key], `history ${i}.${key}`);
+      return event;
+    }).slice(-5000);
+    const c = p.counters == null ? {} : record(p.counters, 'counters');
+    const counters = {};
+    for (const key of ['eventCounter','totalAdded','totalDissipated','baselineMass','largestAvalanche']) {
+      if (c[key] != null) counters[key] = integer(c[key], `counter ${key}`);
+    }
+    counters.eventCounter ??= history.length;
+    counters.totalAdded ??= 0;
+    counters.totalDissipated ??= 0;
+    counters.baselineMass ??= importedMass - counters.totalAdded + counters.totalDissipated;
+    counters.largestAvalanche ??= Math.max(0, ...history.map(x => x.topplings));
+    const controls = p.controls == null ? {} : record(p.controls, 'controls');
+    const stagedControls = {};
+    if (controls.driveMode != null) {
+      if (!['random','center','ring','edge'].includes(controls.driveMode)) throw new Error('Invalid drive mode.');
+      stagedControls.driveMode = controls.driveMode;
+    }
+    for (const key of ['driveRate','grainsPerEvent','toppleBudget']) {
+      if (controls[key] == null) continue;
+      const value = integer(controls[key], `control ${key}`, Number(els[key].max));
+      if (value < Number(els[key].min)) throw new Error(`Invalid control ${key}.`);
+      stagedControls[key] = String(value);
+    }
+    for (const key of ['autoDrive','showGrid','showActivity']) {
+      if (controls[key] == null) continue;
+      if (typeof controls[key] !== 'boolean') throw new Error(`Invalid control ${key}.`);
+      stagedControls[key] = controls[key];
     }
 
     setSize(w, false);
     sim.heights.set(importedHeights);
     sim.sinks.set(importedSinks);
-    sim.seed = (Number(p.seed) >>> 0) || 1;
-    sim.rng = new XorShift32((Number(p.rngState) >>> 0) || sim.seed);
-    sim.history = Array.isArray(p.history) ? p.history.slice(-5000) : [];
-    const c = p.counters || {};
-    sim.eventCounter = Number(c.eventCounter) || sim.history.length;
-    sim.totalAdded = Number(c.totalAdded) || 0;
-    sim.totalDissipated = Number(c.totalDissipated) || 0;
-    sim.baselineMass = Number(c.baselineMass);
-    if (!Number.isFinite(sim.baselineMass)) sim.baselineMass = totalMass() - sim.totalAdded + sim.totalDissipated;
-    sim.largestAvalanche = Number(c.largestAvalanche) || Math.max(0, ...sim.history.map(x => Number(x.topplings) || 0));
-    const controls = p.controls || {};
-    if (['random','center','ring','edge'].includes(controls.driveMode)) els.driveMode.value = controls.driveMode;
-    for (const key of ['driveRate','grainsPerEvent','toppleBudget']) if (controls[key] != null) els[key].value = String(controls[key]);
-    if (controls.autoDrive != null) els.autoDrive.checked = !!controls.autoDrive;
-    if (controls.showGrid != null) els.showGrid.checked = !!controls.showGrid;
-    if (controls.showActivity != null) els.showActivity.checked = !!controls.showActivity;
+    sim.seed = seed;
+    sim.rng = rng;
+    sim.history = history;
+    Object.assign(sim, counters);
+    for (const key of ['driveMode','driveRate','grainsPerEvent','toppleBudget']) if (stagedControls[key] != null) els[key].value = stagedControls[key];
+    for (const key of ['autoDrive','showGrid','showActivity']) if (stagedControls[key] != null) els[key].checked = stagedControls[key];
     els.seed.value = String(sim.seed);
     sim.paused = true;
     syncControlLabels(); renderWorld(true); updateStats(true);

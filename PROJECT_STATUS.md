@@ -10,6 +10,13 @@
 
 ## Verified Live State (2026-08-08)
 
+- Avalanche Lab issue #77 (worktree verification, 2026-10-22): malformed checkpoint imports
+  validate staged fields before applying state; direct sink input counts as both added and
+  immediately dissipated, including active-event accounting. Both defects reproduced before
+  fixing. Static checks and 35 Chromium browser checks pass; the hosting scanner suite runs
+  46 tests with one symlink skip. No commit, publication or deployment was performed. See
+  `js-demos/avalanche-lab/VERIFICATION.md`.
+
 - Hosting reference scanner (#141, branch verification, 2026-10-17): `html.parser` checks
   quoted/unquoted attributes, source-set candidates and meta refresh URLs. Computed JS
   fetch/import/service-worker references and multi-line imports fail before output is written.
