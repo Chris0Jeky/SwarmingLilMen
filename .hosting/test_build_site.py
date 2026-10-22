@@ -134,7 +134,7 @@ class BuildSiteTests(unittest.TestCase):
     def test_allowlisted_attribute_candidates_pass(self):
         _, errors = self.build(["js-demos/a/index.html", "js-demos/a/ok.png"],
             {"js-demos/a/index.html": '<img src=ok.png srcset="ok.png 1x, ok.png 2x">'
-                                    '<link imagesrcset="data:image/png;base64,AA== 1x, ok.png 2x">'
+                                    '<link imagesrcset="ok.png 1x, ok.png 2x">'
                                     '<meta http-equiv=refresh content="0; url=index.html">',
              "js-demos/a/ok.png": "image"})
         self.assertEqual(errors, [])
@@ -225,7 +225,7 @@ class BuildSiteTests(unittest.TestCase):
         self.assertTrue(any("remote" in e for e in errors), errors)
 
     def test_inert_references_are_ignored(self):
-        html = ('<a href="#x">x</a><img src="data:image/png;base64,AA==">'
+        html = ('<a href="#x">x</a><a href="mailto:demo@example.test">mail</a>'
                 "<script>a.href=URL.createObjectURL(b)</script>" + PAGE.format(t="A", js="1"))
         _, errors = self.build(["js-demos/a/index.html"], {"js-demos/a/index.html": html})
         self.assertEqual(errors, [])
@@ -435,6 +435,80 @@ class ScannerBypassTests(unittest.TestCase):
         for js in ("Function(code)()", "new Function(code)()", "const F = Function; F(code)()"):
             with self.subTest(js=js):
                 self.reject(js)
+
+    def test_indirect_function_constructors_are_rejected(self):
+        for js in ('''(function(){}).constructor("return globalThis['fetch']('https://example.test/x')")();''',
+                   "const F = (() => {}).constructor; F(source)()",
+                   "obj /* gap */ . /* gap */ constructor(source)()",
+                   "obj?.constructor(source)()", "obj['constructor'](source)()",
+                   'obj["con" + "structor"](source)()',
+                   "(function(){})[key](source)()", "(() => {})?.[key](source)()"):
+            with self.subTest(js=js):
+                self.reject(js)
+
+    def test_this_aliases_and_computed_string_keys_are_rejected(self):
+        for js in ('const g=this;g["fe"+"tch"]("https://example.test/x");',
+                   'const g=(this);g[key](url)', 'const g={root:this};g.root[key](url)',
+                   'const g = (() => this)(); g[key](url)',
+                   'obj["fe" + "tch"](url)', "obj?.['fe' + 'tch'](url)",
+                   r"obj['con\x73tructor'](source)()", 'obj[`constructor`](source)()'):
+            with self.subTest(js=js):
+                self.reject(js)
+
+    def test_safe_literal_keys_and_instance_identity_are_accepted(self):
+        for js in ("PRESETS['fault-line'](); obj[\"name\"] = values[index];",
+                   "class Vec { constructor(x) { this.x = x; } }",
+                   "if (other !== this) work(); if (other === this && ok) work();",
+                   "const text = '.constructor(code)'; const keys = ['constructor'];"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_opaque_resource_urls_are_rejected(self):
+        css = "data:text/css;base64,QGltcG9ydCAnaHR0cHM6Ly9leGFtcGxlLnRlc3QveC5jc3MnOw=="
+        for markup in (f'<link rel=stylesheet href="{css}">',
+                       '<link rel=stylesheet href="data:text/css,@import\'https://example.test/x.css\';">',
+                       f'<link rel=stylesheet href="{css.replace("data:", "&#100;ata:")}">',
+                       '<svg><image href="data:image/svg+xml,opaque"></image></svg>',
+                       '<img src="data:image/svg+xml,opaque">',
+                       '<img srcset="data:image/svg+xml,opaque 1x">',
+                       '<link imagesrcset="data:image/svg+xml,opaque 1x">'):
+            with self.subTest(markup=markup):
+                self.reject(markup, kind="raw")
+
+    def test_decoded_css_references_are_rejected(self):
+        for markup in ('<div style="background:u&#114;l(https://example.test/x)"></div>',
+                       r'<style>@\69mport "https://example.test/x.css";</style>',
+                       r'<style>@\000069 mport "https://example.test/x.css";</style>',
+                       r'<style>a{background:\75rl(https://example.test/x)}</style>',
+                       r'<div style="background:u\72 l(https://example.test/x)"></div>',
+                       r'<style>a{background:url(\68 ttps://example.test/x)}</style>',
+                       r'<style>@impor\t "https://example.test/x.css";</style>'):
+            with self.subTest(markup=markup):
+                self.reject(markup, kind="raw")
+
+    def test_external_css_escapes_are_rejected(self):
+        for css in (r'@\69mport "https://example.test/x.css";',
+                    r'a{background:u\72l(missing.png)}'):
+            with self.subTest(css=css):
+                tmp, root = make_repo(["js-demos/a/style.css"], {"js-demos/a/style.css": css})
+                self.addCleanup(tmp.cleanup)
+                self.assertTrue(build_site.build(root, root / "_site"))
+                self.assertFalse((root / "_site").exists())
+
+    def test_decoded_allowlisted_css_references_are_accepted(self):
+        for markup in ('<div style="background:u&#114;l(ok.js)"></div>',
+                       r'<style>@\69mport "ok.js";</style>',
+                       r'<style>a{background:u\72 l(\6f k.js)}</style>'):
+            with self.subTest(markup=markup):
+                self.assertEqual(self.scan(markup, kind="raw"), [])
+
+    def test_duplicate_meta_attributes_cannot_hide_refresh(self):
+        for attrs in ('http-equiv=refresh http-equiv=ignored content="0;url=https://example.test/x"',
+                      'http-equiv=refresh content="0;url=https://example.test/x" content="0"',
+                      'HTTP-EQUIV=refresh http-equiv=ignored CONTENT="0;url=missing.html"',
+                      'http-equiv=refresh content="0;url=missing.html" CONTENT="0;url=index.html"'):
+            with self.subTest(attrs=attrs):
+                self.reject(f'<meta {attrs}>', kind="raw")
 
     def test_string_timers_are_rejected(self):
         for timer in ("setTimeout", "setInterval"):

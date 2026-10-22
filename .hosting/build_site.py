@@ -39,8 +39,8 @@ JS_CODE = {"eval", "Function"}
 JS_TIMERS = {"setTimeout", "setInterval"}
 # Reject computed access AND aliases of globals; a direct dotted access is still lexed normally.
 JS_GLOBALS = {"window", "globalThis", "self", "navigator", "document", "defaultView"}
-# These names also occur as ordinary coordinates, instance identity, etc. Only a
-# computed lookup is unambiguously unsafe without resolving JavaScript scopes.
+# These names also occur as ordinary coordinates, instance identity, etc.
+# Computed lookup is rejected; bare `this` is further restricted below.
 JS_COMPUTED_GLOBALS = {"this", "top", "parent", "frames"}
 JS_LINE_END = re.compile(r"[\r\n\u2028\u2029]")
 JS_PARAMS = r"\(\s*(?:[\w$]+\s*(?:,\s*[\w$]+\s*)*)?\)"
@@ -52,11 +52,12 @@ JS_REGEX_AFTER = {"return", "typeof", "instanceof", "in", "of", "new", "delete",
 # A `/` after `}` or `)` may divide or start a regex; if the regex reading would swallow any of these, reject.
 JS_SLASH_RISK = re.compile(r"""["'`]|\b(?:""" + "|".join(sorted(
     JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | JS_COMPUTED_GLOBALS |
-    {"serviceWorker", "export"})) + r")\b")
+    {"serviceWorker", "export", "constructor"})) + r")\b")
 JS_EXPORT = re.compile(r"""\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}'"`/]*\})""")
 JS_EXPORT_FROM = re.compile(r"""\s*from\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')""")
 JS_SCRIPT_TYPES = ("javascript", "ecmascript", "jscript", "livescript")
 JS_LITERAL = re.compile(r"""\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)'|`([^`\\\r\n]*)`)\s*(?=[,)])""")
+JS_PROPERTY = re.compile(r"""(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')""")
 JS_IMPORT = re.compile(r"""[ \t]+(?:[^;\r\n]*?\bfrom[ \t]+)?(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')[ \t]*(?=;|\r?$)""", re.M)
 
 
@@ -65,10 +66,15 @@ class AttributeRefs(HTMLParser):
         super().__init__()
         self.refs = []
         self.scripts = []
+        self.styles = []
+        self.in_style = False
         self.block = None  # raw text of ANY <script>; HTML escape states also apply to data blocks
         self.executable = False
 
     def handle_starttag(self, tag, attrs):
+        if tag == "style":
+            self.in_style = True
+            self.styles.append("")
         if tag == "script":
             # Browsers read the first duplicate attribute; being unsure which one wins, any executable one counts.
             types = [value for name, value in attrs if name == "type"] or [None]
@@ -100,13 +106,21 @@ class AttributeRefs(HTMLParser):
                     value = rest if url.endswith(",") else rest.partition(",")[2]
             elif name.startswith("on"):
                 self.scripts.append(value)
-        if tag == "meta" and (dict(attrs).get("http-equiv") or "").lower() == "refresh":
-            content = dict(attrs).get("content") or ""
+            elif name == "style":
+                self.styles.append(value)  # HTMLParser has already decoded character references.
+        # Browsers keep the first occurrence, including an empty/valueless attribute.
+        first_attrs = {}
+        for name, value in attrs:
+            first_attrs.setdefault(name, value)
+        if tag == "meta" and (first_attrs.get("http-equiv") or "").lower() == "refresh":
+            content = first_attrs.get("content") or ""
             refresh = re.split(r"[;,]\s*(?:url\s*=\s*)?", content, maxsplit=1, flags=re.I)
             if len(refresh) == 2:
                 self.refs.append(refresh[1].strip().strip("\"'"))
 
     def handle_endtag(self, tag):
+        if tag == "style":
+            self.in_style = False
         if tag == "script" and self.block is not None:
             body = "".join(self.block)
             # HTMLParser lacks the browser's escaped/double-escaped script states.
@@ -120,6 +134,8 @@ class AttributeRefs(HTMLParser):
     def handle_data(self, data):
         if self.block is not None:
             self.block.append(data)
+        elif self.in_style:
+            self.styles[-1] += data
 
     def close(self):
         super().close()
@@ -236,7 +252,7 @@ def js_refs(text, *, function_body=False):
             elif c == "{":
                 braces += 1
         dotted, after_dot = after_dot, c == "."
-        ambiguous, either = either, c in ")}"
+        ambiguous, either = either, either if c in "?." else c in ")}"
         if c == "/" and (regex_ok or ambiguous):
             i, regex_ok = (_slash(text, i), True) if ambiguous else (_regex(text, i), False)
         elif c in "\"'":
@@ -255,6 +271,17 @@ def js_refs(text, *, function_body=False):
             i, regex_ok = JS_NUMBER.match(text, i).end(), False
         elif c == "\\":
             raise ValueError("cannot analyse script: unicode escape in an identifier")
+        elif c == "[" and (not regex_ok or dotted):
+            key = _skip_js_trivia(text, i + 1)
+            # Dynamic array indices are used by the demos. Quoted keys must be
+            # single, unescaped safe literals; call/function results are opaque.
+            literal = JS_PROPERTY.match(text, key)
+            safe_literal = (literal and text.startswith("]", _skip_js_trivia(text, literal.end())) and
+                            next(g for g in literal.groups() if g is not None) not in
+                            JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | {"constructor", "serviceWorker"})
+            if ambiguous or (key < n and text[key] in "\"'`" and not safe_literal):
+                raise ValueError("computed string or function property access is not supported")
+            i, regex_ok = i + 1, True
         elif word := JS_IDENT.match(text, i):
             name, start, i = word.group(), word.start(), word.end()
             regex_ok = name in JS_REGEX_AFTER and not dotted
@@ -262,6 +289,16 @@ def js_refs(text, *, function_body=False):
                 raise ValueError(f"forbidden network API {name}: demos must work offline")
             if name in JS_CODE:
                 raise ValueError(f"forbidden dynamic code API {name}")
+            if name == "constructor" and dotted:
+                raise ValueError("forbidden dynamic code property constructor")
+            if name == "this":
+                end = _skip_js_trivia(text, i)
+                # Instance identity comparisons are used by boids. Any other bare
+                # `this` could alias the global object, even through an expression.
+                comparison = re.search(r"(?:===|!==|==|!=)\s*$", text[:start])
+                if (end == n or text[end] != ".") and not (
+                    comparison and (end == n or text[end] in ")};,&|")):
+                    raise ValueError("computed or aliased global access this is not supported")
             if name in JS_GLOBALS:
                 end = _skip_js_trivia(text, i)
                 if (end == n or text[end] != "." or
@@ -340,20 +377,42 @@ def check_entry(root, rel):
     return None
 
 
+def css_refs(text):
+    """Decode CSS escapes before finding resource references in stylesheets or declarations."""
+    def unescape(match):
+        value = match.group(1)
+        if value is None:
+            return match.group(2) or ""
+        code = int(value, 16)
+        return chr(code) if 0 < code <= 0x10ffff and not 0xd800 <= code <= 0xdfff else "\ufffd"
+
+    # Up to six hex digits, then one optional whitespace terminator (CRLF counts as one).
+    decoded = re.sub(r"\\(?:([0-9a-fA-F]{1,6})(?:\r\n|[ \t\r\n\f])?|\r\n|[\r\n\f]|([^\r\n\f]))",
+                     unescape, text)
+    for rx in REFS[1:3]:
+        yield from (m.group(1) for m in rx.finditer(decoded))
+
+
 def local_refs(rel, text):
     """Yield (ref, kind, target), or raise ValueError for unresolved JavaScript references."""
     refs = [html.unescape(m.group(1)) for rx in REFS for m in rx.finditer(text)]
     scripts = [text] if Path(rel).suffix.lower() in {".js", ".mjs"} else []
+    styles = [text] if Path(rel).suffix.lower() == ".css" else []
     if Path(rel).suffix.lower() in {".html", ".svg"}:
         parser = AttributeRefs()
         parser.feed(text)
         parser.close()
         refs.extend(parser.refs)
         scripts = parser.scripts
+        styles = parser.styles
+    for style in styles:
+        refs.extend(css_refs(style))
     for script in scripts:
         refs.extend(js_refs(script))
     for ref in refs:
         ref = ref.strip()
+        if ref.lower().startswith(("data:", "blob:")):
+            raise ValueError("inline or opaque resource URLs are not supported")
         if not ref or ref.startswith("#") or ref.lower().startswith(INERT):
             continue
         if ref.startswith("//") or re.match(r"[a-z][a-z0-9+.-]*:", ref, re.I):
