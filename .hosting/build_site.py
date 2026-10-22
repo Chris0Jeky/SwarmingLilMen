@@ -20,6 +20,9 @@ EXTS = {".html", ".css", ".js", ".mjs", ".png", ".jpg", ".jpeg", ".gif", ".svg",
 BAD_SEGMENTS = {"tests", "docs", "node_modules"}
 SCANNED = {".html", ".css", ".js", ".mjs", ".svg"}
 INERT = ("data:", "blob:", "mailto:", "javascript:", "about:")
+URL_ATTRS = {"src", "href", "poster", "data-src", "data-href", "data-poster", "data", "action", "formaction",
+             "background", "cite", "longdesc", "usemap", "profile", "manifest", "codebase", "classid", "code",
+             "lowsrc", "dynsrc", "icon"}
 REFS = [re.compile(p, re.I | re.M) for p in (
     r"""\b(?:src|href|poster)\s*=\s*["']([^"']+)["']""",
     r"""\burl\(\s*["']?([^)"']+?)["']?\s*\)""",
@@ -32,11 +35,24 @@ JS_NUMBER = re.compile(r"\d[\w.]*")
 # Identifiers that take one literal URL argument (checked against the allowlist) and the APIs that are never allowed.
 JS_CALLS = {"fetch", "import", "importScripts", "Worker", "SharedWorker", "register"}
 JS_DENIED = {"WebSocket", "WebSocketStream", "WebTransport", "EventSource", "sendBeacon", "XMLHttpRequest"}
+JS_CODE = {"eval", "Function"}
+JS_TIMERS = {"setTimeout", "setInterval"}
+# Reject computed access AND aliases of globals; a direct dotted access is still lexed normally.
+JS_GLOBALS = {"window", "globalThis", "self", "navigator", "document", "defaultView"}
+# These names also occur as ordinary coordinates, instance identity, etc. Only a
+# computed lookup is unambiguously unsafe without resolving JavaScript scopes.
+JS_COMPUTED_GLOBALS = {"this", "top", "parent", "frames"}
+JS_LINE_END = re.compile(r"[\r\n\u2028\u2029]")
+JS_PARAMS = r"\(\s*(?:[\w$]+\s*(?:,\s*[\w$]+\s*)*)?\)"
+JS_ARROW = re.compile(r"(?:async\s+)?(?:[\w$]+|" + JS_PARAMS + r")\s*=>")
+JS_FUNCTION = re.compile(r"function\b\s*(?:[\w$]+\s*)?" + JS_PARAMS + r"\s*\{")
 # After one of these a `/` starts a regular expression; after any other identifier, number, `)` or `]` it divides.
 JS_REGEX_AFTER = {"return", "typeof", "instanceof", "in", "of", "new", "delete", "void", "throw", "case", "do",
                   "else", "yield", "await", "default"}
 # A `/` after `}` or `)` may divide or start a regex; if the regex reading would swallow any of these, reject.
-JS_SLASH_RISK = re.compile(r"""["'`]|\b(?:""" + "|".join(sorted(JS_CALLS | JS_DENIED | {"serviceWorker", "export"})) + r")\b")
+JS_SLASH_RISK = re.compile(r"""["'`]|\b(?:""" + "|".join(sorted(
+    JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | JS_COMPUTED_GLOBALS |
+    {"serviceWorker", "export"})) + r")\b")
 JS_EXPORT = re.compile(r"""\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}'"`/]*\})""")
 JS_EXPORT_FROM = re.compile(r"""\s*from\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')""")
 JS_SCRIPT_TYPES = ("javascript", "ecmascript", "jscript", "livescript")
@@ -49,21 +65,31 @@ class AttributeRefs(HTMLParser):
         super().__init__()
         self.refs = []
         self.scripts = []
-        self.block = None  # text of the executable <script> being read; None outside one
+        self.block = None  # raw text of ANY <script>; HTML escape states also apply to data blocks
+        self.executable = False
 
     def handle_starttag(self, tag, attrs):
         if tag == "script":
             # Browsers read the first duplicate attribute; being unsure which one wins, any executable one counts.
             types = [value for name, value in attrs if name == "type"] or [None]
-            self.block = [] if any([script_is_executable(value) for value in types]) else None
+            self.executable = any([script_is_executable(value) for value in types])
+            self.block = []
         for name, value in attrs:
+            name = name.rsplit(":", 1)[-1]
+            if name == "srcdoc":
+                raise ValueError("srcdoc embedded HTML is not supported")
             if not value:
                 continue
-            name = name.rsplit(":", 1)[-1]
-            if name in {"src", "href", "poster", "data-src", "data-href", "data-poster"}:
+            if name in URL_ATTRS:
+                if ((tag == "script" and name in {"src", "href"}) or
+                    (tag in {"iframe", "object", "embed"} and name in {"src", "data"})):
+                    if value.strip().lower().startswith(INERT):
+                        raise ValueError(f"<{tag} {name}> inline or opaque resource URLs are not supported")
                 self.refs.append(value)
                 if value.lstrip().lower().startswith("javascript:"):
                     self.scripts.append(value.split(":", 1)[1])
+            elif name in {"ping", "archive", "attributionsrc"}:
+                self.refs.extend(value.split())
             elif name in {"srcset", "imagesrcset"}:
                 while value.strip(" \t\r\n\f,"):
                     parts = value.lstrip(" \t\r\n\f,").split(None, 1)
@@ -82,7 +108,13 @@ class AttributeRefs(HTMLParser):
 
     def handle_endtag(self, tag):
         if tag == "script" and self.block is not None:
-            self.scripts.append("".join(self.block))  # the parser may deliver one script in several chunks
+            body = "".join(self.block)
+            # HTMLParser lacks the browser's escaped/double-escaped script states.
+            # Reject even markers inside JS strings or non-JS blocks: HTML sees them too.
+            if "<!--" in body or "-->" in body:
+                raise ValueError("HTML comment markers in script data are not supported")
+            if self.executable:
+                self.scripts.append(body)  # the parser may deliver one script in several chunks
             self.block = None
 
     def handle_data(self, data):
@@ -128,7 +160,7 @@ def _template_text(text, i):
 def _regex(text, i):
     """Index after the regular-expression literal opening at text[i] (flags are left to the identifier scan)."""
     i, in_class = i + 1, False
-    while i < len(text) and text[i] not in "\r\n" and (in_class or text[i] != "/"):
+    while i < len(text) and text[i] not in "\r\n\u2028\u2029" and (in_class or text[i] != "/"):
         in_class = (text[i] == "[") or (in_class and text[i] != "]")
         i += 2 if text[i] == "\\" else 1
     if i >= len(text) or text[i] != "/":
@@ -164,27 +196,45 @@ def _slash(text, i):
     return i + 1
 
 
-def js_refs(text):
+def _skip_js_trivia(text, i):
+    """Skip only whitespace and JS comments, preserving all four JS line terminators."""
+    while i < len(text):
+        if text[i].isspace():
+            i += 1
+        elif text.startswith("//", i):
+            end = JS_LINE_END.search(text, i)
+            i = end.start() if end else len(text)
+        elif text.startswith("/*", i):
+            end = text.find("*/", i + 2)
+            if end < 0:
+                raise ValueError("cannot analyse script: unterminated comment")
+            i = end + 2
+        else:
+            break
+    return i
+
+
+def js_refs(text, *, function_body=False):
     """Yield the single literal URL of each fetch/import/Worker/... in code; raise ValueError for anything
     that cannot be resolved statically. Comments, strings, regex literals and template text are inert;
     `${...}` parts of a template are code. A heuristic lexer, not a parser: when unsure it must reject."""
     i, n, regex_ok, after_dot, templates = 0, len(text), True, False, []  # templates: open `{` count per `${`
     either = False  # the previous token was `)` or `}`: a following `/` is ambiguous
+    braces = 0  # when recursively scanning a timer's function body, find its closing brace
     while i < n:
+        i = _skip_js_trivia(text, i)
+        if i == n:
+            break
         c = text[i]
-        if c.isspace():
-            i += 1
-            continue
-        if text.startswith("//", i):
-            end = text.find("\n", i)
-            i = n if end < 0 else end
-            continue
-        if text.startswith("/*", i):
-            end = text.find("*/", i + 2)
-            if end < 0:
-                raise ValueError("cannot analyse script: unterminated comment")
-            i = end + 2
-            continue
+        if text.startswith(("<!--", "-->"), i):
+            raise ValueError("HTML comment markers in JavaScript are not supported")
+        if function_body and not templates:
+            if c == "}":
+                if braces == 0:
+                    return i + 1
+                braces -= 1
+            elif c == "{":
+                braces += 1
         dotted, after_dot = after_dot, c == "."
         ambiguous, either = either, c in ")}"
         if c == "/" and (regex_ok or ambiguous):
@@ -210,6 +260,37 @@ def js_refs(text):
             regex_ok = name in JS_REGEX_AFTER and not dotted
             if name in JS_DENIED:
                 raise ValueError(f"forbidden network API {name}: demos must work offline")
+            if name in JS_CODE:
+                raise ValueError(f"forbidden dynamic code API {name}")
+            if name in JS_GLOBALS:
+                end = _skip_js_trivia(text, i)
+                if (end == n or text[end] != "." or
+                    not JS_IDENT.match(text, _skip_js_trivia(text, end + 1))):
+                    raise ValueError(f"computed or aliased global access {name} is not supported: use a direct dot property")
+            if name in JS_COMPUTED_GLOBALS:
+                end = _skip_js_trivia(text, i)
+                while text.startswith(")", end):
+                    end = _skip_js_trivia(text, end + 1)
+                if text.startswith("?.", end):
+                    end = _skip_js_trivia(text, end + 2)
+                if text.startswith("[", end):
+                    raise ValueError(f"computed global access {name} is not supported")
+            if name in JS_TIMERS:
+                call = _skip_js_trivia(text, i)
+                arg = _skip_js_trivia(text, call + 1) if call < n and text[call] == "(" else n
+                arrow, func = JS_ARROW.match(text, arg), JS_FUNCTION.match(text, arg)
+                if not arrow and not func:
+                    raise ValueError(f"{name} requires a literal function callback; strings, computed callbacks and aliases are forbidden")
+                if func:
+                    # Do not exempt names in the header from the existing identifier checks.
+                    yield from js_refs(text[arg:func.end()])
+                    # A function expression can be coerced to a string: function(){} + code.
+                    # Scan its whole body and require the next token to end the argument.
+                    end = yield from js_refs(text[func.end():], function_body=True)
+                    i = _skip_js_trivia(text, func.end() + end)
+                    if i == n or text[i] not in ",)":
+                        raise ValueError(f"{name} requires a literal function callback without further computation")
+                    regex_ok, either = False, True
             if name == "serviceWorker":
                 register = re.compile(r"\s*\.\s*register\b").match(text, i)
                 if not register:
@@ -234,6 +315,8 @@ def js_refs(text):
             i, regex_ok = i + 1, c not in ")]"
     if templates:
         raise ValueError("cannot analyse script: unterminated template expression")
+    if function_body:
+        raise ValueError("cannot analyse script: unterminated timer function body")
 
 
 def read_allowlist(root):

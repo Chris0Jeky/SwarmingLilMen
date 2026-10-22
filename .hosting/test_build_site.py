@@ -311,7 +311,7 @@ class LexerTests(unittest.TestCase):
                            ("const W = Worker; new W('ok.js')", "Worker"),
                            ("const sw = navigator.serviceWorker; sw.register(variable)", "serviceWorker"),
                            ("const sw = navigator.serviceWorker; sw.register('ok.js')", "serviceWorker"),
-                           ("navigator['serviceWorker']; sw.register(variable)", "register"),
+                           ("navigator['serviceWorker']; sw.register(variable)", "global access"),
                            ("navigator.serviceWorker.getRegistration()", "serviceWorker")):
             with self.subTest(js=js):
                 self.assertRejected(js, needle)
@@ -415,6 +415,156 @@ class LexerTests(unittest.TestCase):
     def test_inert_script_blocks_still_expose_attribute_references(self):
         self.assertRejected('<script type="application/json" src="https://example.test/x.json"></script>',
                             "remote", kind="raw")
+
+
+class ScannerBypassTests(unittest.TestCase):
+    """#156/#158: rejection must happen before any publication output is touched."""
+
+    scan = LexerTests.scan
+
+    def reject(self, source, **kw):
+        self.assertTrue(self.scan(source, **kw), source)
+
+    def test_eval_is_rejected(self):
+        for js in ("eval(code)", "(0, eval)(code)", "const run = eval; run(code)",
+                   "eval /* comment */ (code)"):
+            with self.subTest(js=js):
+                self.reject(js)
+
+    def test_function_constructor_is_rejected(self):
+        for js in ("Function(code)()", "new Function(code)()", "const F = Function; F(code)()"):
+            with self.subTest(js=js):
+                self.reject(js)
+
+    def test_string_timers_are_rejected(self):
+        for timer in ("setTimeout", "setInterval"):
+            for arg in ("'run()'", '"run()"', "`run()`", "source", "('run()')",
+                        "/* comment */ 'run()'", "() => {}, 0), setTimeout('run()'"):
+                with self.subTest(timer=timer, arg=arg):
+                    self.reject(f"{timer}({arg}, 10)")
+            self.reject(f"const timer = {timer}; timer(source, 10)")
+            for arg in ("function() {} + code", "function() {}.toString()", "function() {} ? code : code"):
+                with self.subTest(timer=timer, arg=arg):
+                    self.reject(f"{timer}({arg}, 10)")
+
+    def test_literal_function_timers_are_accepted(self):
+        for js in ("setTimeout(() => work(), 10)", "setInterval(function tick() { work(); }, 10)",
+                   "window.setTimeout(function() {}, 10)", "setTimeout(x => work(x), 10)",
+                   "setTimeout /* gap */ (/* callback */ () => work(), 10)",
+                   "setTimeout(function() { const s = '}'; const r = /}/; if (x) { work(); } }, 10)",
+                   "setTimeout(function() { const t = `${ {a: 1}.a }`; }, 10)",
+                   "setInterval((a, b) => work(a, b), 10)"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_timer_callback_bodies_are_scanned(self):
+        for js in ("setTimeout(() => eval(code), 10)", "setTimeout(function() { eval(code); }, 10)",
+                   "setTimeout(function() { fetch(variable); }, 10)", "setTimeout(function() { work(); ",
+                   "setTimeout(function fetch() {}, 10)", "setTimeout(function(fetch) {}, 10)"):
+            with self.subTest(js=js):
+                self.reject(js)
+
+    def test_computed_globals_are_rejected(self):
+        for js in ("window['fe'+'tch'](url)", "globalThis[x](url)", "self[`fetch`](url)",
+                   "window /* gap */ ['Function'](code)", "window?.[x](url)",
+                   "(window)['fetch'](url)", "const g = globalThis; g[x](url)",
+                   "const {fetch: f} = window; f(url)", "this[x](url)",
+                   "(this)[x](url)", "(parent)?.[x](url)",
+                   "navigator['send'+'Beacon'](url)", "document['defaultView'][x](url)",
+                   "document.defaultView[x](url)", "top[x](url)", "parent[x](url)", "frames[x](url)"):
+            with self.subTest(js=js):
+                self.reject(js)
+
+    def test_legitimate_dynamic_code_lookalikes_are_accepted(self):
+        for js in ("const text = 'eval(x) Function(x) window[x] setTimeout(code)';",
+                   "const text = `globalThis[x] self[x] new Function(x)`;",
+                   "// eval(x) window[x]\n/* Function(x) */ const r = /setTimeout|eval/;",
+                   "const evaluate = 1, Functionality = 2; obj[key] = values[index];",
+                   "const top = 9; const y = top + rect.top; if (other === this) return;",
+                   "window.addEventListener('click', () => work()); this.value = 1;"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_srcdoc_and_nested_unquoted_or_encoded_urls_are_rejected(self):
+        for markup in ('<iframe srcdoc="&lt;img src=missing.png&gt;"></iframe>',
+                       '<iframe srcdoc="&lt;img src=&amp;#104;ttps://example.test/x&gt;"></iframe>',
+                       '<iframe srcdoc="<script>eval(code)</script>"></iframe>',
+                       '<iframe srcdoc=""></iframe>'):
+            with self.subTest(markup=markup):
+                self.reject(markup, kind="raw")
+
+    def test_additional_url_attributes_are_checked(self):
+        for tag, attr in (("object", "data"), ("embed", "src"), ("form", "action"),
+                          ("button", "formaction"), ("body", "background"), ("blockquote", "cite"),
+                          ("img", "longdesc"), ("html", "manifest"), ("object", "codebase"),
+                          ("object", "classid"), ("head", "profile"), ("a", "ping"),
+                          ("object", "archive"), ("img", "lowsrc"), ("img", "dynsrc")):
+            for url in ("missing.js", "https://example.test/x", "&#104;ttps://example.test/x"):
+                with self.subTest(tag=tag, attr=attr, url=url):
+                    self.reject(f"<{tag} {attr}={url}></{tag}>", kind="raw")
+        self.reject('<a ping="ok.js https://example.test/x">link</a>', kind="raw")
+        self.reject('<object archive="ok.js missing.js"></object>', kind="raw")
+        self.reject('<img attributionsrc="ok.js https://example.test/x">', kind="raw")
+
+    def test_allowlisted_additional_url_attributes_are_accepted(self):
+        self.assertEqual(self.scan('<object data=ok.js></object><embed src=ok.js>'
+                                   '<form action=index.html><button formaction=index.html></button></form>'
+                                   '<a ping="ok.js ok.js">link</a>', kind="raw"), [])
+        self.assertEqual(self.scan('<div data-label="srcdoc eval Function"></div>'
+                                   '<!-- <iframe srcdoc="ignored"> -->', kind="raw"), [])
+
+    def test_data_script_sources_are_rejected(self):
+        for src in ("data:text/javascript,eval(code)", "data:text/javascript;base64,ZXZhbChjb2RlKQ==",
+                    "&#100;ata:text/javascript,eval(code)", "blob:local-id"):
+            with self.subTest(src=src):
+                self.reject(f'<script src="{src}"></script>', kind="raw")
+
+    def test_embedded_document_data_urls_are_rejected(self):
+        for markup in ('<iframe src="data:text/html,&lt;img src=missing.png&gt;"></iframe>',
+                       '<object data="data:text/html,&lt;script&gt;eval(code)&lt;/script&gt;"></object>',
+                       '<embed src="data:text/html,&lt;img src=missing.png&gt;">'):
+            with self.subTest(markup=markup):
+                self.reject(markup, kind="raw")
+
+    def test_every_js_line_terminator_ends_a_line_comment(self):
+        for end in ("\r", "\n", "\r\n", "\u2028", "\u2029"):
+            with self.subTest(end=repr(end)):
+                self.reject(f"// harmless{end}fetch(variable)")
+                self.assertEqual(self.scan(f"// eval(code){end}const a = 1;"), [])
+
+    def test_html_comment_markers_in_scripts_are_rejected(self):
+        for js in ('<!-- `\nfetch(variable); // `',
+                   'const a = 1;\n--> `\nfetch(variable); // `'):
+            with self.subTest(js=js):
+                self.reject(js)
+                with self.assertRaises(ValueError):
+                    list(build_site.js_refs(js))  # external classic scripts have the same JS comments
+        self.assertEqual(list(build_site.js_refs("const s = '<!-- -->'; const r = /<!--/;")), [])
+        self.reject('<script type="application/json"><!-- <script>\n//</script>'
+                    '\n<img src=missing.png>\n</script>', kind="raw")
+
+    def test_htmlparser_double_escape_is_rejected(self):
+        # HTMLParser exits script data at the first end tag. Browsers stay in the
+        # double-escaped script until that tag, then execute the following fetch.
+        markup = '<script><!-- <script>\n//</script>\nfetch(variable); //\n</script>'
+        chunks = []
+        parser = build_site.HTMLParser()
+        parser.handle_data = chunks.append
+        parser.feed(markup)
+        parser.close()
+        self.assertEqual(chunks[0], "<!-- <script>\n//")
+        self.reject(markup, kind="raw")
+
+    def test_rejections_preserve_existing_output(self):
+        tmp, root = make_repo(["js-demos/a/index.html"],
+                              {"js-demos/a/index.html": PAGE.format(t="A", js="eval(code)")})
+        self.addCleanup(tmp.cleanup)
+        out = root / "_site"
+        out.mkdir()
+        (out / "keep.txt").write_text("previous build", encoding="utf-8")
+        self.assertTrue(build_site.build(root, out))
+        self.assertEqual([p.name for p in out.iterdir()], ["keep.txt"])
+        self.assertEqual((out / "keep.txt").read_text(encoding="utf-8"), "previous build")
 
 
 if __name__ == "__main__":
