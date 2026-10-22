@@ -240,21 +240,40 @@ public static class MathUtils
         => (Wrap(x, width), Wrap(y, height));
 
     /// <summary>
-    /// Reflects a coordinate off a boundary if it exceeds [0, max].
-    /// Also inverts the corresponding velocity component.
+    /// Reflects a coordinate off the boundaries of [0, max], however far it overshot.
+    /// The unfolded position is folded with period 2*max, and the velocity component is
+    /// re-signed by crossing parity, assuming it pointed outward at the overshoot (as it does
+    /// when produced by one integration step).
     /// </summary>
     public static void ReflectPosition(ref float pos, ref float vel, float max)
     {
-        if (pos < 0f)
+        // In range, or NaN/Infinity (nothing to fold; leave it for the caller's own guards).
+        if ((pos >= 0f && pos <= max) || !float.IsFinite(pos))
+            return;
+
+        // One bounce: keep the exact old arithmetic so single-bounce traces stay bit-identical.
+        if (pos < 0f && pos > -max)
         {
             pos = -pos;
             vel = MathF.Abs(vel);
+            return;
         }
-        else if (pos > max)
+        if (pos > max && pos < 2f * max)
         {
             pos = 2f * max - pos;
             vel = -MathF.Abs(vel);
+            return;
         }
+
+        float outward = pos > max ? 1f : -1f;
+        float period = 2f * max;
+        float m = pos % period;
+        if (m < 0f)
+            m += period;
+
+        bool ascending = m <= max;
+        pos = ascending ? m : period - m;
+        vel = MathF.Abs(vel) * (ascending ? outward : -outward);
     }
 
     /// <summary>
