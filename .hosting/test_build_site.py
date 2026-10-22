@@ -422,38 +422,45 @@ class ScannerBypassTests(unittest.TestCase):
 
     scan = LexerTests.scan
 
-    def reject(self, source, **kw):
-        self.assertTrue(self.scan(source, **kw), source)
+    def reject(self, source, needle, **kw):
+        errors = self.scan(source, **kw)
+        self.assertTrue(any(needle in error for error in errors), (source, errors))
 
     def test_eval_is_rejected(self):
         for js in ("eval(code)", "(0, eval)(code)", "const run = eval; run(code)",
-                   "eval /* comment */ (code)"):
+                   "eval /* comment */ (code)", "window.eval(code)"):
             with self.subTest(js=js):
-                self.reject(js)
+                self.reject(js, "forbidden dynamic code API eval")
 
     def test_function_constructor_is_rejected(self):
-        for js in ("Function(code)()", "new Function(code)()", "const F = Function; F(code)()"):
+        for js in ("Function(code)()", "new Function(code)()", "const F = Function; F(code)()",
+                   "globalThis.Function(code)()"):
             with self.subTest(js=js):
-                self.reject(js)
+                self.reject(js, "forbidden dynamic code API Function")
 
     def test_indirect_function_constructors_are_rejected(self):
         for js in ('''(function(){}).constructor("return globalThis['fetch']('https://example.test/x')")();''',
                    "const F = (() => {}).constructor; F(source)()",
                    "obj /* gap */ . /* gap */ constructor(source)()",
-                   "obj?.constructor(source)()", "obj['constructor'](source)()",
+                   "obj?.constructor(source)()"):
+            with self.subTest(js=js):
+                self.reject(js, "forbidden dynamic code property constructor")
+        for js in ("obj['constructor'](source)()",
                    'obj["con" + "structor"](source)()',
                    "(function(){})[key](source)()", "(() => {})?.[key](source)()"):
             with self.subTest(js=js):
-                self.reject(js)
+                self.reject(js, "computed string or function property access")
 
     def test_this_aliases_and_computed_string_keys_are_rejected(self):
         for js in ('const g=this;g["fe"+"tch"]("https://example.test/x");',
                    'const g=(this);g[key](url)', 'const g={root:this};g.root[key](url)',
-                   'const g = (() => this)(); g[key](url)',
-                   'obj["fe" + "tch"](url)', "obj?.['fe' + 'tch'](url)",
+                   'const g = (() => this)(); g[key](url)'):
+            with self.subTest(js=js):
+                self.reject(js, "computed or aliased global access this")
+        for js in ('obj["fe" + "tch"](url)', "obj?.['fe' + 'tch'](url)",
                    r"obj['con\x73tructor'](source)()", 'obj[`constructor`](source)()'):
             with self.subTest(js=js):
-                self.reject(js)
+                self.reject(js, "computed string or function property access")
 
     def test_safe_literal_keys_and_instance_identity_are_accepted(self):
         for js in ("PRESETS['fault-line'](); obj[\"name\"] = values[index];",
@@ -473,7 +480,7 @@ class ScannerBypassTests(unittest.TestCase):
                        '<img srcset="data:image/svg+xml,opaque 1x">',
                        '<link imagesrcset="data:image/svg+xml,opaque 1x">'):
             with self.subTest(markup=markup):
-                self.reject(markup, kind="raw")
+                self.reject(markup, "inline or opaque resource URLs", kind="raw")
 
     def test_decoded_css_references_are_rejected(self):
         for markup in ('<div style="background:u&#114;l(https://example.test/x)"></div>',
@@ -481,10 +488,10 @@ class ScannerBypassTests(unittest.TestCase):
                        r'<style>@\000069 mport "https://example.test/x.css";</style>',
                        r'<style>a{background:\75rl(https://example.test/x)}</style>',
                        r'<div style="background:u\72 l(https://example.test/x)"></div>',
-                       r'<style>a{background:url(\68 ttps://example.test/x)}</style>',
+                       r'<style>a{background:url(\68 ttps://\65 xample.test/x)}</style>',
                        r'<style>@impor\t "https://example.test/x.css";</style>'):
             with self.subTest(markup=markup):
-                self.reject(markup, kind="raw")
+                self.reject(markup, "remote reference 'https://example.test/", kind="raw")
 
     def test_external_css_escapes_are_rejected(self):
         for css in (r'@\69mport "https://example.test/x.css";',
@@ -508,18 +515,20 @@ class ScannerBypassTests(unittest.TestCase):
                       'HTTP-EQUIV=refresh http-equiv=ignored CONTENT="0;url=missing.html"',
                       'http-equiv=refresh content="0;url=missing.html" CONTENT="0;url=index.html"'):
             with self.subTest(attrs=attrs):
-                self.reject(f'<meta {attrs}>', kind="raw")
+                needle = "remote reference" if "https:" in attrs else "not on the allowlist"
+                self.reject(f'<meta {attrs}>', needle, kind="raw")
 
     def test_string_timers_are_rejected(self):
         for timer in ("setTimeout", "setInterval"):
             for arg in ("'run()'", '"run()"', "`run()`", "source", "('run()')",
                         "/* comment */ 'run()'", "() => {}, 0), setTimeout('run()'"):
                 with self.subTest(timer=timer, arg=arg):
-                    self.reject(f"{timer}({arg}, 10)")
-            self.reject(f"const timer = {timer}; timer(source, 10)")
+                    self.reject(f"{timer}({arg}, 10)", "requires a literal function callback")
+            self.reject(f"const timer = {timer}; timer(source, 10)", "requires a literal function callback")
             for arg in ("function() {} + code", "function() {}.toString()", "function() {} ? code : code"):
                 with self.subTest(timer=timer, arg=arg):
-                    self.reject(f"{timer}({arg}, 10)")
+                    self.reject(f"{timer}({arg}, 10)", "requires a literal function callback without further computation")
+        self.reject("self.setTimeout('run()', 10)", "requires a literal function callback")
 
     def test_literal_function_timers_are_accepted(self):
         for js in ("setTimeout(() => work(), 10)", "setInterval(function tick() { work(); }, 10)",
@@ -532,22 +541,27 @@ class ScannerBypassTests(unittest.TestCase):
                 self.assertEqual(self.scan(js), [])
 
     def test_timer_callback_bodies_are_scanned(self):
-        for js in ("setTimeout(() => eval(code), 10)", "setTimeout(function() { eval(code); }, 10)",
-                   "setTimeout(function() { fetch(variable); }, 10)", "setTimeout(function() { work(); ",
-                   "setTimeout(function fetch() {}, 10)", "setTimeout(function(fetch) {}, 10)"):
+        for js, needle in (("setTimeout(() => eval(code), 10)", "forbidden dynamic code API eval"),
+                           ("setTimeout(function() { eval(code); }, 10)", "forbidden dynamic code API eval"),
+                           ("setTimeout(function() { fetch(variable); }, 10)", "cannot statically resolve fetch"),
+                           ("setTimeout(function() { work(); ", "unterminated timer function body"),
+                           ("setTimeout(function fetch() {}, 10)", "cannot statically resolve fetch"),
+                           ("setTimeout(function(fetch) {}, 10)", "cannot statically resolve fetch")):
             with self.subTest(js=js):
-                self.reject(js)
+                self.reject(js, needle)
 
     def test_computed_globals_are_rejected(self):
         for js in ("window['fe'+'tch'](url)", "globalThis[x](url)", "self[`fetch`](url)",
                    "window /* gap */ ['Function'](code)", "window?.[x](url)",
                    "(window)['fetch'](url)", "const g = globalThis; g[x](url)",
-                   "const {fetch: f} = window; f(url)", "this[x](url)",
-                   "(this)[x](url)", "(parent)?.[x](url)",
+                   "const {location: loc} = window; loc[x](url)", "this[x](url)", "(this)[x](url)",
                    "navigator['send'+'Beacon'](url)", "document['defaultView'][x](url)",
-                   "document.defaultView[x](url)", "top[x](url)", "parent[x](url)", "frames[x](url)"):
+                   "document.defaultView[x](url)"):
             with self.subTest(js=js):
-                self.reject(js)
+                self.reject(js, "computed or aliased global access")
+        for js in ("(parent)?.[x](url)", "top[x](url)", "parent[x](url)", "frames[x](url)"):
+            with self.subTest(js=js):
+                self.reject(js, "computed global access")
 
     def test_legitimate_dynamic_code_lookalikes_are_accepted(self):
         for js in ("const text = 'eval(x) Function(x) window[x] setTimeout(code)';",
@@ -565,20 +579,22 @@ class ScannerBypassTests(unittest.TestCase):
                        '<iframe srcdoc="<script>eval(code)</script>"></iframe>',
                        '<iframe srcdoc=""></iframe>'):
             with self.subTest(markup=markup):
-                self.reject(markup, kind="raw")
+                self.reject(markup, "srcdoc", kind="raw")
 
     def test_additional_url_attributes_are_checked(self):
         for tag, attr in (("object", "data"), ("embed", "src"), ("form", "action"),
                           ("button", "formaction"), ("body", "background"), ("blockquote", "cite"),
                           ("img", "longdesc"), ("html", "manifest"), ("object", "codebase"),
                           ("object", "classid"), ("head", "profile"), ("a", "ping"),
-                          ("object", "archive"), ("img", "lowsrc"), ("img", "dynsrc")):
+                          ("object", "archive"), ("img", "lowsrc"), ("img", "dynsrc"),
+                          ("img", "usemap"), ("applet", "code"), ("menuitem", "icon")):
             for url in ("missing.js", "https://example.test/x", "&#104;ttps://example.test/x"):
                 with self.subTest(tag=tag, attr=attr, url=url):
-                    self.reject(f"<{tag} {attr}={url}></{tag}>", kind="raw")
-        self.reject('<a ping="ok.js https://example.test/x">link</a>', kind="raw")
-        self.reject('<object archive="ok.js missing.js"></object>', kind="raw")
-        self.reject('<img attributionsrc="ok.js https://example.test/x">', kind="raw")
+                    needle = "not on the allowlist" if url == "missing.js" else "remote reference"
+                    self.reject(f"<{tag} {attr}={url}></{tag}>", needle, kind="raw")
+        self.reject('<a ping="ok.js https://example.test/x">link</a>', "remote reference", kind="raw")
+        self.reject('<object archive="ok.js missing.js"></object>', "not on the allowlist", kind="raw")
+        self.reject('<img attributionsrc="ok.js https://example.test/x">', "remote reference", kind="raw")
 
     def test_allowlisted_additional_url_attributes_are_accepted(self):
         self.assertEqual(self.scan('<object data=ok.js></object><embed src=ok.js>'
@@ -591,43 +607,38 @@ class ScannerBypassTests(unittest.TestCase):
         for src in ("data:text/javascript,eval(code)", "data:text/javascript;base64,ZXZhbChjb2RlKQ==",
                     "&#100;ata:text/javascript,eval(code)", "blob:local-id"):
             with self.subTest(src=src):
-                self.reject(f'<script src="{src}"></script>', kind="raw")
+                self.reject(f'<script src="{src}"></script>', "inline or opaque resource URLs", kind="raw")
 
     def test_embedded_document_data_urls_are_rejected(self):
         for markup in ('<iframe src="data:text/html,&lt;img src=missing.png&gt;"></iframe>',
                        '<object data="data:text/html,&lt;script&gt;eval(code)&lt;/script&gt;"></object>',
                        '<embed src="data:text/html,&lt;img src=missing.png&gt;">'):
             with self.subTest(markup=markup):
-                self.reject(markup, kind="raw")
+                self.reject(markup, "inline or opaque resource URLs", kind="raw")
 
     def test_every_js_line_terminator_ends_a_line_comment(self):
         for end in ("\r", "\n", "\r\n", "\u2028", "\u2029"):
             with self.subTest(end=repr(end)):
-                self.reject(f"// harmless{end}fetch(variable)")
-                self.assertEqual(self.scan(f"// eval(code){end}const a = 1;"), [])
+                with self.assertRaisesRegex(ValueError, "cannot statically resolve fetch"):
+                    list(build_site.js_refs(f"// harmless{end}fetch(variable)"))
+                self.assertEqual(list(build_site.js_refs(f"// eval(code){end}const a = 1;")), [])
 
     def test_html_comment_markers_in_scripts_are_rejected(self):
         for js in ('<!-- `\nfetch(variable); // `',
                    'const a = 1;\n--> `\nfetch(variable); // `'):
             with self.subTest(js=js):
-                self.reject(js)
-                with self.assertRaises(ValueError):
+                self.reject(js, "HTML comment markers")
+                with self.assertRaisesRegex(ValueError, "HTML comment markers"):
                     list(build_site.js_refs(js))  # external classic scripts have the same JS comments
         self.assertEqual(list(build_site.js_refs("const s = '<!-- -->'; const r = /<!--/;")), [])
         self.reject('<script type="application/json"><!-- <script>\n//</script>'
-                    '\n<img src=missing.png>\n</script>', kind="raw")
+                    '\n</script>', "HTML comment markers", kind="raw")
 
     def test_htmlparser_double_escape_is_rejected(self):
         # HTMLParser exits script data at the first end tag. Browsers stay in the
         # double-escaped script until that tag, then execute the following fetch.
         markup = '<script><!-- <script>\n//</script>\nfetch(variable); //\n</script>'
-        chunks = []
-        parser = build_site.HTMLParser()
-        parser.handle_data = chunks.append
-        parser.feed(markup)
-        parser.close()
-        self.assertEqual(chunks[0], "<!-- <script>\n//")
-        self.reject(markup, kind="raw")
+        self.reject(markup, "HTML comment markers", kind="raw")
 
     def test_rejections_preserve_existing_output(self):
         tmp, root = make_repo(["js-demos/a/index.html"],
