@@ -1,5 +1,6 @@
 using System.IO;
 using System.Text.Json;
+using SwarmSim.Core.Spatial;
 using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core;
@@ -229,6 +230,10 @@ public sealed class SimConfig
         if (!float.IsFinite(GridCellSize) || GridCellSize <= 0) errors.Add("GridCellSize must be positive");
         if (!float.IsFinite(SenseRadius) || SenseRadius <= 0) errors.Add("SenseRadius must be positive");
         if (!float.IsFinite(FieldOfView) || FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
+        if (float.IsFinite(WorldWidth) && WorldWidth > 0 && float.IsFinite(WorldHeight) && WorldHeight > 0 &&
+            float.IsFinite(SenseRadius) && SenseRadius > 0 &&
+            !UniformGrid.TryGetDimensions(SenseRadius, WorldWidth, WorldHeight, out _, out _))
+            errors.Add($"SenseRadius {SenseRadius} over a {WorldWidth} x {WorldHeight} world needs more than {UniformGrid.MaxCells} spatial grid cells; increase SenseRadius or reduce WorldWidth/WorldHeight");
         if (InitialCapacity <= 0) errors.Add("InitialCapacity must be positive");
         if (MaxCapacity < InitialCapacity) errors.Add("MaxCapacity must be >= InitialCapacity");
         if (CompactionInterval < 1) errors.Add("CompactionInterval must be >= 1");

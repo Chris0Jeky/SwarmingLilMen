@@ -69,6 +69,38 @@ public sealed class UniformGrid
     private const double MinimumImageUlpSlack = 8.0 * 5.9604644775390625e-8;
 
     /// <summary>
+    /// Maximum number of grid cells (<c>Cols * Rows</c>) a grid may have: 2^22 = 4,194,304, a
+    /// 16 MiB head array. The largest shipped preset needs under 100,000 cells, so this leaves
+    /// well over an order of magnitude of headroom while rejecting a tiny cell size on a large
+    /// world before it allocates hundreds of megabytes (or overflows 32-bit arithmetic).
+    /// </summary>
+    public const int MaxCells = 1 << 22;
+
+    /// <summary>
+    /// Computes the grid dimensions for the given inputs without allocating. Returns false when
+    /// the inputs are not finite and positive, or when the column or row count is not
+    /// representable, or when <c>Cols * Rows</c> exceeds <see cref="MaxCells"/>. The counts use
+    /// the same float quotient the grid has always used, so accepted grids keep their layout.
+    /// </summary>
+    public static bool TryGetDimensions(float cellSize, float worldWidth, float worldHeight, out int cols, out int rows)
+    {
+        cols = rows = 0;
+        if (!float.IsFinite(cellSize) || cellSize <= 0f ||
+            !float.IsFinite(worldWidth) || worldWidth <= 0f ||
+            !float.IsFinite(worldHeight) || worldHeight <= 0f)
+            return false;
+
+        float c = MathF.Ceiling(worldWidth / cellSize);
+        float r = MathF.Ceiling(worldHeight / cellSize);
+        if (!float.IsFinite(c) || !float.IsFinite(r) || c > MaxCells || r > MaxCells)
+            return false;
+
+        cols = (int)c;
+        rows = (int)r;
+        return (long)cols * rows <= MaxCells;
+    }
+
+    /// <summary>
     /// Creates a new uniform grid with the specified cell size and world dimensions.
     /// </summary>
     /// <param name="cellSize">Size of each grid cell (should be ~= interaction radius)</param>
@@ -84,15 +116,20 @@ public sealed class UniformGrid
         if (capacity <= 0)
             throw new ArgumentException("Capacity must be positive", nameof(capacity));
 
+        // Calculate grid dimensions (round up to cover entire world); reject before allocating.
+        if (!TryGetDimensions(cellSize, worldWidth, worldHeight, out int cols, out int rows))
+            throw new ArgumentException(
+                $"Cell size {cellSize} over a {worldWidth} x {worldHeight} world exceeds the maximum of {MaxCells} grid cells; use a larger cell size or a smaller world",
+                nameof(cellSize));
+
         CellSize = cellSize;
         _worldWidth = worldWidth;
         _worldHeight = worldHeight;
         _capacity = capacity;
 
-        // Calculate grid dimensions (round up to cover entire world)
-        Cols = (int)MathF.Ceiling(worldWidth / cellSize);
-        Rows = (int)MathF.Ceiling(worldHeight / cellSize);
-        TotalCells = Cols * Rows;
+        Cols = cols;
+        Rows = rows;
+        TotalCells = cols * rows;
 
         // Allocate arrays
         _head = new int[TotalCells];
