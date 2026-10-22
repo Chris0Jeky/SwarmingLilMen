@@ -242,5 +242,134 @@ class BuildSiteTests(unittest.TestCase):
             self.assertEqual(build_site.build(REPO, Path(out) / "_site"), [])
 
 
+class LexerTests(unittest.TestCase):
+    """#152: the JavaScript scan is a fail-closed boundary, so it must see the code the browser runs."""
+
+    def scan(self, js, files=("ok.js",), kind="inline"):
+        rel = "js-demos/a/index.html"
+        tmp, root = make_repo([rel, *(f"js-demos/a/{f}" for f in files)],
+                              {rel: js if kind == "raw" else PAGE.format(t="A", js=js),
+                               **{f"js-demos/a/{f}": "1" for f in files}})
+        self.addCleanup(tmp.cleanup)
+        return build_site.build(root, root / "_site")
+
+    def assertRejected(self, js, needle, **kw):
+        errors = self.scan(js, **kw)
+        self.assertTrue(any(needle in e for e in errors), (js, errors))
+
+    def test_regex_literals_cannot_hide_code(self):
+        for js in (r"""s.replace(/"/g,'&quot;'); fetch(variable); x = "a";""",
+                   r"""s.replace(/'/g,'&#39;'); fetch(variable); x = 'a';""",
+                   r"""const r = /\//; fetch(variable);""",
+                   r"""const r = /[/]/; fetch(variable);""",
+                   r"""x = y ? /"/ : /'/; fetch(variable); z = "q";""",
+                   r"""if (a) { return /"/.test(b); } fetch(variable); z = "q";""",
+                   r"""const t = typeof /"/; fetch(variable); z = "q";"""):
+            with self.subTest(js=js):
+                self.assertRejected(js, "cannot statically resolve fetch")
+
+    def test_regex_literals_and_division_are_accepted(self):
+        for js in (r"""const e = s.replace(/"/g,'&quot;').replace(/'/g,'&#39;');""",
+                   r"""const ok = /[/"']/.test(s) && /\//.test(s) && /a\/\//.test(s);""",
+                   "const h = (a + b) / 2, k = a / b / c, m = a[0] / 2, n = 1 / 2; i++ / 2; const q = \"'\";",
+                   "function f(s){ return /\"/.test(s); }\nconst q = `x`;",
+                   "const t = `${a}` / 2;"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_unterminated_constructs_fail_closed(self):
+        for js in ("const a = 'x;\nfetch('ok.js');", 'const a = "x', "const a = `x", "const a = `${x",
+                   "/* fetch('ok.js');", "const r = /abc\nfetch('ok.js');", "const r = /[abc/;",
+                   r"fetch(variable)"):
+            with self.subTest(js=js):
+                self.assertTrue(self.scan(js), js)
+
+    def test_template_expressions_are_code_and_text_is_inert(self):
+        for js in ("const m = `a ${ fetch(variable) } b`;",
+                   "const m = `a ${ `b ${ fetch(variable) }` } c`;",
+                   "const m = `${ {a: 1}.a } ${ fetch(variable) }`;",
+                   "const m = `${ x }` + fetch(variable);",
+                   "const m = `${ import(variable) }`;"):
+            with self.subTest(js=js):
+                self.assertTrue(self.scan(js), js)
+        for js in ("const m = `import now`;", "const m = `typeof fetch`;", "const m = `obj.fetch(x)`;",
+                   "const m = `{import: 1}`;", "const m = `fetch(variable) new WebSocket(x)`;",
+                   r"const m = `a \` fetch(variable) \${ fetch(variable) }`;",
+                   "const m = `a ${ {b: 'c'}.b } import now ${ x ? `y ${ z }` : 'w' } fetch(x)`;"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_template_expression_references_are_checked(self):
+        self.assertRejected("const m = `${ fetch('https://example.test/') }`;", "remote")
+        self.assertRejected("const m = `${ fetch('missing.js') }`;", "not on the allowlist")
+        self.assertEqual(self.scan("const m = `${ fetch('ok.js') }`;"), [])
+
+    def test_unlisted_worker_and_script_loaders_fail_closed(self):
+        for js, needle in (("new Worker(variable)", "Worker"), ("new SharedWorker(variable)", "SharedWorker"),
+                           ("new Worker('ok.js' + variable)", "Worker"), ("importScripts(variable)", "importScripts"),
+                           ("importScripts('ok.js', variable)", "importScripts"),
+                           ("const W = Worker; new W('ok.js')", "Worker"),
+                           ("const sw = navigator.serviceWorker; sw.register(variable)", "serviceWorker"),
+                           ("const sw = navigator.serviceWorker; sw.register('ok.js')", "serviceWorker"),
+                           ("navigator['serviceWorker']; sw.register(variable)", "register"),
+                           ("navigator.serviceWorker.getRegistration()", "serviceWorker")):
+            with self.subTest(js=js):
+                self.assertRejected(js, needle)
+
+    def test_literal_workers_are_resolved_against_the_allowlist(self):
+        self.assertRejected("new Worker('missing.js')", "not on the allowlist")
+        self.assertRejected("importScripts('https://example.test/x.js')", "remote")
+        for js in ("new Worker('ok.js');", "new SharedWorker('ok.js', {name: 'n'});", "importScripts('ok.js');"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_network_apis_are_denied(self):
+        for js in ("new WebSocket('wss://example.test/')", "new WebSocket(variable)",
+                   "const ws = new WebSocket('ok.js')", "new EventSource('ok.js')",
+                   "new EventSource(variable)", "navigator.sendBeacon('ok.js', data)",
+                   "navigator.sendBeacon(variable)", "const x = new XMLHttpRequest(); x.open('GET', variable)",
+                   "const X = XMLHttpRequest; new X().open('GET', 'ok.js')", "new WebTransport(variable)"):
+            with self.subTest(js=js):
+                self.assertTrue(any("forbidden" in e for e in self.scan(js)), js)
+
+    def test_denied_names_in_inert_text_are_accepted(self):
+        for js in ("// new WebSocket(x)\nconst a = 'new EventSource(x)';", "const a = `sendBeacon XMLHttpRequest`;",
+                   "const a = /WebSocket/;"):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_executable_script_types_are_scanned(self):
+        for attrs in ("", " type=module", ' type="Module "', ' type="text/javascript"', ' type="TEXT/JAVASCRIPT"',
+                      ' type="application/javascript"', ' type="text/ecmascript"', ' type=""',
+                      ' type="application/x-javascript"', ' type="text/jscript"', ' type="text/livescript"',
+                      ' type=module nomodule'):
+            with self.subTest(attrs=attrs):
+                self.assertRejected(f"<script{attrs}>fetch(variable);</script>", "cannot statically resolve fetch",
+                                    kind="raw")
+
+    def test_import_maps_and_speculation_rules_are_rejected(self):
+        for kind in ("importmap", "speculationrules", "ImportMap"):
+            with self.subTest(kind=kind):
+                self.assertRejected(f'<script type="{kind}">{{"imports": {{"a": "https://example.test/a.js"}}}}</script>',
+                                    "not supported", kind="raw")
+
+    def test_non_javascript_script_blocks_are_inert(self):
+        for attrs, body in ((' type="x-shader/x-fragment"', "void main(){ import now; fetch(x); /* \"unclosed */ `"),
+                            (' type="application/json"', '{"fetch": "import", "a": [1, 2'),
+                            (' type="application/ld+json"', '{"@context": "fetch(variable)"}'),
+                            (' type="text/plain"', "typeof fetch; new WebSocket(x)")):
+            with self.subTest(attrs=attrs):
+                self.assertEqual(self.scan(f"<script{attrs}>{body}</script>", kind="raw"), [])
+
+    def test_script_text_split_across_parser_chunks_is_one_unit(self):
+        js = "const a = 'x < y'; const b = a < 2 && 3 > 1; fetch(variable);"
+        self.assertRejected(js, "cannot statically resolve fetch")
+        self.assertEqual(self.scan("const a = 'x < y'; const b = a < 2 && 3 > 1;"), [])
+
+    def test_inert_script_blocks_still_expose_attribute_references(self):
+        self.assertRejected('<script type="application/json" src="https://example.test/x.json"></script>',
+                            "remote", kind="raw")
+
+
 if __name__ == "__main__":
     unittest.main()
