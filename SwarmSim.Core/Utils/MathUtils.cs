@@ -251,6 +251,20 @@ public static class MathUtils
         if ((pos >= 0f && pos <= max) || !float.IsFinite(pos))
             return;
 
+        // One bounce: keep the exact old arithmetic so single-bounce traces stay bit-identical.
+        if (pos < 0f && pos > -max)
+        {
+            pos = -pos;
+            vel = MathF.Abs(vel);
+            return;
+        }
+        if (pos > max && pos < 2f * max)
+        {
+            pos = 2f * max - pos;
+            vel = -MathF.Abs(vel);
+            return;
+        }
+
         float outward = pos > max ? 1f : -1f;
         float period = 2f * max;
         float m = pos % period;

@@ -55,4 +55,13 @@ public class MathUtilsGuardTests
         Assert.Equal(expectedSign, MathF.Sign(v));
         Assert.Equal(MathF.Abs(vel), MathF.Abs(v));
     }
+
+    [Fact]
+    public void ReflectPosition_SingleBounceOffZero_IsExact()
+    {
+        float pos = -0.003f, vel = -2f;
+        MathUtils.ReflectPosition(ref pos, ref vel, 1000f);
+        Assert.Equal(0.003f, pos);
+        Assert.Equal(2f, vel);
+    }
 }
