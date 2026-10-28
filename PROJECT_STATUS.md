@@ -10,6 +10,18 @@
 
 ## Verified Live State (2026-08-08)
 
+- Bounded canonical trajectory experiment (2026-10-28, Windows x64, .NET 8.0.24):
+  headless `SwarmSim.Benchmarks --canonical-experiment` checks every observable frame for four
+  fixed 96-boid, 24-step workloads against the naive index. Three repetitions and the pre-change
+  baseline have identical trajectory records. Canonical radius-query selection now uses a bounded
+  max-heap and sorts once; dense N=256/cap=32 selection replay writes fall from 1,961,984 to 337,152
+  including final sort, while the four-agent control worsens (24 to 32). Warm query allocations are
+  zero; full steps still allocate 1,224 bytes/tick at N=96. A cap-before-FOV witness changes steering
+  when the radius buffer is widened; semantics remain unchanged. Release build: zero warnings/errors;
+  non-Performance gate: 527 passed. Removing final sorting deliberately fails all four trajectory
+  cases at tick 1 and four boundary cases; restoring it passes the gate. See
+  `docs/CANONICAL_EXPERIMENT.md`. No renderer, broad timing campaign, release or deployment proof.
+
 - Firefly/Turing checkpoint edge cases (#75/#76, worktree verification, 2026-10-22):
   Firefly ring spans through 1.00 use unique neighbors; imported positions and live movement
   wrap into [0,1), with phases normalized in radians. Turing fingerprints include evolution,

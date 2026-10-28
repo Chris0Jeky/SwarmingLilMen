@@ -390,7 +390,7 @@ public sealed class UniformGrid
                         float dy = MathUtils.MinimumImageDelta(yPositions[agentIndex] - y, _worldHeight);
                         if (dx * dx + dy * dy <= radiusSquared)
                         {
-                            InsertSortedBounded(buffer, ref written, agentIndex, ref truncated);
+                            InsertLowestBounded(buffer, ref written, agentIndex, ref truncated);
                         }
                     }
 
@@ -399,6 +399,7 @@ public sealed class UniformGrid
             }
         }
 
+        SortNeighborHeap(buffer.Slice(0, written));
         return written;
     }
 
@@ -522,32 +523,59 @@ public sealed class UniformGrid
         return wrapped < 0 ? wrapped + length : wrapped;
     }
 
-    private static void InsertSortedBounded(Span<int> buffer, ref int written, int candidate, ref bool truncated)
+    // Keep the lowest indices in a max-heap; only sort once after visiting every candidate.
+    // Return array-write counts for the headless selection replay (ignored by normal queries).
+    internal static int InsertLowestBounded(Span<int> buffer, ref int written, int candidate, ref bool truncated)
     {
         if (written < buffer.Length)
         {
-            int insertAt = written;
-            while (insertAt > 0 && buffer[insertAt - 1] > candidate)
+            int insertAt = written++;
+            int writes = 0;
+            while (insertAt > 0)
             {
-                buffer[insertAt] = buffer[insertAt - 1];
-                insertAt--;
+                int parent = (insertAt - 1) / 2;
+                if (buffer[parent] >= candidate) break;
+                buffer[insertAt] = buffer[parent];
+                writes++;
+                insertAt = parent;
             }
             buffer[insertAt] = candidate;
-            written++;
-            return;
+            return writes + 1;
         }
 
         truncated = true;
-        if (buffer.IsEmpty || candidate >= buffer[written - 1])
-            return;
+        if (buffer.IsEmpty || candidate >= buffer[0])
+            return 0;
 
-        int replaceAt = written - 1;
-        while (replaceAt > 0 && buffer[replaceAt - 1] > candidate)
+        return SiftNeighborDown(buffer, candidate);
+    }
+
+    internal static int SortNeighborHeap(Span<int> buffer)
+    {
+        int writes = 0;
+        for (int last = buffer.Length - 1; last > 0; last--)
         {
-            buffer[replaceAt] = buffer[replaceAt - 1];
-            replaceAt--;
+            int candidate = buffer[last];
+            buffer[last] = buffer[0];
+            writes += 1 + SiftNeighborDown(buffer.Slice(0, last), candidate);
         }
-        buffer[replaceAt] = candidate;
+        return writes;
+    }
+
+    private static int SiftNeighborDown(Span<int> buffer, int candidate)
+    {
+        int parent = 0, writes = 0;
+        while (parent * 2 + 1 < buffer.Length)
+        {
+            int child = parent * 2 + 1;
+            if (child + 1 < buffer.Length && buffer[child + 1] > buffer[child]) child++;
+            if (candidate >= buffer[child]) break;
+            buffer[parent] = buffer[child];
+            writes++;
+            parent = child;
+        }
+        buffer[parent] = candidate;
+        return writes + 1;
     }
 
     /// <summary>

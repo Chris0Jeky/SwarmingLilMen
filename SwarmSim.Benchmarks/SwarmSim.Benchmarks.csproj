@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SwarmSim.Core\SwarmSim.Core.csproj" />
+    <InternalsVisibleTo Include="SwarmSim.Tests" />
   </ItemGroup>
 
   <ItemGroup>
