@@ -17,8 +17,8 @@ unreviewed merge is ever in scope — that dial presumes the laws it is declared
 Deterministic 2D swarm simulation in C#/.NET 8, ~10.7k lines: `SwarmSim.Core` (library),
 `SwarmSim.Render` (Raylib window + CLI), `SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
 `js-demos/` holds unrelated standalone browser demos. **Two engines coexist on purpose**: legacy
-Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer and BenchmarkDotNet
-benchmarks, and `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`).
+Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer and every
+benchmark, and `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`).
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
 **Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
@@ -70,12 +70,6 @@ dotnet run --project SwarmSim.Render -c Release -- --canonical         # opens t
 Renderer coverage is partial (~30%: DeterminismTests drives `Program`'s canonical-settings helpers),
 so UI behaviour is proven only by running the window. Note `--benchmark` measures the **legacy**
 world even with `--canonical`, because `RunBenchmark` returns before the canonical branch.
-
-For bounded canonical trajectory equivalence, selection operation counts and allocation evidence:
-`dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical-experiment`.
-This is a fixed small headless experiment, not BenchmarkDotNet or throughput proof. Its oracle and
-counterexamples run under `FullyQualifiedName~CanonicalTrajectoryTests`; method and limits are in
-`docs/CANONICAL_EXPERIMENT.md`.
 
 ## Rules that bind
 
