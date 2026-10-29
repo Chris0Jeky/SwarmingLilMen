@@ -16,7 +16,44 @@ measured a different canonical trace, so the canonical fixture is explicitly sel
 the legacy and RNG references are shared. The golden suite currently requires .NET 8, x64, and
 Linux or Windows. Other environments need measured, reviewed references before entering this band.
 
-## Measured platform difference
+## Named-stream migration (issue #26)
+
+Canonical wander now uses the specified named PCG32 contract in [RANDOM_STREAMS.md](RANDOM_STREAMS.md).
+This is the single deliberate reference update budgeted by epic #10. The eight initial agents,
+settings, timestep and float dynamics are unchanged; the canonical wander sequences change.
+Legacy trajectories and the legacy `Rng` sequence fixtures remain unchanged. Older canonical
+wander-enabled manifests require their original binary/revision; mismatches fail replay hashes.
+
+The first Linux difference from the previous canonical reference is agent 1's Y at tick 1:
+`42BDFFE9` → `42BE0059`. The maximum absolute component difference at that tick is
+`0.02755446219816804`. Subsequent trajectories diverge, including wrap seams; raw coordinate
+differences across a seam are not geometric displacement. The new Linux tick-256 hash is
+`F99E0084F72492206AA98A10C6AF6BAFE2B0C2C794144B2CF38924A1491C1BEE`.
+
+[CI run 40811616741](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40811616741), head
+`fc45d58e9b75cab4cf832d98fde9b5fc42d3ccf1`, measured the Windows migration with the old exact
+fixture still active. Both independent Windows jobs reported identical hashes and component words;
+rehashing those words reproduced every checkpoint hash. Ubuntu .NET 8.0.33 matched the locally
+measured Linux .NET 8.0.21 reference. The current tick-256 references are:
+
+```text
+Linux:   F99E0084F72492206AA98A10C6AF6BAFE2B0C2C794144B2CF38924A1491C1BEE
+Windows: 5D5005CC773F66E87340BA972CE71F3BB9A08DA937249782658DA6333326E1C7
+```
+
+| Checkpoint | Maximum absolute component difference, Windows versus Linux | Maximum ULP difference |
+| ---: | ---: | ---: |
+| 0 | 0 | 0 |
+| 1 | 0.0000000009313225746154785 | 1 |
+| 16 | 0.0000016689300537109375 | 47 |
+| 64 | 0.0000069141387939453125 | 145 |
+| 256 | 0.00009918212890625 | 112 |
+
+The first platform difference remains agent 0's `Vy`, `3C671F23` versus `3C671F24`, at tick 1.
+The PCG word/adaptor/identity tests also run in the ordinary Ubuntu/Windows suite. The two
+platform trajectory fixtures are exact; generator portability has not removed float-math drift.
+
+## Original pre-migration platform difference
 
 [CI run 40804377401](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40804377401)
 tested head `75e788e4f9a43499a307150373cd0c3b1b1fa750` with SDK 8.0.427 and .NET 8.0.33.
@@ -34,9 +71,9 @@ Windows hashes and component words. Rehashing those words also reproduced every 
 | 256 | 0.00012969970703125 | 322 |
 
 The first difference is agent 0's `Vy`: Linux bits `3C671F23`, Windows bits `3C671F24`.
-This measures a platform-dependent trajectory; it does not isolate a particular math operation
-as the cause. The committed `CanonicalLinux` and `CanonicalWindows` fixtures retain both exact
-traces. Their tick-256 hashes are respectively:
+This measured a platform-dependent trajectory; it did not isolate a particular math operation
+as the cause. These pre-PCG traces remain in [PR #171](https://github.com/Chris0Jeky/SwarmingLilMen/pull/171)
+and version history. Their tick-256 hashes were respectively:
 
 ```text
 Linux:   A8395F4CE8A49D82D3F95AA14A8E7E7C2C0400E8729205F97D09EF93B85BE0C8

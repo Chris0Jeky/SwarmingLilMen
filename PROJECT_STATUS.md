@@ -9,14 +9,30 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 
 SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Two boids engines
 coexist deliberately: legacy `World` is a fixed-capacity SoA pipeline and the default renderer;
-`CanonicalWorld` is the target for new simulation work. The reusable general-purpose kernel,
-Vicsek/ACO foundations, named RNG streams and intent composition remain roadmap work.
+`CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
+independent stochastic consumers. The reusable general-purpose kernel, Vicsek/ACO foundations
+and intent composition remain roadmap work.
 
 The browser demos are separate implementations. The existing public Pages site is unchanged by
 these native-engine changes. Combat, metabolism, reproduction and cross-group interactions are
 not made active merely because `SimConfig` contains related settings.
 
 ## Verified live state
+
+- **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
+  agent encoding; consumers retain independent generators. Canonical wander now uses a stream per
+  stable insertion index. Legacy RNG behavior is unchanged. External PCG words and independently
+  calculated adapter/identity vectors are committed, and a fourth stochastic observer leaves every
+  kinematic hash unchanged for 256 ticks. The deliberate canonical wander reference migration is
+  tracked in [determinism](docs/DETERMINISM.md); cross-platform motion identity is not promised.
+  The local Release gate passes 943 tests. Both Windows jobs independently captured the new exact
+  trajectory in [run 40811616741](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40811616741),
+  with all logged component words rehashed; Ubuntu CI matched the Linux reference. Retained RNG
+  draws allocate zero bytes in the 100,000-batch regression. Canonical agents retain 16-byte value
+  states; a 100,000-agent whole-world probe measured retained managed memory dropping from
+  45,241,032 B to 12,441,520 B, with zero bytes across 1,000 measured ticks. The known old signed-seed
+  alias pair is pinned to independent output vectors. See the
+  [stream ownership and byte contract](docs/RANDOM_STREAMS.md).
 
 - **CI and regression gates:** PR #168 retains Ubuntu/Windows merge-result builds/tests and adds
   independent jobs for the exact PR head, logging its SHA. All four jobs passed 536 tests at
@@ -62,9 +78,10 @@ not made active merely because `SimConfig` contains related settings.
   seed, timestep, OS/architecture and .NET band. Committed eight-agent traces pin ticks
   0/1/16/64/256 and RNG sequences. Ubuntu x64 .NET 8.0.21 and 8.0.33 match; Windows x64 .NET 8.0.33
   matches legacy/RNG but has a separate exact canonical reference. The first canonical difference
-  is 1 ULP at tick 1; at tick 256 the largest component difference is 0.00012969970703125
-  (maximum 322 ULP). Both Windows CI jobs independently recorded the same result in
-  [run 40804377401](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40804377401).
+  is 1 ULP at tick 1. The original pre-PCG trace had a tick-256 maximum component difference of
+  0.00012969970703125 (322 ULP); after the explicit named-stream migration it is
+  0.00009918212890625 (112 ULP), measured in both Windows jobs against Linux. The determinism guide
+  retains both experiments and their CI references.
   One-ULP force changes fail the ordinary golden assertions. The golden suite enforces the
   reviewed .NET 8 / x64 / Linux-or-Windows band; new bands require reviewed measured references.
   See [determinism and fixture policy](docs/DETERMINISM.md).
@@ -192,9 +209,9 @@ speedup or machine-independent performance bound.
 3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
    now uses reusable telemetry and shared startup configuration. Current overlay geometry still
    performs the existing index refresh only when shown; the recorded tick label does not re-query.
-4. Introduce named RNG streams and real observation/intent arbitration (#26/#27), preserving the
-   settled trace contract except for the explicitly documented RNG transition. Extra positional
-   rules are not yet a general composition surface.
+4. Build real observation/intent arbitration (#27) on the named RNG streams, preserving the settled
+   trace contract after the documented RNG transition. Extra positional rules are not yet a
+   general composition surface.
 5. Prove generality with Vicsek then a minimal scalar-field/ACO consumer (#29/#30), not speculative
    state generics. Behavioral parity/retirement criteria (#28) and named rule-control visuals (#40)
    depend on those settled seams. Neither engine is deleted without a migration decision.

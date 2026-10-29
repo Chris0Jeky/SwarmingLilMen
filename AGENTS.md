@@ -9,6 +9,8 @@ a non-Claude runtime.
 - Determinism evidence uses the platform/runtime scope in `CLAUDE.md` and `docs/DETERMINISM.md`.
   The canonical Windows and Linux references differ; retain their exact assertions and report
   measured drift when reviewing a new platform or reference update.
+  New stochastic consumers own a named stream from `RandomStreams`; retain its generator and
+  preserve stable agent identity. See `docs/RANDOM_STREAMS.md`. Legacy `Rng` remains unchanged.
 - **The estate's global laws reach Codex through `~/.codex/AGENTS.md`** when the estate profile is
   installed (the Claude rendering is `~/.claude/rules/laws.md`). If `~/.codex/AGENTS.md` is absent,
   read `~/.claude/rules/laws.md`; if neither exists, the fail-safe floor below binds and merge is

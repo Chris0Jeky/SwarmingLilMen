@@ -14,11 +14,13 @@ unreviewed merge is ever in scope — that dial presumes the laws it is declared
 
 ## What this is
 
-Deterministic 2D swarm simulation in C#/.NET 8, ~10.7k lines: `SwarmSim.Core` (library),
-`SwarmSim.Render` (Raylib window + CLI), `SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
+Deterministic 2D swarm simulation in C#/.NET 8: `SwarmSim.Core` (library),
+`SwarmSim.Cli` (display-free runs, replay and sweeps), `SwarmSim.Render` (Raylib window),
+`SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
 `js-demos/` holds unrelated standalone browser demos. **Two engines coexist on purpose**: legacy
-Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer and every
-benchmark, and `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`).
+Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer, and
+`Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`). Both engines
+have headless experiments and BenchmarkDotNet entry points.
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
 **Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
@@ -26,17 +28,15 @@ belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity, 
 removal. Neither engine is deleted without a recorded migration decision. Building a new feature on
 the legacy default because it is what runs today is exactly the drift this split exists to prevent.
 
-## Build, test, run — all green 2026-08-08 (SDK 8.0.415, Windows)
+## Build, test, run
 
-The counts below are a snapshot on that date and move with every merge; **the command is the source
-of truth, not the number beside it.** They are deliberately not stamped with a commit SHA — the
-merge commit does not exist yet when the doc is written, and stamping the merge base advertises a
-commit at which the recorded count provably does not reproduce.
+`global.json` selects .NET 8. Test counts and measured platform evidence live in `PROJECT_STATUS.md`;
+these commands remain the executable gates.
 
 ```powershell
-dotnet build SwarmingLilMen.sln -c Release                          # 3 s · 0 warnings / 0 errors
-dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true   # 114 passed / 2 s — this IS the CI gate
-dotnet run --project SwarmSim.Render -c Release --no-build -- --benchmark --agent-count 2000       # headless 600 ticks + kinematic hash
+dotnet build SwarmingLilMen.sln -c Release
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
+dotnet run --project SwarmSim.Cli -c Release --no-build -- --engine canonical --agents 400 --ticks 600 --seed 7 --out runs
 ```
 
 `--no-build` above is valid **only** as written — immediately after the build on line 1. It runs the
@@ -50,26 +50,24 @@ renamed or a filter goes stale:
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQualifiedName~<Class>" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
-Classes and counts: SpatialIndexEquivalenceTests (23), UniformGridTests (14), WorldTests (14),
-DeterminismTests (14), CanonicalBoidsTests (12), RngTests (9), CommandLineOptionsTests (7),
-SimulationRunnerTests (6), CanonicalSteeringBudgetTests (5), PerformanceTests (4), ConfigTests (2),
-BoidsTests
-(8 — use `~SwarmSim.Tests.BoidsTests`; the bare substring also catches Canonical); or
-`"Category=Determinism"` (14) / `"Category=Performance"` (4, Release only). **`RngTests` carries no
-`Category=Determinism` trait**, so an RNG change must run `~RngTests` explicitly — the determinism
-category alone skips the bounds, sequence, and integer-generation tests.
+Useful seam filters include `SpatialIndexEquivalenceTests`, `UniformGridTests`, `WorldTests`,
+`DeterminismTests`, `GoldenTraceTests`, `CanonicalBoidsTests`, `SimulationRunnerTests`,
+`CanonicalSteeringBudgetTests`, and `ConfigTests`. Use `~SwarmSim.Tests.BoidsTests` to avoid also
+matching canonical tests. **Run `~RngTests` explicitly for RNG changes**: it includes legacy,
+PCG and named-stream tests; the `Determinism` category alone omits several bounds/sequence tests.
+`Category=Performance` is opt-in and Release-only.
 
 Evidence the commands above do **not** produce, each needing its own run:
 
 ```powershell
-dotnet run --project SwarmSim.Benchmarks -c Release                    # the only real BenchmarkDotNet evidence
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical      # real canonical BenchmarkDotNet evidence
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --collect:"XPlat Code Coverage"
 dotnet run --project SwarmSim.Render -c Release -- --canonical         # opens the window; the only proof of UI paths
 ```
 
-Renderer coverage is partial (~30%: DeterminismTests drives `Program`'s canonical-settings helpers),
-so UI behaviour is proven only by running the window. Note `--benchmark` measures the **legacy**
-world even with `--canonical`, because `RunBenchmark` returns before the canonical branch.
+Headless tests cover renderer configuration, telemetry and command handling; they do not prove
+graphics or native input. Actual UI behavior requires running the window. Renderer `--benchmark`
+prints migration guidance; use `SwarmSim.Cli` for experiments and `SwarmSim.Benchmarks` for timing.
 
 ## Rules that bind
 
@@ -100,7 +98,9 @@ here rather than referenced.
 - `TreatWarningsAsErrors` + `Nullable` are on in `Directory.Build.props`; one warning fails CI.
 - A green suite proves nothing about throughput: `Category=Performance` gates machine-relative
   ratios only and its absolute numbers are reported-only. Never quote them as the target met.
-- Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock.
+- Determinism is the product: named `RandomStreams` for new consumers (legacy retains `Rng`),
+  fixed timestep, stable ordering, no wall clock. See `docs/RANDOM_STREAMS.md` for the byte contract
+  and per-consumer ownership rules.
   Exact replay is scoped to the recorded implementation/configuration/platform/runtime band.
   Canonical Windows and Linux traces differ and have separately reviewed exact fixtures; legacy
   and RNG fixtures currently match. See `docs/DETERMINISM.md`; never widen a tolerance or silently
