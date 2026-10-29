@@ -31,7 +31,10 @@ REFS = [re.compile(p, re.I | re.M) for p in (
     r"""\bimportScripts\(\s*["']([^"']+)["']""",
 )]
 JS_IDENT = re.compile(r"(?:[^\W\d]|\$)(?:\w|\$)*")
-JS_NUMBER = re.compile(r"\d[\w.]*")
+# Consume only a numeric token: swallowing arbitrary words/dots hides member access such as
+# 0..constructor.constructor(...). Numeric separators, radix prefixes and exponents stay inert.
+JS_NUMBER = re.compile(r"(?:0[xX][0-9a-fA-F_]+n?|0[bB][01_]+n?|0[oO][0-7_]+n?|"
+                       r"\d[\d_]*(?:\.[\d_]*)?(?:[eE][+-]?[\d_]+)?n?)")
 # Identifiers that take one literal URL argument (checked against the allowlist) and the APIs that are never allowed.
 JS_CALLS = {"fetch", "import", "importScripts", "Worker", "SharedWorker", "register"}
 JS_DENIED = {"WebSocket", "WebSocketStream", "WebTransport", "EventSource", "sendBeacon", "XMLHttpRequest"}
@@ -389,8 +392,27 @@ def css_refs(text):
     # Up to six hex digits, then one optional whitespace terminator (CRLF counts as one).
     decoded = re.sub(r"\\(?:([0-9a-fA-F]{1,6})(?:\r\n|[ \t\r\n\f])?|\r\n|[\r\n\f]|([^\r\n\f]))",
                      unescape, text)
-    for rx in REFS[1:3]:
-        yield from (m.group(1) for m in rx.finditer(decoded))
+    # Comments are token separators, including between @import and its quoted URL. Preserve
+    # offsets and quoted content so a comment-looking substring inside a URL is not removed.
+    strings = r'''"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*' '''.rstrip()
+    parts = re.compile(r"/\*.*?(?:\*/|$)|" + strings, re.S)
+    uncommented = parts.sub(lambda m: " " * len(m.group()) if m.group().startswith("/*") else m.group(), decoded)
+    code = re.sub(strings, lambda m: " " * len(m.group()), uncommented, flags=re.S)
+
+    # These resource functions may accept bare strings, not only url(...). None is used by the
+    # reviewed demos; reject the whole construct until a dedicated grammar is supported.
+    resource = re.search(r"(?<![\w-])((?:-webkit-)?(?:image-set|image|cross-fade)|src)\s*\(", code, re.I)
+    if resource:
+        raise ValueError(f"unsupported CSS resource function {resource.group(1)}: use url(<literal URL>)")
+
+    yield from (m.group(1) for m in REFS[1].finditer(uncommented))
+    for directive in re.finditer(r"@import(?![\w-])", code, re.I):
+        tail = uncommented[directive.end():].lstrip()
+        literal = re.match(r'''["']([^"']*)["']''', tail)
+        if literal:
+            yield literal.group(1)
+        elif not re.match(r"url\(", tail, re.I):
+            raise ValueError("unsupported CSS @import: use a literal URL")
 
 
 def local_refs(rel, text):
