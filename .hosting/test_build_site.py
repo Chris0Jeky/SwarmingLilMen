@@ -507,6 +507,171 @@ class ScannerBypassTests(unittest.TestCase):
             with self.subTest(js=js):
                 self.assertEqual(self.scan(js), [])
 
+    def test_variable_keys_on_function_bindings_and_aliases_are_rejected(self):
+        for js in (
+            "const key = 'constructor', f = () => {}; f[key](source)();",
+            "const key = unknown; function f() {} f[key](source)();",
+            "const f = function() {}; const alias = f; alias[key](source)();",
+            "let alias; alias = f; function f() {} alias[key](source)();",
+            "const f = async () => {}; const alias = f; const again = alias; again?.[key](source)();",
+            "const f = function* () {}; f[key](source)();",
+            "let f = []; f = () => {}; f[key](source)();",
+            "const f = () => {}; const bound = f.bind(null); bound[key](source)();",
+            "let first = second; let second = first; second = () => {}; first[key](source)();",
+            "class C {} C[key](source)();",
+            "const f = () => {}; const text = `${f[key](source)()}`;",
+            "const f /* definition */ = () => {}; const alias /* assignment */ = f; alias /* lookup */ [key](source)();",
+        ):
+            with self.subTest(js=js):
+                self.reject(js, "computed")
+
+    def test_dangerous_variable_key_bindings_are_rejected(self):
+        for js in (
+            "const key = 'constructor'; value[key](source)();",
+            "let key; key = 'constructor'; value[key](source)();",
+            "const key = 'con' + 'structor'; value[key](source)();",
+            "const key = `constructor`; value[key](source)();",
+            r"const key = 'con\x73tructor'; value[key](source)();",
+            "const key = 'constructor'; const alias = key; value[alias](source)();",
+            "const key = 'constructor'; const async = key; const alias = async; value[alias](source)();",
+            "let key = 'con'; key += 'structor'; value[key](source)();",
+            "const key = ['constructor']; value[key](source)();",
+            "const key = `con${suffix}`; value[key](source)();",
+            "setTimeout(function() { const key = 'constructor'; value[key](source)(); }, 0);",
+            "value[key](source)(); const key = 'constructor';",
+        ):
+            with self.subTest(js=js):
+                self.reject(js, "computed")
+
+    def test_logical_assignments_propagate_function_key_and_alias_restrictions(self):
+        for operator in ("||=", "??=", "&&="):
+            for body in (
+                "let f=initial; f {op} ()=>{{}}; f[key](source)();",
+                "let f=initial; f {op} class {{}}; f[key](source)();",
+                "const f=()=>{{}}; let alias=initial; alias {op} f; alias[key](source)();",
+                "let key=initial; key {op} 'constructor'; value[key](source)();",
+                "const key='constructor'; let alias=initial; alias {op} key; value[alias](source)();",
+                "const f=()=>{{}}; let alias=initial; alias {op} f\nalias[key](source)();",
+            ):
+                js = "function use(source,initial,value) {" + body.format(op=operator) + "}"
+                with self.subTest(js=js):
+                    self.reject(js, "computed")
+            for body in (
+                "let values=initial; values {op} []; values[index]=1;",
+                "let key=initial; key {op} 'label'; const alias=key; data[alias]=values[index];",
+            ):
+                js = body.format(op=operator)
+                with self.subTest(js=js):
+                    self.assertEqual(self.scan(js), [])
+
+    def test_semicolon_free_aliases_keep_all_js_line_boundaries(self):
+        sources = (
+            "const f=()=>{{}}{gap}const g=f{gap}const k='constructor'{gap}const h=k{gap}g[h](source)()",
+            "function use(k) {{ const f=()=>{{}}; const alias=f{gap}alias[k](source)(); }}",
+            "const key='constructor'; const alias=key{gap}value[alias](source)();",
+            "function use(k) {{ const f=()=>{{}}; const alias=f{gap}return alias[k](source)(); }}",
+        )
+        # Comments preserve line terminators for ASI; U+2028/U+2029 are JS line endings too.
+        for line in ("\n", "\r", "\r\n", "\u2028", "\u2029"):
+            for gap in (line, " // comment" + line, " /*" + line + "*/ "):
+                for source in sources:
+                    js = source.format(gap=gap)
+                    with self.subTest(js=js):
+                        self.reject(js, "computed")
+        for following in ("++counter", "--counter", "'ordinary string statement'"):
+            with self.subTest(following=following):
+                self.reject(f"const f=()=>{{}}; const alias=f\n{following}; alias[key](source)();", "computed")
+
+    def test_semicolon_free_aliases_before_noncontinuing_expression_statements(self):
+        # The private brand check is valid only inside its declaring class. These sources are
+        # scanned, never executed; both aliases must survive the unrelated intervening statement.
+        for statement in ("!0", "~0", "#p in target", ".5"):
+            for line in ("\n", "\r", "\r\n", "\u2028", "\u2029"):
+                for gap in (line, " // comment" + line, " /*" + line + "*/ "):
+                    js = ("class Example { #p; run(target) { const f=()=>{}" + gap +
+                          "const g=f" + gap + statement + ";" + gap +
+                          "const k='constructor'" + gap + "const h=k" + gap +
+                          statement + ";" + gap + "g[h](source)() } }")
+                    with self.subTest(js=js):
+                        self.reject(js, "computed")
+
+    def test_newlines_do_not_split_continued_call_member_index_tag_or_operator_expressions(self):
+        for js in (
+            "function make() { return []; } const result = make\n(0); result[index];",
+            "function make() { return []; } const result = make /*\n*/ (0); result[index];",
+            "const f = () => {}; const result = f\n['name']; result[index];",
+            "const f = () => {}; const result = f\n.name; result[index];",
+            "const f = () => {}; const result = f\n?.name; result[index];",
+            "function tag() { return []; } const result = tag\n`data`; result[index];",
+            "function tag() { return []; } const result = tag\n`data-${value}`; result[index];",
+            "const f = () => {}; const result = f\n+ 1; result[index];",
+            "const f = () => {}; const result = f\n!= data; result[index];",
+            "const f = () => {}; const result = f\n!== data; result[index];",
+            "const f = () => {}; const result = f /*\n*/ !== data; result[index];",
+            "const f = () => {}; const result = f\ninstanceof Object; result[index];",
+            "const f = () => {}; const result = f\nin data; result[index];",
+            "const key = 'na'\n+ 'me'; const alias = key\nconst result = data[alias];",
+            "const key = 'name'\nconst alias = key\nconst result = data[alias]",
+        ):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+        self.reject("const key = 'con'\n+ 'structor'; value[key](source)();", "computed")
+
+    def test_constructor_destructuring_is_rejected(self):
+        for js in (
+            "const {constructor: C} = () => {}; C(source)();",
+            "const {constructor} = f; constructor(source)();",
+            "let C; ({constructor: C} = f); C(source)();",
+            "const {nested: {constructor: C}} = object; C(source)();",
+            "function take({constructor: C}) { return C(source)(); }",
+            "const take = ({constructor: C}) => C(source)();",
+            "const {'constructor': C} = f; C(source)();",
+            r"const {'con\x73tructor': C} = f; C(source)();",
+            "const {['constructor']: C} = f; C(source)();",
+            "const {['con' + 'structor']: C} = f; C(source)();",
+            "const {[key]: C} = f; C(source)();",
+        ):
+            with self.subTest(js=js):
+                self.reject(js, "property")
+
+    def test_supported_data_keys_and_inert_indirection_text_are_accepted(self):
+        for js in (
+            "const key = 'label'; const alias = key; data[alias] = values[index];",
+            "const values = []; values[index] = 1; const value = values[index + 1];",
+            "const formatters = {one: value => value}; formatters[name](42);",
+            "const value = `label-${id}`; const preset = PRESETS[ui.value];",
+            "function values() {} const value = data.values[index];",
+            "const text = 'function'; const label = 'class'; text[index] = label[index];",
+            "const text = '('; const label = 'async'; text[index] = label[index];",
+            "class Vec { constructor(x) { this.x = x; } } const {x} = vector;",
+            "const {['name']: label, [0]: first} = data; const [key, [min, max]] = entry;",
+            "const source = \"const key = 'constructor'; f[key](code)()\";",
+            "const source = `const {constructor:C} = f`; const r = /constructor|f\\[key\\]/;",
+            "// const key = 'constructor'; f[key](code)()\n/* const {constructor:C}=f */ work();",
+        ):
+            with self.subTest(js=js):
+                self.assertEqual(self.scan(js), [])
+
+    def test_indirection_rejections_preserve_existing_output(self):
+        sources = (
+            "const key = 'constructor', f = () => {}; f[key](source)();",
+            "const {constructor: C} = () => {}; C(source)();",
+        )
+        for extension in ("html", "js", "mjs"):
+            for source in sources:
+                with self.subTest(extension=extension, source=source):
+                    rel = f"js-demos/a/source.{extension}"
+                    body = PAGE.format(t="A", js=source) if extension == "html" else source
+                    tmp, root = make_repo([rel], {rel: body})
+                    self.addCleanup(tmp.cleanup)
+                    out = root / "_site"
+                    out.mkdir()
+                    marker = out / "keep.txt"
+                    marker.write_text("previous build", encoding="utf-8")
+                    self.assertTrue(build_site.build(root, out))
+                    self.assertEqual([p.name for p in out.iterdir()], ["keep.txt"])
+                    self.assertEqual(marker.read_text(encoding="utf-8"), "previous build")
+
     def test_opaque_resource_urls_are_rejected(self):
         css = "data:text/css;base64,QGltcG9ydCAnaHR0cHM6Ly9leGFtcGxlLnRlc3QveC5jc3MnOw=="
         for markup in (f'<link rel=stylesheet href="{css}">',
