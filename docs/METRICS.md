@@ -57,10 +57,21 @@ rejected before probes run.
 
 ## Motion and centroid channels
 
-`MotionMetricProbe` computes these five channels in O(N) work with double-precision accumulation.
-The input components remain floats, matching the engines' state representation.
-Selecting any of its channels currently computes all five, including the circular-centroid
-trigonometry for a periodic frame; selecting only the original three columns does not skip that work.
+The parameterless `MotionMetricProbe` preserves its original five-channel schema, computed in
+O(N) work with double-precision accumulation. The input components remain floats, matching the
+engines' state representation.
+
+`new MotionMetricProbe(includeCentroids: false)` advertises and computes only `population`,
+`meanSpeed`, and `polarization`. It skips coordinate sums and circular-centroid trigonometry;
+the first three reductions keep the same order and exact output bits as the full probe. A registry
+containing only that basic probe rejects centroid requests, rather than supplying a missing value
+for a channel the probe does not declare. Passing `true` retains all five outputs. The actual
+parameterless constructor remains available for already compiled callers.
+
+The CLI chooses basic mode when no centroid channel is requested, including its default
+three-column plan. Requesting either `centroidX` or `centroidY` enables both centroid computations;
+only selected columns are written. Metric discovery continues to list the full supported schema.
+No metric definition or schema 2/metric-contract-1 replay semantics changed.
 
 | Channel | Definition |
 | --- | --- |

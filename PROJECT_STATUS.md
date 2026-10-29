@@ -92,8 +92,8 @@ manifests remain replayable with byte-identical default CSV. Runtime-cost channe
 Step and explicitly disable exact replay. The integrated Release suite passes 853 tests; a
 separate 50k sparse/1,000-step proof observes zero current-thread allocation in physics, reused
 capture/sampling, buffered CSV writing and the final flush. It excludes setup, hashing and
-quadratic nearest-neighbor analysis. Exact measurement boundaries and the periodic-centroid
-overhead are documented in [headless experiments](docs/HEADLESS_EXPERIMENTS.md).
+quadratic nearest-neighbor analysis. Exact measurement boundaries and the optional-centroid
+optimization are documented in [headless experiments](docs/HEADLESS_EXPERIMENTS.md).
 
 Sequential parameter sweeps now resolve a native base configuration, unique seeds and numeric
 grid axes in-process. Every cell is validated before output and receives its own replayable
@@ -103,6 +103,17 @@ summaries, and an independently replayable cell. The integrated suite passes 911
 58 sweep cases. Runtime metrics are excluded from sweeps, which are capped at 10,000 cells and
 publish only after the complete attempt succeeds. This does not add parallel scheduling,
 statistics or plotting. See [parameter sweeps](docs/HEADLESS_EXPERIMENTS.md#parameter-sweeps).
+
+The CLI now avoids centroid work unless either centroid column is requested. The public
+parameterless motion probe still exposes all five channels; its explicit basic mode exposes only
+the three values it computes. The isolated integrated Release gate passes **918 tests**. Original
+schema 1 CSVs and selected schema 2 centroid/neighbor CSVs remain byte-identical on replay, and
+metric discovery is unchanged. One same-frame 50k/1,000-sample comparison measured 301.411 ms for
+the basic plan versus 2,191.723 ms for the full probe, both with zero current-thread allocation
+and identical first-three output bits. This excludes physics, capture, frame validation and I/O.
+A separate 50k/1,000-step sparse run selecting only seven linear core channels observed zero
+allocation in physics, capture/sampling, real buffered CSV writing and final flush. These are
+scoped host observations; they do not establish dense-scene speed or interactive FPS.
 
 The isolated foundation Release build (SDK 8.0.415, Linux x64) completed with no warnings/errors;
 all **697 non-Performance tests passed** before publication. The isolated golden-trace addition
@@ -175,9 +186,9 @@ speedup or machine-independent performance bound.
 ## Current limitations and next work
 
 1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
-2. Preserve single-run and sweep replay while reducing unrequested centroid work in the default
-   metric plan using measured evidence and unchanged CSV bytes. Runtime channels stay explicitly
-   separate from byte-repeatable physical metrics; sweep aggregation is sequential.
+2. Preserve single-run and sweep replay while extending experiments through concrete consumers.
+   Runtime channels stay explicitly separate from byte-repeatable physical metrics; exact
+   nearest-neighbor analysis remains opt-in O(N²), and sweep aggregation is sequential.
 3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
    now uses reusable telemetry and shared startup configuration. Current overlay geometry still
    performs the existing index refresh only when shown; the recorded tick label does not re-query.

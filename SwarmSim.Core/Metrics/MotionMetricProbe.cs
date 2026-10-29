@@ -1,22 +1,31 @@
 namespace SwarmSim.Core.Metrics;
 
-/// <summary>O(N) population, mean speed, polarization, and domain-aware centroid.</summary>
+/// <summary>O(N) population, mean speed and polarization, with optional domain-aware centroids.</summary>
 public sealed class MotionMetricProbe : IMetricProbe
 {
     private static readonly IReadOnlyList<string> Names = Array.AsReadOnly(new[]
         { "population", "meanSpeed", "polarization", "centroidX", "centroidY" });
+    private static readonly IReadOnlyList<string> BasicNames = Array.AsReadOnly(new[]
+        { "population", "meanSpeed", "polarization" });
+    private readonly bool _includeCentroids;
 
-    public IReadOnlyList<string> Channels => Names;
+    /// <summary>Preserves the original five-channel schema and parameterless constructor.</summary>
+    public MotionMetricProbe() : this(includeCentroids: true) { }
+
+    /// <summary>False advertises only the first three channels and skips all centroid arithmetic.</summary>
+    public MotionMetricProbe(bool includeCentroids) => _includeCentroids = includeCentroids;
+
+    public IReadOnlyList<string> Channels => _includeCentroids ? Names : BasicNames;
     public bool IsDeterministic => true;
 
     public void Sample(in MetricFrame frame, Span<double> output)
     {
-        MetricMath.RequireOutput(output, Names.Count);
+        MetricMath.RequireOutput(output, Channels.Count);
         output[0] = frame.Count;
         if (frame.Count == 0)
         {
             output[1] = output[2] = 0d;
-            output[3] = output[4] = double.NaN;
+            if (_includeCentroids) output[3] = output[4] = double.NaN;
             return;
         }
 
@@ -31,6 +40,7 @@ public sealed class MotionMetricProbe : IMetricProbe
                 headingX += agent.Vx / speed;
                 headingY += agent.Vy / speed;
             }
+            if (!_includeCentroids) continue;
             if (frame.Domain.IsPeriodic)
             {
                 (double sinX, double cosX) = Math.SinCos(2d * Math.PI * MetricMath.CenteredRemainder(agent.X, frame.Domain.Width) / frame.Domain.Width);
@@ -50,8 +60,11 @@ public sealed class MotionMetricProbe : IMetricProbe
         output[1] = speedSum / frame.Count;
         // All members are in the denominator; stationary members contribute a zero unit heading.
         output[2] = Math.Clamp(Math.Sqrt(headingX * headingX + headingY * headingY) / frame.Count, 0d, 1d);
-        output[3] = frame.Domain.IsPeriodic ? CircularMean(xSin, xCos, frame.Count, frame.Domain.Width) : xSum / frame.Count;
-        output[4] = frame.Domain.IsPeriodic ? CircularMean(ySin, yCos, frame.Count, frame.Domain.Height) : ySum / frame.Count;
+        if (_includeCentroids)
+        {
+            output[3] = frame.Domain.IsPeriodic ? CircularMean(xSin, xCos, frame.Count, frame.Domain.Width) : xSum / frame.Count;
+            output[4] = frame.Domain.IsPeriodic ? CircularMean(ySin, yCos, frame.Count, frame.Domain.Height) : ySum / frame.Count;
+        }
     }
 
     private static double CircularMean(double sinSum, double cosSum, int count, double extent)

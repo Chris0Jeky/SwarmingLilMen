@@ -333,13 +333,40 @@ measured full loop took 39.338 seconds on the shared development host. These val
 sparse scene and one runtime; they do not establish process-wide zero allocation or dense-scene
 throughput. Exact nearest-neighbor analysis at 50k was not run.
 
-The current motion probe computes all five of its outputs when any one is selected. Consequently
-the default three-column periodic run also pays for circular-centroid trigonometry. The dedicated
-check reports periodic versus Euclidean motion-only sampling times on the same captured frame
-to make that overhead visible. In the same run, 1,000 samples of the captured 50k frame took
-390 milliseconds in Euclidean mode and 3,974 milliseconds in periodic mode. Both paths computed
-all five motion outputs and excluded engine stepping, capture and I/O. Timing observations are
-not a throughput guarantee.
+That earlier run exposed avoidable default-plan work: the full motion probe took 390 milliseconds
+in Euclidean mode and 3,974 milliseconds in periodic mode for 1,000 samples of the same captured
+50k frame. Both paths computed all five motion outputs, excluding stepping, capture and I/O.
+
+The CLI now selects `MotionMetricProbe(includeCentroids: false)` whenever neither centroid channel
+is requested. Its default three columns therefore skip coordinate sums and circular-centroid
+trigonometry. Asking for either centroid enables the full probe; discovery still lists both.
+The original parameterless library constructor remains a five-channel probe, and the first three
+reductions preserve exact output bits and CSV bytes. Manifest schema and metric contract versions
+are unchanged; actual schema 1 canonical and legacy manifests still replay their full CSV exactly.
+
+Two separate opt-in checks cover the optimization and the core-only observer path:
+
+```sh
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter FullyQualifiedName~BasicAndFullPeriodicPlans50k_ReuseScratchAndReportSamplingCost --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter FullyQualifiedName~SparseCanonical50k_CoreChannelsOnly_SeparatesPhysicsObserverAndBufferedFileAllocations --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
+```
+
+The first compares basic and full motion probes in plans requesting the same three columns on one
+prevalidated 50k periodic frame, after 100 warm samples and across 1,000 measured samples. It
+excludes initialization, frame validation, simulation, capture and I/O. The second advances the
+same sparse 50k simulation workload as the earlier pipeline check, with only the seven O(N) core
+channels: five motion outputs plus both runtime costs. It excludes boids-specific probes and
+quadratic nearest neighbors. Allocation assertions remain scoped to the calling thread; reported
+times are observations, not FPS or throughput gates.
+
+In one Linux x64 / .NET 8.0.21 Release run, the same-frame basic plan took 301.411 milliseconds
+and the full plan took 2,191.723 milliseconds for those 1,000 samples. Both allocated zero
+current-thread bytes and produced identical first-three output bits. The separate seven-channel
+pipeline observed zero current-thread bytes in physics, capture/frame/plan, buffered CSV writes,
+and the final flush. Its 1,000 measured steps took 26.290 seconds in physics and 30.402 seconds
+for the full measured loop; the file was 109,069 bytes including warm-up rows. These two checks
+ran on the shared development host, so their timings are workload-specific observations rather
+than a controlled cross-machine performance comparison.
 
 ## Migrating the renderer benchmark flag
 
