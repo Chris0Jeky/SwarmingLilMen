@@ -12,7 +12,7 @@ that decision, not deletion authorization.
 - [ ] **Agent lifecycle:** canonical supports verified spawn/add and removal, with stable identity,
   deterministic ordering, and correct telemetry/observer behavior across population changes.
   A fixed-capacity add method alone does not satisfy this requirement.
-- [ ] **Behavioral comparison:** all five prescribed parity scenarios have repeatable artifacts;
+- [x] **Behavioral comparison (2026-10-29, Ubuntu/.NET 8/X64):** all five prescribed parity scenarios have repeatable artifacts;
   the same-build repeat and spatial-index exact checks pass; S2/S4/S5 classic/reference envelopes
   pass using the fixed seed roster and final-window method. The alignment-off mutation must fail
   the polarization gate. Explain measured legacy differences rather than demanding bitwise
@@ -28,9 +28,12 @@ that decision, not deletion authorization.
 - [ ] **Owner deletion review:** the owner reviews the above evidence and personally signs the
   dedicated deletion PR, with an explicit migration/rollback plan.
 
-At creation, none of these checklist items is asserted complete. Named composition and public
-ClassicReynolds configuration make the parity comparison possible; they do not add group or
-removal semantics. The legacy spawn-growth work is a supported legacy feature, not a reason to
-remove it. Track verification in [issue #28](https://github.com/Chris0Jeky/SwarmingLilMen/issues/28)
-and the authoritative epic [#10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10).
+The behavioral-comparison item is supported by the [recorded bounded evidence](BEHAVIORAL_PARITY.md#recorded-calibration-and-verification--2026-10-29):
+100 primary runs, 100 exact repeats, 50 canonical index comparisons, nine locked envelopes, and
+a separate 100-run alignment-off witness. Its 60-second analysis target remains unmet; that is
+separate from the matched 10k/50k engine-performance criterion above. The other checklist items
+remain open. Named composition and public ClassicReynolds configuration do not add group or
+removal semantics. The legacy spawn-growth work remains a supported legacy feature. Track
+verification in [issue #28](https://github.com/Chris0Jeky/SwarmingLilMen/issues/28) and the
+authoritative epic [#10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10).
 

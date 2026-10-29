@@ -18,7 +18,7 @@ is subtracted, each force is capped independently, and the three forces are summ
 force has no additional cap. A nonzero integrated velocity is normalized to the configured speed.
 Force calculations read the old population; movement writes a separate next buffer.
 
-It deliberately adapts the demonstration in four explicit ways:
+Its main arithmetic and domain adaptations are:
 
 1. All state and steering arithmetic use C# `float`/`MathF`, rather than JavaScript `Number`.
 2. Force and movement use a recorded fixed timestep, rather than one implicit step per frame.
@@ -157,12 +157,13 @@ an alignment-off run that did not violate a polarization envelope, including a d
 rejection. A distance-only rejection never counts as the required alignment witness.
 
 The ordinary solution CI builds this project and runs the small analytical, real-engine,
-repeat/index, input and comparator regressions. Full scientific verification is an explicit
+repeat/index, input and comparator regressions, including validation of the actual checked-in
+calibration against all five recipes. Full scientific verification is an explicit
 command because the per-tick quadratic analysis and dense all-neighbor workloads exceed the
 original under-60-second target on the measured host. This is partial issue #28; no expensive
 full-matrix workload is silently added to every pull request.
 
-## Recorded calibration and remaining gates — 2026-10-29
+## Recorded calibration and verification — 2026-10-29
 
 The [locked calibration](../baselines/parity-v1.json) contains all **100** prescribed
 scenario/seed/model rows. Its SHA-256 is
@@ -190,8 +191,9 @@ An independent Python recomputation from the actual generated files agreed exact
 100 CSV hashes, 78,800 tick rows, 1,600 sequentially accumulated window means and finite counts,
 200 requested/actual initial-state CSV identities, and all nine bands. The four models received
 matching requested state identities for each recipe/seed; actual post-ingest identities are
-recorded separately. The independent source review also exercised the reference formulas,
-analytical metrics, malformed/incomplete baselines and forged initial identities.
+recorded separately. An independent source review passed 73 probes covering the reference
+formulas, analytical metrics, malformed/incomplete baselines, forged initial identities,
+mutation-exit classification and the actual locked baseline.
 
 The modes make materially different predictions. For S4, five-seed final-window polarization
 was 0.066568 (Enhanced), 0.979280 (classic), 0.421279 (legacy), and 0.969507 (reference).
@@ -206,12 +208,42 @@ and parity binary
 Its source and binary snapshot was retained before the later command-reporting correction,
 [neighbor-statistics reuse (#186)](https://github.com/Chris0Jeky/SwarmingLilMen/pull/186), and
 [representable-neighbor-distance correction (#188)](https://github.com/Chris0Jeky/SwarmingLilMen/pull/188).
-Full verification uses the reconciled Core source; it does
-not regenerate or adjust this calibration to accommodate the changes.
+Full verification used the reconciled Core source without regenerating or adjusting the
+calibration. The measured verification binaries had Core SHA-256
+`A522C2A6D9D1596EF1913F0DCCC19ED69F3E4631FD9F193EB3186C115D851E2B`
+and parity SHA-256
+`39CB017359D4E1788546EE2E8EC381E85D25E12400B333F8CF51243A4674E3F3`.
 
-**Verification status while this change is under review:** the complete current-source
-repeat/index run and the complete alignment-off matrix are pending. Their results must be
-recorded here before claiming those scientific gates. The small default CI checks establish
-their covered mechanisms, not completion of these full matrices. The 60-second target remains
-unmet regardless of those outcomes, and issue #28 remains open for that measured limitation.
+The complete normal verification **passed with exit 0**: 100 primary runs, 100 repeated runs,
+and 50 canonical runs through the naive index. Every current-build state-trace and CSV exact
+check passed, as did all nine locked metric envelopes. A separate Python artifact audit also
+confirmed that all 100 current primary rows exactly matched the original calibration, including
+requested/actual initial identities, final and every-tick state hashes, CSV hashes, window means
+and finite counts. Its raw-file audit checked all 78,800 emitted tick rows, 1,600 window means and
+200 initial-state CSV identities. This is additional observed preservation across the reconciled
+Core changes on this host; it does not expand the cross-platform contract.
+
+The complete alignment-off matrix **returned the required exit 1**. It reran all 100 primary
+combinations, including current references, while disabling only classic alignment. There were
+eight envelope failures, including both of these polarization violations:
+
+| Scenario | Alignment-off polarization | Reference polarization | Absolute difference | Locked band |
+| --- | ---: | ---: | ---: | ---: |
+| S4 uniform | 0.031647 | 0.969507 | 0.937860 | 0.039880 |
+| S5 clump | 0.110003 | 0.733099 | 0.623095 | 0.047183 |
+
+Independent review reproduced all eight failures and confirmed unchanged requested/actual
+initial identities for all 100 rows. The 75 unmodified-model rows retained their final-state,
+state-trace and CSV hashes. Twenty classic trajectories changed; the five symmetric head-on
+trajectories remained unchanged. The baseline bytes and bands were not changed for this witness.
+
+Normal verification took 856.440 seconds for its 250 runs; the separate mutation matrix took
+236.910 seconds for 100 runs. These elapsed values include overlapping execution and are retained
+as operational evidence, not a matched performance comparison. These full scientific gates have
+been demonstrated on the recorded Ubuntu/.NET/X64 host. Ordinary cross-platform CI covers the
+small regression suite; no complete Windows scientific matrix is asserted here.
+
+**Remaining gate:** the 60-second target is still unmet at this revision. Issue #28 remains open
+for that measured cost, and full scientific verification remains an explicit command. The passed
+bounded behavioral comparison does not establish the other legacy retirement criteria.
 

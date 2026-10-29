@@ -24,13 +24,18 @@ and post-ingest initial states, per-tick metrics, source/runtime provenance and 
 The 100-run calibration took 293.754 seconds on the recorded host, so the 60-second target remains
 unmet. All nine predeclared comparison bands fit their ceilings; an independent Python audit
 agrees exactly with all 100 CSV hashes, 78,800 tick rows, 1,600 window means and 200 initial-state
-hashes. The guide distinguishes calibration from full repeat/index and mutation verification.
+hashes. The reconciled source then passed the complete 250-run same-build verification: 100
+primary runs, 100 repeats and 50 canonical Naive-index runs. A separate 100-run alignment-off
+matrix fails the S4/S5 polarization bands while all 75 unmodified-model traces and CSVs remain
+exact. These full scientific checks were run on the recorded Linux host; ordinary Ubuntu/Windows
+CI covers the small analytical/real-engine tests and the actual committed baseline, not the full
+matrices. The guide keeps that distinction and records source/runtime identities.
 See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 [legacy retirement criteria](docs/LEGACY_RETIREMENT.md). Legacy remains supported.
 
 ## Verified live state
 
-The current integrated Release gate passes **1,102 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,103 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional

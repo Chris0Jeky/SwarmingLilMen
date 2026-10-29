@@ -6,6 +6,19 @@ namespace SwarmSim.Tests;
 
 public sealed class ParityBaselineTests
 {
+    [Fact]
+    public void CheckedInCalibrationMatchesItsActualRecipesAndCompleteContract()
+    {
+        ScenarioRecipe[] recipes = Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "scenarios"), "*.json")
+            .OrderBy(path => path, StringComparer.Ordinal)
+            .Select(path => ScenarioRecipe.FromJson(File.ReadAllText(path))).ToArray();
+        string json = File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "baselines", "parity-v1.json"));
+        ParityBaseline baseline = ParityBaseline.FromJson(json, recipes);
+
+        Assert.Equal(100, baseline.Calibration.Length);
+        Assert.Equal(9, baseline.Envelopes.Length);
+    }
+
     [Theory]
     [InlineData("{}")]
     [InlineData("{\"Version\":1,\"Version\":1}")]
