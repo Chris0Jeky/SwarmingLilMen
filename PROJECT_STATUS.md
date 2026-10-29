@@ -20,7 +20,7 @@ not made active merely because `SimConfig` contains related settings.
 
 ## Verified live state
 
-The current integrated Release gate passes **1,012 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,020 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
@@ -72,8 +72,10 @@ or errors. The historical counts below identify the specific additions that prod
   contraction, interior/seam cluster approach and the default priority speed floor/recovery.
   All three flocking contributions must occur in the interacting stability scene. Six isolated
   implementation mutations make the relevant scenarios fail; restored source passes. No
-  production behavior or exact golden fixture changes accompany this coverage. Named isolation,
-  classic composition and a valid faster/slower overtaking model remain issue #41 work. See the
+  production behavior or exact golden fixture changes accompany this coverage. Eight additional named-composition cases now prove isolated rule-level integration over
+  120 ticks, single-rule avoidance/alignment/cohesion behavior and classic constant speed across
+  1,200 ticks. Four more mutations make those cases fail. A valid faster/slower overtaking model
+  remains issue #41 work. See the
   [acceptance inventory and measured margins](docs/CANONICAL_BEHAVIOR_SCENARIOS.md).
 - **Foundation gate:** PR #170 passed all 697 Release non-performance tests on Ubuntu and Windows,
   against both the merge result and exact head `5f08a9f331944f65c7665ab91fd86dd3c7ea6614`.

@@ -70,7 +70,7 @@ public class CanonicalScenarioTests
         // Milestone 4: three different headings converge. Circular variance is 1 - the
         // mean resultant length, so it handles angle wrapping without an arbitrary mean angle.
         // Require at least 90% reduction over five simulated seconds, not a rounding-sized gain.
-        // This is the current weighted default pipeline, not the named isolation promised by #27.
+        // This checks Enhanced behavior; CanonicalNamedScenarioTests separately proves named isolation.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 8,
@@ -304,8 +304,8 @@ public class CanonicalScenarioTests
     [InlineData(true)]
     public void Cohesion_TwoCompactClustersApproachAcrossTheShortestImage(bool acrossSeam)
     {
-        // Milestone 5's two-cluster geometry. The current weighted pipeline has no named
-        // rule-off switch, so this checks integrated cohesion, not alignment-off isolation.
+        // Milestone 5's two-cluster geometry in the Enhanced pipeline. Named alignment-off
+        // isolation is checked separately in CanonicalNamedScenarioTests.
         // Both centers are 30 units apart in the periodic metric and within sense range.
         var settings = new CanonicalWorldSettings
         {
