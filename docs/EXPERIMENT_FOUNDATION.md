@@ -27,8 +27,9 @@ existing C# callers keep their accessors. JSON cannot represent NaN/infinity. Sa
 opening the output file. See the [configuration cookbook](CONFIGURATION_COOKBOOK.md) and
 [parameter mapping](PARAMETER_GUIDE.md) for the distinct engine semantics and preset names.
 
-The renderer keeps its existing CLI/F-key behavior in this foundation change. The new Core resolver
-is an independently testable API; a later renderer integration must be checked in a real window.
+The renderer now uses the same layered startup resolver while retaining its existing preset
+definitions and F-key assignments. Its separate default profile and fixed world dimensions are
+documented in [renderer configuration](RENDERER_CONFIGURATION.md). Manual window checks remain open.
 In particular, legacy `MaxSpeed` and canonical `TargetSpeed` are related configuration inputs with
 different integration semantics. A legacy JSON file is not a native canonical file.
 
@@ -76,9 +77,9 @@ step, a capture is empty. A boid added between ticks first appears in telemetry 
 completed tick. An undersized destination is rejected without modifying its old capture.
 
 The source-compatible `CapturePerceptionSnapshot()` still exists and returns independent arrays,
-but allocates on each explicit call. Existing renderer values remain supported through that
-adapter. Reusing `CanonicalTelemetry` in the renderer and inspecting its HUD is a separate
-follow-up; this change does not claim GUI verification.
+but allocates on each explicit call. The canonical renderer now reuses `CanonicalTelemetry`
+and separates recorded-tick diagnostics from its current-position overlay query. See
+[renderer telemetry](CANONICAL_RENDER_TELEMETRY.md) for allocation scope and remaining manual checks.
 
 ## Evidence and reproduction
 

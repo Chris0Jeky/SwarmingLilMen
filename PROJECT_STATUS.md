@@ -30,8 +30,11 @@ not made active merely because `SimConfig` contains related settings.
   named scenario → file → explicit overrides. New resolver file/override typos fail; existing raw
   loaders retain permissive unknown-property handling. The constructor/JSON validation boundary
   rejects invalid active values while preserving documented finite clamps, zero disable modes
-  and legacy unlimited-neighbor configuration. The renderer's existing preset/startup behavior
-  remains unchanged. See [configuration cookbook](docs/CONFIGURATION_COOKBOOK.md) and
+  and legacy unlimited-neighbor configuration. Renderer startup uses the same preset-before-file
+  layering while preserving unauthored defaults and the five-entry F-key registry. Five previously
+  dropped neighbor/crowding/collision settings now survive its copy paths. See
+  [renderer configuration](docs/RENDERER_CONFIGURATION.md),
+  [configuration cookbook](docs/CONFIGURATION_COOKBOOK.md) and
   [parameter guide](docs/PARAMETER_GUIDE.md).
 - **Legacy spatial correctness:** Wrap now queries across periodic seams and computes nearest-image
   distances/FOV/separation/cohesion. `GridCellSize` is honored, with radius-complete candidate-cell
@@ -46,7 +49,10 @@ not made active merely because `SimConfig` contains related settings.
   `CanonicalTelemetry` captures last-tick diagnostics and truncation without a spatial re-query.
   A 256-boid/1,000-warm-tick regression fell from 3,144,000 allocated bytes to zero, including a
   capture-every-tick variant. The old `CapturePerceptionSnapshot()` is an allocating compatibility
-  adapter; no renderer behavior change or window verification is claimed in this foundation PR.
+  adapter. The canonical renderer now explicitly reuses telemetry once per frame. Its overlay
+  labels the fresh current-position query separately from recorded tick truncation. Headless tests
+  cover HUD value parity and recreation; actual graphics/manual verification remains outstanding.
+  See [renderer telemetry](docs/CANONICAL_RENDER_TELEMETRY.md).
 - **Trajectory preservation:** all four bounded canonical workloads retained their pre-change
   Linux hashes for all three repeats. Grid and naive state matches at every observed frame;
   capture on/off also matches every boid float bit for 128 ticks. This does not establish
@@ -85,6 +91,11 @@ The display-free smoke step runs 400 agents for 600 ticks in both engines, repea
 replays each manifest: all three CSVs are byte-identical per engine and contain 602 lines.
 The CLI dependency graph contains only Cli and Core. CI runs that same smoke on both platforms
 and additionally checks the embedded build commit against the tested checkout.
+
+The renderer follow-up adds 39 regression cases and passes **802 tests** in its isolated Release
+gate. The default canonical initial/500-tick hashes are unchanged, actual --list-presets output
+matches, and preset definitions plus both F1–F5 dispatch blocks are byte-identical to the prior
+source. This verifies configuration and diagnostic behavior without claiming window interaction.
 
 ## Reproduce validation
 
@@ -142,8 +153,9 @@ speedup or machine-independent performance bound.
 1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
 2. Extend the single-run CLI with registered analysis probes (#24) and seed/parameter sweeps
    (#25). Timing data must stay separate from byte-repeatable physical metrics.
-3. Integrate reusable telemetry into the canonical renderer and verify the actual HUD (#20).
-   Stored tick truncation exists; fresh overlay-query diagnostics still describe current positions.
+3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
+   now uses reusable telemetry and shared startup configuration. Current overlay geometry still
+   performs the existing index refresh only when shown; the recorded tick label does not re-query.
 4. Introduce named RNG streams and real observation/intent arbitration (#26/#27), preserving the
    settled trace contract except for the explicitly documented RNG transition. Extra positional
    rules are not yet a general composition surface.

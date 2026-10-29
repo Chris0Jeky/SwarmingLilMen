@@ -9,6 +9,8 @@ ordering authority. Historical documents are context, not proof.
 - [`EXPERIMENT_FOUNDATION.md`](EXPERIMENT_FOUNDATION.md) - reusable configuration, spatial semantics and explicit telemetry
 - [`HEADLESS_EXPERIMENTS.md`](HEADLESS_EXPERIMENTS.md) - run artifacts, native configurations and exact manifest replay
 - [`DETERMINISM.md`](DETERMINISM.md) - measured platform scope, exact golden traces and fixture policy
+- [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
+- [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics
 - [`QUICKSTART.md`](QUICKSTART.md) - five-minute setup and first run
 - [`CONTROLS.md`](CONTROLS.md) - renderer controls and runtime parameter editor
 - [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) - configuration field effects and ranges

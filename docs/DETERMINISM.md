@@ -49,6 +49,13 @@ is skipped. A new runtime patch can still fail the reference and requires invest
 
 ## Committed experiment
 
+The shared legacy reference below is not a general cross-platform equality claim. The standalone
+runner's 400-agent, 600-tick, seed-7 workload uses uniform seeded positions and headings rather
+than these eight fixed initial agents. In [CI run 40806403511](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40806403511)
+both its legacy and canonical final hashes differed between Windows and Linux, while every
+same-platform repeat and manifest replay produced an identical CSV and state hash. Thus a passing
+fixed legacy fixture does not extend the guarantee to arbitrary initial states or workloads.
+
 [GoldenTraceScenarios.cs](../SwarmSim.Tests/GoldenTraceScenarios.cs) fixes the complete settings
 used by each engine and eight ordered initial agents. Positions and initial directions use exact
 integer values, including a pair across both wrap seams. The trajectories exercise sensing,

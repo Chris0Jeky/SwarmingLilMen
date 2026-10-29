@@ -160,6 +160,12 @@ starting a simulation, including when combined with `--canonical`. Use `SwarmSim
 headless runs and replay, or `SwarmSim.Benchmarks` for throughput/allocation measurements.
 See [headless experiments](docs/HEADLESS_EXPERIMENTS.md) for configuration, artifact, and replay contracts.
 
+Renderer startup applies `--preset` before `--config`, so omitted file fields retain the selected
+preset's values. Both renderer modes use `SimConfig` files; native canonical files belong to the
+headless CLI. The existing five-entry F-key menu and default renderer profile are preserved.
+See [renderer configuration](docs/RENDERER_CONFIGURATION.md) and
+[canonical telemetry](docs/CANONICAL_RENDER_TELEMETRY.md) for the tested contracts and manual-check scope.
+
 Exit codes: `0` success; `1` the `--config` file failed to load; `2` usage error — an unknown
 `--preset`, an unrecognised option or unexpected argument (for example a mistyped `--agnet-count`),
 or a missing, empty or malformed option value (for example `-n abc`, `-n 0`, `--preset ""`, or
