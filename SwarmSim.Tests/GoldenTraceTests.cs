@@ -16,6 +16,9 @@ public sealed class GoldenTraceTests
         _output = output;
         _output.WriteLine($"GOLDEN_REFERENCE {GoldenTraceFixtures.Provenance}");
         _output.WriteLine($"GOLDEN_RUNTIME {RuntimeInformation.FrameworkDescription} / {RuntimeInformation.OSDescription} / {RuntimeInformation.ProcessArchitecture}");
+        Assert.True(Environment.Version.Major == 8 && RuntimeInformation.ProcessArchitecture == Architecture.X64 &&
+            (OperatingSystem.IsLinux() || OperatingSystem.IsWindows()),
+            "The reviewed golden-reference band is .NET 8 / x64 / Linux or Windows. Add measured, reviewed reference data before extending this band; never skip or regenerate fixtures at test time.");
     }
 
     [Fact]

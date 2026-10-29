@@ -91,15 +91,20 @@ here rather than referenced.
   `.claude/settings.local.json`; bypass comes only from user settings or a launch flag.** A project
   or local `defaultMode` of bypass is ignored (Claude Code 2.1.257+), so widening committed
   permissions is a repo-wide decision, not a personal convenience.
-- **CI validates GitHub's head/base merge ref, not your exact branch head.** Incorporate the latest
-  `main` before merging, and use the workflow's `workflow_dispatch` when an exact-head rerun matters.
+- **CI validates both GitHub's head/base merge ref and the exact PR head** on Ubuntu and Windows.
+  Incorporate the latest `main` before merging; inspect the exact-head SHA and logs as well as the
+  integration result. Golden-trace records make the measured platform/runtime band explicit.
 
 ## Pitfalls
 
 - `TreatWarningsAsErrors` + `Nullable` are on in `Directory.Build.props`; one warning fails CI.
 - A green suite proves nothing about throughput: `Category=Performance` gates machine-relative
   ratios only and its absolute numbers are reported-only. Never quote them as the target met.
-- Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock. A
+- Determinism is the product: seeded `Rng`, fixed timestep, stable ordering, no wall clock.
+  Exact replay is scoped to the recorded implementation/configuration/platform/runtime band.
+  Canonical Windows and Linux traces differ and have separately reviewed exact fixtures; legacy
+  and RNG fixtures currently match. See `docs/DETERMINISM.md`; never widen a tolerance or silently
+  regenerate a reference to make drift pass. A
   `SimConfig` default change must also land in `docs/PARAMETER_GUIDE.md` and in any JSON example
   written to demonstrate that field. Do **not** copy it into `configs/*.json`: those recipes set
   17-19 of the 55 properties deliberately and inherit the rest through `SimConfig.LoadFromJson`, so

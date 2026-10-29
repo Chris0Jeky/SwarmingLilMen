@@ -23,6 +23,8 @@ not made active merely because `SimConfig` contains related settings.
   `f342bc9695e2707e930e0e5e0fac85db84a2c449`. Genome validation tests reject every covered invalid
   rate/deviation without consuming RNG draws. Removing the guards in an isolated copy produced
   eight expected failures. The main branch received this change through a merge commit.
+- **Foundation gate:** PR #170 passed all 697 Release non-performance tests on Ubuntu and Windows,
+  against both the merge result and exact head `5f08a9f331944f65c7665ab91fd86dd3c7ea6614`.
 - **Configuration:** both config types load and save JSON, including the legacy rectangular
   aggression matrix via a compatible converter. `ConfigurationResolver` provides defaults →
   named scenario → file → explicit overrides. New resolver file/override typos fail; existing raw
@@ -50,13 +52,26 @@ not made active merely because `SimConfig` contains related settings.
   capture on/off also matches every boid float bit for 128 ticks. This does not establish
   cross-platform identity. [Trajectory experiment](docs/CANONICAL_EXPERIMENT.md).
 
+- **Determinism contract:** exact replay is scoped to the recorded implementation, configuration,
+  seed, timestep, OS/architecture and .NET band. Committed eight-agent traces pin ticks
+  0/1/16/64/256 and RNG sequences. Ubuntu x64 .NET 8.0.21 and 8.0.33 match; Windows x64 .NET 8.0.33
+  matches legacy/RNG but has a separate exact canonical reference. The first canonical difference
+  is 1 ULP at tick 1; at tick 256 the largest component difference is 0.00012969970703125
+  (maximum 322 ULP). Both Windows CI jobs independently recorded the same result in
+  [run 40804377401](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40804377401).
+  One-ULP force changes fail the ordinary golden assertions. The golden suite enforces the
+  reviewed .NET 8 / x64 / Linux-or-Windows band; new bands require reviewed measured references.
+  See [determinism and fixture policy](docs/DETERMINISM.md).
+
 [Experiment foundation](docs/EXPERIMENT_FOUNDATION.md) describes contracts, ownership, examples
 and limits. Configuration/spatial/telemetry checks run in the normal non-Performance test gate;
 allocation regressions are not hidden behind timing-only test categories.
 
 The isolated foundation Release build (SDK 8.0.415, Linux x64) completed with no warnings/errors;
-all **697 non-Performance tests passed** before publication. This count excludes the separately
-developed headless CLI and golden-fixture work. Hosted exact-head checks remain the merge gate.
+all **697 non-Performance tests passed** before publication. The isolated golden-trace addition
+passes **704 tests** locally. The separately developed headless CLI is excluded from those counts.
+Hosted exact-head checks remain the merge gate; platform-specific golden fixtures are verified
+against their own platform, not by widening tolerances.
 
 ## Reproduce validation
 
@@ -110,7 +125,7 @@ speedup or machine-independent performance bound.
 
 ## Current limitations and next work
 
-1. Finish canonical golden fixtures and the explicit OS/runtime determinism band (#21).
+1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
 2. Exercise the new serializable configuration through a Core-only CLI with run manifests and
    deterministic metrics (#23), then registered analysis probes (#24) and seed/parameter sweeps
    (#25). Timing data must stay separate from byte-repeatable physical metrics.

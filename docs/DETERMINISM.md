@@ -10,8 +10,41 @@ Cross-platform agreement is measured by the Ubuntu and Windows CI matrix. A pass
 runs establishes agreement for those tested environments and experiments; it does not establish
 bit-portable transcendental math or a permanent `System.Random` sequence across future .NET
 releases. See the verified-state section of [PROJECT_STATUS.md](../PROJECT_STATUS.md) for the
-latest platform evidence. The initial reference was authored and checked on Ubuntu; Windows
-agreement must come from its own CI execution.
+latest platform evidence. The initial reference was authored and checked on Ubuntu. Windows CI
+measured a different canonical trace, so the canonical fixture is explicitly selected by platform;
+the legacy and RNG references are shared. The golden suite currently requires .NET 8, x64, and
+Linux or Windows. Other environments need measured, reviewed references before entering this band.
+
+## Measured platform difference
+
+[CI run 40804377401](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40804377401)
+tested head `75e788e4f9a43499a307150373cd0c3b1b1fa750` with SDK 8.0.427 and .NET 8.0.33.
+Ubuntu 24.04.5 x64 matched the original Ubuntu 24.04.3 / .NET 8.0.21 reference exactly.
+Windows 10.0.26100 x64 matched the legacy trace and all three RNG sequences, but differed in
+the canonical trace. Its merge-result and exact-head jobs independently reported identical
+Windows hashes and component words. Rehashing those words also reproduced every logged hash.
+
+| Canonical checkpoint | Maximum absolute component difference, Windows versus Linux | Maximum ULP difference |
+| ---: | ---: | ---: |
+| 0 | 0 | 0 |
+| 1 | 0.0000000009313225746154785 | 1 |
+| 16 | 0.0000016689300537109375 | 25 |
+| 64 | 0.0000069141387939453125 | 96 |
+| 256 | 0.00012969970703125 | 322 |
+
+The first difference is agent 0's `Vy`: Linux bits `3C671F23`, Windows bits `3C671F24`.
+This measures a platform-dependent trajectory; it does not isolate a particular math operation
+as the cause. The committed `CanonicalLinux` and `CanonicalWindows` fixtures retain both exact
+traces. Their tick-256 hashes are respectively:
+
+```text
+Linux:   A8395F4CE8A49D82D3F95AA14A8E7E7C2C0400E8729205F97D09EF93B85BE0C8
+Windows: 920102DA689C45E1939E82DCDC14A3F6EA65B966866A5C7E3A2E471D5EE7CFA4
+```
+
+**The enforced contract is exact replay within the recorded platform/runtime band, not exact
+canonical replay between Windows and Linux.** No tolerance was widened, and neither platform
+is skipped. A new runtime patch can still fail the reference and requires investigation.
 
 ## Committed experiment
 
