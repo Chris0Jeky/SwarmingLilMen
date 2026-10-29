@@ -17,9 +17,9 @@ Thank you for your interest in contributing! This document provides guidelines f
 ## Development Environment Setup
 
 ### Required Software
-1. **.NET 8.0 SDK** or later
+1. **.NET 8.0 SDK**, as selected by `global.json`
    - Download: https://dotnet.microsoft.com/download/dotnet/8.0
-   - Verify: `dotnet --version` (should be 8.0.x or higher)
+   - Verify from the repository: `dotnet --version` (should select an installed 8.0.x SDK)
 
 2. **Git**
    - For version control and collaboration
@@ -38,20 +38,20 @@ Thank you for your interest in contributing! This document provides guidelines f
 ### Initial Setup
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Chris0Jeky/SwarmingLilMen.git
 cd SwarmingLilMen
 
 # Restore NuGet packages
-dotnet restore
+dotnet restore SwarmingLilMen.sln
 
 # Verify build
-dotnet build
+dotnet build SwarmingLilMen.sln --configuration Release --no-restore
 
-# Run tests to ensure everything works
-dotnet test
+# Run the Release CI gate (timing-sensitive Performance cases are separate)
+dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 
-# (Optional) Run benchmarks
-dotnet run --project SwarmSim.Benchmarks -c Release
+# (Optional) Run canonical full-step benchmarks
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical
 ```
 
 ---
@@ -104,8 +104,13 @@ Projects: SwarmSim.Tests
 Name: Benchmarks (Release)
 Project: SwarmSim.Benchmarks
 Configuration: Release
-Arguments: none (both suites), --grid, or --tick. These are not forwarded to BenchmarkDotNet; --filter does nothing.
+Arguments: --canonical
 ```
+
+The canonical route forwards subsequent BenchmarkDotNet arguments, for example
+`--canonical --list flat`. With no arguments the program runs the legacy tick and grid suites;
+`--tick` or `--grid` selects one legacy suite. Those legacy routes do not forward BenchmarkDotNet
+arguments (`SwarmSim.Benchmarks/Program.cs`, `Program.Main`).
 
 **4. CPU Profile**
 ```
@@ -168,11 +173,16 @@ SwarmingLilMen.sln
 │       ├── Rng.cs          - Deterministic RNG
 │       └── MathUtils.cs    - Vector math utilities
 ├── SwarmSim.Render/        - Visualization (references Core)
-├── SwarmSim.Tests/         - Tests (references Core)
+├── SwarmSim.Cli/           - Headless experiments and replay (references Core only)
+├── SwarmSim.Tests/         - Engine, renderer and headless CLI regression tests
 └── SwarmSim.Benchmarks/    - Benchmarks (references Core)
 ```
 
-New Phase 3+ behavior belongs in `Core/Canonical/`, the Reynolds-style successor engine. The legacy Structure-of-Arrays `World.cs` plus `Systems/` still drives the default renderer and the benchmarks, and receives work only when a task concerns legacy parity, comparison, or removal. Neither engine is removed without a recorded migration decision.
+New Phase 3+ behavior belongs in `Core/Canonical/`, the Reynolds-style successor engine. The legacy
+Structure-of-Arrays `World.cs` plus `Systems/` still drives the default renderer and the legacy
+tick/grid benchmark suites, and receives work only when a task concerns legacy parity, comparison,
+or removal. Canonical has a dedicated full-step benchmark suite and is the default headless CLI
+engine. Neither engine is removed without a recorded migration decision.
 
 ### Key Design Principles
 
@@ -223,7 +233,7 @@ public interface ISimSystem
 5. **Run simulation**: `dotnet run --project SwarmSim.Render`
 6. **Profile if needed**: Use Rider's CPU/Memory profilers
 7. **Update PROJECT_STATUS.md**: Check off completed items
-8. **Commit**: `git commit -m "Add feature X"`
+8. **Commit**: `git commit -m "feat: add feature X"`
 9. **Push**: `git push origin feature/my-feature`
 10. **Create Pull Request** (when ready)
 
@@ -289,20 +299,21 @@ public void World_SameSeed_ProducesSameResults()
 
 ### Running Tests
 ```bash
-# All tests
-dotnet test
+# Build, then run the same Release nonperformance gate as CI
+dotnet build SwarmingLilMen.sln --configuration Release
+dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 
 # Specific test class
-dotnet test --filter "FullyQualifiedName~RngTests"
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~RngTests" -- RunConfiguration.TreatNoTestsAsError=true
 
 # Specific test method
-dotnet test --filter "FullyQualifiedName~RngTests.Determinism_SameSeed_ProducesSameSequence"
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~RngTests.Determinism_SameSeed_ProducesSameSequence" -- RunConfiguration.TreatNoTestsAsError=true
 
-# With coverage (requires coverlet)
-dotnet test --collect:"XPlat Code Coverage"
+# The same gate with coverage (coverlet.collector is already referenced)
+dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" --collect:"XPlat Code Coverage" -- RunConfiguration.TreatNoTestsAsError=true
 
 # Verbose output
-dotnet test -v detailed
+dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
 ### Test Organization
@@ -368,11 +379,18 @@ Adding that coverage is open work, not an omission from this list.
 
 **Benchmarking**:
 ```bash
-# Run benchmarks (always Release)
+# Canonical full-step benchmark with capture off (always Release)
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical
+
+# Legacy tick and grid benchmarks
 dotnet run --project SwarmSim.Benchmarks -c Release
 
 # Results in: BenchmarkDotNet.Artifacts/results/
 ```
+
+Current measurements, workload definitions and caveats live in
+[PROJECT_STATUS.md](PROJECT_STATUS.md#performance-evidence-and-its-limits). Benchmark results
+describe the selected core workload; renderer FPS and allocations require a separate measurement.
 
 ### Performance Checklist
 - [ ] Run dotMemory: 0 allocations in Tick()
@@ -516,7 +534,7 @@ The project is distributed under [GPL-3.0-only](LICENSE); see [RELICENSING.md](R
 - Check [README.md](README.md) for general project info
 - Check [PROJECT_STATUS.md](PROJECT_STATUS.md) for current implementation status
 - Check [CLAUDE.md](CLAUDE.md) for AI assistant guidelines (useful for understanding architecture)
-- Open an issue on GitHub (once repository is public)
+- Open an issue in the [public GitHub repository](https://github.com/Chris0Jeky/SwarmingLilMen/issues)
 
 ---
 

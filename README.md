@@ -18,8 +18,9 @@ below are goals, not achieved throughput claims.
 - **Performance target (unmet)**: 50k-100k agents at 60 FPS interactive; 1M+ headless
 - **Determinism**: Fixed-timestep legacy and canonical paths reproduce ordered agent positions and
   velocities for a matching .NET 8 binary, platform, supported seed, configuration, timestep, and
-  ordered input sequence; broader state, record/replay, and cross-platform measurement remain
-  roadmap work
+  ordered input sequence. Experiment manifests verify the final kinematic state and complete
+  deterministic CSV on replay. Full-state restart checkpoints and arbitrary cross-platform
+  identity remain unproven; see [measured determinism scope](docs/DETERMINISM.md)
 - **Observability**: Metrics, snapshots, profiling, property tests, benchmarks
 - **Extensibility**: Small public API, Structure-of-Arrays internals, modular systems
 
@@ -27,7 +28,7 @@ below are goals, not achieved throughput claims.
 
 This project is undergoing an architectural transition from an aggregate-driven systems approach
 to independently testable, Reynolds-style steering rules. Two implementations currently exist side-by-side:
-- **Legacy** (default): Aggregate-driven SoA steering systems architecture
+- **Legacy** (default renderer): Aggregate-driven SoA steering systems architecture
 - **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
   include an equivalence-tested spatial contract, shared force budget and explicit reusable
   researcher telemetry. Named policy composition, instrumentation UX and multi-group semantics
@@ -56,37 +57,39 @@ should target the canonical implementation.
   block at the top of `PROJECT_STATUS.md` for the current measured counts
 
 ### Remaining Direction
-- **Canonical readiness**: prescribed behavioral scenarios (#41), instrumentation UX (#40),
-  boundary/reflection coverage, scale properties/metrics and multi-group behavior. Canonical
-  benchmarks now exist. The perception/spatial-index contract (#18) and force-budget enforcement (#19) are
-  done
-- **Phase 3**: Multi-group interactions, combat, metabolism
-- **Phase 4**: Reproduction, evolution, trait drift
-- **Phase 5**: SIMD optimization, parallelization, NativeAOT compilation
-- **Phase 6**: Additional scenario presets, replay system, advanced metrics
+
+[Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) defines the execution order.
+
+- **Composition:** named RNG streams (#26), then bounded observations and intent arbitration
+  (#27), with reviewed deterministic references and an explicit RNG transition.
+- **Proof of generality:** behavioral parity and legacy retirement criteria (#28), then a Vicsek
+  consumer (#29) and a minimal scalar-field/ACO consumer (#30).
+- **Renderer readiness:** finish interactive telemetry/configuration acceptance (#20/#22),
+  synchronize effective controls and help (#39), and complete rule-control visuals and prescribed
+  behavioral scenarios (#40/#41).
+- **Longer-term research:** multi-group behavior, lifecycle/evolution and performance approaches
+  such as SIMD or parallel execution remain proposals, not shipped engine capabilities. The
+  [vision](docs/ROADMAP-VISION.md) records the deferral boundary.
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0) or later
+- [.NET 8.0 SDK](https://dotnet.microsoft.com/download/dotnet/8.0), as selected by `global.json`
 - Windows, Linux, or macOS
 - (Recommended) [JetBrains Rider](https://www.jetbrains.com/rider/) or Visual Studio 2022
 
 ### Building
 ```bash
 # Clone the repository
-git clone <repository-url>
+git clone https://github.com/Chris0Jeky/SwarmingLilMen.git
 cd SwarmingLilMen
 
-# Restore dependencies
-dotnet restore
+# Restore and build the solution in the configuration used by CI
+dotnet restore SwarmingLilMen.sln
+dotnet build SwarmingLilMen.sln -c Release --no-restore
 
-# Build the solution
-dotnet build
-
-# CI test gate. --no-build is valid only immediately after the Release build on the next line.
-# Category=Performance timing facts run Release-only and are reported-only evidence; the gate excludes them.
-dotnet build SwarmingLilMen.sln -c Release
+# CI gate. Rebuild after source changes before using --no-build.
+# Category=Performance measurements run separately and are excluded from the ordinary gate.
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
@@ -272,6 +275,7 @@ SwarmingLilMen/
 │   ├── Spatial/            # Uniform grid for neighbor queries
 │   ├── Diagnostics/        # Ordered kinematic hash
 │   ├── Configuration/      # JSON round-trip and layered scenario resolution
+│   ├── Metrics/            # Registered analysis probes and invariant writers
 │   ├── Canonical/          # New canonical boids implementation
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Cli/           # Display-free experiments, artifacts and manifest replay
@@ -373,19 +377,22 @@ dotnet build SwarmingLilMen.sln -c Release
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 
 # Run with detailed output
-dotnet test -v detailed
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
 
 # Run specific test class
-dotnet test --filter "FullyQualifiedName~RngTests"
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~RngTests" -- RunConfiguration.TreatNoTestsAsError=true
 
-# Run with coverage (requires dotCover or coverlet)
-dotnet test --collect:"XPlat Code Coverage"
+# Run the same gate with coverage (coverlet.collector is already referenced)
+dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" --collect:"XPlat Code Coverage" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
 ## 📊 Benchmarking
 
 ```bash
-# Run benchmarks (always use Release configuration)
+# Canonical complete-tick throughput and allocation measurements
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical
+
+# Legacy tick and grid suites (always use Release configuration)
 dotnet run --project SwarmSim.Benchmarks -c Release
 
 # Results will be in BenchmarkDotNet.Artifacts/
@@ -469,10 +476,10 @@ Quick checklist:
 ## 📋 Development Status
 
 Legacy Phases 0-2, fixed-timestep running, snapshot interpolation, and the renderer are implemented.
-The project is completing its experiment foundation. Seeded same-platform reproducibility,
-spatial-index equivalence, force-budget enforcement and explicit telemetry are covered. Named
-policy composition, experiment metrics/sweeps, instrumentation UX, multi-group semantics and
-renderer automation remain open. See
+The experiment foundation now includes headless runs, registered metrics, exact manifest replay
+and sequential sweeps. Seeded same-platform reproducibility, spatial-index equivalence,
+force-budget enforcement and explicit telemetry are covered. Named policy composition,
+instrumentation UX, multi-group semantics and interactive renderer acceptance remain open. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
 ## 🔧 Troubleshooting
@@ -480,14 +487,16 @@ renderer automation remain open. See
 ### Build Issues
 ```bash
 # Clean and rebuild
-dotnet clean
-dotnet restore
-dotnet build
+dotnet clean SwarmingLilMen.sln -c Release
+dotnet restore SwarmingLilMen.sln
+dotnet build SwarmingLilMen.sln -c Release --no-restore
 ```
 
 ### Test Failures
 - Ensure you're using .NET 8.0 SDK
 - Tests require deterministic behavior - avoid time-based randomness
+- Exact golden fixtures currently cover .NET 8 on Linux/Windows x64. A new runtime/architecture
+  needs a reviewed reference; see [the fixture policy](docs/DETERMINISM.md).
 
 ### Performance Issues
 - Always benchmark in Release mode: `dotnet run --project SwarmSim.Benchmarks --configuration Release`

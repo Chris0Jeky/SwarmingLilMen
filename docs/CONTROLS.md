@@ -69,10 +69,19 @@ configuration. The earlier parameter-editor narrative is retained as a dated his
   - `-p`, `--preset <name>` – Start with a preset configuration (use `--list-presets` to see options)
   - `-c`, `--config <file>` – Load configuration from JSON (see `configs/` directory)
   - `-n`, `--agent-count <n>` – Override the initial agent count
-  - `-b`, `--benchmark` – Run a headless benchmark (no window)
+  - `-b`, `--benchmark` – Print deprecation/migration guidance and exit; no simulation runs
   - `--canonical` – Launch the opt-in single-group canonical renderer
   - `--minimal` – Launch the minimal debugging harness
   - `-h`, `--help` (also `/?`), `-v`, `--version`, `-l`, `--list-presets` – Self-documenting flags
+
+For a headless experiment, use the standalone CLI:
+
+```sh
+dotnet run --project SwarmSim.Cli -c Release -- --engine canonical --scenario balanced --seed 7 --ticks 600 --agents 1000 --out runs/
+```
+
+`--agent-count` belongs to the renderer; `--agents` belongs to the CLI. See
+[HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for the manifest and replay contract.
 
 The legacy help/parameter panels and canonical footer currently display `1-7` although input accepts
 keys **1-8**, and the canonical **H** panel lists only its minimal R/H/Esc subset. This split

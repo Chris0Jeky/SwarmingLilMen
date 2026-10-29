@@ -133,13 +133,15 @@ When adding new demos:
 | Aspect | C# Engine | JS Demos |
 |--------|-----------|----------|
 | **Purpose** | Research simulation with explicit scale targets | Education & prototyping |
-| **Scale** | Target: 50k-100k agents at 60 FPS; latest 50k legacy core sample is 162.815 ms/tick (2026-07-25), so the target is unmet | Unmeasured; no dated repository benchmark |
+| **Scale** | Target: 50k-100k agents at 60 interactive FPS remains unmet; see [current core measurements and limits](../PROJECT_STATUS.md#performance-evidence-and-its-limits) | Unmeasured; no dated repository benchmark |
 | **Complexity** | Legacy and canonical paths; Phase 3+ behavior remains incomplete | Core algorithms only |
 | **Optimization** | SoA and uniform grids; SIMD remains planned | Direct, readable browser implementations |
 | **Platform** | .NET 8.0, desktop | Any modern browser |
 | **Use Case** | Research & development | Demos & learning |
 
 The JS demos prioritize **clarity** and **accessibility**. No cross-runtime performance conclusion
-is justified until both paths have a dated benchmark under comparable conditions. The C# sample
-above comes from the 2026-07-25 Release `Category=Performance` command recorded in
-`PROJECT_STATUS.md`; it is simulation throughput, not renderer FPS.
+is justified until both paths have dated benchmarks under comparable conditions. Current C#
+throughput and allocation evidence is centralized in
+[PROJECT_STATUS.md](../PROJECT_STATUS.md#performance-evidence-and-its-limits); headless core
+measurements do not establish renderer FPS. Earlier legacy samples remain in the
+[historical status archive](../docs/archive/PROJECT_STATUS_BEFORE_2026-10-29.md).

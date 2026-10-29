@@ -18,7 +18,6 @@ ordering authority. Historical documents are context, not proof.
 - [`CONFIGURATION_COOKBOOK.md`](CONFIGURATION_COOKBOOK.md) - scenario recipes
 - [`RENDERER_GUIDE.md`](RENDERER_GUIDE.md) - legacy and canonical renderer behavior
 - [`SIMULATION_MECHANICS_EXPLAINED.md`](SIMULATION_MECHANICS_EXPLAINED.md) - simulation mechanics
-- [`PHASE_3_READINESS_CHECKLIST.md`](PHASE_3_READINESS_CHECKLIST.md) - canonical-readiness evidence
 - [`ROADMAP-VISION.md`](ROADMAP-VISION.md) - aspirational reference and explicit deferral boundary
 
 ## Security non-goal
@@ -46,6 +45,10 @@ N-IPD, IPC learners, and policy distillation are listed in the
 [`ROADMAP-VISION.md` deferral boundary](ROADMAP-VISION.md#deferral-boundary).
 
 ## Historical Archive
+
+[`PHASE_3_READINESS_CHECKLIST.md`](PHASE_3_READINESS_CHECKLIST.md) preserves earlier readiness
+criteria and assessments. Its checkboxes are historical context; current scheduling belongs to
+epic #10 and its open dependencies.
 
 Files under [`archive/`](archive/) open with dated banners. They preserve provenance and may contain
 superseded plans, paths, or implementation claims; use the live sources above for current guidance.

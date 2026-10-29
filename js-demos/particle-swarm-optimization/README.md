@@ -1,5 +1,8 @@
 # Particle Swarm Optimization (PSO)
 
+> [`PROJECT_STATUS.md`](../../PROJECT_STATUS.md) is the live source of truth for verified
+> repository implementation, test, and performance state. This browser demo is a separate model.
+
 An interactive browser-based demonstration of **Particle Swarm Optimization** (Kennedy, Eberhart & Shi, 1995), a global optimization algorithm inspired by the social behavior of bird flocking and fish schooling.
 
 ## Features
@@ -138,7 +141,7 @@ f(x,y) = 20 + x² + y² - 10(cos(2πx) + cos(2πy))
 - **Purpose**: Test ability to escape local minima
 
 **Characteristics:**
-- Highly multimodal (~25 local minima in typical bounds)
+- Highly multimodal, with many local minima across the demo's `[-5.12, 5.12]` bounds on each axis
 - Regular, periodic structure
 - Easy to get trapped
 - Classic benchmark for global optimization

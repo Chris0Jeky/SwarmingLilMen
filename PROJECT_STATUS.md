@@ -188,9 +188,14 @@ speedup or machine-independent performance bound.
    state generics. Behavioral parity/retirement criteria (#28) and named rule-control visuals (#40)
    depend on those settled seams. Neither engine is deleted without a migration decision.
 
+The documentation residue audit (#60/#63) now uses stable source symbols, current headless and
+benchmark commands, explicit historical measurement labels and the actual sequential/stochastic
+browser-demo semantics. The old readiness checklist points scheduling back to the epic instead
+of directing new work to closed issues.
+
 Other tracked residue: fixed legacy capacity versus reserved `MaxCapacity` (#62); runtime help
-synchronization (#39); remaining scenario/composition coverage (#41); source-citation/doc cleanup
-(#60/#63); and publication-scanner indirection gaps (#164). A green engine suite does not validate
+synchronization (#39); remaining scenario/composition coverage (#41); and publication-scanner
+indirection gaps (#164). A green engine suite does not validate
 renderer interaction, browser demos, or a deployment.
 
 ## Trust and publication boundary

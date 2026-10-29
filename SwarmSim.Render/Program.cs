@@ -1385,8 +1385,6 @@ internal static class Program
     /// </summary>
     internal static string FormatPresetList()
     {
-        // Fully qualified: adding a using directive here would renumber the Presets region that
-        // docs/QUICKSTART.md and docs/RENDERER_GUIDE.md cite by line range.
         var sb = new System.Text.StringBuilder();
         sb.AppendLine("Available presets:");
         foreach (var preset in Presets)

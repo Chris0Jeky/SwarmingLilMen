@@ -322,7 +322,7 @@ if (remainingForce > 0 and sepMag > 0):
 ```
 
 This is a shape-only excerpt; the legacy collision override and shared priority budget are in
-`SwarmSim.Core/Systems/BehaviorSystem.cs:91-149`.
+`SwarmSim.Core/Systems/BehaviorSystem.cs` (`BehaviorSystem.Run`, `ClampMagnitude`).
 
 **Canonical (Independent Rule Steering)**:
 ```csharp
@@ -387,8 +387,9 @@ y[i] += vy[i] * dt;
 
 The current renderer and all registered presets select `SpeedModel.ConstantSpeed`; despite the
 name, that legacy branch skips friction and only clamps velocity when it exceeds `MaxSpeed`
-(`SwarmSim.Core/Systems/IntegrateSystem.cs:42-78`; `SwarmSim.Core/SimConfig.cs:22`;
-`SwarmSim.Render/Program.cs:110-217,240-260`).
+(`SwarmSim.Core/Systems/IntegrateSystem.cs`, `IntegrateSystem.Run`;
+`SwarmSim.Core/SimConfig.cs`, `SimConfig.SpeedModel`;
+`SwarmSim.Render/Program.cs`, `Program.Presets` and `Program.CreateDefaultBaseConfig`).
 
 **Canonical**:
 ```csharp
@@ -476,7 +477,7 @@ After implementing the canonical boids foundation, testing revealed collision is
 
 ### Solutions Implemented
 
-**1. Budget-Gated Smooth Wander** (`CanonicalWorld.cs:288-295`)
+**1. Budget-Gated Smooth Wander** (`CanonicalWorld.Step`, wander contribution)
 - While `WanderStrength > 0` and force budget remains, each agent maintains a persistent wander
   angle that evolves smoothly
 - `WanderRate` parameter (1.5 rad/s) controls turn rate
@@ -484,20 +485,21 @@ After implementing the canonical boids foundation, testing revealed collision is
   an exhausted budget pauses both the angle update and its steering contribution
 - Creates flowing, natural movement instead of discrete direction changes
 
-**2. Gradual Avoidance Falloff** (`CanonicalWorld.cs:300-322`)
+**2. Gradual Avoidance Falloff** (`CanonicalWorld.Step`, `rGradualStart`/`distanceRatio`)
 - Avoidance begins at `rGradualStart = SeparationRadius * 2.0` (gentle)
 - Influence increases quadratically: `distanceRatio²` as agents approach threshold
 - Combines with priority blend at close range for emergency response
 - No sharp activation - steering smoothly intensifies with proximity
 
-**3. Shaped Separation** (`CanonicalWorld.cs:309-320`)
+**3. Shaped Separation** (`CanonicalWorld.Step`, `blendWeight`/`MathUtils.SmoothStep`)
 - Blends two escape directions:
   - **Lateral**: Perpendicular "shoulder past" deflection (at medium distance)
   - **Away**: Direct repulsion from nearest neighbor (at close range)
 - Smoothstep transition between zones: `blendWeight = SmoothStep(rHard, rSoft, distance)`
 - Prevents head-on bouncing, creates natural lane-change behavior
 
-**4. Attempted Soft Gating** (`CanonicalWorld.cs:247-273`)
+**4. Attempted Soft Gating** (`CanonicalWorld.Step`, `alignmentAttenuation`/
+`cohesionAttenuation` and the remaining force budget)
 - Alignment/cohesion vectors are multiplied by
   `attenuation = 1.0 - (priorityBlend * 0.7)`
 - A clamped separation vector whose squared magnitude exceeds the current `1e-6` cutoff sets the
@@ -506,7 +508,8 @@ After implementing the canonical boids foundation, testing revealed collision is
 - [Issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) owns named composition and the
   explicit arbitration contract
 
-**5. Enhanced Perception** (`CanonicalWorld.cs:21-23, 174-198`)
+**5. Enhanced Perception** (`CanonicalWorld.PerceptionSnapshot`; current reusable counterpart:
+`CanonicalWorld.CaptureTelemetryInto` and `CanonicalTelemetry`)
 - Per-agent perception data in snapshot:
   - `NearestDistances[]` - distance to closest neighbor
   - `NearestAngles[]` - angular position of nearest neighbor
