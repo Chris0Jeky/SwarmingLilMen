@@ -6,6 +6,9 @@ a non-Claude runtime.
 
 ## Codex delta
 
+- Determinism evidence uses the platform/runtime scope in `CLAUDE.md` and `docs/DETERMINISM.md`.
+  The canonical Windows and Linux references differ; retain their exact assertions and report
+  measured drift when reviewing a new platform or reference update.
 - **The estate's global laws reach Codex through `~/.codex/AGENTS.md`** when the estate profile is
   installed (the Claude rendering is `~/.claude/rules/laws.md`). If `~/.codex/AGENTS.md` is absent,
   read `~/.claude/rules/laws.md`; if neither exists, the fail-safe floor below binds and merge is
