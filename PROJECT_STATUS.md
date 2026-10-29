@@ -20,7 +20,7 @@ not made active merely because `SimConfig` contains related settings.
 
 ## Verified live state
 
-The current integrated Release gate passes **1,020 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,026 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
@@ -261,6 +261,16 @@ confidence intervals do not prove no regression, and the single 50k decrease is 
 speedup claim. Source identities, commands, uncertainty and all raw iteration averages are in
 the [composition cost record](docs/CANONICAL_COMPOSITION.md#measured-composition-cost-2026-10-29).
 The new zero rows do not establish the cause of the historical 10k nonzero observation above.
+
+A separate neighbor-reuse follow-up removes the second visible-neighbor traversal and repeated
+minimum-image/square-root calculations. Every policy still uses the same bounded observation,
+writer and resolver. Independent before/after checks compare all state, neighbor views, telemetry
+and instrumentation over 16 Grid/Naive traces of 128 ticks; every byte matches. Six analytic
+cases pin periodic ties and existing empty/overflow diagnostics. In paired measurements against
+the initial composition, observed means were 0.565134 → 0.527112 ms/tick at 1k (−6.73%) and
+98.743237 → 88.032047 ms/tick at 50k (−10.85%), with zero measured allocation. The intervals
+overlap and the samples trend; this does not establish a general speedup or recovery of the
+original small-population cost. See [raw samples, source identities and limits](docs/CANONICAL_NEIGHBOR_REUSE.md).
 
 The issue #67 query probe used 512 boids, seed 8181, radius/cell size 50, a 64-slot buffer, 4,096
 warmup queries and seven batches of 32,768 queries with tiering disabled. Adjacent baseline/final

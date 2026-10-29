@@ -411,11 +411,10 @@ public sealed class CanonicalWorld
                     fieldOfViewCos, Settings.FieldOfView, i, Settings.WorldWidth, Settings.WorldHeight,
                     out neighborWeightSum);
                 var visible = _neighborScratch.AsSpan(0, filtered);
-                BuildLocalNeighbors(boid, current, visible);
+                (float distanceSum, float minDistance, float maxDistance, Vec2 delta) =
+                    BuildLocalNeighbors(boid, current, visible);
                 if (filtered > 0)
                 {
-                    (float distanceSum, float minDistance, float maxDistance, Vec2 delta, _) =
-                        ComputeNeighborDistanceStats(current, boid.Position, visible, Settings.WorldWidth, Settings.WorldHeight);
                     minDistForAgent = minDistance;
                     nearestDelta = delta;
                     _neighborDistanceSum += distanceSum;
@@ -525,46 +524,35 @@ public sealed class CanonicalWorld
         _separationPriorityTriggered |= _priorityBlend[index] > 0f;
     }
 
-    private void BuildLocalNeighbors(Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighbors)
-    {
-        for (int n = 0; n < neighbors.Length; n++)
-        {
-            Boid neighbor = boids[neighbors[n]];
-            Vec2 relative = Vec2.MinimumImageDelta(self.Position, neighbor.Position, Settings.WorldWidth, Settings.WorldHeight);
-            Vec2 reverse = Vec2.MinimumImageDelta(neighbor.Position, self.Position, Settings.WorldWidth, Settings.WorldHeight);
-            _neighborViewScratch[n] = new NeighborView(relative, reverse, neighbor.Velocity - self.Velocity,
-                neighbor.Velocity, neighbor.Group, _neighborWeightScratch[n], MathF.Sqrt(relative.LengthSquared));
-        }
-    }
-
-    private static (float distanceSum, float minDist, float maxDist, Vec2 nearestDelta, int nearestIdx) ComputeNeighborDistanceStats(
-        ReadOnlySpan<Boid> boids,
-        Vec2 origin,
-        ReadOnlySpan<int> neighbors,
-        float worldWidth,
-        float worldHeight)
+    private (float distanceSum, float minDist, float maxDist, Vec2 nearestDelta) BuildLocalNeighbors(
+        Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighbors)
     {
         float sum = 0f;
         float minDist = float.MaxValue;
         float maxDist = 0f;
         Vec2 nearestDelta = Vec2.Zero;
-        int nearestIdx = -1;
 
-        foreach (int idx in neighbors)
+        for (int n = 0; n < neighbors.Length; n++)
         {
-            Vec2 delta = Vec2.MinimumImageDelta(origin, boids[idx].Position, worldWidth, worldHeight);
-            float dist = MathF.Sqrt(delta.LengthSquared);
+            Boid neighbor = boids[neighbors[n]];
+            Vec2 relative = Vec2.MinimumImageDelta(self.Position, neighbor.Position, Settings.WorldWidth, Settings.WorldHeight);
+            Vec2 reverse = Vec2.MinimumImageDelta(neighbor.Position, self.Position, Settings.WorldWidth, Settings.WorldHeight);
+            float dist = MathF.Sqrt(relative.LengthSquared);
+            _neighborViewScratch[n] = new NeighborView(relative, reverse, neighbor.Velocity - self.Velocity,
+                neighbor.Velocity, neighbor.Group, _neighborWeightScratch[n], dist);
+
+            // Reuse the same displacement/distance for diagnostics. Keep the original ascending
+            // candidate accumulation and strict tie comparison; reverse delta remains independent.
             sum += dist;
             if (dist < minDist)
             {
                 minDist = dist;
-                nearestDelta = delta;
-                nearestIdx = idx;
+                nearestDelta = relative;
             }
             maxDist = MathF.Max(maxDist, dist);
         }
 
-        return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist, nearestDelta, nearestIdx);
+        return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist, nearestDelta);
     }
 
     private static int FilterByFieldOfView(
