@@ -20,7 +20,7 @@ not made active merely because `SimConfig` contains related settings.
 
 ## Verified live state
 
-The current integrated Release gate passes **1,026 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,062 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
@@ -110,6 +110,14 @@ or errors. The historical counts below identify the specific additions that prod
   double comparison only when squared radii are subnormal or overflow. Tiny distinct offsets no
   longer count as coincident; large finite radii no longer admit farther points through infinity
   comparisons. Lowest-index ordering, inclusive boundaries and truncation behavior are tested.
+- **Representable neighbor distances:** bounded observations and nearest-distance telemetry now
+  recover valid lengths when squared float intermediates overflow, become subnormal or underflow.
+  Ordinary float arithmetic remains unchanged. Analytical 3–4–5 cases cover four scales, both
+  indexes, periodic seams and first-candidate ties; four regressions show distant neighbors no
+  longer falsely activate separation priority. Ordinary traces and an actual pre-fix manifest
+  remain exact. Partial-FOV normalization, direct rule calculations and aggregate overflow still
+  need the wider numeric audit in #187. See the
+  [correction, compatibility scope and remaining consumers](docs/CANONICAL_EXTREME_DISTANCES.md).
 - **Canonical telemetry:** `Step` no longer allocates snapshots. Explicit caller-owned
   `CanonicalTelemetry` captures last-tick diagnostics and truncation without a spatial re-query.
   A 256-boid/1,000-warm-tick regression fell from 3,144,000 allocated bytes to zero, including a
