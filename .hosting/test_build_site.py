@@ -469,6 +469,12 @@ class ScannerBypassTests(unittest.TestCase):
                     self.reject(f'<style>a{{background:{function}("{url}" 1x)}}</style>',
                                 "unsupported CSS resource function", kind="raw")
 
+    def test_css_escapes_cannot_manufacture_string_or_comment_boundaries(self):
+        for prefix in (r'''content:"\"";''', r'--x:\/\*;', r'--x:\2f\2a;'):
+            with self.subTest(prefix=prefix):
+                css = 'a{' + prefix + 'background:image-set("https://example.test/x.png" 1x)}'
+                self.reject('<style>' + css + '</style>', "unsupported CSS resource function", kind="raw")
+
     def test_indirect_function_constructors_are_rejected(self):
         for js in ('''(function(){}).constructor("return globalThis['fetch']('https://example.test/x')")();''',
                    "const F = (() => {}).constructor; F(source)()",

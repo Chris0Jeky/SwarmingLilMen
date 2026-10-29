@@ -389,15 +389,36 @@ def css_refs(text):
         code = int(value, 16)
         return chr(code) if 0 < code <= 0x10ffff and not 0xd800 <= code <= 0xdfff else "\ufffd"
 
-    # Up to six hex digits, then one optional whitespace terminator (CRLF counts as one).
-    decoded = re.sub(r"\\(?:([0-9a-fA-F]{1,6})(?:\r\n|[ \t\r\n\f])?|\r\n|[\r\n\f]|([^\r\n\f]))",
-                     unescape, text)
-    # Comments are token separators, including between @import and its quoted URL. Preserve
-    # offsets and quoted content so a comment-looking substring inside a URL is not removed.
-    strings = r'''"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*' '''.rstrip()
-    parts = re.compile(r"/\*.*?(?:\*/|$)|" + strings, re.S)
-    uncommented = parts.sub(lambda m: " " * len(m.group()) if m.group().startswith("/*") else m.group(), decoded)
-    code = re.sub(strings, lambda m: " " * len(m.group()), uncommented, flags=re.S)
+    # Tokenize ORIGINAL source before decoding escapes. An escaped quote is string content,
+    # and escaped / + * outside a string cannot manufacture a comment. Decoding first changes
+    # those boundaries and can hide a later resource expression from the scan.
+    escape = r"\\(?:([0-9a-fA-F]{1,6})(?:\r\n|[ \t\r\n\f])?|\r\n|[\r\n\f]|([^\r\n\f]))"
+    strings = r'''"(?:[^"\\]|\\[\s\S])*"|'(?:[^'\\]|\\[\s\S])*' '''.rstrip()
+    tokens = re.compile(r"/\*.*?(?:\*/|$)|" + strings + "|" + escape, re.S)
+    normalized, code_parts, literals = [], [], {}
+    end, offset = 0, 0
+    for token in tokens.finditer(text):
+        gap = text[end:token.start()]
+        normalized.append(gap)
+        code_parts.append(gap)
+        offset += len(gap)
+        raw = token.group()
+        if raw.startswith("/*"):
+            value, code_value = " ", " "
+        elif raw[0] in "\"'":
+            # Store values by TOKEN POSITION, not by a magic string that source could alias.
+            literals[offset] = re.sub(escape, unescape, raw[1:-1])
+            value, code_value = '"S"', "   "
+        else:
+            value = re.sub(escape, unescape, raw)
+            code_value = value
+        normalized.append(value)
+        code_parts.append(code_value)
+        offset += len(value)
+        end = token.end()
+    normalized.append(text[end:])
+    code_parts.append(text[end:])
+    uncommented, code = "".join(normalized), "".join(code_parts)
 
     # These resource functions may accept bare strings, not only url(...). None is used by the
     # reviewed demos; reject the whole construct until a dedicated grammar is supported.
@@ -405,13 +426,24 @@ def css_refs(text):
     if resource:
         raise ValueError(f"unsupported CSS resource function {resource.group(1)}: use url(<literal URL>)")
 
-    yield from (m.group(1) for m in REFS[1].finditer(uncommented))
+    urls = re.compile(r'''\burl\(\s*(?:(?P<quoted>"S")|(?P<bare>[^)"']*?))\s*\)''', re.I)
+    for match in urls.finditer(uncommented):
+        if match.group("quoted") is not None:
+            position = match.start("quoted")
+            if position not in literals:
+                raise ValueError("unsupported CSS URL string boundary")
+            yield literals[position]
+        else:
+            yield match.group("bare")
     for directive in re.finditer(r"@import(?![\w-])", code, re.I):
-        tail = uncommented[directive.end():].lstrip()
-        literal = re.match(r'''["']([^"']*)["']''', tail)
+        tail = uncommented[directive.end():]
+        literal = re.match(r'''\s*("S")''', tail)
         if literal:
-            yield literal.group(1)
-        elif not re.match(r"url\(", tail, re.I):
+            position = directive.end() + literal.start(1)
+            if position not in literals:
+                raise ValueError("unsupported CSS @import string boundary")
+            yield literals[position]
+        elif not re.match(r"\s*url\(", tail, re.I):
             raise ValueError("unsupported CSS @import: use a literal URL")
 
 
