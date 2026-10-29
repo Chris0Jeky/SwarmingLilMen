@@ -50,6 +50,14 @@ not made active merely because `SimConfig` contains related settings.
   boxed under Tier0: fresh-process grown/preallocated probes now allocate zero bytes for 1,000
   ticks with normal tiering and with tiering disabled. This finding is separate from the unresolved
   canonical BenchmarkDotNet 5 B/op observation below. See [population limits](docs/PARAMETER_GUIDE.md).
+- **Behavioral scenarios:** eleven explicit-state, fixed-tick cases now pin head-on clearance,
+  circular heading convergence, empty-neighborhood response at three headings, cohesion
+  contraction, interior/seam cluster approach and the default priority speed floor/recovery.
+  All three flocking contributions must occur in the interacting stability scene. Six isolated
+  implementation mutations make the relevant scenarios fail; restored source passes. No
+  production behavior or exact golden fixture changes accompany this coverage. Named isolation,
+  classic composition and a valid faster/slower overtaking model remain issue #41 work. See the
+  [acceptance inventory and measured margins](docs/CANONICAL_BEHAVIOR_SCENARIOS.md).
 - **Foundation gate:** PR #170 passed all 697 Release non-performance tests on Ubuntu and Windows,
   against both the merge result and exact head `5f08a9f331944f65c7665ab91fd86dd3c7ea6614`.
 - **Configuration:** both config types load and save JSON, including the legacy rectangular
