@@ -80,6 +80,14 @@ not made active merely because `SimConfig` contains related settings.
 and limits. Configuration/spatial/telemetry checks run in the normal non-Performance test gate;
 allocation regressions are not hidden behind timing-only test categories.
 
+The analysis library now exposes a foundation-neutral metric frame, registered reusable probes,
+ordered selection, and invariant CSV/JSONL writers. Motion and periodic centroids are separate
+from exact all-population nearest-neighbor distributions; canonical boids instrumentation is a
+registered foundation-specific probe. Runtime costs explicitly declare nondeterminism. The
+nearest-neighbor implementation is O(N²), opt-in, and not a 50k-agent throughput claim. Periodic
+analysis preserves tiny signed offsets even in very large worlds. See [metrics](docs/METRICS.md).
+CLI selection, manifest integration and the full headless allocation proof remain #24 follow-up.
+
 The isolated foundation Release build (SDK 8.0.415, Linux x64) completed with no warnings/errors;
 all **697 non-Performance tests passed** before publication. The isolated golden-trace addition
 passes **704 tests** locally. The separately developed headless CLI is excluded from those counts.
