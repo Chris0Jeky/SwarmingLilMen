@@ -1,0 +1,20 @@
+{
+  "Version": 1,
+  "Id": "S2_RING_16",
+  "Layout": "ring",
+  "Count": 16,
+  "Ticks": 600,
+  "Width": 256,
+  "Height": 256,
+  "DeltaTime": 0.016666668,
+  "TargetSpeed": 30,
+  "MaxForce": 18,
+  "SenseRadius": 32,
+  "SeparationRadius": 8,
+  "SeparationWeight": 1.5,
+  "AlignmentWeight": 1,
+  "CohesionWeight": 1,
+  "LayoutRadius": 24,
+  "LayoutSpacing": 4,
+  "LayoutOffset": 48
+}

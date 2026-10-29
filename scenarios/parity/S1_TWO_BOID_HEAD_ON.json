@@ -1,0 +1,20 @@
+{
+  "Version": 1,
+  "Id": "S1_TWO_BOID_HEAD_ON",
+  "Layout": "head-on",
+  "Count": 2,
+  "Ticks": 240,
+  "Width": 256,
+  "Height": 256,
+  "DeltaTime": 0.016666668,
+  "TargetSpeed": 30,
+  "MaxForce": 18,
+  "SenseRadius": 32,
+  "SeparationRadius": 8,
+  "SeparationWeight": 1.5,
+  "AlignmentWeight": 1,
+  "CohesionWeight": 1,
+  "LayoutRadius": 10,
+  "LayoutSpacing": 4,
+  "LayoutOffset": 48
+}

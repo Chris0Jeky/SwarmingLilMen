@@ -53,6 +53,7 @@ should target the canonical implementation.
 - ✅ Sequential seed/parameter sweeps with stable summary rows and replayable cell manifests
 - ✅ Named deterministic random streams and bounded, injectable force-policy compositions
 - ✅ Public classic-Reynolds configuration with independent rule clamps and named enable controls
+- ✅ Four-model headless comparison with five data recipes, five fixed seeds and locked metric bands
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
 - ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
@@ -64,10 +65,13 @@ should target the canonical implementation.
 
 - **Composition:** preserve the exact default traces while addressing the measured small-population
   cost of the new bounded policy API (#27). See [composition and its limits](docs/CANONICAL_COMPOSITION.md).
-- **Proof of generality:** behavioral parity and legacy retirement criteria (#28), then a Vicsek
-  consumer (#29) and a minimal scalar-field/ACO consumer (#30).
-- **Renderer readiness:** complete rule-control visuals and the remaining named-composition
-  behavioral scenarios (#40/#41). Controls and configuration now have
+- **Proof of generality:** finish behavioral parity qualification (#28), then a Vicsek consumer
+  (#29) and a minimal scalar-field/ACO consumer (#30). The [comparison harness](docs/BEHAVIORAL_PARITY.md)
+  and [legacy retirement checklist](docs/LEGACY_RETIREMENT.md) are now implemented; the measured
+  full 100-run calibration exceeds the 60-second goal.
+- **Renderer readiness:** complete rule-control visuals and define the remaining faster/slower
+  overtaking scenario (#40/#41). Nineteen quantitative canonical cases now cover integrated and
+  named-rule behavior. Controls and configuration have
   [native Linux verification](docs/NATIVE_UI_VERIFICATION.md); the historical allocation
   observation remains tracked in #20.
 - **Longer-term research:** multi-group behavior, lifecycle/evolution and performance approaches
@@ -113,6 +117,9 @@ dotnet run --project SwarmSim.Cli -c Release -- --engine legacy --config configs
 # Run the bounded 3-seed × 4-value example (12 experiment cells)
 dotnet run --project SwarmSim.Cli -c Release -- --sweep configs/sweep-example.json --out sweeps/
 
+# Run one of the fixed behavioral comparison cases across all four models and five seeds
+dotnet run --project SwarmSim.Parity -c Release -- run --scenario S2_RING_16 --out runs/parity-ring
+
 # Run the BenchmarkDotNet suite
 dotnet run --project SwarmSim.Benchmarks -c Release
 
@@ -124,9 +131,9 @@ For reusable configuration and telemetry APIs, see the
 [experiment foundation guide](docs/EXPERIMENT_FOUNDATION.md).
 
 While the renderer is running:
-- Press **H** to toggle the partial in-app help overlay; use [`docs/CONTROLS.md`](docs/CONTROLS.md) for the
-  complete list. Runtime overlay drift is tracked in
-  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+- Press **H** to toggle the engine-specific help panel; input, help, HUD labels and printed controls
+  share one inventory. See [`docs/CONTROLS.md`](docs/CONTROLS.md) and the
+  [native Linux verification](docs/NATIVE_UI_VERIFICATION.md).
 - Legacy renderer: press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
 - Canonical renderer: press **O** to toggle the interaction overlay and **Tab** to cycle the tracked
   boid.
@@ -341,6 +348,7 @@ SwarmingLilMen/
 │   ├── Canonical/          # New canonical boids implementation
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Cli/           # Display-free experiments, artifacts and manifest replay
+├── SwarmSim.Parity/        # Fixed four-model comparisons and metric envelopes
 ├── SwarmSim.Render/        # Raylib-cs visualization
 ├── SwarmSim.Tests/         # xUnit test suite
 ├── SwarmSim.Benchmarks/    # BenchmarkDotNet performance tests
@@ -542,8 +550,9 @@ The experiment foundation now includes headless runs, registered metrics, exact 
 and sequential sweeps. Seeded same-platform reproducibility, spatial-index equivalence,
 force-budget enforcement and explicit telemetry are covered. Bounded named force composition and
 public classic mode now preserve the default traces and old manifests; their measured performance
-cost is recorded. Instrumentation UX, multi-group semantics, behavioral parity and additional
-simulation foundations remain open. See
+cost is recorded. The four-model parity harness now records reproducible inputs, per-tick
+metrics and locked multi-seed bands; remaining qualification and runtime work is explicit.
+Instrumentation UX, multi-group semantics and additional simulation foundations remain open. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
 ## 🔧 Troubleshooting
