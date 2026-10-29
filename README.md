@@ -402,12 +402,23 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-bu
 | Legacy 50k grid rebuild | Measured; grid-only, not full simulation cost |
 | Canonical throughput | Unmeasured — no canonical BenchmarkDotNet comparison exists ([#20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20)) |
 | Renderer FPS | Unmeasured — the timing tests open no window |
-| Allocations per tick | Unmeasured — no allocation gate exists |
+| Allocations per tick | Small canonical workloads measured in the [canonical experiment](docs/CANONICAL_EXPERIMENT.md); no general zero-allocation claim |
 
 The absolute numbers are deliberately **not** copied here. They are one local sample rather than a
 benchmark distribution, they move with the machine and with every merge, and a fifth copy of them
 across the docs is how they go stale. `PROJECT_STATUS.md` carries the measured figures with their
 date and command.
+
+The bounded headless canonical experiment compares complete observable trajectories against the
+naive spatial index, reports allocations and replays dense neighbor selection with operation counts:
+
+```bash
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical-experiment
+```
+
+It uses at most 256 agents and does not launch BenchmarkDotNet or a renderer. See
+[method, counterexamples and measured limits](docs/CANONICAL_EXPERIMENT.md). The existing
+renderer `--benchmark` option still runs the legacy engine, even with `--canonical`.
 
 ## 🤝 Contributing
 

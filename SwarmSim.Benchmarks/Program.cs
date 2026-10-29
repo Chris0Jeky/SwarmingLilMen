@@ -4,8 +4,15 @@ namespace SwarmSim.Benchmarks;
 
 internal static class Program
 {
-    private static void Main(string[] args)
+    internal static void Main(string[] args)
     {
+        if (args.Length > 0 && args[0] == "--canonical-experiment")
+        {
+            if (args.Length != 1) throw new ArgumentException("--canonical-experiment takes no additional arguments.");
+            CanonicalExperiment.Run(Console.Out);
+            return;
+        }
+
         Console.WriteLine("SwarmSim.Benchmarks - BenchmarkDotNet suite");
         Console.WriteLine();
 

@@ -4,5 +4,6 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SwarmSim.Tests" />
+    <InternalsVisibleTo Include="SwarmSim.Benchmarks" />
   </ItemGroup>
 </Project>
