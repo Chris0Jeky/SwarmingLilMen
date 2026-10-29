@@ -308,7 +308,7 @@ internal static class Program
         _cohesionWeight = config.CohesionWeight;
     }
 
-    private static SimConfig CopyConfig(SimConfig source)
+    internal static SimConfig CopyConfig(SimConfig source)
     {
         return new SimConfig
         {
@@ -340,6 +340,11 @@ internal static class Program
             SeparationPriorityRampInTime = source.SeparationPriorityRampInTime,
             SeparationPriorityRampOutTime = source.SeparationPriorityRampOutTime,
             SeparationSpeedDroop = source.SeparationSpeedDroop,
+            SeparationCrowdingThreshold = source.SeparationCrowdingThreshold,
+            SeparationCrowdingBoost = source.SeparationCrowdingBoost,
+            MaxNeighbors = source.MaxNeighbors,
+            CollisionAvoidanceRadius = source.CollisionAvoidanceRadius,
+            CollisionAvoidanceBoost = source.CollisionAvoidanceBoost,
             AttackRadius = source.AttackRadius,
             AttackDamage = source.AttackDamage,
             AttackCooldown = source.AttackCooldown,
@@ -365,9 +370,10 @@ internal static class Program
         };
     }
 
-    private static SimConfig BuildCurrentConfig()
+    private static SimConfig BuildCurrentConfig() => BuildCurrentConfig(_baseConfigTemplate);
+
+    internal static SimConfig BuildCurrentConfig(SimConfig template)
     {
-        var template = _baseConfigTemplate;
         return new SimConfig
         {
             Seed = template.Seed,
@@ -398,6 +404,11 @@ internal static class Program
             SeparationPriorityRampInTime = template.SeparationPriorityRampInTime,
             SeparationPriorityRampOutTime = template.SeparationPriorityRampOutTime,
             SeparationSpeedDroop = template.SeparationSpeedDroop,
+            SeparationCrowdingThreshold = template.SeparationCrowdingThreshold,
+            SeparationCrowdingBoost = template.SeparationCrowdingBoost,
+            MaxNeighbors = template.MaxNeighbors,
+            CollisionAvoidanceRadius = template.CollisionAvoidanceRadius,
+            CollisionAvoidanceBoost = template.CollisionAvoidanceBoost,
             AttackRadius = template.AttackRadius,
             AttackDamage = template.AttackDamage,
             AttackCooldown = template.AttackCooldown,
@@ -422,6 +433,28 @@ internal static class Program
             CompactionInterval = template.CompactionInterval
         };
     }
+    /// <summary>
+    /// Resolves authored inputs in shared scenario/file order. An unauthored launch retains
+    /// the renderer profile; preset/file launches retain their existing SimConfig defaults.
+    /// Display-name aliases normalize through the same registry used by the F-key UI.
+    /// </summary>
+    internal static SimConfig ResolveStartupConfiguration(string? presetName, string? configFile)
+    {
+        string? scenarioId = null;
+        if (!string.IsNullOrWhiteSpace(presetName))
+        {
+            if (!TryGetPreset(presetName, out var preset))
+                throw new ArgumentException($"Unknown preset '{presetName}'.", nameof(presetName));
+            scenarioId = preset.Id;
+        }
+
+        SimConfig? defaults = scenarioId is null && string.IsNullOrWhiteSpace(configFile)
+            ? CreateDefaultBaseConfig()
+            : null;
+        return SwarmSim.Core.Configuration.ConfigurationResolver.ResolveSimConfig(
+            scenarioName: scenarioId, filePath: configFile, defaults: defaults);
+    }
+
     internal static int Main(string[] args)
     {
         _cliOptions = CommandLineOptions.Parse(args);
@@ -457,32 +490,37 @@ internal static class Program
             return 0;
         }
 
-        if (!string.IsNullOrWhiteSpace(_cliOptions.ConfigFile))
+        Preset? selectedPreset = null;
+        if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName))
         {
-            try
+            if (!TryGetPreset(_cliOptions.PresetName, out var preset))
             {
-                var config = SimConfig.LoadFromJson(_cliOptions.ConfigFile);
-                ApplyBaseConfig(config);
+                Console.Error.WriteLine($"Unknown preset '{_cliOptions.PresetName}'. Use --list-presets to view options.");
+                return 2;
+            }
+            selectedPreset = preset;
+        }
+
+        try
+        {
+            var config = ResolveStartupConfiguration(selectedPreset?.Id, _cliOptions.ConfigFile);
+            ApplyBaseConfig(config);
+            if (!string.IsNullOrWhiteSpace(_cliOptions.ConfigFile))
+            {
                 WarnIfInvalidConfig(config, _cliOptions.ConfigFile);
                 Console.WriteLine($"Loaded configuration from {_cliOptions.ConfigFile}");
             }
-            catch (Exception ex)
+            else if (selectedPreset is not null)
             {
-                Console.WriteLine($"Failed to load config '{_cliOptions.ConfigFile}': {ex.Message}");
-                return 1;
+                WarnIfInvalidConfig(config, selectedPreset.Name);
+                Console.WriteLine($"Preset '{selectedPreset.Name}' loaded.");
             }
         }
-        else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName) &&
-                 TryGetPreset(_cliOptions.PresetName, out var preset))
+        catch (Exception ex)
         {
-            ApplyBaseConfig(preset.Config);
-            WarnIfInvalidConfig(preset.Config, preset.Name);
-            Console.WriteLine($"Preset '{preset.Name}' loaded.");
-        }
-        else if (!string.IsNullOrWhiteSpace(_cliOptions.PresetName))
-        {
-            Console.Error.WriteLine($"Unknown preset '{_cliOptions.PresetName}'. Use --list-presets to view options.");
-            return 2;
+            string source = _cliOptions.ConfigFile ?? selectedPreset?.Name ?? "renderer defaults";
+            Console.WriteLine($"Failed to load configuration '{source}': {ex.Message}");
+            return 1;
         }
 
         _initialAgentCount = _cliOptions.AgentCount ?? _initialAgentCount;
@@ -1390,6 +1428,8 @@ internal static class Program
 
         var settings = BuildCanonicalWorldSettings();
         var canonicalWorld = CreateCanonicalWorld(settings, _initialAgentCount);
+        // The canonical HUD explicitly opts into researcher telemetry and owns its buffers.
+        var telemetry = CaptureCanonicalTelemetry(canonicalWorld, null);
         float accumulator = 0f;
         bool showHelp = true;
         float consoleTimer = 0f;
@@ -1444,6 +1484,7 @@ internal static class Program
                 canonicalWorld.Step(settings.FixedDeltaTime);
                 accumulator -= settings.FixedDeltaTime;
             }
+            telemetry = CaptureCanonicalTelemetry(canonicalWorld, telemetry);
 
             float speedSum = 0f;
             foreach (var boid in canonicalWorld.Boids)
@@ -1479,21 +1520,19 @@ internal static class Program
 
             if (_canonicalOverlayVisible && canonicalWorld.Count > 0 && _overlaySubjectIndex >= 0)
             {
-                DrawInteractionOverlay(canonicalWorld, settings, neighborBuffer, neighborWeightBuffer);
+                DrawInteractionOverlay(canonicalWorld, settings, telemetry, neighborBuffer, neighborWeightBuffer);
             }
 
             Raylib.DrawText($"Canonical Mode — {count} agents (single group)", 10, 8, 18, Color.Lime);
             Raylib.DrawText($"Target: {settings.TargetSpeed:F1} | Avg speed: {avgSpeed:F1}", 10, 32, 14, Color.SkyBlue);
             Raylib.DrawText($"Sense radius: {settings.SenseRadius:F1} | Separation radius: {settings.SeparationRadius:F1}", 10, 52, 14, Color.SkyBlue);
             Raylib.DrawText($"Max force: {settings.MaxForce:F2} | FOV: {settings.FieldOfView:F0}°", 10, 70, 14, Color.SkyBlue);
-            var instrumentation = canonicalWorld.Instrumentation;
-            var neighborStats = instrumentation.NeighborCountStats;
+            var neighborStats = telemetry.NeighborCountStats;
             Raylib.DrawText($"Neighbors avg {neighborStats.Avg:F1} (min {neighborStats.Min}, max {neighborStats.Max})", 10, 88, 14, Color.SkyBlue);
-            Raylib.DrawText($"Weights avg {instrumentation.AverageNeighborWeight:F2} | Sep avg {instrumentation.AverageSeparationMagnitude:F2}", 10, 106, 14, Color.SkyBlue);
-            Raylib.DrawText($"Align avg {instrumentation.AverageAlignmentMagnitude:F2} | Coh avg {instrumentation.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
-            var perception = canonicalWorld.CapturePerceptionSnapshot();
-            Raylib.DrawText($"Distance avg {perception.AverageNeighborDistance:F1} (min {perception.MinNeighborDistance:F1}, max {perception.MaxNeighborDistance:F1})", 10, 142, 14, Color.SkyBlue);
-            Raylib.DrawText($"Separation priority: {(perception.SeparationPriorityTriggered ? "ACTIVE" : "idle")}", 10, 160, 14, perception.SeparationPriorityTriggered ? Color.Orange : Color.Gray);
+            Raylib.DrawText($"Weights avg {telemetry.AverageNeighborWeight:F2} | Sep avg {telemetry.AverageSeparationMagnitude:F2}", 10, 106, 14, Color.SkyBlue);
+            Raylib.DrawText($"Align avg {telemetry.AverageAlignmentMagnitude:F2} | Coh avg {telemetry.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
+            Raylib.DrawText($"Distance avg {telemetry.AverageNeighborDistance:F1} (min {telemetry.MinNeighborDistance:F1}, max {telemetry.MaxNeighborDistance:F1})", 10, 142, 14, Color.SkyBlue);
+            Raylib.DrawText($"Separation priority: {(telemetry.SeparationPriorityTriggered ? "ACTIVE" : "idle")}", 10, 160, 14, telemetry.SeparationPriorityTriggered ? Color.Orange : Color.Gray);
 
             if (_canonicalOverlayVisible)
             {
@@ -1523,6 +1562,48 @@ internal static class Program
     }
 
     /// <summary>
+    /// Captures the completed tick into renderer-owned buffers. Respawns and parameter changes
+    /// reuse the allocation when it fits; a larger replacement world grows it once. A new world
+    /// is captured even before its first tick so the HUD cannot retain the previous world's data.
+    /// </summary>
+    internal static CanonicalTelemetry CaptureCanonicalTelemetry(
+        CanonicalWorld world,
+        CanonicalTelemetry? reusableTelemetry)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        int capacity = Math.Max(1, world.Settings.InitialCapacity);
+        if (reusableTelemetry is null || reusableTelemetry.Capacity < capacity)
+            reusableTelemetry = new CanonicalTelemetry(capacity);
+        world.CaptureTelemetryInto(reusableTelemetry);
+        return reusableTelemetry;
+    }
+
+    /// <summary>
+    /// Distinguishes the current-position visualization from truncation recorded before the
+    /// completed tick integrated. The current query never supplies the tick's truncation value.
+    /// </summary>
+    internal static string FormatCanonicalInteractionStatus(
+        CanonicalTelemetry telemetry,
+        int subjectIndex,
+        int currentWhiskerHits,
+        bool currentQueryTruncated,
+        int currentQueryCapacity,
+        int steeringQueryCapacity)
+    {
+        string currentStatus = currentQueryTruncated ? $" | query capped at {currentQueryCapacity}" : string.Empty;
+        string tickStatus;
+        if (telemetry.TickCount == 0)
+            tickStatus = "Tick: pending";
+        else if (subjectIndex < 0 || subjectIndex >= telemetry.AgentCount)
+            tickStatus = $"Tick {telemetry.TickCount}: subject not recorded";
+        else
+            tickStatus = telemetry.QueryTruncated[subjectIndex]
+                ? $"Tick {telemetry.TickCount}: query capped at {steeringQueryCapacity}"
+                : $"Tick {telemetry.TickCount}: no truncation";
+        return $"Now: whisker hits {currentWhiskerHits}{currentStatus} | {tickStatus}";
+    }
+
+    /// <summary>
     /// Gets the query capacity the interaction overlay must use so it matches the simulation's
     /// per-boid candidate CAP. The overlay owns a fixed 128-entry buffer, but
     /// <see cref="CanonicalWorld.Step"/> caps candidates at
@@ -1531,10 +1612,9 @@ internal static class Program
     /// no truncation in exactly the cases where the simulation did truncate.
     /// </summary>
     /// <remarks>
-    /// This matches the cap only, not what the tick experienced: the overlay's truncation label
-    /// comes from a fresh post-step re-query that can differ from what the tick saw (positions
-    /// moved after the query, so truncation is re-evaluated against current positions). The value
-    /// the tick actually recorded is <see cref="RuleInstrumentation.QueryTruncated"/>.
+    /// The fresh query draws the current-position links and whisker markers and is labeled
+    /// "Now". Its result can differ from what the completed tick saw before integration.
+    /// The separately labeled tick status uses <see cref="CanonicalTelemetry.QueryTruncated"/>.
     /// </remarks>
     /// <param name="bufferLength">Entries available in the overlay's own buffers.</param>
     /// <param name="effectiveMaxNeighbors">The simulation's own per-boid candidate cap.</param>
@@ -1545,6 +1625,7 @@ internal static class Program
     private static void DrawInteractionOverlay(
         CanonicalWorld world,
         CanonicalWorldSettings settings,
+        CanonicalTelemetry telemetry,
         int[] neighborBuffer,
         float[] weightBuffer)
     {
@@ -1613,8 +1694,9 @@ internal static class Program
         }
 
         Raylib.DrawCircleV(center, 5f, Color.Yellow);
-        string queryStatus = visibleQuery.IsTruncated ? $" | query capped at {overlayCapacity}" : string.Empty;
-        Raylib.DrawText($"Whisker hits: {whiskerHits}{queryStatus}", 10, WindowHeight - 92, 14, Color.Orange);
+        string status = FormatCanonicalInteractionStatus(telemetry, _overlaySubjectIndex,
+            whiskerHits, visibleQuery.IsTruncated, overlayCapacity, world.EffectiveMaxNeighbors);
+        Raylib.DrawText(status, 10, WindowHeight - 92, 14, Color.Orange);
 
         Vec2 meanHeading = ComputeMeanHeading(world);
         var meanHeadingVec = new Vector2(meanHeading.X, meanHeading.Y);
@@ -1796,39 +1878,7 @@ internal static class Program
     internal static CanonicalWorldSettings BuildCanonicalWorldSettings(
         SimConfig config,
         int initialAgentCount)
-    {
-        ArgumentNullException.ThrowIfNull(config);
-
-        return new CanonicalWorldSettings
-        {
-            InitialCapacity = Math.Max(initialAgentCount * 2, 1024),
-            TargetSpeed = Math.Max(0.01f, config.MaxSpeed),
-            MaxForce = Math.Max(0.01f, config.MaxForce),
-            SenseRadius = Math.Max(1f, config.SenseRadius),
-            SeparationRadius = Math.Max(1f, config.SeparationRadius),
-            SeparationWeight = Math.Max(0f, config.SeparationWeight),
-            AlignmentWeight = Math.Max(0f, config.AlignmentWeight),
-            CohesionWeight = Math.Max(0f, config.CohesionWeight),
-            FieldOfView = config.FieldOfView,
-            WorldWidth = config.WorldWidth,
-            WorldHeight = config.WorldHeight,
-            FixedDeltaTime = config.FixedDeltaTime,
-            MaxNeighbors = config.MaxNeighbors,
-            WanderStrength = config.WanderStrength,
-            WanderRate = config.WanderRate,
-            MaxTurnRateDegPerSecond = config.MaxTurnRateDegPerSecond,
-            WhiskerTimeHorizon = config.WhiskerTimeHorizon,
-            WhiskerWeight = config.WhiskerWeight,
-            SeparationPriorityRadiusFactor = config.SeparationPriorityRadiusFactor,
-            SeparationPriorityExitFactor = config.SeparationPriorityExitFactor,
-            SeparationPriorityBoost = config.SeparationPriorityBoost,
-            SeparationPriorityHoldTime = config.SeparationPriorityHoldTime,
-            SeparationPriorityRampInTime = config.SeparationPriorityRampInTime,
-            SeparationPriorityRampOutTime = config.SeparationPriorityRampOutTime,
-            SeparationSpeedDroop = config.SeparationSpeedDroop,
-            Seed = config.Seed
-        };
-    }
+        => CanonicalWorldSettings.FromSimConfig(config, Math.Max(initialAgentCount * 2, 1024));
 
     internal static CanonicalWorld CreateCanonicalWorld(
         CanonicalWorldSettings settings,

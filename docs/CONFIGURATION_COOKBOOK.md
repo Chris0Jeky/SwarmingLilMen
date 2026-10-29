@@ -95,12 +95,14 @@ overlay with `MaxSpeed: 8`, `MaxForce: 1.5`, and `Friction: 0.98`; the original
 the class speed ceiling of `200` and sets `AttackDamage: 20`. Use the named scenario for
 the original factory values, or the file layer for the authored recipe.
 
-The renderer still accepts its five existing `--preset` IDs, and `--config` reads
-`SimConfig` JSON in either engine mode. Its existing startup path gives `--config`
-precedence over `--preset`; the shared resolver is the layered API until that startup call
-site is migrated. Native `CanonicalWorldSettings` JSON is a library API, not a new renderer
-file format. A manual F1–F5 window check is still required before claiming renderer behavior
-has been verified; unit round trips do not provide that evidence.
+The renderer accepts its five existing `--preset` IDs, and `--config` reads `SimConfig` JSON in
+either engine mode. Startup now uses the shared resolver: the preset is applied before the file,
+and omitted file fields retain that preset's authored values. With no preset or file, the
+renderer retains its established default profile. Native `CanonicalWorldSettings` JSON belongs
+to the headless CLI and core API, not the renderer's file format. See
+[renderer startup configuration](RENDERER_CONFIGURATION.md) for fixed window dimensions and
+compatibility choices. A manual F1–F5 window check remains outstanding; automated configuration
+parity does not provide visual evidence.
 
 ## Aggression matrices and enum values
 
