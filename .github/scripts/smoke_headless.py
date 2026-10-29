@@ -35,7 +35,9 @@ def invoke(arguments, output):
     directories = list(output.iterdir())
     assert len(directories) == 1 and directories[0].is_dir(), directories
     run = directories[0]
-    assert Path(completed.stdout.strip()) == run, completed.stdout
+    # Windows can spell the same temp directory with a short-name alias. Check the
+    # reported directory's filesystem identity, not its spelling.
+    assert Path(completed.stdout.strip()).samefile(run), (completed.stdout, str(run))
     assert sorted(path.name for path in run.iterdir()) == [
         "log.txt", "manifest.json", "metrics.csv"
     ]

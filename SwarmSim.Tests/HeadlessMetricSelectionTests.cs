@@ -202,6 +202,30 @@ public sealed class HeadlessMetricSelectionTests
         Assert.Equal("tick,population,meanSpeed,polarization", File.ReadLines(Path.Combine(replay, "metrics.csv")).First());
     }
 
+    [Theory]
+    [InlineData("metricContractVersion")]
+    [InlineData("metricsDeterministic")]
+    public void SchemaOneManifest_RejectsExplicitNullSchemaTwoMetadata(string field)
+    {
+        using var files = new TestFiles();
+        string output = Path.Combine(files.Root, "initial");
+        Assert.Equal(0, Run("--ticks", "0", "--agents", "1", "--out", output).Code);
+        JsonObject manifest = ReadManifest(Assert.Single(Directory.GetDirectories(output)));
+        manifest["schemaVersion"] = 1;
+        manifest.Remove("metricContractVersion");
+        manifest.Remove("metricsDeterministic");
+        manifest[field] = null;
+        string path = Path.Combine(files.Root, "schema1-extra-field.json");
+        File.WriteAllText(path, manifest.ToJsonString());
+        string replayOutput = Path.Combine(files.Root, "replay");
+
+        var result = Run("--manifest", path, "--out", replayOutput);
+
+        Assert.Equal(1, result.Code);
+        Assert.Contains("no schema 2 metric metadata", result.Error, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(replayOutput));
+    }
+
     private static JsonObject ReadManifest(string directory) =>
         JsonNode.Parse(File.ReadAllText(Path.Combine(directory, "manifest.json")))!.AsObject();
 

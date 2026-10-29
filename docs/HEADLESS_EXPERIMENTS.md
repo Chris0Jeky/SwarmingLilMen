@@ -133,8 +133,8 @@ dotnet run --project SwarmSim.Cli -c Release -- --ticks 1000 --agents 400 --metr
 These explicit channels measure **the synchronous simulation Step only**, excluding capture,
 metric sampling, formatting and file I/O. `runtime.allocatedBytes` is the calling thread's GC
 allocation delta; it does not claim process-wide allocation coverage. Tick 0 has no completed
-interval and therefore leaves both fields empty. No clock or allocation counter is sampled by
-the runner when the selected plan is deterministic.
+interval and therefore leaves both fields empty. Deterministic plans do not sample per-step
+clocks or allocation counters; overall operational run timing is still recorded in `log.txt`.
 
 A run selecting either runtime channel records `metricsDeterministic: false`. Such manifests
 are rejected by exact `--manifest` replay before output is created. They remain valid operational

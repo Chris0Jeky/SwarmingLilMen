@@ -61,7 +61,8 @@ internal sealed class RunManifest
         if (manifest.SchemaVersion == 1)
         {
             if (!manifest.RequestedMetrics.SequenceEqual(MetricCatalog.DefaultMetrics, StringComparer.Ordinal) ||
-                manifest.MetricContractVersion is not null || manifest.MetricsDeterministic is not null)
+                document.RootElement.TryGetProperty("metricContractVersion", out _) ||
+                document.RootElement.TryGetProperty("metricsDeterministic", out _))
                 throw new InvalidDataException("Schema 1 supports only its original three metric columns and no schema 2 metric metadata.");
         }
         else

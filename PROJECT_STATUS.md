@@ -89,7 +89,7 @@ analysis preserves tiny signed offsets even in very large worlds. See [metrics](
 The CLI now selects registered channels with `--metrics`, records their order and determinism in
 schema 2 manifests, and verifies the complete deterministic CSV on replay. Original schema 1
 manifests remain replayable with byte-identical default CSV. Runtime-cost channels measure only
-Step and explicitly disable exact replay. The integrated Release suite passes 851 tests; a
+Step and explicitly disable exact replay. The integrated Release suite passes 853 tests; a
 separate 50k sparse/1,000-step proof observes zero current-thread allocation in physics, reused
 capture/sampling, buffered CSV writing and the final flush. It excludes setup, hashing and
 quadratic nearest-neighbor analysis. Exact measurement boundaries and the periodic-centroid
