@@ -16,6 +16,8 @@ internal sealed class RunOptions
     internal int Ticks { get; private set; } = 600;
     internal int AgentCount { get; private set; } = 400;
     internal string OutputDirectory { get; private set; } = "runs";
+    internal string[] RequestedMetrics { get; private set; } = MetricCatalog.DefaultMetrics.ToArray();
+    internal bool ListMetrics { get; private set; }
     internal bool Help { get; private set; }
 
     internal static RunOptions Parse(string[] args)
@@ -27,12 +29,13 @@ internal sealed class RunOptions
             string option = args[index];
             if (!seen.Add(option))
                 throw new UsageException($"Option '{option}' was specified more than once.");
-            if (option == "--help")
+            if (option is "--help" or "--list-metrics")
             {
-                options.Help = true;
+                if (option == "--help") options.Help = true;
+                else options.ListMetrics = true;
                 continue;
             }
-            if (option is not ("--engine" or "--config" or "--scenario" or "--manifest" or "--seed" or "--ticks" or "--agents" or "--out"))
+            if (option is not ("--engine" or "--config" or "--scenario" or "--manifest" or "--seed" or "--ticks" or "--agents" or "--out" or "--metrics"))
                 throw new UsageException($"Unknown option or argument '{option}'.");
             if (++index >= args.Length || string.IsNullOrWhiteSpace(args[index]) || args[index].StartsWith("--", StringComparison.Ordinal))
                 throw new UsageException($"Option '{option}' requires a value.");
@@ -52,6 +55,11 @@ internal sealed class RunOptions
                     break;
                 case "--manifest": options.ManifestPath = value; break;
                 case "--out": options.OutputDirectory = value; break;
+                case "--metrics":
+                    options.RequestedMetrics = value.Split(',', StringSplitOptions.TrimEntries);
+                    if (options.RequestedMetrics.Any(string.IsNullOrEmpty))
+                        throw new UsageException("--metrics requires comma-separated names with no empty entries.");
+                    break;
                 case "--seed":
                     if (!uint.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out uint seed) || seed > Rng.MaxSupportedSeed)
                         throw new UsageException($"--seed must be an integer from 0 through {Rng.MaxSupportedSeed}.");
@@ -63,8 +71,10 @@ internal sealed class RunOptions
         }
 
         if (options.ManifestPath is not null && seen.Any(option =>
-            option is "--engine" or "--config" or "--scenario" or "--seed" or "--ticks" or "--agents"))
+            option is not ("--manifest" or "--out" or "--help")))
             throw new UsageException("--manifest can be combined only with --out or --help; run-setting overrides are not accepted during replay.");
+        if (options.ListMetrics && seen.Any(option => option is not ("--list-metrics" or "--engine" or "--help")))
+            throw new UsageException("--list-metrics can be combined only with --engine or --help.");
         return options;
     }
 

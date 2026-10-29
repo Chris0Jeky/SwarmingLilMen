@@ -4,10 +4,11 @@
 It separates physical analysis from the neighbors selected by a steering algorithm. A registry
 selects columns in a caller-supplied order; invariant CSV and JSONL writers use that same schema.
 
-This is a library contract. The current headless CLI still writes its original three fixed
-channels. Connecting requested manifest channels to this registry, adapting engine snapshots into
-reusable buffers, and running the complete 50,000-agent headless acceptance case remain follow-up
-work for issue #24. No `--metrics` flag is advertised by this implementation.
+The headless CLI consumes this registry through `--metrics` and `--list-metrics`, with reusable
+engine capture and schema-versioned manifests. It preserves the original three default columns
+and verifies the complete selected deterministic CSV during replay. See
+[headless experiments](HEADLESS_EXPERIMENTS.md) for selection, compatibility, operational metrics
+and the separately measured 50,000-agent sparse pipeline.
 
 ## A reusable sampling plan
 
@@ -185,7 +186,7 @@ checked before writing a row. Formatting uses stack buffers and span-based write
 allocating one string per number. The chosen underlying writer can still have its own allocation
 or I/O behavior.
 
-## Verification scope and remaining integration
+## Verification scope and headless integration
 
 The 50,000-agent allocation test measures **only** `population`, `meanSpeed`, `polarization`,
 `centroidX`, and `centroidY` in a Euclidean domain. It includes fresh-frame validation, sampling,
@@ -193,8 +194,14 @@ and CSV/JSONL formatting to `TextWriter.Null` for 1,000 samples after warm-up, u
 allocation deltas. It observes zero allocated bytes. A separate small-population test verifies
 reuse of exact-neighbor scratch across 1,000 samples.
 
-This evidence does not exercise 50,000-agent quadratic nearest-neighbor analysis, engine snapshot
-copying, real disk writers, or a complete headless metric pipeline. It is not a throughput claim.
-CLI manifest selection, the shared sink consumer, and the full headless allocation acceptance
-case remain open. Runtime/platform and ordered input snapshots remain part of reproducibility;
-these formulas do not create a cross-platform bitwise guarantee.
+This library-only evidence does not exercise 50,000-agent quadratic nearest-neighbor analysis,
+engine snapshot copying or real disk writers, and is not a throughput claim. The separate CLI
+consumer now uses the same registry and CSV sink with a reusable capture buffer. It supports
+`--metrics` selection and discovery, schema 1 compatibility, and schema 2 exact replay across
+the complete selected deterministic CSV. Operational runtime channels are classified explicitly
+and disable exact replay. See [HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for its separate
+50k sparse full-pipeline verification and precise allocation boundaries.
+
+Runtime/platform and ordered input snapshots remain part of reproducibility; these formulas do
+not create a cross-platform bitwise guarantee. JSONL remains available through the core writer
+API; the headless run-directory contract uses CSV.

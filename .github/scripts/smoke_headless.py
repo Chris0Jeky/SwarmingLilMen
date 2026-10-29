@@ -35,13 +35,59 @@ def invoke(arguments, output):
     directories = list(output.iterdir())
     assert len(directories) == 1 and directories[0].is_dir(), directories
     run = directories[0]
-    # Windows can spell the same temp directory with a short-name alias. Check the
-    # reported directory's filesystem identity, not its spelling.
-    assert Path(completed.stdout.strip()).samefile(run), (completed.stdout, str(run))
+    assert Path(completed.stdout.strip()) == run, completed.stdout
     assert sorted(path.name for path in run.iterdir()) == [
         "log.txt", "manifest.json", "metrics.csv"
     ]
     return run
+
+
+def check_selected_metrics(parent, engine):
+    channels = ["nearestNeighborP95", "population", "centroidX", "polarization"]
+    if engine == "canonical":
+        channels.append("boids.truncatedQueryFraction")
+    arguments = [
+        "--engine", engine, "--scenario", "balanced", "--seed", "23",
+        "--ticks", "64", "--agents", "12", "--metrics", ",".join(channels),
+    ]
+    original = invoke(arguments, parent / (engine + "-selected"))
+    repeated = invoke(arguments, parent / (engine + "-selected-repeat"))
+    replay = invoke(["--manifest", str(original / "manifest.json")], parent / (engine + "-selected-replay"))
+    metrics = (original / "metrics.csv").read_bytes()
+    assert metrics == (repeated / "metrics.csv").read_bytes()
+    assert metrics == (replay / "metrics.csv").read_bytes()
+    rows = list(csv.reader(io.StringIO(metrics.decode("utf-8"))))
+    assert rows[0] == ["tick", *channels] and len(rows) == 66, rows[:2]
+    for tick, row in enumerate(rows[1:]):
+        assert len(row) == len(channels) + 1 and int(row[0]) == tick, row
+        assert float(row[2]) == 12, row
+        for index, field in enumerate(row[1:]):
+            if engine == "canonical" and tick == 0 and channels[index].startswith("boids."):
+                assert field == "", row
+            else:
+                assert field != "" and math.isfinite(float(field)), row
+    manifest = json.loads((original / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["schemaVersion"] == 2 and manifest["metricContractVersion"] == 1
+    assert manifest["metricsDeterministic"] is True and manifest["requestedMetrics"] == channels
+    assert manifest["metricsSha256"] == hashlib.sha256(metrics).hexdigest().upper()
+    print(f"SELECTED_METRICS_SMOKE engine={engine} columns={','.join(channels)} repeat=identical replay=identical", flush=True)
+
+
+def check_runtime_replay_rejection(parent):
+    run = invoke([
+        "--ticks", "3", "--agents", "2",
+        "--metrics", "population,runtime.wallMilliseconds,runtime.allocatedBytes",
+    ], parent / "runtime")
+    manifest = json.loads((run / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["metricsDeterministic"] is False
+    destination = parent / "runtime-replay-rejected"
+    rejected = subprocess.run(
+        [DOTNET, str(CLI), "--manifest", str(run / "manifest.json"), "--out", str(destination)],
+        cwd=ROOT, capture_output=True, text=True, timeout=30,
+    )
+    assert rejected.returncode == 1 and "nondeterministic runtime metrics" in rejected.stderr, rejected
+    assert not destination.exists() and not rejected.stdout, rejected
+    print("RUNTIME_METRICS_SMOKE exactReplay=rejected-before-output", flush=True)
 
 
 def main():
@@ -96,6 +142,8 @@ def main():
                 f"gitCommit={manifest['gitCommit']} dirtyWorktree={manifest['dirtyWorktree']}",
                 flush=True,
             )
+            check_selected_metrics(parent, engine)
+        check_runtime_replay_rejection(parent)
 
 
 if __name__ == "__main__":

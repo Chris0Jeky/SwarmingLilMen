@@ -47,7 +47,7 @@ public sealed class HeadlessCliTests
             Assert.Equal(expected, File.ReadAllBytes(Path.Combine(run, "metrics.csv")));
             Assert.Equal(new[] { "log.txt", "manifest.json", "metrics.csv" }, Directory.GetFiles(run).Select(Path.GetFileName).Order().ToArray());
             using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(run, "manifest.json")));
-            Assert.Equal(1, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
+            Assert.Equal(2, manifest.RootElement.GetProperty("schemaVersion").GetInt32());
             Assert.Equal(engine, manifest.RootElement.GetProperty("engine").GetString());
             Assert.Equal(7u, manifest.RootElement.GetProperty("seed").GetUInt32());
             Assert.Equal(7u, manifest.RootElement.GetProperty("resolvedConfig").GetProperty("Seed").GetUInt32());
@@ -158,7 +158,7 @@ public sealed class HeadlessCliTests
         var manifest = JsonNode.Parse(File.ReadAllText(Path.Combine(run, "manifest.json")))!.AsObject();
         switch (mutation)
         {
-            case "schemaVersion": manifest[mutation] = 2; break;
+            case "schemaVersion": manifest[mutation] = 3; break;
             case "seed": manifest[mutation] = 9; break;
             case "missingConfigField": manifest["resolvedConfig"]!.AsObject().Remove("WanderRate"); break;
             case "runId": manifest[mutation] = "../escape"; break;

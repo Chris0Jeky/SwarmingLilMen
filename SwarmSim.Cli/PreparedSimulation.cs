@@ -1,14 +1,10 @@
 using SwarmSim.Core;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Diagnostics;
+using SwarmSim.Core.Metrics;
 using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Cli;
-
-internal readonly record struct MetricRow(int Tick, int Population, double MeanSpeed, double Polarization)
-{
-    internal void Write(TextWriter output) => output.WriteLine(FormattableString.Invariant($"{Tick},{Population},{MeanSpeed:R},{Polarization:R}"));
-}
 
 /// <summary>A single initialized experiment, with no renderer or wall-clock stepping.</summary>
 internal sealed class PreparedSimulation
@@ -36,10 +32,15 @@ internal sealed class PreparedSimulation
             _legacy = new World(config);
             Spawn(config.WorldWidth, config.WorldHeight, config.MaxSpeed);
         }
-        InitialMetrics = Measure(0); // Non-finite spawn state fails before any output is created.
     }
 
-    internal MetricRow InitialMetrics { get; }
+    internal CanonicalWorld? Canonical => _canonical;
+    internal int MetricCapacity => _canonical is not null ? Math.Max(1, _request.Canonical!.InitialCapacity) : _legacy!.Capacity;
+    internal MetricDomain Domain => _canonical is not null
+        ? MetricDomain.Toroidal(_request.Canonical!.WorldWidth, _request.Canonical.WorldHeight)
+        : _request.Legacy!.BoundaryMode == BoundaryMode.Wrap
+            ? MetricDomain.Toroidal(_request.Legacy.WorldWidth, _request.Legacy.WorldHeight)
+            : MetricDomain.Euclidean;
 
     internal void Step()
     {
@@ -53,22 +54,25 @@ internal sealed class PreparedSimulation
         ? SimulationKinematicHash.Compute(_canonical)
         : SimulationKinematicHash.Compute(_legacy!);
 
-    internal MetricRow Measure(int tick)
+    internal int Capture(Span<KinematicSample> destination)
     {
-        var totals = new MetricTotals();
+        int required = _canonical?.Count ?? _legacy!.Count;
+        if (destination.Length < required)
+            throw new ArgumentException("Capture buffer must hold every simulation slot; state is never truncated.", nameof(destination));
+        int count = 0;
         if (_canonical is not null)
         {
             foreach (Boid boid in _canonical.Boids)
-                totals.Add(boid.Position.X, boid.Position.Y, boid.Velocity.X, boid.Velocity.Y);
+                destination[count++] = new(boid.Position.X, boid.Position.Y, boid.Velocity.X, boid.Velocity.Y);
         }
         else
         {
             World world = _legacy!;
             for (int i = 0; i < world.Count; i++)
                 if ((world.State[i] & AgentState.Dead) == 0)
-                    totals.Add(world.X[i], world.Y[i], world.Vx[i], world.Vy[i]);
+                    destination[count++] = new(world.X[i], world.Y[i], world.Vx[i], world.Vy[i]);
         }
-        return totals.Row(tick);
+        return count;
     }
 
     private void Spawn(float width, float height, float speed)
@@ -97,30 +101,4 @@ internal sealed class PreparedSimulation
         }
     }
 
-    private struct MetricTotals
-    {
-        private int _population;
-        private double _speedSum;
-        private double _headingX;
-        private double _headingY;
-
-        internal void Add(float x, float y, float vx, float vy)
-        {
-            if (!float.IsFinite(x) || !float.IsFinite(y) || !float.IsFinite(vx) || !float.IsFinite(vy))
-                throw new InvalidOperationException("Simulation produced non-finite kinematic state.");
-            double speed = Math.Sqrt((double)vx * vx + (double)vy * vy);
-            _population++;
-            _speedSum += speed;
-            if (speed > 0d)
-            {
-                _headingX += vx / speed;
-                _headingY += vy / speed;
-            }
-        }
-
-        internal readonly MetricRow Row(int tick) => _population == 0
-            ? new(tick, 0, 0d, 0d)
-            : new(tick, _population, _speedSum / _population,
-                Math.Clamp(Math.Sqrt(_headingX * _headingX + _headingY * _headingY) / _population, 0d, 1d));
-    }
 }

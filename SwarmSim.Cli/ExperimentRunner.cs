@@ -3,19 +3,25 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SwarmSim.Core.Metrics;
 
 namespace SwarmSim.Cli;
 
 internal static class ExperimentRunner
 {
-    internal static string Run(RunOptions options)
+    internal static string Run(RunOptions options) => Run(RunRequest.Resolve(options), options.OutputDirectory);
+
+    internal static string Run(RunRequest request, string outputDirectory)
     {
-        RunRequest request = RunRequest.Resolve(options);
+        bool deterministic = MetricCatalog.ValidateSelection(request.Engine, request.RequestedMetrics);
+        if (request.Replay is not null && !deterministic)
+            throw new InvalidDataException("Exact replay is unavailable for nondeterministic metric selections.");
         // Serialize and construct before touching output; this also catches non-serializable
         // reserved values and index/capacity limits that scalar validation cannot establish.
         using JsonDocument resolved = JsonDocument.Parse(request.ConfigJson);
         var simulation = new PreparedSimulation(request);
-        string parent = Path.GetFullPath(options.OutputDirectory);
+        var observer = new ExperimentMetrics(request, simulation);
+        string parent = Path.GetFullPath(outputDirectory);
         (string? commit, bool? dirty) = RunProvenance.Git();
         RuntimeIdentity runtime = RunProvenance.Runtime();
         DateTimeOffset createdUtc = DateTimeOffset.UtcNow;
@@ -33,13 +39,13 @@ internal static class ExperimentRunner
             string metricsPath = Path.Combine(staging, "metrics.csv");
             using (StreamWriter metrics = CreateText(metricsPath))
             {
-                metrics.WriteLine("tick,population,meanSpeed,polarization");
-                simulation.InitialMetrics.Write(metrics);
+                var csv = new MetricCsvWriter(metrics, observer.Plan);
+                csv.WriteRow(0, observer.Values);
                 // Count upward from zero so int.MaxValue ticks does not overflow after the last step.
                 for (int index = 0; index < request.Ticks; index++)
                 {
-                    simulation.Step();
-                    simulation.Measure(index + 1).Write(metrics);
+                    observer.StepAndSample();
+                    csv.WriteRow(index + 1, observer.Values);
                 }
             }
             elapsed.Stop();
@@ -54,7 +60,7 @@ internal static class ExperimentRunner
 
             var manifest = new RunManifest
             {
-                SchemaVersion = 1,
+                SchemaVersion = 2,
                 RunId = runId,
                 CreatedUtc = createdUtc,
                 GitCommit = commit,
@@ -65,7 +71,9 @@ internal static class ExperimentRunner
                 AgentCount = request.AgentCount,
                 FixedDeltaTime = request.FixedDeltaTime,
                 ResolvedConfig = resolved.RootElement.Clone(),
-                RequestedMetrics = RunManifest.SupportedMetrics.ToArray(),
+                RequestedMetrics = observer.Plan.Channels.ToArray(),
+                MetricContractVersion = MetricCatalog.ContractVersion,
+                MetricsDeterministic = observer.Plan.IsDeterministic,
                 SpawnModel = RunManifest.SupportedSpawnModel,
                 KinematicHashVersion = 1,
                 FinalKinematicHash = stateHash,
@@ -81,6 +89,9 @@ internal static class ExperimentRunner
                 log.WriteLine(FormattableString.Invariant($"Seed: {request.Seed}; ticks: {request.Ticks}; agents: {request.AgentCount}; fixedDeltaTime: {request.FixedDeltaTime:R}"));
                 log.WriteLine($"FinalKinematicHash v1: {stateHash}");
                 log.WriteLine($"MetricsSha256: {metricsHash}");
+                log.WriteLine($"MetricContractVersion: {MetricCatalog.ContractVersion}; deterministic: {observer.Plan.IsDeterministic}");
+                if (!observer.Plan.IsDeterministic)
+                    log.WriteLine("Runtime metric scope: simulation Step only; allocations on the calling thread; capture, metric sampling and I/O excluded. Exact manifest replay is unavailable.");
                 log.WriteLine($"ElapsedRunMilliseconds (includes metrics I/O): {elapsed.Elapsed.TotalMilliseconds.ToString("F3", CultureInfo.InvariantCulture)}");
                 if (request.Replay is not null)
                     log.WriteLine($"Verified replay of {request.Replay.RunId}");
