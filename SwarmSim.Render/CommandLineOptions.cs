@@ -149,9 +149,11 @@ namespace SwarmSim.Render;
         sb.AppendLine("  SwarmSim.Render --config configs/warbands.json -n 5000");
         sb.AppendLine("  dotnet run --project SwarmSim.Cli -- --engine canonical --ticks 600");
         sb.AppendLine();
-        sb.AppendLine("Interactive Controls:");
-        sb.AppendLine("  Press H inside the application to toggle the help overlay.");
-        sb.AppendLine("  Press F12 to view snapshot/debug information.");
+        sb.AppendLine("Legacy interactive controls (default renderer):");
+        sb.AppendLine(Program.Controls.FormatHelp(RendererMode.Legacy, SwarmSim.Core.SpeedModel.ConstantSpeed));
+        sb.AppendLine();
+        sb.AppendLine("Canonical interactive controls (--canonical):");
+        sb.AppendLine(Program.Controls.FormatHelp(RendererMode.Canonical, SwarmSim.Core.SpeedModel.ConstantSpeed));
         return sb.ToString();
     }
 

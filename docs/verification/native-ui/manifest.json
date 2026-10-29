@@ -1,0 +1,265 @@
+{
+  "schemaVersion": 1,
+  "date": "2026-10-29",
+  "status": "final integrated native verification complete",
+  "sourceBaseCommit": "16086df94b0b99c6f8822df91830430083cb9104",
+  "sourceChanges": "Controls follow-up, including same-frame world refresh, documented sense-circle limit and ASCII labels",
+  "method": "Real X11/XTest input to the actual native Raylib binary, console/CSV assertions, and inspection of direct screenshots; no human manual testing claimed",
+  "environment": {
+    "os": "Ubuntu 24.04 x64",
+    "raylib": "5.5",
+    "display": [
+      1920,
+      1080
+    ],
+    "renderer": "Mesa llvmpipe LLVM 20.1.2; OpenGL 4.5 Core Profile",
+    "softwareRendering": true
+  },
+  "binarySha256": {
+    "SwarmSim.Render.dll": "4aff218b80cb0ed2ea33af4fa3d7d965c23dd50b3c0fa558ccd345479f6613ee",
+    "SwarmSim.Core.dll": "bf24987ab2e057f3a88f2b718ee218f3cbd9b00197bb6a1285ce219d257de29d",
+    "Raylib-cs.dll": "e50f4a476bb5388652831cdfca26f4590a5bd0b0826c83af01b13d2382034476",
+    "runtimes/linux-x64/native/libraylib.so": "03280fbca0146e18139cc4c8828a68835ce50acdc1d5b0b3095077d884546a17"
+  },
+  "sourceSha256": {
+    "SwarmSim.Render/Program.cs": "59f58386b45ad934daa0fd653d89c7ea9b3f450e573274a33fb647a268286890",
+    "SwarmSim.Render/RendererControls.cs": "d75d57bfe2000e65eb626d9855dd4d28a24517eda8a6ff7d220c0cf047ceb25a",
+    "SwarmSim.Render/CommandLineOptions.cs": "41f7a35a5437120941c2f1d923222d77511cee99ad2f108a782a02e201274e2a",
+    "SwarmSim.Tests/RendererCombinedInputTests.cs": "ec69cf47c23eda38e35933680f001b82dcaac218e303cc15098fd7214c470d92"
+  },
+  "nativeRuns": [
+    {
+      "name": "canonical",
+      "exitCode": 0,
+      "windowSize": [
+        1920,
+        1080
+      ],
+      "assertions": [
+        "Selecting 6, pressing 8 and then Up retained target-speed selection and changed 10 to 20 without a friction entry",
+        "All seven printed parameter values matched all five authored presets"
+      ],
+      "logSha256": "c4cef2e1ced2ad96d556a2f7ba9748234a9997fc7386f8b5eda3dee65ec93cc1",
+      "actionsSha256": "4de56dc160ebaa4d36b5b85b7a0ce5ae1a422049ea0260435260f672da8348f8",
+      "binaryHashesUnchanged": true
+    },
+    {
+      "name": "legacy",
+      "exitCode": 0,
+      "windowSize": [
+        1920,
+        1080
+      ],
+      "assertions": [
+        "Key 8 changed stored friction from 0.95 to 0.96 and stated it was inactive with ConstantSpeed",
+        "Space plus 180 ms left/right mouse holds produced 328 exported agents",
+        "Reset restored 128 exported agents",
+        "All eight printed parameter values matched all five authored presets",
+        "All adjustment aliases and both Shift keys yielded the expected coarse 10 and fine 1 increments"
+      ],
+      "logSha256": "d104b7cfd1567a9c91029725404c35ace70e727ede7feee16ffe3e3944e2904d",
+      "actionsSha256": "1f6d70b4e23fddd00a1c7434a5da3ff19fc1e7c65892097652be976dec4dba9d",
+      "binaryHashesUnchanged": true,
+      "imageInspection": [
+        "Help fits and documents below100 bound",
+        "Both snapshots328; count delta0; mutation versions3",
+        "ASCII selection marker and Count delta label render without replacement glyphs"
+      ]
+    },
+    {
+      "name": "canonical-custom",
+      "exitCode": 0,
+      "windowSize": [
+        1920,
+        1080
+      ],
+      "assertions": [
+        "Preset-plus-file printed target 12, sense radius 300 and balanced separation 7.5; renderer dimensions remained 1920 x 1080"
+      ],
+      "logSha256": "062c9f17a7efdc24ddd7c951adb1a6864fe2d1a2f440f34242fc9262584203b4",
+      "actionsSha256": "799afe910b42606fb8de314d3cd07b62e2311f62d7c62e779ed49b149c7b337e",
+      "binaryHashesUnchanged": true,
+      "configuration": {
+        "MaxSpeed": 12,
+        "SenseRadius": 300,
+        "MaxNeighbors": 1,
+        "FieldOfView": 360,
+        "FixedDeltaTime": 2,
+        "WanderStrength": 0,
+        "InitialCapacity": 256,
+        "MaxCapacity": 512,
+        "WorldWidth": 80,
+        "WorldHeight": 60,
+        "SeparationCrowdingThreshold": 7,
+        "SeparationCrowdingBoost": 3,
+        "CollisionAvoidanceRadius": 5,
+        "CollisionAvoidanceBoost": 2
+      },
+      "imageInspection": [
+        "Fresh query capped4 while tick pending; zero captured aggregates",
+        "Tick1 captured cap4 with populated aggregates",
+        "Reset pending with zero captured aggregates and a separately labeled fresh query"
+      ]
+    },
+    {
+      "name": "legacy-damped-custom",
+      "exitCode": 0,
+      "windowSize": [
+        1920,
+        1080
+      ],
+      "assertions": [
+        "Damped startup preserved balanced weights and file MaxSpeed 12; friction changed 0.80 to 0.81 and was labeled active",
+        "The help panel was captured after the input loop became ready"
+      ],
+      "logSha256": "f511f3cc1c42e9c369edc6354f3f169d57267e9b87d6bf2483603a34f4d6845d",
+      "actionsSha256": "500ce5f58c01727c138d8481359544683789ef3c602d8be6476c4cc536525fb2",
+      "binaryHashesUnchanged": true,
+      "configuration": {
+        "MaxSpeed": 12,
+        "MaxNeighbors": 8,
+        "SpeedModel": 1,
+        "Friction": 0.8,
+        "InitialCapacity": 256,
+        "MaxCapacity": 512,
+        "WorldWidth": 80,
+        "WorldHeight": 60
+      },
+      "imageInspection": [
+        "Help and HUD identify active Damped friction; changed .80 to .81"
+      ]
+    },
+    {
+      "name": "legacy-sense64",
+      "exitCode": 0,
+      "windowSize": [
+        1920,
+        1080
+      ],
+      "assertions": [
+        "S was enabled at 64 agents; Space increased the exported count to 164"
+      ],
+      "logSha256": "ad0ca55712eb0e5b8d893395f265372d94b36e7c2969bbdb23f14ef8b6cb3b51",
+      "actionsSha256": "189789d05bb3286f3eae03f6cedfddefcea18d3d1983c44606df7b1d9aa1859b",
+      "binaryHashesUnchanged": true,
+      "imageInspection": [
+        "Sense circles visible around64 agents",
+        "Sense circles suppressed at164 agents while toggle remainsON"
+      ]
+    }
+  ],
+  "sameFrameRegression": [
+    {
+      "case": "preset-space",
+      "initialPopulation": 64,
+      "requestedAdditionalPopulation": 100,
+      "method": "SIGSTOP only the renderer, queue both real XTest keydown events, SIGCONT, hold 200 ms, release, then export via C",
+      "before": {
+        "observedPopulation": 64,
+        "exitCode": 0,
+        "consoleReported100Spawns": true,
+        "recreationLogged": true,
+        "binarySha256": {
+          "SwarmSim.Render.dll": "3abee8e591b13956127611132911d174a5c231b02907586489ad69b23a95ee7c",
+          "SwarmSim.Core.dll": "77d77dd5aa3f243e22706b9684b6ecd1b59e644485575107c8ee6c87105f94fb"
+        },
+        "csvSha256": "a224ec9eecaccfd9286d6a6cecb585de10ceb6ab25ecd0a733cc4131a1a726d8",
+        "logSha256": "58600540c6125df5b784f6e2e4cf6d249536708e0061cfd5fe1238ba896f9e9f"
+      },
+      "after": {
+        "observedPopulation": 164,
+        "exitCode": 0,
+        "consoleReported100Spawns": true,
+        "recreationLogged": true,
+        "binarySha256": {
+          "SwarmSim.Render.dll": "4aff218b80cb0ed2ea33af4fa3d7d965c23dd50b3c0fa558ccd345479f6613ee",
+          "SwarmSim.Core.dll": "bf24987ab2e057f3a88f2b718ee218f3cbd9b00197bb6a1285ce219d257de29d"
+        },
+        "csvSha256": "7664afa9ba4b3c81462d18208b3b60890379363099656ecf7c4c5b658192d15a",
+        "logSha256": "5e082e686ebeb91628b143993c2cff72326dcd08dca1a03b2015d3b8e7c11cdf"
+      }
+    },
+    {
+      "case": "increase-space",
+      "initialPopulation": 64,
+      "requestedAdditionalPopulation": 100,
+      "method": "SIGSTOP only the renderer, queue both real XTest keydown events, SIGCONT, hold 200 ms, release, then export via C",
+      "before": {
+        "observedPopulation": 64,
+        "exitCode": 0,
+        "consoleReported100Spawns": true,
+        "recreationLogged": true,
+        "binarySha256": {
+          "SwarmSim.Render.dll": "3abee8e591b13956127611132911d174a5c231b02907586489ad69b23a95ee7c",
+          "SwarmSim.Core.dll": "77d77dd5aa3f243e22706b9684b6ecd1b59e644485575107c8ee6c87105f94fb"
+        },
+        "csvSha256": "a9c222c2d6e1e4c094c14068413c87ddcf3417f8bf3f6c3683f16336aed1621f",
+        "logSha256": "d5d1ede7a58dd11296142eb4744502e75247b03c3eb271ccda06fb2916e227eb"
+      },
+      "after": {
+        "observedPopulation": 164,
+        "exitCode": 0,
+        "consoleReported100Spawns": true,
+        "recreationLogged": true,
+        "binarySha256": {
+          "SwarmSim.Render.dll": "4aff218b80cb0ed2ea33af4fa3d7d965c23dd50b3c0fa558ccd345479f6613ee",
+          "SwarmSim.Core.dll": "bf24987ab2e057f3a88f2b718ee218f3cbd9b00197bb6a1285ce219d257de29d"
+        },
+        "csvSha256": "2fb68f7da0848be1edd20efcb339bc1943dfcb38e7df587a661c373f8ade1529",
+        "logSha256": "796a7a2d2b339c047377e9f0ef067163317f99ab1f4543bd27ed4e99c00fbebe"
+      }
+    }
+  ],
+  "screenshots": [
+    {
+      "path": "canonical-help.png",
+      "sha256": "52e58ae5a8cbace400b2da661ae6bc77475b77308dbca323e558fd6ea7a80911",
+      "bytes": 12020
+    },
+    {
+      "path": "legacy-help.png",
+      "sha256": "c4234e309c4d669871165b847aa85b8cd2d6af87f76dd113b4cda39e97813ebb",
+      "bytes": 18162
+    },
+    {
+      "path": "legacy-spawn-snapshots.png",
+      "sha256": "01d0b261facbf5c627977f75a11962f8f8ec5d92013115f9762ea8b6998053ef",
+      "bytes": 16869
+    },
+    {
+      "path": "legacy-damped-friction.png",
+      "sha256": "4582354081b3b2f84eddc4563b323364b44d17f66f8e3df95a24f6cb500b17dd",
+      "bytes": 10300
+    },
+    {
+      "path": "canonical-tick-pending.png",
+      "sha256": "32a14940086987803b7d613b2db57749f73f81d3fa967cecb9079f672f72b77a",
+      "bytes": 9697
+    },
+    {
+      "path": "canonical-tick-completed.png",
+      "sha256": "9001353f4c6431d5ccdc184ce46e2acf72cdabd3007fd800ea79d2b86715d6f3",
+      "bytes": 10403
+    },
+    {
+      "path": "canonical-reset-pending.png",
+      "sha256": "13cd3d29e825f2b67bbda7e1641f510a3d1407fb67b18a6e0dd66099390c5bcb",
+      "bytes": 9979
+    },
+    {
+      "path": "legacy-damped-help.png",
+      "sha256": "1c3d3bc3da2c7334c372dc6d33eacedb71019d34e468a6865471169e948fbb42",
+      "bytes": 17793
+    },
+    {
+      "path": "legacy-sense64.png",
+      "sha256": "db6fea535628b5915e3f8f9014a8ad94bc6e835162b60cc413ccf71e31246ec1",
+      "bytes": 45313
+    },
+    {
+      "path": "legacy-sense164.png",
+      "sha256": "dde100fcb495a83cdcf7f2a64253511ec2aa27745f8b1e0881bd6575ff77e831",
+      "bytes": 13206
+    }
+  ]
+}

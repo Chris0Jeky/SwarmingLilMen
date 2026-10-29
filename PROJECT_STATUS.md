@@ -71,6 +71,17 @@ not made active merely because `SimConfig` contains related settings.
   [renderer configuration](docs/RENDERER_CONFIGURATION.md),
   [configuration cookbook](docs/CONFIGURATION_COOKBOOK.md) and
   [parameter guide](docs/PARAMETER_GUIDE.md).
+- **Renderer controls and native acceptance:** one engine-scoped inventory now drives both input
+  paths, H panels, HUD/footer labels, printed parameters and console help. Canonical accepts 1–7;
+  legacy accepts 1–8 and labels friction active only with Damped. Sense-circle help states the
+  existing below-100-agent limit. Parameter/preset recreation now directs later same-frame actions
+  to the active world: native F1+Space and Up+Space trials changed from a false 100-spawn report
+  with 64 exported agents to 164 exported agents. The integrated Release suite passes 976 tests.
+  Seven real native X11 launches verified both complete H panels, all five presets, sparse
+  preset/file startup, both friction modes, O/Tab, pending/completed/reset telemetry, F12 and
+  spawn/reset/export. Direct captures and exact source/binary hashes are committed in the
+  [native verification record](docs/NATIVE_UI_VERIFICATION.md). This is Linux software-rendered
+  input/visual evidence, not human sign-off, cross-platform GUI coverage or an FPS benchmark.
 - **Legacy spatial correctness:** Wrap now queries across periodic seams and computes nearest-image
   distances/FOV/separation/cohesion. `GridCellSize` is honored, with radius-complete candidate-cell
   traversal and a matching preallocation budget. One/two-cell axes are visited without duplicates;
@@ -225,9 +236,10 @@ speedup or machine-independent performance bound.
 2. Preserve single-run and sweep replay while extending experiments through concrete consumers.
    Runtime channels stay explicitly separate from byte-repeatable physical metrics; exact
    nearest-neighbor analysis remains opt-in O(N²), and sweep aggregation is sequential.
-3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
-   now uses reusable telemetry and shared startup configuration. Current overlay geometry still
-   performs the existing index refresh only when shown; the recorded tick label does not re-query.
+3. Investigate the earlier canonical 10k BenchmarkDotNet 5 B/op observation (#20); direct warm-tick
+   probes measured zero but did not identify that sample's cause. Native HUD/O/Tab/F12, all five
+   presets and custom-startup acceptance now have recorded Linux evidence. Current overlay
+   geometry still refreshes the index only when shown; the recorded tick label does not re-query.
 4. Build real observation/intent arbitration (#27) on the named RNG streams, preserving the settled
    trace contract after the documented RNG transition. Extra positional rules are not yet a
    general composition surface.
@@ -240,8 +252,7 @@ benchmark commands, explicit historical measurement labels and the actual sequen
 browser-demo semantics. The old readiness checklist points scheduling back to the epic instead
 of directing new work to closed issues.
 
-Other tracked residue: runtime help synchronization (#39); remaining scenario/composition
-coverage (#41); and publication-scanner
+Other tracked residue: remaining scenario/composition coverage (#41) and publication-scanner
 indirection gaps (#164). A green engine suite does not validate
 renderer interaction, browser demos, or a deployment.
 
