@@ -126,7 +126,9 @@ public sealed class SimConfig
     public float[,] AggressionMatrix { get; init; } = DefaultAggressionMatrix();
 
     // ===== Population Limits =====
+    /// <summary>Initial legacy storage allocation; spawn calls may grow it up to MaxCapacity.</summary>
     public int InitialCapacity { get; init; } = 100_000;
+    /// <summary>Legacy occupied-slot ceiling, including dead slots until compaction.</summary>
     public int MaxCapacity { get; init; } = 200_000;
     public int CompactionInterval { get; init; } = 600; // Ticks between compactions
 
@@ -246,7 +248,9 @@ public sealed class SimConfig
             !UniformGrid.TryGetDimensions(GridCellSize, WorldWidth, WorldHeight, out _, out _))
             errors.Add($"GridCellSize {GridCellSize} over a {WorldWidth} x {WorldHeight} world needs more than {UniformGrid.MaxCells} spatial grid cells; increase GridCellSize or reduce WorldWidth/WorldHeight");
         if (InitialCapacity <= 0) errors.Add("InitialCapacity must be positive");
+        if (InitialCapacity > Array.MaxLength) errors.Add($"InitialCapacity must be <= the managed array limit ({Array.MaxLength})");
         if (MaxCapacity < InitialCapacity) errors.Add("MaxCapacity must be >= InitialCapacity");
+        if (MaxCapacity > Array.MaxLength) errors.Add($"MaxCapacity must be <= the managed array limit ({Array.MaxLength})");
         if (CompactionInterval < 1) errors.Add("CompactionInterval must be >= 1");
         if (SeparationCrowdingThreshold < 0) errors.Add("SeparationCrowdingThreshold must be >= 0");
 

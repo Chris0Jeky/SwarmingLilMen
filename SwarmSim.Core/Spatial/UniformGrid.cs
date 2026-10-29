@@ -141,6 +141,18 @@ public sealed class UniformGrid
     }
 
     /// <summary>
+    /// Grows only the per-agent links during a legacy world spawn. Existing cell heads and
+    /// links remain intact; new agents enter the index on the next explicit Rebuild.
+    /// </summary>
+    internal void EnsureCapacity(int capacity)
+    {
+        if (capacity <= _capacity)
+            return;
+        Array.Resize(ref _next, capacity);
+        _capacity = capacity;
+    }
+
+    /// <summary>
     /// Rebuilds the grid from agent positions. Must be called every tick.
     /// O(n) where n = agent count.
     /// </summary>
@@ -217,7 +229,7 @@ public sealed class UniformGrid
         // Insert each live agent into its cell
         for (int i = 0; i < count; i++)
         {
-            if (state[i].HasFlag(AgentState.Dead))
+            if ((state[i] & AgentState.Dead) != 0)
             {
                 _next[i] = -1;
                 continue;

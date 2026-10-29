@@ -41,7 +41,7 @@ namespace SwarmSim.Core.Systems;
 /// </summary>
 public sealed class SenseSystem : ISimSystem
 {
-    // Per-agent aggregates (allocated once, reused each tick)
+    // Per-agent aggregates (allocated at setup or explicit spawn growth, reused each tick)
     private int[] _neighborCount = null!;
 
     // Separation: accumulated unit away-vectors, each scaled by the bounded linear falloff
@@ -85,6 +85,42 @@ public sealed class SenseSystem : ISimSystem
         _nearestDx = new float[capacity];
         _nearestDy = new float[capacity];
         _nearestDistSq = new float[capacity];
+    }
+
+    /// <summary>Grows scratch during a world spawn while preserving prior aggregates.</summary>
+    internal void EnsureCapacity(int capacity)
+    {
+        if (capacity <= _neighborCount.Length)
+            return;
+
+        int[] neighborCount = CopyToCapacity(_neighborCount, capacity);
+        float[] separationX = CopyToCapacity(_separationX, capacity);
+        float[] separationY = CopyToCapacity(_separationY, capacity);
+        float[] alignmentVx = CopyToCapacity(_alignmentVx, capacity);
+        float[] alignmentVy = CopyToCapacity(_alignmentVy, capacity);
+        float[] cohesionX = CopyToCapacity(_cohesionX, capacity);
+        float[] cohesionY = CopyToCapacity(_cohesionY, capacity);
+        float[] nearestDx = CopyToCapacity(_nearestDx, capacity);
+        float[] nearestDy = CopyToCapacity(_nearestDy, capacity);
+        float[] nearestDistSq = CopyToCapacity(_nearestDistSq, capacity);
+
+        _neighborCount = neighborCount;
+        _separationX = separationX;
+        _separationY = separationY;
+        _alignmentVx = alignmentVx;
+        _alignmentVy = alignmentVy;
+        _cohesionX = cohesionX;
+        _cohesionY = cohesionY;
+        _nearestDx = nearestDx;
+        _nearestDy = nearestDy;
+        _nearestDistSq = nearestDistSq;
+    }
+
+    private static T[] CopyToCapacity<T>(T[] source, int capacity)
+    {
+        var destination = new T[capacity];
+        source.CopyTo(destination, 0);
+        return destination;
     }
 
     /// <summary>
@@ -157,7 +193,7 @@ public sealed class SenseSystem : ISimSystem
         for (int i = 0; i < count; i++)
         {
             // Skip dead agents
-            if (state[i].HasFlag(AgentState.Dead))
+            if ((state[i] & AgentState.Dead) != 0)
                 continue;
 
             float agentX = x[i];
@@ -192,7 +228,7 @@ public sealed class SenseSystem : ISimSystem
                     continue;
 
                 // Skip dead agents
-                if (state[j].HasFlag(AgentState.Dead))
+                if ((state[j] & AgentState.Dead) != 0)
                     continue;
 
                 // Skip different groups (for now - Phase 3 will use aggression matrix)
