@@ -27,9 +27,11 @@ public static class Program
                       --list-metrics             Show available names for the selected engine
                       --out DIRECTORY            Parent for a new run directory (default: runs)
                       --manifest FILE            Replay recorded settings; only --out may override
+                      --sweep FILE               Run a deterministic parameter grid; only --out may override
                       --help                     Show this help
 
                     Outputs: manifest.json, metrics.csv, log.txt in a new run-<id> child.
+                    Sweeps: summary.csv and replayable cell directories in a new sweep-<id> child.
                     Native canonical files use TargetSpeed; legacy files use MaxSpeed.
                     Default metrics: population,meanSpeed,polarization.
                     Runtime cost metrics are nondeterministic and disable exact manifest replay.
@@ -42,7 +44,9 @@ public static class Program
                 MetricCatalog.WriteAvailable(options.Engine, output);
                 return 0;
             }
-            string directory = ExperimentRunner.Run(options);
+            string directory = options.SweepPath is null
+                ? ExperimentRunner.Run(options)
+                : SweepRunner.Run(options.SweepPath, options.OutputDirectory);
             output.WriteLine(directory);
             return 0;
         }

@@ -1,0 +1,11 @@
+{
+  "base": "canonical-balanced.json",
+  "engine": "canonical",
+  "agents": 12,
+  "seeds": [13, 7, 11],
+  "grid": {
+    "SeparationWeight": [0, 1, 2, 3]
+  },
+  "ticks": 8,
+  "metrics": ["meanSpeed", "polarization"]
+}

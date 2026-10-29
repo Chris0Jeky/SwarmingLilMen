@@ -31,6 +31,7 @@ so passing a legacy file to the canonical engine fails before output is created.
 | `--list-metrics` | — | Lists names, applicability and cost for `--engine`; creates no run |
 | `--out DIRECTORY` | `runs` | Parent of a new run directory; existing runs are preserved |
 | `--manifest FILE` | None | Replays a completed manifest into a new run directory |
+| `--sweep FILE` | None | Sequential parameter sweep into a new sweep directory; combine only with `--out` or `--help` |
 | `--help` | — | Prints usage |
 
 Duplicate options, unknown options, malformed numeric values, and unexpected positional arguments
@@ -182,8 +183,121 @@ initialization contract. The manifest records runtime and source provenance to m
 visible. A changed runtime or implementation may fail hash verification; matching a seed alone
 is not a cross-platform determinism guarantee.
 
-This runner provides single runs, registry-selected metrics and deterministic manifest replay.
-Parameter sweeps and experiment comparison remain separate work.
+## Parameter sweeps
+
+`--sweep` runs a Cartesian product of seeds and numeric configuration values in the same process.
+Each cell gets an ordinary replayable manifest, metric CSV and log; the sweep adds one stable
+`summary.csv`. Execution is sequential. Plotting, statistical tests and parallel scheduling are
+outside this mode.
+
+The checked-in example runs **3 seeds × 4 values = 12 cells**, with 12 agents for 8 ticks per cell:
+
+```sh
+dotnet run --project SwarmSim.Cli -c Release -- --sweep configs/sweep-example.json --out sweeps/
+```
+
+```json
+{
+  "base": "canonical-balanced.json",
+  "engine": "canonical",
+  "agents": 12,
+  "seeds": [13, 7, 11],
+  "grid": { "SeparationWeight": [0, 1, 2, 3] },
+  "ticks": 8,
+  "metrics": ["meanSpeed", "polarization"]
+}
+```
+
+`base`, `seeds`, `grid`, `ticks` and `metrics` are required. `engine` defaults to `canonical` and
+`agents` defaults to `400`. The base path is resolved relative to the sweep JSON file, so the
+example above reads `configs/canonical-balanced.json` regardless of the launch directory.
+The native base configuration overlays engine defaults. Each cell then applies its grid values
+and seed. There is no implicit renderer preset or scenario layer. Use `"engine": "legacy"` with
+a legacy native base file when that engine is intended.
+
+The sweep document uses strict JSON: unknown top-level names, duplicate object fields, comments
+and trailing commas are rejected. Its field names are exactly the lowercase names shown above.
+Base files retain native configuration support for comments and trailing commas, but unknown
+and duplicate base properties are rejected. The base must be valid by itself, even if a later
+grid value could repair an invalid base value.
+
+Grid keys are validated against the selected engine's native configuration schema. They are
+case-insensitive and normalized to the schema's property spelling. Version 1 supports numeric
+scalar settings; structured or string settings belong in the base file. `Seed` is reserved for
+the seeds array. Each grid axis needs at least one finite numeric value, and values must satisfy
+the target property's type and validation rules. A misspelled key fails loudly. An empty grid
+object is allowed for a seed-only sweep. Repeated numeric choices are allowed and remain separate
+cells; seeds must be unique integers in `0..2147483647`.
+
+Before creating any output directory, the runner validates the complete document, the base,
+every resolved configuration, population capacity, simulation construction and initial metric
+sampling for every cell. The product is bounded at **10,000 cells**, checked before expansion
+with overflow-safe multiplication. This is a cell-count limit, not a runtime budget: exact
+nearest-neighbor channels still have their documented O(N²) analysis cost in every cell.
+`--sweep` can be combined only with `--out` and `--help`; engine, ticks, population and metrics
+belong in the sweep file rather than competing command-line overrides.
+
+### Cell order and output
+
+The seeds retain their JSON array order. Normalized grid property names are sorted ordinally;
+each value array retains its given order, and the last sorted grid axis varies fastest. Cells
+are assigned `cell-000000`, `cell-000001`, and so on in that order. Reordering JSON grid
+properties or changing their casing does not change cell order or summary bytes. Changing the
+seed/value array order does change the plan and its cell IDs. The summary writer orders results
+by planned cell index, independently of the order supplied to it.
+
+A successful invocation prints one new `sweeps/sweep-<random-id>/` path. That directory contains
+`summary.csv` plus one directory per cell. Each cell contains exactly the same three files as a
+single run: `manifest.json`, `metrics.csv` and `log.txt`. The manifest keeps its ordinary random
+run ID; replay does not depend on the containing cell directory name. Complete native settings
+are available in each manifest, while summary configuration columns contain the swept numeric
+properties, along with engine, seed, ticks and agent count.
+
+The runner stages the entire sweep in a fresh temporary child, then publishes it by rename.
+If any cell, CSV aggregation or final write fails, it removes only that attempt's staging
+directory. Previously published sweeps and single runs are untouched. A failed attempt does
+not publish a partial summary or a partial sweep directory.
+
+### Summary statistics and replay
+
+The example's summary header is:
+
+```csv
+cellId,engine,seed,ticks,agents,SeparationWeight,meanSpeed.terminal,meanSpeed.mean,meanSpeed.samples,polarization.terminal,polarization.mean,polarization.samples
+```
+
+Each requested metric contributes its terminal value, arithmetic mean and count of defined
+samples. The terminal value is the metric at the requested final tick. The mean includes tick
+0 whenever the channel is defined there, plus all defined completed-tick values. Thus an
+always-defined channel in an 8-tick run has 9 samples; in a zero-tick run it has one initial
+sample. Missing CSV fields do not contribute to either the sum or count. If the final sample
+is undefined, the terminal field is blank. If every sample is undefined, both terminal and mean
+are blank and the sample count is zero. Canonical `boids.*` channels have no tick-0 observation;
+a singleton's nearest-neighbor distance is undefined at every tick.
+
+Only deterministic channels are accepted. `runtime.wallMilliseconds` and
+`runtime.allocatedBytes` are excluded because they describe observed execution costs and cannot
+produce a byte-repeatable summary or exact cell replay. Use a separate single run for those
+operational measurements.
+
+The summary uses invariant round-trip number formatting, UTF-8 without a byte-order mark and
+LF line endings. Random IDs, creation times, runtime timings and output paths are excluded.
+Repeating the same plan with a matching binary, .NET runtime/platform and initialization
+contract produces byte-identical summary and cell metric CSV files. Manifests and logs contain
+per-attempt metadata and are not expected to be byte-identical. This remains the same scoped
+determinism promise as single-run replay, rather than a cross-platform guarantee.
+
+Replay any cell using its manifest alone:
+
+```sh
+dotnet run --project SwarmSim.Cli -c Release -- --manifest sweeps/sweep-<id>/cell-000005/manifest.json --out replays/
+```
+
+The normal replay path verifies both the final state hash and complete metric CSV hash. Schema
+1 and schema 2 single-run replay remain available; newly produced sweep cells use schema 2.
+To check a sweep, run the example twice and compare the two `summary.csv` files, then replay
+one cell and compare its `metrics.csv`. The hosted headless smoke performs that bounded proof
+on each CI operating system.
 
 ## Allocation verification
 

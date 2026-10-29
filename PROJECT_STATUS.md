@@ -95,6 +95,15 @@ capture/sampling, buffered CSV writing and the final flush. It excludes setup, h
 quadratic nearest-neighbor analysis. Exact measurement boundaries and the periodic-centroid
 overhead are documented in [headless experiments](docs/HEADLESS_EXPERIMENTS.md).
 
+Sequential parameter sweeps now resolve a native base configuration, unique seeds and numeric
+grid axes in-process. Every cell is validated before output and receives its own replayable
+manifest/CSV/log; the sweep adds a deterministic summary of terminal values, defined-sample means
+and sample counts. The 3-seed × 4-value example produces 12 cells, byte-identical repeated
+summaries, and an independently replayable cell. The integrated suite passes 911 tests, including
+58 sweep cases. Runtime metrics are excluded from sweeps, which are capped at 10,000 cells and
+publish only after the complete attempt succeeds. This does not add parallel scheduling,
+statistics or plotting. See [parameter sweeps](docs/HEADLESS_EXPERIMENTS.md#parameter-sweeps).
+
 The isolated foundation Release build (SDK 8.0.415, Linux x64) completed with no warnings/errors;
 all **697 non-Performance tests passed** before publication. The isolated golden-trace addition
 passes **704 tests** locally. The separately developed headless CLI is excluded from those counts.
@@ -166,9 +175,9 @@ speedup or machine-independent performance bound.
 ## Current limitations and next work
 
 1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
-2. Extend the CLI's registered analysis probes with seed/parameter sweeps (#25). Runtime channels
-   stay explicitly separate from byte-repeatable physical metrics; avoid unrequested centroid
-   work in the default plan using measured evidence and unchanged CSV bytes.
+2. Preserve single-run and sweep replay while reducing unrequested centroid work in the default
+   metric plan using measured evidence and unchanged CSV bytes. Runtime channels stay explicitly
+   separate from byte-repeatable physical metrics; sweep aggregation is sequential.
 3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
    now uses reusable telemetry and shared startup configuration. Current overlay geometry still
    performs the existing index refresh only when shown; the recorded tick label does not re-query.
