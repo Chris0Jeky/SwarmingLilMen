@@ -8,6 +8,7 @@ ordering authority. Historical documents are context, not proof.
 
 - [`EXPERIMENT_FOUNDATION.md`](EXPERIMENT_FOUNDATION.md) - reusable configuration, spatial semantics and explicit telemetry
 - [`HEADLESS_EXPERIMENTS.md`](HEADLESS_EXPERIMENTS.md) - run artifacts, native configurations and exact manifest replay
+- [`METRICS.md`](METRICS.md) - reusable analysis probes, exact neighbor distributions and deterministic versus runtime channels
 - [`DETERMINISM.md`](DETERMINISM.md) - measured platform scope, exact golden traces and fixture policy
 - [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
 - [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics
