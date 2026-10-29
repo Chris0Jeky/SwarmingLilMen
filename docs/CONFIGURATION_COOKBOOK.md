@@ -155,7 +155,7 @@ All three legacy bundled recipes omit `SpeedModel`, so their authored friction v
 Add `"SpeedModel": 1` to a copy to enable legacy damping. Canonical movement maintains its
 target speed and has no friction parameter.
 
-All bundled recipes inherit `Seed: 42` unless overridden. Supported external seeds are
+All legacy bundled recipes inherit `Seed: 42` unless overridden. Supported external seeds are
 `0` through `2147483647`. A seed reproduces trajectories only with a matching binary,
 runtime/platform, resolved configuration, timestep, and ordered input events.
 

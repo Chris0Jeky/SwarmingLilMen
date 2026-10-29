@@ -62,6 +62,13 @@ not made active merely because `SimConfig` contains related settings.
   One-ULP force changes fail the ordinary golden assertions. The golden suite enforces the
   reviewed .NET 8 / x64 / Linux-or-Windows band; new bands require reviewed measured references.
   See [determinism and fixture policy](docs/DETERMINISM.md).
+- **Headless experiments:** `SwarmSim.Cli` references only Core and runs either engine without a
+  display. A completed run contains a versioned manifest with the full resolved native config,
+  deterministic invariant-culture CSV, and an operational log. Seeded initialization and manifest
+  replay verify both exact state and CSV hashes. Duplicate manifest fields and unknown fields are
+  rejected. Git provenance comes from the built assembly when available; unknown build dirtiness
+  remains null and the launch directory cannot invent source identity. Output is published into
+  a fresh run directory after completion. See [headless experiments](docs/HEADLESS_EXPERIMENTS.md).
 
 [Experiment foundation](docs/EXPERIMENT_FOUNDATION.md) describes contracts, ownership, examples
 and limits. Configuration/spatial/telemetry checks run in the normal non-Performance test gate;
@@ -73,6 +80,12 @@ passes **704 tests** locally. The separately developed headless CLI is excluded 
 Hosted exact-head checks remain the merge gate; platform-specific golden fixtures are verified
 against their own platform, not by widening tolerances.
 
+The isolated CLI addition passes **763 non-Performance tests** locally with a clean Release build.
+The display-free smoke step runs 400 agents for 600 ticks in both engines, repeats each run, and
+replays each manifest: all three CSVs are byte-identical per engine and contain 602 lines.
+The CLI dependency graph contains only Cli and Core. CI runs that same smoke on both platforms
+and additionally checks the embedded build commit against the tested checkout.
+
 ## Reproduce validation
 
 ```sh
@@ -80,11 +93,12 @@ dotnet build SwarmingLilMen.sln -c Release
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 dotnet run --project SwarmSim.Benchmarks -c Release --no-build -- --canonical-experiment
 dotnet run --project SwarmSim.Benchmarks -c Release --no-build -- --canonical
+dotnet run --project SwarmSim.Cli -c Release --no-build -- --scenario balanced --seed 7 --ticks 600 --out runs/
 ```
 
 Rebuild after source changes before using `--no-build`. The canonical benchmark route accepts
-BenchmarkDotNet arguments, such as `--canonical --list flat`. Render's older `--benchmark` still
-runs the legacy world even if combined with `--canonical`.
+BenchmarkDotNet arguments, such as `--canonical --list flat`. Render's older `--benchmark` now
+prints migration guidance and exits successfully; experiments use the standalone CLI.
 
 ## Performance evidence and its limits
 
@@ -126,8 +140,7 @@ speedup or machine-independent performance bound.
 ## Current limitations and next work
 
 1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
-2. Exercise the new serializable configuration through a Core-only CLI with run manifests and
-   deterministic metrics (#23), then registered analysis probes (#24) and seed/parameter sweeps
+2. Extend the single-run CLI with registered analysis probes (#24) and seed/parameter sweeps
    (#25). Timing data must stay separate from byte-repeatable physical metrics.
 3. Integrate reusable telemetry into the canonical renderer and verify the actual HUD (#20).
    Stored tick truncation exists; fresh overlay-query diagnostics still describe current positions.

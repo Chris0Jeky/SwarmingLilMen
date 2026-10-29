@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Text.Json;
 using SwarmSim.Core;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Diagnostics;
@@ -406,8 +407,8 @@ public sealed class DeterminismTests
     [Trait("Category", "Determinism")]
     public async Task BalancedConfig_IsBitIdenticalAcrossTwoHeadlessProcesses()
     {
-        string firstHash = await RunHeadlessBalancedBenchmark();
-        string secondHash = await RunHeadlessBalancedBenchmark();
+        string firstHash = await RunHeadlessBalancedExperiment();
+        string secondHash = await RunHeadlessBalancedExperiment();
 
         _output.WriteLine($"HEADLESS_KINEMATIC_HASH={firstHash}");
         Assert.Equal(firstHash, secondHash);
@@ -465,67 +466,84 @@ public sealed class DeterminismTests
             BitConverter.SingleToUInt32Bits(actual.Velocity.Y));
     }
 
-    private static async Task<string> RunHeadlessBalancedBenchmark()
+    private static async Task<string> RunHeadlessBalancedExperiment()
     {
-        string rendererPath = Path.Combine(AppContext.BaseDirectory, "SwarmSim.Render.dll");
+        string cliPath = Path.Combine(AppContext.BaseDirectory, "SwarmSim.Cli.dll");
         string configPath = Path.Combine(AppContext.BaseDirectory, "configs", "balanced.json");
-        var startInfo = new ProcessStartInfo("dotnet")
-        {
-            RedirectStandardOutput = true,
-            RedirectStandardError = true,
-            UseShellExecute = false,
-            WorkingDirectory = AppContext.BaseDirectory
-        };
-        startInfo.ArgumentList.Add(rendererPath);
-        startInfo.ArgumentList.Add("--benchmark");
-        startInfo.ArgumentList.Add("--config");
-        startInfo.ArgumentList.Add(configPath);
-        startInfo.ArgumentList.Add("--agent-count");
-        startInfo.ArgumentList.Add("32");
-
-        using var process = new Process { StartInfo = startInfo };
-        Assert.True(process.Start());
-        Task<string> standardOutput = process.StandardOutput.ReadToEndAsync();
-        Task<string> standardError = process.StandardError.ReadToEndAsync();
-        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+        string outputRoot = Path.Combine(Path.GetTempPath(), "swarm-process-determinism-" + Guid.NewGuid().ToString("N"));
+        string dotnet = Environment.GetEnvironmentVariable("DOTNET_HOST_PATH") ??
+            (Path.GetFileNameWithoutExtension(Environment.ProcessPath) == "dotnet" ? Environment.ProcessPath! : "dotnet");
         try
         {
-            await process.WaitForExitAsync(timeout.Token);
-        }
-        catch (OperationCanceledException) when (timeout.IsCancellationRequested)
-        {
-            if (!process.HasExited)
+            var startInfo = new ProcessStartInfo(dotnet)
             {
-                try
-                {
-                    process.Kill(entireProcessTree: true);
-                }
-                catch (InvalidOperationException)
-                {
-                    // The process exited after HasExited was sampled.
-                }
-                await process.WaitForExitAsync();
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+                UseShellExecute = false,
+                WorkingDirectory = AppContext.BaseDirectory
+            };
+            startInfo.ArgumentList.Add(cliPath);
+            startInfo.ArgumentList.Add("--engine");
+            startInfo.ArgumentList.Add("legacy");
+            startInfo.ArgumentList.Add("--config");
+            startInfo.ArgumentList.Add(configPath);
+            startInfo.ArgumentList.Add("--agents");
+            startInfo.ArgumentList.Add("32");
+            startInfo.ArgumentList.Add("--ticks");
+            startInfo.ArgumentList.Add("600");
+            startInfo.ArgumentList.Add("--out");
+            startInfo.ArgumentList.Add(outputRoot);
+
+            using var process = new Process { StartInfo = startInfo };
+            Assert.True(process.Start());
+            Task<string> standardOutput = process.StandardOutput.ReadToEndAsync();
+            Task<string> standardError = process.StandardError.ReadToEndAsync();
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(30));
+            try
+            {
+                await process.WaitForExitAsync(timeout.Token);
             }
+            catch (OperationCanceledException) when (timeout.IsCancellationRequested)
+            {
+                if (!process.HasExited)
+                {
+                    try
+                    {
+                        process.Kill(entireProcessTree: true);
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // The process exited after HasExited was sampled.
+                    }
+                    await process.WaitForExitAsync();
+                }
 
-            string timedOutOutput = await standardOutput;
-            string timedOutError = await standardError;
-            throw new TimeoutException(
-                $"Headless renderer did not exit within 30 seconds.{Environment.NewLine}" +
-                $"{timedOutOutput}{Environment.NewLine}{timedOutError}");
+                string timedOutOutput = await standardOutput;
+                string timedOutError = await standardError;
+                throw new TimeoutException(
+                    $"Headless CLI did not exit within 30 seconds.{Environment.NewLine}" +
+                    $"{timedOutOutput}{Environment.NewLine}{timedOutError}");
+            }
+            string output = await standardOutput;
+            string error = await standardError;
+
+            Assert.True(
+                process.ExitCode == 0,
+                $"Headless CLI exited {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
+            string run = Assert.Single(Directory.GetDirectories(outputRoot));
+            Assert.Equal(run, output.Trim());
+            using JsonDocument manifest = JsonDocument.Parse(File.ReadAllText(Path.Combine(run, "manifest.json")));
+            Assert.Equal("legacy", manifest.RootElement.GetProperty("engine").GetString());
+            Assert.Equal(600, manifest.RootElement.GetProperty("ticks").GetInt32());
+            string hash = manifest.RootElement.GetProperty("finalKinematicHash").GetString()!;
+            Assert.Matches("^[0-9A-F]{64}$", hash);
+            return hash;
         }
-        string output = await standardOutput;
-        string error = await standardError;
-
-        Assert.True(
-            process.ExitCode == 0,
-            $"Headless renderer exited {process.ExitCode}.{Environment.NewLine}{output}{Environment.NewLine}{error}");
-        string[] hashLines = output.Split(Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
-            .Where(line => line.StartsWith("KinematicHash: ", StringComparison.Ordinal))
-            .ToArray();
-        string hashLine = Assert.Single(hashLines);
-        string hash = hashLine["KinematicHash: ".Length..];
-        Assert.Matches("^[0-9A-F]{64}$", hash);
-        return hash;
+        finally
+        {
+            if (Directory.Exists(outputRoot))
+                Directory.Delete(outputRoot, recursive: true);
+        }
     }
 
     private static void Advance(World world, int ticks)

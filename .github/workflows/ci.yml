@@ -47,6 +47,9 @@ jobs:
       - name: Test (Release, excluding performance tests)
         run: dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 
+      - name: Verify headless artifacts and manifest replay
+        run: python .github/scripts/smoke_headless.py
+
   exact-head:
     # Keep the merge-ref integration gate above and independently prove the reviewed commit.
     name: Exact head (${{ matrix.os }})
@@ -78,3 +81,6 @@ jobs:
         run: dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "FullyQualifiedName~GoldenTraceTests" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
       - name: Test reviewed head
         run: dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
+
+      - name: Verify headless artifacts and manifest replay
+        run: python .github/scripts/smoke_headless.py
