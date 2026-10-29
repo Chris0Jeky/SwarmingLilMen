@@ -45,7 +45,6 @@ public class CanonicalScenarioTests
         Assert.True(world.TryAddBoid(new Vec2(400f, 300f), new Vec2(1f, 0f)));
         Assert.True(world.TryAddBoid(new Vec2(407f, 300f), new Vec2(-1f, 0f)));
 
-        const float ballisticMinimum = 0f;
         const float dt = 0.25f;
         const int ticks = 16;
         float minimum = Distance(world);
@@ -56,7 +55,6 @@ public class CanonicalScenarioTests
         }
 
         float after = Distance(world);
-        Assert.True(after > ballisticMinimum, $"Head-on distance {after} should exceed the unsteered minimum {ballisticMinimum}.");
         Assert.True(minimum > 4.8f, $"Closest approach {minimum} should stay above 4.8.");
         Assert.True(after > 13.5f, $"Distance after {ticks} ticks was {after}, expected above 13.5.");
     }

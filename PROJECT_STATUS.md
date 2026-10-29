@@ -10,6 +10,14 @@
 
 ## Verified Live State (2026-08-08)
 
+- Regression and review gates (2026-10-29, Linux x64, SDK 8.0.415): issue #123 now
+  checks every mutation-rate/non-finite-deviation rejection, verifies rejected calls preserve
+  the RNG sequence, and tests valid rate endpoints. The head-on scenario keeps only its
+  discriminating minimum/final-distance assertions. The isolated Release non-Performance
+  suite passes 536 tests. CI retains its Ubuntu/Windows merge-ref jobs and adds independent
+  Ubuntu/Windows jobs checking out and logging the exact reviewed PR head. Renderer UI and
+  throughput were not measured by this change.
+
 - Bounded canonical trajectory experiment (2026-10-28, Windows x64, .NET 8.0.24):
   headless `SwarmSim.Benchmarks --canonical-experiment` checks every observable frame for four
   fixed 96-boid, 24-step workloads against the naive index. Three repetitions and the pre-change

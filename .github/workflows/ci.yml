@@ -43,3 +43,32 @@ jobs:
 
       - name: Test (Release, excluding performance tests)
         run: dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
+
+  exact-head:
+    # Keep the merge-ref integration gate above and independently prove the reviewed commit.
+    name: Exact head (${{ matrix.os }})
+    if: github.event_name == 'pull_request'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    steps:
+      - name: Check out reviewed head
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          persist-credentials: false
+      - name: Record tested commit
+        run: git rev-parse HEAD
+      - name: Set up .NET
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore SwarmingLilMen.sln
+      - name: Build (Release)
+        run: dotnet build SwarmingLilMen.sln --configuration Release --no-restore
+      - name: Test reviewed head
+        run: dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
