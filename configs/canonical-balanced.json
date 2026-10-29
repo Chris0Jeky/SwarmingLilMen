@@ -1,0 +1,15 @@
+{
+  "WorldWidth": 1920,
+  "WorldHeight": 1080,
+  "FixedDeltaTime": 0.016666667,
+  "TargetSpeed": 10,
+  "MaxForce": 2.5,
+  "SenseRadius": 110,
+  "SeparationRadius": 45,
+  "FieldOfView": 270,
+  "SeparationWeight": 7.5,
+  "AlignmentWeight": 2.2,
+  "CohesionWeight": 0.35,
+  "WanderStrength": 0.45,
+  "MaxNeighbors": 16
+}

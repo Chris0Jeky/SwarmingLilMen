@@ -95,8 +95,11 @@ dotnet run --project SwarmSim.Render
 # Display CLI options
 dotnet run --project SwarmSim.Render -- --help
 
-# Run a headless benchmark (no window)
-dotnet run --project SwarmSim.Render -- --benchmark --agent-count 20000
+# Run a headless canonical experiment and write manifest/metrics/log artifacts
+dotnet run --project SwarmSim.Cli -c Release -- --scenario balanced --seed 7 --ticks 600 --agents 400 --out runs/
+
+# Use a native legacy configuration
+dotnet run --project SwarmSim.Cli -c Release -- --engine legacy --config configs/balanced.json --seed 7 --ticks 600 --out runs/
 
 # Run the BenchmarkDotNet suite
 dotnet run --project SwarmSim.Benchmarks -c Release
@@ -130,7 +133,7 @@ Options:
   -p, --preset NAME         Load a registered preset (e.g., balanced, strong-separation)
   -c, --config FILE         Load configuration from JSON file (e.g., configs/peaceful.json)
   -n, --agent-count N       Override initial agent count (default: 400)
-  -b, --benchmark           Run in headless benchmark mode (no window)
+  -b, --benchmark           Print migration guidance for SwarmSim.Cli (deprecated)
       --canonical           Launch the single-group canonical boids renderer
       --minimal             Launch the minimal debugging harness
 
@@ -138,7 +141,7 @@ Examples:
   SwarmSim.Render
   SwarmSim.Render --preset balanced
   SwarmSim.Render --config configs/warbands.json -n 5000
-  SwarmSim.Render --benchmark --agent-count 20000
+  dotnet run --project SwarmSim.Cli -- --engine canonical --ticks 600
 
 Interactive Controls:
   Press H inside the application to toggle the help overlay.
@@ -152,7 +155,10 @@ Available presets:
   slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
 
-Combining `--benchmark` with `--canonical` still measures the legacy world, because `RunBenchmark` in `SwarmSim.Render/Program.cs` returns before the canonical branch.
+`SwarmSim.Render --benchmark` now prints migration guidance and exits successfully without
+starting a simulation, including when combined with `--canonical`. Use `SwarmSim.Cli` for
+headless runs and replay, or `SwarmSim.Benchmarks` for throughput/allocation measurements.
+See [headless experiments](docs/HEADLESS_EXPERIMENTS.md) for configuration, artifact, and replay contracts.
 
 Exit codes: `0` success; `1` the `--config` file failed to load; `2` usage error — an unknown
 `--preset`, an unrecognised option or unexpected argument (for example a mistyped `--agnet-count`),
@@ -251,6 +257,7 @@ SwarmingLilMen/
 │   ├── Configuration/      # JSON round-trip and layered scenario resolution
 │   ├── Canonical/          # New canonical boids implementation
 │   └── Utils/              # Math and RNG utilities
+├── SwarmSim.Cli/           # Display-free experiments, artifacts and manifest replay
 ├── SwarmSim.Render/        # Raylib-cs visualization
 ├── SwarmSim.Tests/         # xUnit test suite
 ├── SwarmSim.Benchmarks/    # BenchmarkDotNet performance tests
@@ -428,8 +435,8 @@ dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical-experiment
 ```
 
 It uses at most 256 agents and does not launch BenchmarkDotNet or a renderer. See
-[method, counterexamples and measured limits](docs/CANONICAL_EXPERIMENT.md). The existing
-renderer `--benchmark` option still runs the legacy engine, even with `--canonical`.
+[method, counterexamples and measured limits](docs/CANONICAL_EXPERIMENT.md). General experiments
+use the separate [headless runner](docs/HEADLESS_EXPERIMENTS.md), which supports either engine.
 
 ## 🤝 Contributing
 

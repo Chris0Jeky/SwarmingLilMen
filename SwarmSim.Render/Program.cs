@@ -489,7 +489,10 @@ internal static class Program
 
         if (_cliOptions.BenchmarkMode)
         {
-            RunBenchmark(_initialAgentCount);
+            Console.WriteLine("SwarmSim.Render --benchmark is deprecated; this option now prints migration guidance only.");
+            Console.WriteLine("Run experiments: dotnet run --project SwarmSim.Cli -c Release -- --engine canonical --seed 7 --ticks 600 --agents 400 --out runs/");
+            Console.WriteLine("Select --engine legacy to use the legacy engine instead.");
+            Console.WriteLine("Measure throughput and allocations: dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical");
             return 0;
         }
 
@@ -1850,26 +1853,6 @@ internal static class Program
         }
 
         return canonicalWorld;
-    }
-
-    private static void RunBenchmark(int agentCount)
-    {
-        Console.WriteLine("Running headless benchmark...");
-        SimConfig config = BuildCurrentConfig();
-        var world = new World(config);
-        SpawnInitialAgents(world, agentCount);
-        var runner = new SimulationRunner(world);
-        const int ticks = 600;
-        var sw = Stopwatch.StartNew();
-        for (int i = 0; i < ticks; i++)
-        {
-            runner.Step();
-        }
-        sw.Stop();
-        var stats = world.GetStats();
-        Console.WriteLine($"Ticks: {ticks}, Elapsed: {sw.Elapsed.TotalSeconds:F2}s ({ticks / sw.Elapsed.TotalSeconds:F1} TPS)");
-        Console.WriteLine($"Agents: {stats.AliveAgents}, Avg Speed: {stats.AverageSpeed:F2}");
-        Console.WriteLine($"KinematicHash: {SimulationKinematicHash.Compute(world)}");
     }
 
     private static void WarnIfInvalidConfig(SimConfig config, string source)

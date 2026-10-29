@@ -13,6 +13,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\SwarmSim.Core\SwarmSim.Core.csproj" />
+    <ProjectReference Include="..\SwarmSim.Cli\SwarmSim.Cli.csproj" />
     <ProjectReference Include="..\SwarmSim.Render\SwarmSim.Render.csproj" />
     <ProjectReference Include="..\SwarmSim.Benchmarks\SwarmSim.Benchmarks.csproj" />
   </ItemGroup>

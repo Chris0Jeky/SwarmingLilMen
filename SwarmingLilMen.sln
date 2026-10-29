@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwarmSim.Tests", "SwarmSim.
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwarmSim.Benchmarks", "SwarmSim.Benchmarks\SwarmSim.Benchmarks.csproj", "{18282B5D-3512-42D7-9953-8ABC9720CF8A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwarmSim.Cli", "SwarmSim.Cli\SwarmSim.Cli.csproj", "{838A9F5F-CE5D-4C30-BA94-69E55B2D5C6E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -31,5 +33,9 @@ Global
 		{18282B5D-3512-42D7-9953-8ABC9720CF8A}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{18282B5D-3512-42D7-9953-8ABC9720CF8A}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{18282B5D-3512-42D7-9953-8ABC9720CF8A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{838A9F5F-CE5D-4C30-BA94-69E55B2D5C6E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{838A9F5F-CE5D-4C30-BA94-69E55B2D5C6E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{838A9F5F-CE5D-4C30-BA94-69E55B2D5C6E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{838A9F5F-CE5D-4C30-BA94-69E55B2D5C6E}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

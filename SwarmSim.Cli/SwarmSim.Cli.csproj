@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\SwarmSim.Core\SwarmSim.Core.csproj" />
+    <InternalsVisibleTo Include="SwarmSim.Tests" />
+  </ItemGroup>
+</Project>

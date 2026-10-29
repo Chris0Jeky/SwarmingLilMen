@@ -10,6 +10,23 @@ namespace SwarmSim.Tests;
 /// </summary>
 public sealed class CliExitCodeTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void BenchmarkFlagPrintsHeadlessRunnerMigrationNotice(bool canonical)
+    {
+        string[] args = canonical ? new[] { "--benchmark", "--canonical" } : new[] { "--benchmark" };
+        var (exitCode, stdout, stderr) = RunCapturingConsole(args);
+
+        Assert.Equal(0, exitCode);
+        Assert.Contains("deprecated", stdout, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("SwarmSim.Cli", stdout, StringComparison.Ordinal);
+        Assert.Contains("--engine canonical", stdout, StringComparison.Ordinal);
+        Assert.Contains("--engine legacy", stdout, StringComparison.Ordinal);
+        Assert.DoesNotContain("Running headless benchmark", stdout, StringComparison.Ordinal);
+        Assert.Empty(stderr);
+    }
+
     [Fact]
     public void UnknownPreset_ExitsTwo()
     {
