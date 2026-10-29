@@ -16,6 +16,7 @@
     <ProjectReference Include="..\SwarmSim.Cli\SwarmSim.Cli.csproj" />
     <ProjectReference Include="..\SwarmSim.Render\SwarmSim.Render.csproj" />
     <ProjectReference Include="..\SwarmSim.Benchmarks\SwarmSim.Benchmarks.csproj" />
+    <ProjectReference Include="..\SwarmSim.Parity\SwarmSim.Parity.csproj" />
   </ItemGroup>
 
   <ItemGroup>

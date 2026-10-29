@@ -18,9 +18,19 @@ The browser demos are separate implementations. The existing public Pages site i
 these native-engine changes. Combat, metabolism, reproduction and cross-group interactions are
 not made active merely because `SimConfig` contains related settings.
 
+`SwarmSim.Parity` now compares Enhanced, ClassicReynolds, legacy and an independent float32
+Reynolds reference through five explicit data recipes and five fixed seeds. It records requested
+and post-ingest initial states, per-tick metrics, source/runtime provenance and a locked calibration.
+The 100-run calibration took 293.754 seconds on the recorded host, so the 60-second target remains
+unmet. All nine predeclared comparison bands fit their ceilings; an independent Python audit
+agrees exactly with all 100 CSV hashes, 78,800 tick rows, 1,600 window means and 200 initial-state
+hashes. The guide distinguishes calibration from full repeat/index and mutation verification.
+See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
+[legacy retirement criteria](docs/LEGACY_RETIREMENT.md). Legacy remains supported.
+
 ## Verified live state
 
-The current integrated Release gate passes **1,062 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,102 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
@@ -301,8 +311,9 @@ speedup or machine-independent performance bound.
 4. Address the measured composition cost (#27), preserving the exact default trajectories and
    bounded observations. The new force-only API still needs a concrete consumer to earn public
    per-agent identity/noise and heading/velocity update seams.
-5. Build behavioral parity and written retirement criteria (#28), then prove generality with
-   Vicsek and a minimal scalar-field/ACO consumer (#29/#30). Named rule-control visuals (#40)
+5. Complete qualification and runtime work for the implemented behavioral parity harness (#28),
+   then prove generality with Vicsek and a minimal scalar-field/ACO consumer (#29/#30).
+   Named rule-control visuals (#40)
    can now consume the settled composition API. Neither engine is deleted without the owner's
    eventual migration sign-off.
 
@@ -311,8 +322,8 @@ benchmark commands, explicit historical measurement labels and the actual sequen
 browser-demo semantics. The old readiness checklist points scheduling back to the epic instead
 of directing new work to closed issues.
 
-Other tracked residue: remaining scenario/composition coverage (#41) and publication-scanner
-indirection gaps (#164). A green engine suite does not validate
+Other tracked residue: a defined faster/slower overtaking scenario (#41), the remaining
+extreme-scale geometry audit (#187), and publication-scanner indirection gaps (#164). A green engine suite does not validate
 renderer interaction, browser demos, or a deployment.
 
 ## Trust and publication boundary
