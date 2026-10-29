@@ -7,7 +7,8 @@ canonical wander in the one explicit reference update budgeted by issue #26.
 
 **Architecture:** A stateless `RandomStreams` factory derives PCG32 initial state and sequence from
 an unambiguous SHA-256 encoding of seed, exact UTF-8 name and optional stable agent ID. Consumers
-retain their own mutable `Pcg32Rng`. Canonical wander owns `canonical.wander` per insertion index.
+retain their own mutable `Pcg32Rng`. Canonical wander owns `canonical.wander` per insertion index
+in a compact array of 16-byte states, sharing the exact generator implementation with that wrapper.
 The legacy `Rng` and all its consumers remain unchanged.
 
 **Tech stack:** C#/.NET 8; BCL hashing/binary primitives; no new packages.
@@ -44,8 +45,13 @@ owner-authorized autonomous implementation and merge workflow.
 - [x] Capture old-vs-new canonical checkpoint drift on Linux and Windows; commit reviewed exact
   references only after independently checking component words and hashes. Keep one-ULP witnesses.
 - [x] Update determinism, source guidance and project status with the measured new scope/limits.
-- [ ] Run full Release non-performance gate, allocation gate, and exact-head/merge-result CI on
-  Ubuntu and Windows; inspect logs and review the final published diff before merging.
+- [x] Cover the known signed-seed collision pair and compact per-agent storage requested in issue
+  comments; measure construction, retained memory and 1,000 allocation-free ticks at 100,000 agents.
+- [x] Run the full local Release non-performance gate (943 tests) and the allocation probes.
+
+The final published revision requires exact-head and merge-result CI on Ubuntu and Windows,
+independent review and log inspection before merging; the recorded outcome belongs to
+[PR #179](https://github.com/Chris0Jeky/SwarmingLilMen/pull/179).
 
 ## Review focus
 

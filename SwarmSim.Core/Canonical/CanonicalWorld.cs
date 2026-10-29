@@ -14,7 +14,7 @@ public sealed class CanonicalWorld
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
-    private readonly Pcg32Rng?[] _wanderRngs;
+    private readonly Pcg32State[] _wanderRngs;
     private readonly bool[] _priorityState;
     private readonly float[] _priorityBlend;
     private readonly float[] _priorityHoldTimers;
@@ -223,7 +223,7 @@ public sealed class CanonicalWorld
         _nearestAngles = new float[capacity];
         _whiskerCounts = new int[capacity];
         _wanderAngles = new float[capacity];
-        _wanderRngs = new Pcg32Rng?[capacity];
+        _wanderRngs = new Pcg32State[capacity];
 
         _spatialIndex.Initialize(capacity);
 
@@ -271,9 +271,8 @@ public sealed class CanonicalWorld
         int index = Count;
         if (Settings.WanderStrength > 0f)
         {
-            Pcg32Rng wanderRng = RandomStreams.CreateStream("canonical.wander", (ulong)index);
-            _wanderRngs[index] = wanderRng;
-            _wanderAngles[index] = wanderRng.NextFloat() * (MathF.PI * 2f);
+            _wanderRngs[index] = RandomStreams.CreateAgentState("canonical.wander", (ulong)index);
+            _wanderAngles[index] = _wanderRngs[index].NextFloat() * (MathF.PI * 2f);
         }
         // Normalize at ingest so every stored position lies in [0, extent). Both spatial indexes
         // normalize before subtracting, while Vec2.MinimumImageDelta -- used by field-of-view
@@ -515,7 +514,7 @@ public sealed class CanonicalWorld
 
             if (Settings.WanderStrength > 0f && remainingForce > 0f)
             {
-                Pcg32Rng wanderRng = _wanderRngs[i]!;
+                ref Pcg32State wanderRng = ref _wanderRngs[i];
                 float angleChange = (-1f + wanderRng.NextFloat() * 2f) * Settings.WanderRate * deltaTime;
                 _wanderAngles[i] += angleChange;
                 Vec2 wanderDirection = new Vec2(MathF.Cos(_wanderAngles[i]), MathF.Sin(_wanderAngles[i]));

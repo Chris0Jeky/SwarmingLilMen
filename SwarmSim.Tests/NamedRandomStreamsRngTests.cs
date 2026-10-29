@@ -26,6 +26,36 @@ public sealed class NamedRandomStreamsRngTests
     }
 
     [Fact]
+    public void CanonicalAgentStateIsCompactAndContainsNoManagedReferences()
+    {
+        Assert.False(System.Runtime.CompilerServices.RuntimeHelpers.IsReferenceOrContainsReferences<Pcg32State>());
+        Assert.Equal(16, System.Runtime.CompilerServices.Unsafe.SizeOf<Pcg32State>());
+        var factory = new RandomStreams(424242);
+        Pcg32State state = factory.CreateAgentState("canonical.wander", 0);
+        Pcg32State copied = state;
+        Pcg32Rng reference = factory.CreateStream("canonical.wander", 0);
+        for (int i = 0; i < 64; i++)
+        {
+            uint expected = reference.NextUInt32();
+            Assert.Equal(expected, state.NextUInt32());
+            Assert.Equal(expected, copied.NextUInt32());
+        }
+    }
+
+    [Fact]
+    public void OldSignedSystemRandomAliasPairHasDistinctPinnedStreams()
+    {
+        // Issue #26: old uint seeds for these insertion IDs were +/-539281416 after
+        // conversion, and System.Random treated the positive/negative seed as the same.
+        var factory = new RandomStreams(42);
+        uint[] first = { 0x6797284Eu, 0x9DA53427u, 0x32127612u, 0x7B368FE7u, 0xAD66A926u, 0x8A266EEDu, 0x3055076Cu, 0x4700602Fu };
+        uint[] second = { 0x5B47F306u, 0xE55A5237u, 0x989F47CEu, 0x01B04027u, 0x1E7F822Du, 0xCAB2978Bu, 0x52B9E820u, 0x5034A7E6u };
+        Assert.Equal(first, Take(factory.CreateStream("canonical.wander", 108142), first.Length));
+        Assert.Equal(second, Take(factory.CreateStream("canonical.wander", 108358), second.Length));
+        Assert.False(first.AsSpan().SequenceEqual(second));
+    }
+
+    [Fact]
     public void NamesUseStrictUtf8WithNoCultureOrNormalization()
     {
         var factory = new RandomStreams(0);

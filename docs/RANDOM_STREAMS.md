@@ -17,7 +17,9 @@ uint choice = agentNoise.NextUInt32(5);          // [0, 5), rejection avoids mod
 ```
 
 `CanonicalWorld.RandomStreams` exposes the factory with that world's seed. Canonical wander
-retains one `canonical.wander` stream per insertion index. The initial draw chooses its angle;
+retains one `canonical.wander` stream per insertion index in a world-owned array of 16-byte,
+reference-free `Pcg32State` values, avoiding an object per agent. The public `Pcg32Rng` reference
+wrapper uses the same state implementation. The initial draw chooses its angle;
 later draws change that angle only when wander is enabled and the force budget allows it.
 World-level streams and agent zero have different identities. The factory accepts all 64-bit
 seed/ID values, while the existing public configuration seed range remains `0..int.MaxValue`.
@@ -94,6 +96,47 @@ The trajectory isolation regression registers a fourth consumer, confirms it dra
 per tick, and compares every kinematic hash for 256 ticks. Existing per-agent/capacity isolation and
 cross-process repeat/replay checks remain active. Retained generators allocate zero managed bytes
 over 100,000 warm batches of bounded/float/double draws; stream creation intentionally allocates.
+The known old `System.Random` signed-seed alias at seed 42 / agent indices 108142 and 108358
+has separate, independently calculated eight-word fixtures. A regression also pins the compact
+state's 16-byte/reference-free representation and its draw-for-draw equality with the public API.
+
+### Construction and retained memory at 100,000 agents
+
+The committed [storage probe](../tools/RngStorageProbe/Program.cs) measures a whole canonical world
+in an otherwise isolated process. It warms a disposable 16-agent world, records current-thread
+construction allocation and the live managed-memory delta after a full GC, warms the measured
+world for 100 ticks, then measures 1,000 ticks without rendering, metrics capture or hashing inside
+the measured region. The world stays alive through the final measurement. Live-memory deltas are
+runtime observations, not portable exact-size assertions.
+
+On .NET 8.0.21, Ubuntu 24.04.3 LTS, x64:
+
+| Whole-world managed measurement | Previous per-agent `System.Random` | Compact PCG32 state |
+| --- | ---: | ---: |
+| Construction allocation | 45,241,488 B | 21,241,520 B |
+| Retained memory after full GC | 45,241,032 B | 12,441,520 B |
+| Allocation over 1,000 measured ticks | 0 B | 0 B |
+
+The observed reductions were 53.0% in construction allocation and 72.5% in retained managed
+memory. These figures include the world's other arrays and spatial index; they are not measurements
+of only the RNG state, native memory, process RSS, or rendering. No throughput conclusion follows
+from the probe's single timing sample; use BenchmarkDotNet for performance comparisons.
+
+The explicit workload uses seed 42, wander strength 0.4, a 10,000 × 10,000 world, sense radius 10,
+grid cell size 25, 32 neighbors, target speed 1, force cap 0.2 and dt 1/60. All 100,000 agents start
+on the source's fixed grid with velocity (1, 0). Defaults for other settings are unchanged.
+The prior reference is commit `3e8398f73135a3dfbda48a6addacc678979f8e85`. Run both commands in
+separate processes, with `CoreRoot` pointing to a checkout of that revision for the comparison:
+
+```sh
+dotnet run --project tools/RngStorageProbe -c Release
+dotnet run --project tools/RngStorageProbe -c Release -p:CoreRoot=/absolute/path/to/prior-checkout
+```
+
+The probe emits runtime, workload, byte counts, elapsed times and a final kinematic hash as JSON.
+The migration intentionally changes that hash; the compact representation alone leaves the
+reviewed PCG32 trajectory fixtures unchanged. It is an opt-in diagnostic outside the ordinary
+solution/test gate, so the large population does not impose a routine CI cost.
 
 ```sh
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release \

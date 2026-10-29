@@ -21,15 +21,17 @@ public sealed class RandomStreams
     public RandomStreams(ulong seed) => Seed = seed;
 
     /// <summary>Creates a world-level stream. Names are exact UTF-8, without normalization.</summary>
-    public Pcg32Rng CreateStream(string name) => Create(name, null);
+    public Pcg32Rng CreateStream(string name) => new(Create(name, null));
 
     /// <summary>
     /// Creates a consumer stream for a stable agent identity. The caller owns identity stability
     /// across reordering or lifecycle changes; a world stream differs from agent zero.
     /// </summary>
-    public Pcg32Rng CreateStream(string name, ulong agentId) => Create(name, agentId);
+    public Pcg32Rng CreateStream(string name, ulong agentId) => new(Create(name, agentId));
 
-    private Pcg32Rng Create(string name, ulong? agentId)
+    internal Pcg32State CreateAgentState(string name, ulong agentId) => Create(name, agentId);
+
+    private Pcg32State Create(string name, ulong? agentId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         int nameBytes = StrictUtf8.GetByteCount(name);
@@ -49,7 +51,7 @@ public sealed class RandomStreams
 
         Span<byte> digest = stackalloc byte[32];
         SHA256.HashData(encoded, digest);
-        return new Pcg32Rng(BinaryPrimitives.ReadUInt64LittleEndian(digest),
+        return new Pcg32State(BinaryPrimitives.ReadUInt64LittleEndian(digest),
             BinaryPrimitives.ReadUInt64LittleEndian(digest[sizeof(ulong)..]));
     }
 }

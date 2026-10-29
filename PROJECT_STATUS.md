@@ -25,10 +25,13 @@ not made active merely because `SimConfig` contains related settings.
   calculated adapter/identity vectors are committed, and a fourth stochastic observer leaves every
   kinematic hash unchanged for 256 ticks. The deliberate canonical wander reference migration is
   tracked in [determinism](docs/DETERMINISM.md); cross-platform motion identity is not promised.
-  The local Release gate passes 941 tests. Both Windows jobs independently captured the new exact
+  The local Release gate passes 943 tests. Both Windows jobs independently captured the new exact
   trajectory in [run 40811616741](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40811616741),
   with all logged component words rehashed; Ubuntu CI matched the Linux reference. Retained RNG
-  draws allocate zero bytes in the 100,000-batch regression. See the
+  draws allocate zero bytes in the 100,000-batch regression. Canonical agents retain 16-byte value
+  states; a 100,000-agent whole-world probe measured retained managed memory dropping from
+  45,241,032 B to 12,441,520 B, with zero bytes across 1,000 measured ticks. The known old signed-seed
+  alias pair is pinned to independent output vectors. See the
   [stream ownership and byte contract](docs/RANDOM_STREAMS.md).
 
 - **CI and regression gates:** PR #168 retains Ubuntu/Windows merge-result builds/tests and adds
@@ -206,9 +209,9 @@ speedup or machine-independent performance bound.
 3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
    now uses reusable telemetry and shared startup configuration. Current overlay geometry still
    performs the existing index refresh only when shown; the recorded tick label does not re-query.
-4. Introduce named RNG streams and real observation/intent arbitration (#26/#27), preserving the
-   settled trace contract except for the explicitly documented RNG transition. Extra positional
-   rules are not yet a general composition surface.
+4. Build real observation/intent arbitration (#27) on the named RNG streams, preserving the settled
+   trace contract after the documented RNG transition. Extra positional rules are not yet a
+   general composition surface.
 5. Prove generality with Vicsek then a minimal scalar-field/ACO consumer (#29/#30), not speculative
    state generics. Behavioral parity/retirement criteria (#28) and named rule-control visuals (#40)
    depend on those settled seams. Neither engine is deleted without a migration decision.

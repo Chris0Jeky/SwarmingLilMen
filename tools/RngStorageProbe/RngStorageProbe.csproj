@@ -1,0 +1,12 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <CoreRoot Condition="'$(CoreRoot)' == ''">$(MSBuildThisFileDirectory)../..</CoreRoot>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="$(CoreRoot)/SwarmSim.Core/SwarmSim.Core.csproj" />
+  </ItemGroup>
+</Project>

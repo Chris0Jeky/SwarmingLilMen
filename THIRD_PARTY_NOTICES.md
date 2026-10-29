@@ -2,7 +2,8 @@
 
 ## PCG32
 
-`SwarmSim.Core/Utils/Pcg32Rng.cs` adapts the generator, seeding protocol and rejection sampler
+`SwarmSim.Core/Utils/Pcg32State.cs` and its public `Pcg32Rng.cs` wrapper adapt the generator,
+seeding protocol and rejection sampler
 from [PCG's minimal C implementation](https://github.com/imneme/pcg-c-basic/blob/master/pcg_basic.c).
 
 Copyright 2014 Melissa O'Neill <oneill@pcg-random.org>.
