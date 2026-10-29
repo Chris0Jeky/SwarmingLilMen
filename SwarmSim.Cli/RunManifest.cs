@@ -9,7 +9,6 @@ namespace SwarmSim.Cli;
 internal sealed class RunManifest
 {
     internal const string SupportedSpawnModel = "uniform-single-group-v1";
-    internal static readonly string[] SupportedMetrics = ["population", "meanSpeed", "polarization"];
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -30,6 +29,10 @@ internal sealed class RunManifest
     public required float FixedDeltaTime { get; init; }
     public required JsonElement ResolvedConfig { get; init; }
     public required string[] RequestedMetrics { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public int? MetricContractVersion { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? MetricsDeterministic { get; init; }
     public required string SpawnModel { get; init; }
     public required int KinematicHashVersion { get; init; }
     public required string FinalKinematicHash { get; init; }
@@ -42,8 +45,8 @@ internal sealed class RunManifest
         RejectDuplicateProperties(document.RootElement, "$");
         RunManifest manifest = document.RootElement.Deserialize<RunManifest>(JsonOptions)
             ?? throw new InvalidDataException("A replay manifest must be a JSON object.");
-        if (manifest.SchemaVersion != 1)
-            throw new InvalidDataException($"Unsupported manifest schemaVersion {manifest.SchemaVersion}; expected 1.");
+        if (manifest.SchemaVersion is not (1 or 2))
+            throw new InvalidDataException($"Unsupported manifest schemaVersion {manifest.SchemaVersion}; expected 1 or 2.");
         if (manifest.Engine is not ("legacy" or "canonical"))
             throw new InvalidDataException("Manifest engine must be legacy or canonical.");
         if (manifest.Ticks < 0 || manifest.AgentCount <= 0 || !float.IsFinite(manifest.FixedDeltaTime) || manifest.FixedDeltaTime <= 0f)
@@ -51,9 +54,25 @@ internal sealed class RunManifest
         if (manifest.RunId is null || !manifest.RunId.StartsWith("run-", StringComparison.Ordinal) ||
             !Guid.TryParseExact(manifest.RunId.AsSpan(4), "N", out _) || manifest.CreatedUtc == default)
             throw new InvalidDataException("Manifest run identity is invalid.");
-        if (manifest.SpawnModel != SupportedSpawnModel || manifest.KinematicHashVersion != 1 ||
-            manifest.RequestedMetrics is null || !manifest.RequestedMetrics.SequenceEqual(SupportedMetrics, StringComparer.Ordinal))
-            throw new InvalidDataException("Manifest spawn model, hash version, or requested metrics are unsupported.");
+        if (manifest.SpawnModel != SupportedSpawnModel || manifest.KinematicHashVersion != 1)
+            throw new InvalidDataException("Manifest spawn model or hash version is unsupported.");
+        if (manifest.RequestedMetrics is null)
+            throw new InvalidDataException("Manifest requestedMetrics must be an array of registered channel names.");
+        if (manifest.SchemaVersion == 1)
+        {
+            if (!manifest.RequestedMetrics.SequenceEqual(MetricCatalog.DefaultMetrics, StringComparer.Ordinal) ||
+                document.RootElement.TryGetProperty("metricContractVersion", out _) ||
+                document.RootElement.TryGetProperty("metricsDeterministic", out _))
+                throw new InvalidDataException("Schema 1 supports only its original three metric columns and no schema 2 metric metadata.");
+        }
+        else
+        {
+            if (manifest.MetricContractVersion != MetricCatalog.ContractVersion || manifest.MetricsDeterministic is null)
+                throw new InvalidDataException("Manifest metricContractVersion or metricsDeterministic is missing or unsupported.");
+            bool deterministic = MetricCatalog.ValidateSelection(manifest.Engine, manifest.RequestedMetrics);
+            if (manifest.MetricsDeterministic != deterministic)
+                throw new InvalidDataException("Manifest metricsDeterministic does not match the requested metric channels.");
+        }
         if (!IsHash(manifest.FinalKinematicHash, 64) || !IsHash(manifest.MetricsSha256, 64))
             throw new InvalidDataException("Manifest hashes must be SHA-256 hexadecimal values.");
         if ((manifest.GitCommit is null && manifest.DirtyWorktree is not null) ||
@@ -107,6 +126,7 @@ internal sealed record RunRequest(
     CanonicalWorldSettings? Canonical,
     RunManifest? Replay)
 {
+    internal string[] RequestedMetrics { get; init; } = MetricCatalog.DefaultMetrics.ToArray();
     internal uint Seed => Canonical?.Seed ?? Legacy!.Seed;
     internal float FixedDeltaTime => Canonical?.FixedDeltaTime ?? Legacy!.FixedDeltaTime;
     internal string ConfigJson => Canonical?.ToJson() ?? Legacy!.ToJson();
@@ -116,23 +136,27 @@ internal sealed record RunRequest(
         if (options.ManifestPath is not null)
         {
             RunManifest manifest = RunManifest.Read(options.ManifestPath);
+            if (manifest.MetricsDeterministic == false)
+                throw new InvalidDataException("Exact replay is unavailable for manifests containing nondeterministic runtime metrics.");
             Dictionary<string, JsonElement> values = ReadCompleteConfig(manifest);
             RunRequest replay = manifest.Engine == "canonical"
                 ? new(manifest.Engine, manifest.Ticks, manifest.AgentCount, null, ConfigurationResolver.ResolveCanonicalSettings(overrides: values), manifest)
                 : new(manifest.Engine, manifest.Ticks, manifest.AgentCount, ConfigurationResolver.ResolveSimConfig(overrides: values), null, manifest);
             if (replay.Seed != manifest.Seed || replay.FixedDeltaTime != manifest.FixedDeltaTime)
                 throw new InvalidDataException("Manifest seed/fixedDeltaTime metadata does not match resolvedConfig.");
-            return replay;
+            return replay with { RequestedMetrics = manifest.RequestedMetrics.ToArray() };
         }
 
         var overrides = new Dictionary<string, JsonElement>();
         if (options.Seed.HasValue)
             overrides[nameof(SimConfig.Seed)] = JsonSerializer.SerializeToElement(options.Seed.Value);
-        return options.Engine == "canonical"
+        MetricCatalog.ValidateSelection(options.Engine, options.RequestedMetrics);
+        RunRequest request = options.Engine == "canonical"
             ? new(options.Engine, options.Ticks, options.AgentCount, null,
                 ConfigurationResolver.ResolveCanonicalSettings(options.Scenario, options.ConfigPath, overrides), null)
             : new(options.Engine, options.Ticks, options.AgentCount,
                 ConfigurationResolver.ResolveSimConfig(options.Scenario, options.ConfigPath, overrides), null, null);
+        return request with { RequestedMetrics = options.RequestedMetrics.ToArray() };
     }
 
     private static Dictionary<string, JsonElement> ReadCompleteConfig(RunManifest manifest)

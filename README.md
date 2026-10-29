@@ -47,6 +47,8 @@ should target the canonical implementation.
 - ✅ JSON round-trip for both engine configurations and a strict layered scenario resolver
 - ✅ Radius-complete legacy grid sensing with periodic seam handling
 - ✅ Canonical zero-allocation warm-tick regressions and a dedicated BenchmarkDotNet route
+- ✅ Raylib-free experiments with native configurations, versioned manifests and exact CSV replay
+- ✅ Registered analysis channels, periodic centroids and opt-in exact nearest-neighbor statistics
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
 - ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
@@ -159,6 +161,11 @@ Available presets:
 starting a simulation, including when combined with `--canonical`. Use `SwarmSim.Cli` for
 headless runs and replay, or `SwarmSim.Benchmarks` for throughput/allocation measurements.
 See [headless experiments](docs/HEADLESS_EXPERIMENTS.md) for configuration, artifact, and replay contracts.
+
+Use `SwarmSim.Cli --list-metrics` to discover channels, and `--metrics population,centroidX,centroidY`
+to select their CSV order. Deterministic selections support exact manifest replay; explicit runtime
+channels record operational costs and disable exact replay. Definitions and analysis costs are in
+[the metrics contract](docs/METRICS.md).
 
 Renderer startup applies `--preset` before `--config`, so omitted file fields retain the selected
 preset's values. Both renderer modes use `SimConfig` files; native canonical files belong to the

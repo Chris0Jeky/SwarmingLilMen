@@ -23,14 +23,23 @@ public static class Program
                       --seed N                   Seed in 0..2147483647 (default: resolved config)
                       --ticks N                  Non-negative logical step count (default: 600)
                       --agents N                 Positive initial population (default: 400)
+                      --metrics NAME,NAME,...    Exact metric columns in the requested order
+                      --list-metrics             Show available names for the selected engine
                       --out DIRECTORY            Parent for a new run directory (default: runs)
                       --manifest FILE            Replay recorded settings; only --out may override
                       --help                     Show this help
 
                     Outputs: manifest.json, metrics.csv, log.txt in a new run-<id> child.
                     Native canonical files use TargetSpeed; legacy files use MaxSpeed.
+                    Default metrics: population,meanSpeed,polarization.
+                    Runtime cost metrics are nondeterministic and disable exact manifest replay.
                     Exit codes: 0 success, 1 run/config/replay/I/O failure, 2 invalid usage.
                     """);
+                return 0;
+            }
+            if (options.ListMetrics)
+            {
+                MetricCatalog.WriteAvailable(options.Engine, output);
                 return 0;
             }
             string directory = ExperimentRunner.Run(options);

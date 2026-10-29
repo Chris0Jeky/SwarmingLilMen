@@ -86,7 +86,14 @@ from exact all-population nearest-neighbor distributions; canonical boids instru
 registered foundation-specific probe. Runtime costs explicitly declare nondeterminism. The
 nearest-neighbor implementation is O(N²), opt-in, and not a 50k-agent throughput claim. Periodic
 analysis preserves tiny signed offsets even in very large worlds. See [metrics](docs/METRICS.md).
-CLI selection, manifest integration and the full headless allocation proof remain #24 follow-up.
+The CLI now selects registered channels with `--metrics`, records their order and determinism in
+schema 2 manifests, and verifies the complete deterministic CSV on replay. Original schema 1
+manifests remain replayable with byte-identical default CSV. Runtime-cost channels measure only
+Step and explicitly disable exact replay. The integrated Release suite passes 853 tests; a
+separate 50k sparse/1,000-step proof observes zero current-thread allocation in physics, reused
+capture/sampling, buffered CSV writing and the final flush. It excludes setup, hashing and
+quadratic nearest-neighbor analysis. Exact measurement boundaries and the periodic-centroid
+overhead are documented in [headless experiments](docs/HEADLESS_EXPERIMENTS.md).
 
 The isolated foundation Release build (SDK 8.0.415, Linux x64) completed with no warnings/errors;
 all **697 non-Performance tests passed** before publication. The isolated golden-trace addition
@@ -159,8 +166,9 @@ speedup or machine-independent performance bound.
 ## Current limitations and next work
 
 1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
-2. Extend the single-run CLI with registered analysis probes (#24) and seed/parameter sweeps
-   (#25). Timing data must stay separate from byte-repeatable physical metrics.
+2. Extend the CLI's registered analysis probes with seed/parameter sweeps (#25). Runtime channels
+   stay explicitly separate from byte-repeatable physical metrics; avoid unrequested centroid
+   work in the default plan using measured evidence and unchanged CSV bytes.
 3. Collect the outstanding manual HUD/O/Tab/F12 and F1–F5 evidence (#20/#22). The implementation
    now uses reusable telemetry and shared startup configuration. Current overlay geometry still
    performs the existing index refresh only when shown; the recorded tick label does not re-query.
