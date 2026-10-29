@@ -1,5 +1,6 @@
 using System.IO;
-using System.Text.Json;
+using System.Text.Json.Serialization;
+using SwarmSim.Core.Configuration;
 using SwarmSim.Core.Spatial;
 using SwarmSim.Core.Utils;
 
@@ -36,7 +37,8 @@ public sealed class SimConfig
     public SpeedModel SpeedModel { get; init; } = SpeedModel.ConstantSpeed; // Constant-speed vs damped
 
     // ===== Spatial Grid =====
-    public float GridCellSize { get; init; } = 50f; // Should be ≈ SenseRadius
+    // Legacy grid partition size; neighbor queries cover SenseRadius even across multiple cells.
+    public float GridCellSize { get; init; } = 50f;
 
     // ===== Boids Parameters =====
     public float SenseRadius { get; init; } = 50f;
@@ -120,6 +122,7 @@ public sealed class SimConfig
     /// Values: -1 (fear/flee), 0 (neutral), +1 (hunt/attack).
     /// Default: 4 groups, neutral to self, hostile to others.
     /// </summary>
+    [JsonConverter(typeof(AggressionMatrixJsonConverter))]
     public float[,] AggressionMatrix { get; init; } = DefaultAggressionMatrix();
 
     // ===== Population Limits =====
@@ -143,6 +146,11 @@ public sealed class SimConfig
         }
         return matrix;
     }
+
+    /// <summary>
+    /// Creates the shared balanced tuning scenario, also available as configs/balanced.json.
+    /// </summary>
+    public static SimConfig Balanced() => ConfigurationResolver.ResolveSimConfig("balanced");
 
     /// <summary>
     /// Creates a configuration preset for peaceful flocking behavior.
@@ -222,6 +230,8 @@ public sealed class SimConfig
 
         if (Seed > Rng.MaxSupportedSeed)
             errors.Add($"Seed must be between 0 and {Rng.MaxSupportedSeed}, inclusive");
+        if (!Enum.IsDefined(BoundaryMode)) errors.Add("BoundaryMode must be a defined boundary mode");
+        if (!Enum.IsDefined(SpeedModel)) errors.Add("SpeedModel must be a defined speed model");
         if (!float.IsFinite(WorldWidth) || WorldWidth <= 0) errors.Add("WorldWidth must be positive");
         if (!float.IsFinite(WorldHeight) || WorldHeight <= 0) errors.Add("WorldHeight must be positive");
         if (!float.IsFinite(FixedDeltaTime) || FixedDeltaTime <= 0) errors.Add("FixedDeltaTime must be positive");
@@ -229,18 +239,38 @@ public sealed class SimConfig
         if (!float.IsFinite(MaxForce) || MaxForce <= 0) errors.Add("MaxForce must be positive");
         if (!float.IsFinite(GridCellSize) || GridCellSize <= 0) errors.Add("GridCellSize must be positive");
         if (!float.IsFinite(SenseRadius) || SenseRadius <= 0) errors.Add("SenseRadius must be positive");
+        if (!float.IsFinite(SeparationRadius) || SeparationRadius < 0) errors.Add("SeparationRadius must be finite and >= 0");
         if (!float.IsFinite(FieldOfView) || FieldOfView <= 0 || FieldOfView > 360) errors.Add("FieldOfView must be in (0, 360]");
         if (float.IsFinite(WorldWidth) && WorldWidth > 0 && float.IsFinite(WorldHeight) && WorldHeight > 0 &&
-            float.IsFinite(SenseRadius) && SenseRadius > 0 &&
-            !UniformGrid.TryGetDimensions(SenseRadius, WorldWidth, WorldHeight, out _, out _))
-            errors.Add($"SenseRadius {SenseRadius} over a {WorldWidth} x {WorldHeight} world needs more than {UniformGrid.MaxCells} spatial grid cells; increase SenseRadius or reduce WorldWidth/WorldHeight");
+            float.IsFinite(GridCellSize) && GridCellSize > 0 &&
+            !UniformGrid.TryGetDimensions(GridCellSize, WorldWidth, WorldHeight, out _, out _))
+            errors.Add($"GridCellSize {GridCellSize} over a {WorldWidth} x {WorldHeight} world needs more than {UniformGrid.MaxCells} spatial grid cells; increase GridCellSize or reduce WorldWidth/WorldHeight");
         if (InitialCapacity <= 0) errors.Add("InitialCapacity must be positive");
         if (MaxCapacity < InitialCapacity) errors.Add("MaxCapacity must be >= InitialCapacity");
         if (CompactionInterval < 1) errors.Add("CompactionInterval must be >= 1");
+        if (SeparationCrowdingThreshold < 0) errors.Add("SeparationCrowdingThreshold must be >= 0");
+
+        // Spawn copies these values into live state. Their eventual gameplay ranges remain open.
+        if (!float.IsFinite(InitialEnergy)) errors.Add("InitialEnergy must be finite");
+        if (!float.IsFinite(InitialHealth)) errors.Add("InitialHealth must be finite");
 
         if (!float.IsFinite(Friction) || Friction < 0 || Friction > 1) errors.Add("Friction must be in [0, 1]");
         if (!float.IsFinite(MutationRate) || MutationRate < 0 || MutationRate > 1) errors.Add("MutationRate must be in [0, 1]");
         if (!float.IsFinite(WanderStrength) || WanderStrength < 0) errors.Add("WanderStrength must be finite and >= 0");
+
+        // These are consumed by the canonical bridge. Finite negative timing/radius factors
+        // retain canonical's established clamps; boosts/rates and speed droop have real bounds.
+        if (!float.IsFinite(WanderRate) || WanderRate < 0f) errors.Add("WanderRate must be finite and >= 0");
+        if (!float.IsFinite(MaxTurnRateDegPerSecond) || MaxTurnRateDegPerSecond < 0f) errors.Add("MaxTurnRateDegPerSecond must be finite and >= 0");
+        if (!float.IsFinite(WhiskerTimeHorizon)) errors.Add("WhiskerTimeHorizon must be finite");
+        if (!float.IsFinite(WhiskerWeight) || WhiskerWeight < 0f) errors.Add("WhiskerWeight must be finite and >= 0");
+        if (!float.IsFinite(SeparationPriorityRadiusFactor)) errors.Add("SeparationPriorityRadiusFactor must be finite");
+        if (!float.IsFinite(SeparationPriorityExitFactor)) errors.Add("SeparationPriorityExitFactor must be finite");
+        if (!float.IsFinite(SeparationPriorityBoost) || SeparationPriorityBoost < 0f) errors.Add("SeparationPriorityBoost must be finite and >= 0");
+        if (!float.IsFinite(SeparationPriorityHoldTime)) errors.Add("SeparationPriorityHoldTime must be finite");
+        if (!float.IsFinite(SeparationPriorityRampInTime)) errors.Add("SeparationPriorityRampInTime must be finite");
+        if (!float.IsFinite(SeparationPriorityRampOutTime)) errors.Add("SeparationPriorityRampOutTime must be finite");
+        if (!float.IsFinite(SeparationSpeedDroop) || SeparationSpeedDroop < 0f || SeparationSpeedDroop > 1f) errors.Add("SeparationSpeedDroop must be in [0, 1]");
 
         // Legacy steering inputs: negatives stay legal (existing behaviour), NaN/Infinity would poison forces.
         if (!float.IsFinite(SeparationWeight)) errors.Add("SeparationWeight must be finite");
@@ -270,29 +300,17 @@ public sealed class SimConfig
         return copy;
     }
 
-    public static SimConfig LoadFromJson(string filePath)
-    {
-        if (!File.Exists(filePath))
-            throw new FileNotFoundException("Configuration file not found.", filePath);
+    /// <summary>Loads a partial JSON file over the class defaults, then validates the result.</summary>
+    public static SimConfig LoadFromJson(string filePath) => FromJson(ConfigurationJson.ReadFile(filePath));
 
-        string json = File.ReadAllText(filePath);
-        var options = new JsonSerializerOptions
-        {
-            PropertyNameCaseInsensitive = true,
-            ReadCommentHandling = JsonCommentHandling.Skip,
-            AllowTrailingCommas = true
-        };
+    /// <summary>Reads a JSON object; omitted fields retain their class defaults.</summary>
+    public static SimConfig FromJson(string json) => ConfigurationJson.Deserialize<SimConfig>(json, config => config.Validate());
 
-        var config = JsonSerializer.Deserialize<SimConfig>(json, options);
-        if (config is null)
-            throw new InvalidOperationException($"Failed to deserialize config file '{filePath}'.");
+    /// <summary>Serializes every property, including aggression rows, after validation.</summary>
+    public string ToJson() => ConfigurationJson.Serialize(this, Validate());
 
-        var errors = config.Validate();
-        if (errors.Count > 0)
-            throw new ArgumentException($"Invalid config: {string.Join(", ", errors)}");
-
-        return config;
-    }
+    /// <summary>Writes a complete resolved configuration after validation succeeds.</summary>
+    public void SaveToJson(string filePath) => File.WriteAllText(filePath, ToJson());
 }
 
 /// <summary>

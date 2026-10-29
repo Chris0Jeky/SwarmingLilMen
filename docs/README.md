@@ -6,6 +6,7 @@ ordering authority. Historical documents are context, not proof.
 
 ## Live Guides
 
+- [`EXPERIMENT_FOUNDATION.md`](EXPERIMENT_FOUNDATION.md) - reusable configuration, spatial semantics and explicit telemetry
 - [`QUICKSTART.md`](QUICKSTART.md) - five-minute setup and first run
 - [`CONTROLS.md`](CONTROLS.md) - renderer controls and runtime parameter editor
 - [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) - configuration field effects and ranges

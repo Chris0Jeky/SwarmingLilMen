@@ -11,6 +11,15 @@ public sealed class CanonicalTrajectoryTests
         Assert.Throws<ArgumentException>(() => Program.Main(new[] { "--canonical-experiment", "--extra" }));
     }
 
+    [Fact]
+    public void CanonicalBenchmarkListForwardsOptionsWithoutThrowing()
+    {
+        // Listing is a real non-measuring BenchmarkDotNet route. The generic Run<T> helper
+        // throws after --list because no measurement summary exists; the switcher handles it.
+        var exception = Record.Exception(() => Program.Main(new[] { "--canonical", "--list", "flat" }));
+        Assert.Null(exception);
+    }
+
     [Theory]
     [InlineData(0, 1701u)]
     [InlineData(1, 1701u)]

@@ -1,137 +1,201 @@
 # Parameter Guide & Tuning Notes
 
-This guide explains the main fields in `SimConfig`, what they control, and how increasing/decreasing each value affects flocking behaviour. Use it alongside `CONFIGURATION_COOKBOOK.md` when crafting custom JSON configs.
+`SimConfig` is the shared scenario surface used by the legacy engine and the renderer's
+canonical bridge. `CanonicalWorldSettings` is the native canonical surface. Both load and
+save JSON. `ConfigurationResolver` applies **defaults → named scenario → file → explicit
+overrides**; see [Configuration Cookbook](CONFIGURATION_COOKBOOK.md) for APIs, scenario IDs,
+and the distinction between sparse recipes and fully resolved saved files.
 
-`SimConfig` has 55 properties. Not all of them do anything yet — see
-[Fields that are declared but not consumed](#fields-that-are-declared-but-not-consumed) before
-tuning one and wondering why nothing changed.
+The two engines retain different dynamics and different class defaults. Matching names or
+numbers does not establish trajectory equivalence.
 
-## World & Timing
-- **WorldWidth / WorldHeight** – Simulation extent in world-position units (defaults `1920` /
-  `1080`). Under the default `Wrap` boundary they define the torus that positions are wrapped
-  into, so they change more than the visible area. **Wrapping positions is not the same as
-  toroidal sensing**, and only the canonical engine does both: legacy `SenseSystem` queries the
-  non-wrapping `UniformGrid.Query3x3` and takes raw coordinate deltas, so under the default
-  renderer two agents on opposite edges are never neighbours however small their minimum-image
-  distance is. Neighbour topology wraps only under `--canonical`.
-- **BoundaryMode** – `Wrap` (default, toroidal), `Reflect`, or `Clamp`. In JSON this is an
-  **ordinal**, not a name: `0`/`1`/`2`. See the enum note in `CONFIGURATION_COOKBOOK.md`.
-- **FixedDeltaTime** – Fixed simulation timestep in seconds. The `SimConfig` default is `1/120`;
-  the renderer's own base config and every registered preset use `1/60`. Changing it changes
-  trajectories, so it is part of the determinism contract.
+## Defaults that affect comparisons
 
-## Motion & Steering
-- **Seed** – Controls deterministic legacy and canonical construction. Reusing a seed reproduces
-  a trajectory only when the .NET binary/runtime, platform, configuration, timestep, and ordered
-  input events also match; it is not a cross-platform promise. Supported external values are
-  `0` through `2147483647`; larger values are rejected. Prefer `new World(config)`. The existing
-  explicit-seed overload remains compatible: its argument is authoritative, and `World.Config`
-  exposes that effective value without mutating the caller's object.
-- **MaxSpeed** – Upper bound on velocity magnitude. Higher values create more energetic movement but require higher `MaxForce` (or stronger weights) to turn quickly. Keep `MaxForce ≥ MaxSpeed * 0.2` for responsive steering.
-- **MaxForce** – Steering budget per tick. A larger value lets agents change direction faster. Too low relative to `MaxSpeed` yields “train” formations; too high can cause jitter.
-- **Friction** – Velocity damping after applying steering. Values near `0.90–0.98` simulate drag. `1.0` keeps constant speed (only appropriate when steering budgets are high).
-- **SpeedModel** – `ConstantSpeed` skips friction; `Damped` applies friction even if you set `Friction < 1`.
+| Setting | `SimConfig` default | Native canonical default |
+| --- | --- | --- |
+| Seed | `42` | `123456` |
+| World width / height | `1920 / 1080` | `1920 / 1080` |
+| Fixed timestep | `1/120` second | `1/60` second |
+| Speed | `MaxSpeed: 200` | `TargetSpeed: 1` |
+| Maximum force | `5` | `0.2` |
+| Sense radius | `50` | `10` |
+| Separation radius | `20` | `5` |
+| Separation / alignment / cohesion weights | `1.5 / 1 / 1` | `1.5 / 1 / 1` |
+| Field of view | `270` degrees | `270` degrees |
+| Neighbor setting | `16` | `32` |
+| Wander strength / rate | `0 / 1.5` | `0 / 1.5` |
+| Initial capacity | `100000` | `1024` |
 
-## Perception & Separation
-- **SenseRadius** – Max distance for considering neighbors. Large radius (>120) increases neighbor counts, making alignment/cohesion stronger but also more expensive.
-- **FieldOfView** – Vision cone in degrees (e.g., 270°). Reduce it to create blind spots and more emergent patterns.
-- **MaxNeighbors** – Hard cap on neighbors contributing to steering. Use 8–16 for classic boids behaviour, higher for smoother large-scale flow.
-- **SeparationRadius** – Distance within which separation activates. Increase this to prevent following-in-line behaviour.
-- **SeparationWeight** – Scales desired separation speed (`maxSpeed * weight`). Higher values push agents apart faster.
-- **SeparationCrowdingThreshold** – Neighbor count that triggers crowding boosts. Lower this if you want separation to react sooner.
-- **SeparationCrowdingBoost** – Maximum multiplier applied to separation when neighbor count exceeds the threshold (e.g., 2.5 = up to 2.5× stronger).
-- **CollisionAvoidanceRadius** – “Emergency” bubble. If a neighbor enters this radius, the agent ignores all other rules and steers directly away.
-- **CollisionAvoidanceBoost** – Multiplier for the emergency steer. Increase it to make close contacts explode apart instantly.
+The renderer has its own established base configuration: a `1/60` timestep, speed ceiling
+`10`, force `2.5`, and its displayed tuning values. Loading a file through
+`SimConfig.LoadFromJson` inherits class defaults for omitted fields, not the renderer base.
+Named scenarios are sparse overlays; native canonical resolution retains canonical defaults
+for fields the scenario does not specify. Map a complete resolved `SimConfig` when comparing
+the same authored seed, dimensions, and timestep across engines.
 
-## Alignment & Cohesion
-- **AlignmentWeight** – Strength of the tendency to match average neighbor velocity. Increasing it forms ribbon-like formations; decreasing it gives more chaotic swirls.
-- **CohesionWeight** – Pull toward the local center of mass. Too high relative to separation creates clumps; a value around 1/10th of separation is typical.
+## World, timing, and spatial partitioning
 
-## Wander & Noise
-- **WanderStrength** – Finite, non-negative random steering magnitude; the default is `0`
-  (disabled). Use small explicit values (0.1–0.5) to keep agents from freezing. Higher values break
-  up synchronized lines.
-- **WanderRate** – Finite, non-negative canonical wander-angle change limit in radians per second.
-  It has no effect while `WanderStrength` is zero.
+- **Seed** accepts `0` through `2147483647`. Reproduction of a trajectory requires a matching
+  binary, runtime/platform, complete configuration, timestep, and ordered input events.
+  The engines use different paths and are not expected to agree merely because seeds match.
+  Prefer `new World(config)`; the compatible explicit-seed overload is authoritative and
+  exposes the effective seed in `World.Config` without changing the caller's config.
+- **WorldWidth / WorldHeight** are positive finite extents. Under `Wrap`, both legacy sensing
+  and canonical sensing use periodic geometry and minimum-image displacements. Legacy
+  `Reflect` and `Clamp` keep Euclidean sensing; canonical worlds are always periodic.
+- **BoundaryMode** is a defined numeric enum in JSON: `0` Wrap, `1` Reflect, `2` Clamp.
+- **FixedDeltaTime** is positive and finite. It changes trajectories. The native canonical
+  `Step(dt)` argument determines each actual step; its configured timestep is the caller's
+  fixed-step scheduling value.
+- **GridCellSize** defaults to `50` and controls the legacy grid. Queries visit enough cells
+  to cover `SenseRadius`, so a smaller cell size does not restrict sensing to a 3×3 area.
+  Validation bounds the grid's cell count before allocation. The canonical renderer uses its
+  sense radius as the grid cell size; custom canonical callers choose their spatial index.
 
-## Canonical Smoothing
-- **MaxTurnRateDegPerSecond** – Finite, non-negative canonical heading-change limit; `0` prevents
-  heading changes, while negative and non-finite values are rejected by canonical construction.
-- **WhiskerTimeHorizon / WhiskerWeight** – Predictive collision lookahead and steering weight. Both
-  must be finite; weight must be non-negative, while a finite horizon below `0.05` uses the existing
-  `0.05`-second minimum.
-- **SeparationPriorityRadiusFactor / SeparationPriorityExitFactor** – Entry and hysteresis-exit
-  radii as finite fractions of `SenseRadius`; finite negative values retain the existing effective
-  zero-threshold clamp.
-- **SeparationPriorityBoost / SeparationPriorityHoldTime** – Strength and minimum duration of
-  canonical separation priority. The boost must be finite and non-negative, and hold time must be
-  finite.
-- **SeparationPriorityRampInTime / SeparationPriorityRampOutTime / SeparationSpeedDroop** –
-  Transition timing and temporary target-speed reduction while priority is active. Ramp times must
-  be finite. Speed droop must be finite and remain in `[0, 1]`, preventing priority from reversing
-  velocity.
+Legacy sensing still has a bounded, traversal-ordered candidate buffer of 256 entries. Dense
+scenes can therefore choose different candidates when the grid layout changes. Radius-complete
+cell traversal does not promise identical dense-scene trajectories across grid sizes. Periodic
+queries avoid revisiting the same cell, including worlds with only one or two cells per axis.
 
-These fields are read from `SimConfig` only by the canonical renderer path; the similarly named
-legacy crowding controls retain their existing legacy semantics.
+## Motion and steering
 
-## Canonical settings accepted ranges
+- **MaxSpeed** is the legacy upper speed bound. `ConstantSpeed` is the historical name of the
+  undamped mode; it skips friction but does not renormalize slower agents back to the ceiling.
+- **MaxForce** caps composed steering. Larger values permit faster steering changes, while
+  excessive force can cause abrupt turns. Start around 20–30% of the intended speed, then tune
+  with observed trajectories rather than treating that ratio as a physical invariant.
+- **Friction** is finite and in `[0, 1]`. Legacy applies this velocity multiplier each tick only
+  under **SpeedModel.Damped**. The numeric JSON values are `0` ConstantSpeed and `1` Damped.
+  Canonical movement has no friction setting and maintains its target speed.
+- **SeparationWeight / AlignmentWeight / CohesionWeight** must be finite. Signed values remain
+  valid in legacy for compatibility. The canonical bridge clamps them to zero or above, and
+  canonical rules also clamp negative weights.
 
-These are the only `CanonicalWorld` constructor range checks on `CanonicalWorldSettings`. A failing check throws `ArgumentOutOfRangeException` with parameter name `settings`. No check compares one field with another.
+## Perception, separation, and supported disable modes
 
-| Field | Accepted range |
+| Field | Meaning and accepted edge cases |
 | --- | --- |
-| `Seed` | 0 through 2147483647, inclusive |
-| `TargetSpeed` | finite and positive |
-| `SenseRadius` | finite and positive |
-| `MaxForce` | finite and positive |
-| `FieldOfView` | finite and in (0, 360] |
-| `WorldWidth` | finite and positive |
-| `WorldHeight` | finite and positive |
-| `MaxTurnRateDegPerSecond` | finite and non-negative |
-| `WanderStrength` | finite and non-negative |
-| `WanderRate` | finite and non-negative |
-| `WhiskerTimeHorizon` | finite |
-| `WhiskerWeight` | finite and non-negative |
-| `SeparationPriorityRadiusFactor` | finite |
-| `SeparationPriorityExitFactor` | finite |
-| `SeparationPriorityBoost` | finite and non-negative |
-| `SeparationSpeedDroop` | finite and between 0 and 1, inclusive |
-| `SeparationPriorityHoldTime` | finite |
-| `SeparationPriorityRampInTime` | finite |
-| `SeparationPriorityRampOutTime` | finite |
+| `SenseRadius` | Positive finite perception radius |
+| `FieldOfView` | Finite degrees in `(0, 360]`; `360` is omnidirectional |
+| `MaxNeighbors` | Legacy values `<= 0` remove the contributing-neighbor cap within the bounded candidate buffer; canonical uses at least four candidates |
+| `SeparationRadius` | Legacy requires finite `>= 0`; `0` disables its separation accumulation |
+| `SeparationCrowdingThreshold` | Legacy non-negative neighbor count; `0` is supported |
+| `SeparationCrowdingBoost` | Finite legacy crowding multiplier; existing signed values remain accepted |
+| `CollisionAvoidanceRadius` | Finite legacy emergency radius; `0` disables the override, and negative values retain the existing minimum-radius clamp |
+| `CollisionAvoidanceBoost` | Finite legacy value; the consumer applies its existing minimum of `1` |
 
-## Energy / Combat (Phase 3+ — reserved, not yet active)
-- **AttackDamage / AttackRadius / AttackCooldown** – Intended to enable combat behaviour when aggression matrices are non-zero. No system reads them today.
-- **BaseDrain, MoveCost** – Intended to control metabolism. No system reads them today, so energy neither drains nor gates death.
-- **InitialEnergy / InitialHealth** – These two *are* applied, at spawn. Every other energy, health, reproduction, and forage field is inert.
+A negative legacy separation radius is rejected because its squared-radius test and signed
+radial falloff do not describe a valid protected distance. Non-finite steering values are
+rejected before world construction. Zero and unlimited modes above remain valid both through
+direct construction and JSON loading.
 
-## Fields that are declared but not consumed
+Legacy separation uses bounded linear radial falloff when accumulating direction; canonical
+separation additionally weights by inverse distance. Both use prioritized steering, but their
+behavior is not interchangeable.
 
-Measured on 2026-08-08 by searching every read of each property across `SwarmSim.Core`,
-`SwarmSim.Render`, and `SwarmSim.Benchmarks`. Nineteen of the 55 properties are validated and
-copied but never read by any system. Setting them in JSON is silently a no-op.
+## Wander and canonical smoothing
 
-Seventeen of them are the reserved Phase 3/4 surface above: `AttackDamage`, `AttackRadius`,
-`AttackCooldown`, `AggressionMatrix`, `BaseDrain`, `MoveCost`, `MaxEnergy`,
-`DeathEnergyThreshold`, `MaxHealth`, `HealthRegenRate`, `ReproductionEnergyThreshold`,
-`ReproductionEnergyCost`, `ChildEnergyStart`, `MutationRate`, `MutationStdDev`, `FoodEnergyGain`,
-and `ForageRadius`.
+**WanderStrength** is finite and non-negative; the default `0` disables it.
+**WanderRate** is the finite, non-negative canonical wander-angle change limit in radians per
+second. It has no effect while wander is disabled.
 
-Two are **not** reserved-phase fields and look active but are not:
+The following fields are active only in canonical motion, even when they are stored in
+`SimConfig`. `SimConfig.Validate` checks them before a loaded configuration reaches the
+canonical bridge.
 
-- **GridCellSize** (default `50`, validated `> 0`, and its source comment says "Should be ≈
-  SenseRadius"). `World` hard-codes its spatial grid to `cellSize: Config.SenseRadius` and never
-  reads this property, so tuning it changes nothing. Tracked as a defect, not a documented
-  design choice.
-- **MaxCapacity** (default `200_000`, validated `>= InitialCapacity`). The agent arrays are
-  allocated once at `InitialCapacity` and never grow; spawning past that returns `-1`. `MaxCapacity`
-  is therefore an unenforced ceiling. `InitialCapacity` is the real limit.
+| Field | Accepted range and interpretation |
+| --- | --- |
+| `MaxTurnRateDegPerSecond` | Finite, non-negative; `0` prevents heading changes |
+| `WhiskerTimeHorizon` | Finite; the engine retains its `0.05`-second minimum |
+| `WhiskerWeight` | Finite and non-negative |
+| `SeparationPriorityRadiusFactor` | Finite; negative factors retain the effective zero-threshold clamp |
+| `SeparationPriorityExitFactor` | Finite; negative factors retain the effective zero-threshold clamp |
+| `SeparationPriorityBoost` | Finite and non-negative |
+| `SeparationPriorityHoldTime` | Finite; existing minimum-time handling is preserved |
+| `SeparationPriorityRampInTime / SeparationPriorityRampOutTime` | Finite; existing timing clamps are preserved |
+| `SeparationSpeedDroop` | Finite and in `[0, 1]`, preventing reversal of target speed |
 
-## How to Tune
-1. **Set Speed & Force First** – Decide how fast you want agents to travel, then set `MaxForce` to at least 20–30% of `MaxSpeed`.
-2. **Balance Separation vs Cohesion** – Start with only separation active to achieve proper spacing, then add alignment, then cohesion.
-3. **Use Crowding Boosts** – `SeparationCrowdingBoost` helps resolve cramped nuclei automatically without needing huge base weights.
-4. **Test with Presets** – Use `--preset balanced` or `--preset fast-loose` to compare behaviours, then copy from `configs/` and tweak. `--list-presets` prints the registered set.
-5. **Observe Diagnostics** – On the legacy renderer press `F12` for snapshot/debug info; on the canonical renderer press `O` for the selected-boid interaction overlay and `Tab` to cycle the tracked boid. Watch neighbor counts and steering saturation to see whether forces are maxing out.
+No new ordering constraint is imposed between priority entry and exit factors.
 
-Refer to `CONTROLS.md` for runtime shortcuts and `CONFIGURATION_COOKBOOK.md` for concrete recipes. When saving custom configs, only override the fields you change—the loader falls back to defaults for everything else.
+## Legacy-to-canonical mapping
+
+`CanonicalWorldSettings.FromSimConfig(config, initialCapacity: ...)` is the reusable bridge.
+It preserves the renderer's established numeric mapping. The renderer still owns how many
+agents to allocate and passes `max(2 * initialAgentCount, 1024)`; direct callers can provide a
+capacity, or omit it to use `config.InitialCapacity`.
+
+| `SimConfig` field(s) | Canonical field(s) | Mapping and semantic limit |
+| --- | --- | --- |
+| `Seed` | `Seed` | Copied; different engine algorithms still produce different trajectories |
+| `WorldWidth / WorldHeight` | Same names | Copied; canonical geometry is periodic regardless of legacy boundary mode |
+| `FixedDeltaTime` | Same name | Copied; canonical callers must use it to schedule `Step` |
+| `MaxSpeed` | `TargetSpeed` | `max(0.01, value)`; legacy ceiling becomes canonical fixed target speed |
+| `MaxForce` | Same name | `max(0.01, value)`; both bound steering, while speed integration differs |
+| `SenseRadius` | Same name | `max(1, value)` |
+| `SeparationRadius` | Same name | `max(1, value)`; legacy zero-disable does not survive this compatibility mapping |
+| `SeparationWeight / AlignmentWeight / CohesionWeight` | Same names | Each becomes `max(0, value)`; separation weighting laws differ |
+| `FieldOfView` | Same name | Copied |
+| `MaxNeighbors` | Same name | Copied; legacy nonpositive means bounded unlimited, canonical clamps to at least four |
+| `WanderStrength / WanderRate` | Same names | Copied; legacy does not consume `WanderRate` |
+| `MaxTurnRateDegPerSecond` | Same name | Copied; legacy has no equivalent heading limiter |
+| `WhiskerTimeHorizon / WhiskerWeight` | Same names | Copied; legacy emergency collision override is a different mechanism |
+| All `SeparationPriority*` fields and `SeparationSpeedDroop` | Same names | Copied; legacy crowding controls are not equivalents |
+| `InitialCapacity` | `InitialCapacity` | Copied unless the caller supplies an explicit capacity |
+| `Friction / SpeedModel` | None | Canonical target-speed motion does not model legacy damping |
+| `BoundaryMode` | None | Canonical is always periodic |
+| `GridCellSize` | None | Canonical spatial-index construction is a separate caller choice |
+| `SeparationCrowdingThreshold / SeparationCrowdingBoost` | None | Legacy neighbor-count boost does not map to canonical priority hysteresis |
+| `CollisionAvoidanceRadius / CollisionAvoidanceBoost` | None | Legacy immediate override does not map directly to predictive whiskers |
+| `CompactionInterval` | None | Legacy storage maintenance has no canonical setting |
+| `MaxCapacity` and energy, health, combat, reproduction, forage, aggression fields | None | No corresponding canonical configuration surface |
+
+There is no reverse conversion API: dropping canonical-only dynamics or inventing legacy
+friction and boundary values would imply a parity that does not exist. Use this table to choose
+a comparison subset rather than assuming the complete configurations represent the same model.
+
+### Native canonical validation
+
+`CanonicalWorldSettings.Validate()` is used by its JSON readers, writers, and resolver.
+It requires positive finite target speed, maximum force, sense radius, world extents, and fixed
+timestep; field of view must be in `(0, 360]`. Separation radius and the three steering weights
+must be finite, while their existing negative-value clamps remain available. Seed and smoothing
+controls follow the bounds above.
+
+Native canonical capacity values below one retain the constructor's effective minimum of one;
+neighbor settings below four retain the minimum of four. Spatial-index compatibility and grid
+allocation limits are checked by index/world construction. Both construction and JSON validation
+enforce these base finite ranges, including the configured timestep and rule inputs. The bridge
+translates values; callers can use `Validate()` to collect errors before constructing a world.
+
+## Spawn state and reserved fields
+
+**InitialEnergy** and **InitialHealth** are copied into legacy agents at spawn. They must be
+finite. Their eventual gameplay ranges remain undecided, so signed finite values retain their
+existing behavior. No implemented metabolism, combat, or reproduction system consumes them.
+
+The following properties remain reserved: `AttackDamage`, `AttackRadius`, `AttackCooldown`,
+`AggressionMatrix`, `BaseDrain`, `MoveCost`, `MaxEnergy`, `DeathEnergyThreshold`,
+`MaxHealth`, `HealthRegenRate`, `ReproductionEnergyThreshold`, `ReproductionEnergyCost`,
+`ChildEnergyStart`, `MutationRate`, `MutationStdDev`, `FoodEnergyGain`, and
+`ForageRadius`. Changing them does not activate future gameplay systems. Existing validation
+of `MutationRate` in `[0, 1]` and a non-null square aggression matrix remains; this work does
+not invent gameplay bounds for unused fields. JSON output requires finite numbers.
+
+**InitialCapacity** is the actual fixed legacy allocation limit and must be positive.
+**MaxCapacity** still has to be at least `InitialCapacity`, but arrays do not grow toward it:
+spawning past the initial allocation returns `-1`. **CompactionInterval** must be at least
+one tick.
+
+## A practical tuning sequence
+
+1. Choose the engine, resolved timestep, seed, and boundary behavior.
+2. Set speed and force, then tune separation before alignment and cohesion.
+3. Check candidate counts and truncation before increasing perception or population.
+4. Compare the shared named scenarios, keeping distinct recipe files explicit.
+5. Save the fully resolved configuration with results so later default changes do not alter the experiment.
+
+Use legacy `F12` diagnostics or canonical `O` / `Tab` inspection as described in
+[Controls](CONTROLS.md). Source contracts are in
+[SimConfig](../SwarmSim.Core/SimConfig.cs),
+[CanonicalWorldSettings](../SwarmSim.Core/Canonical/CanonicalWorldSettings.cs), and
+[ConfigurationResolver](../SwarmSim.Core/Configuration/ConfigurationResolver.cs).

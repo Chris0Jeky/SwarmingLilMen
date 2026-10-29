@@ -3,7 +3,8 @@
 The canonical grid can preserve its exact neighbor contract while reducing dense selection work.
 A max-heap replaces repeated sorted insertion, with one final in-place heap sort. This improves the
 measured dense selection workload, not every input or end-to-end throughput. The dense radius scan
-remains quadratic and canonical perception snapshots still allocate every tick.
+remains quadratic. The later explicit-telemetry change removes per-tick snapshot allocation;
+see [experiment foundation](EXPERIMENT_FOUNDATION.md) for the current capture API and evidence.
 
 ## Reproduce
 
@@ -18,12 +19,14 @@ dotnet run --project SwarmSim.Benchmarks -c Release --no-build -- --canonical-ex
 The last command runs only fixed, headless canonical workloads (at most 256 boids). It does not
 launch BenchmarkDotNet or Raylib. Additional arguments are rejected. Failure of any oracle raises
 an exception and exits unsuccessfully. Run the build again after editing source before using
-`--no-build`. Existing BenchmarkDotNet suites and Render's `--benchmark` still use the legacy engine.
+`--no-build`. The grid/tick BenchmarkDotNet routes and Render's `--benchmark` use the legacy engine;
+`SwarmSim.Benchmarks --canonical` measures complete canonical ticks separately.
 
 ## Invariants and change boundary
 
-1. Coordinates are wrapped individually before subtraction. Radius membership uses the existing
-   inclusive binary32 squared-distance comparison and toroidal minimum-image deltas.
+1. Coordinates are wrapped individually before subtraction. Radius membership uses inclusive
+   squared-distance comparison and toroidal minimum-image deltas. Ordinary queries use binary32;
+   the later precision fix uses double when squared radii are subnormal or overflow.
 2. Self is excluded. Each visited cell is unique. Results contain the lowest qualifying indices
    in ascending order; truncation is true exactly when at least one qualifying index cannot fit,
    including an empty output buffer.
@@ -77,11 +80,16 @@ Each workload repeated with the following whole-trajectory SHA-256 (not just its
 | Capped | `E001E3D9A26A0B07BF7AEE1BE7A11DC4A5D750EF2A89623425CE50899324E13B` | 6,379 | 2,304 |
 | Mixed | `D19FCC3A2676EDF2ACC75007844E47C2885A414F71D1A7AB6095A16E0D6ECC13` | 8,054 | 0 |
 
-All full-step runs allocated 29,376 bytes per index over 24 ticks, or **1,224 bytes/tick**. The
+In that 28 October measurement, all full-step runs allocated 29,376 bytes per index over 24 ticks,
+or **1,224 bytes/tick**. The
 measurement brackets only synchronous `Step` with `GC.GetAllocatedBytesForCurrentThread`, excluding
 construction, serialization and hashing. `UpdatePerceptionSnapshot` copies three N-element arrays
 each tick: 1,152 payload bytes plus the observed 72 bytes of array headers at N=96. Retaining those
-snapshot copies preserves current ownership semantics; a later allocation change needs its own proof.
+snapshot copies preserved ownership semantics at that revision. The 29 October telemetry change
+moves independent copies to explicit compatibility captures and offers reusable caller-owned
+buffers. Its Linux before/after experiment retains every workload hash while both indexes allocate
+zero bytes inside all 24-step measurement loops; this is an additional same-platform comparison,
+not identity with the historical Windows hashes above.
 
 ## Counted selection replay and remaining bottleneck
 

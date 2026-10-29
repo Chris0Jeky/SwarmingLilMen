@@ -2,6 +2,11 @@ using System;
 
 namespace SwarmSim.Core.Canonical;
 
+/// <summary>
+/// Reusable last-tick researcher diagnostics recorded while steering is composed. Reading
+/// these views does not query current positions; use <see cref="CanonicalWorld.CaptureTelemetryInto"/>
+/// to retain the whole-world telemetry values in caller-owned buffers.
+/// </summary>
 public sealed class RuleInstrumentation
 {
     private readonly int[] _neighborCounts;

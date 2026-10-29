@@ -29,8 +29,9 @@ This project is undergoing an architectural transition from an aggregate-driven 
 to independently testable, Reynolds-style steering rules. Two implementations currently exist side-by-side:
 - **Legacy** (default): Aggregate-driven SoA steering systems architecture
 - **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
-  exist, but the perception contract, force-budget enforcement, and instrumentation UX remain
-  partial; milestones 8-10 and multi-group semantics are also incomplete
+  include an equivalence-tested spatial contract, shared force budget and explicit reusable
+  researcher telemetry. Named policy composition, instrumentation UX and multi-group semantics
+  remain incomplete
 
 For developers: See [`docs/archive/IMPLEMENTATION_EVOLUTION.md`](docs/archive/IMPLEMENTATION_EVOLUTION.md)
 for the preserved story of the pivot and `PROJECT_STATUS.md` for current evidence. New features
@@ -43,6 +44,9 @@ should target the canonical implementation.
   coverage, including wander-enabled and two-process headless checks on the same platform/runtime
 - ✅ Agent-genome data structures and mutation API
 - ✅ Configurable simulation parameters with presets
+- ✅ JSON round-trip for both engine configurations and a strict layered scenario resolver
+- ✅ Radius-complete legacy grid sensing with periodic seam handling
+- ✅ Canonical zero-allocation warm-tick regressions and a dedicated BenchmarkDotNet route
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
 - ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
@@ -50,8 +54,8 @@ should target the canonical implementation.
 
 ### Remaining Direction
 - **Canonical readiness**: prescribed behavioral scenarios (#41), instrumentation UX (#40),
-  boundary/reflection coverage, scale properties/metrics, multi-group behavior, and canonical
-  benchmarks. The perception/spatial-index contract (#18) and force-budget enforcement (#19) are
+  boundary/reflection coverage, scale properties/metrics and multi-group behavior. Canonical
+  benchmarks now exist. The perception/spatial-index contract (#18) and force-budget enforcement (#19) are
   done
 - **Phase 3**: Multi-group interactions, combat, metabolism
 - **Phase 4**: Reproduction, evolution, trait drift
@@ -96,7 +100,13 @@ dotnet run --project SwarmSim.Render -- --benchmark --agent-count 20000
 
 # Run the BenchmarkDotNet suite
 dotnet run --project SwarmSim.Benchmarks -c Release
+
+# Measure complete canonical ticks and allocations
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical
 ```
+
+For reusable configuration and telemetry APIs, see the
+[experiment foundation guide](docs/EXPERIMENT_FOUNDATION.md).
 
 While the renderer is running:
 - Press **H** to toggle the partial in-app help overlay; use [`docs/CONTROLS.md`](docs/CONTROLS.md) for the
@@ -238,6 +248,7 @@ SwarmingLilMen/
 │   ├── Systems/            # Legacy per-tick sense, behavior, wander, and integrate
 │   ├── Spatial/            # Uniform grid for neighbor queries
 │   ├── Diagnostics/        # Ordered kinematic hash
+│   ├── Configuration/      # JSON round-trip and layered scenario resolution
 │   ├── Canonical/          # New canonical boids implementation
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Render/        # Raylib-cs visualization
@@ -378,7 +389,7 @@ The active legacy path rebuilds the uniform grid, then runs these systems in seq
 Combat, forage, reproduction, metabolism, and lifecycle systems remain future Phase 3+ work.
 
 ### Performance Principles
-- Allocation-conscious hot paths; there is currently **no enforced allocation gate**
+- Allocation-conscious hot paths; canonical warm-step and reusable-capture allocation tests run in CI
 - No LINQ, delegates, or boxing in hot paths
 - Tight `for` loops with hoisted invariants
 - Direct/static calls over virtual in inner loops
@@ -386,28 +397,28 @@ Combat, forage, reproduction, metabolism, and lifecycle systems remain future Ph
 ## 📈 Performance Targets and Evidence
 
 The interactive objective is **50k-100k agents at 60 FPS** and the headless objective is **1M+
-agents**. Both are targets; neither is currently verified, and the 50k measurement misses the
-16.67 ms/tick budget by more than an order of magnitude.
+agents**. Both are targets; neither is currently verified. Measured canonical ticks at 50k still
+exceed the 16.67 ms/tick budget before renderer work is counted.
 
-Reproduce the sample yourself — this is the only command that produces it:
+Run the legacy timing probes and the separate canonical benchmark:
 
 ```bash
 dotnet build SwarmingLilMen.sln --configuration Release
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
+dotnet run --project SwarmSim.Benchmarks -c Release --no-build -- --canonical
 ```
 
 | Evidence | State |
 |----------|-------|
-| Legacy tick at 1k / 10k / 50k agents | Measured; the dated figures live in the verified block of [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
+| Legacy tick at 1k / 10k / 50k agents | Historical measurements; see the dated [status archive](docs/archive/PROJECT_STATUS_BEFORE_2026-10-29.md) |
 | Legacy 50k grid rebuild | Measured; grid-only, not full simulation cost |
-| Canonical throughput | Unmeasured — no canonical BenchmarkDotNet comparison exists ([#20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20)) |
+| Canonical throughput | BenchmarkDotNet measurements at 1k/10k/50k, with workload and host caveats in [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
 | Renderer FPS | Unmeasured — the timing tests open no window |
-| Allocations per tick | Small canonical workloads measured in the [canonical experiment](docs/CANONICAL_EXPERIMENT.md); no general zero-allocation claim |
+| Allocations per tick | Zero current-thread allocations in 1,000-warm-tick regressions, with capture off or reused; benchmark observations and limits in [`PROJECT_STATUS.md`](PROJECT_STATUS.md) |
 
-The absolute numbers are deliberately **not** copied here. They are one local sample rather than a
-benchmark distribution, they move with the machine and with every merge, and a fifth copy of them
-across the docs is how they go stale. `PROJECT_STATUS.md` carries the measured figures with their
-date and command.
+The measured numbers, distributions, workload and machine details are maintained in
+`PROJECT_STATUS.md`; historical samples remain dated in its archive. Results from different engines,
+densities or machines are not interchangeable.
 
 The bounded headless canonical experiment compares complete observable trajectories against the
 naive spatial index, reports allocations and replays dense neighbor selection with operation counts:
@@ -434,9 +445,10 @@ Quick checklist:
 ## 📋 Development Status
 
 Legacy Phases 0-2, fixed-timestep running, snapshot interpolation, and the renderer are implemented.
-The project is now completing canonical readiness before Phase 3; seeded reproducibility,
-perception semantics, force-budget enforcement, instrumentation UX, milestones 8-10, multi-group
-semantics, canonical performance evidence, and renderer automation remain open. See
+The project is completing its experiment foundation. Seeded same-platform reproducibility,
+spatial-index equivalence, force-budget enforcement and explicit telemetry are covered. Named
+policy composition, experiment metrics/sweeps, instrumentation UX, multi-group semantics and
+renderer automation remain open. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
 ## 🔧 Troubleshooting

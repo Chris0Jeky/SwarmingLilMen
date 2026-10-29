@@ -119,6 +119,19 @@ public sealed class QueryTruncationInstrumentationTests
             world.SetVelocity(i, new Vec2(MathF.Cos(angle), MathF.Sin(angle)));
         }
         world.Step(15f);
+
+        // The long step queried the dense cluster, then integrated to dispersed positions.
+        // A current-position query now reports no cap; last-tick telemetry must still report it.
+        var telemetry = new CanonicalTelemetry(world.Count);
+        world.CaptureTelemetryInto(telemetry);
+        Span<int> neighbors = stackalloc int[world.EffectiveMaxNeighbors];
+        Span<float> weights = stackalloc float[world.EffectiveMaxNeighbors];
+        Assert.False(world.QueryVisibleNeighbors(0, neighbors, weights).IsTruncated);
+        Assert.True(world.Instrumentation.QueryTruncated[0]);
+        Assert.True(telemetry.QueryTruncated[0]);
+        Assert.Equal(world.Count, telemetry.TruncatedCount);
+        Assert.Equal(2ul, telemetry.TickCount);
+
         world.Step(0.1f);
 
         Assert.Equal(3ul, world.TickCount);
@@ -134,6 +147,7 @@ public sealed class QueryTruncationInstrumentationTests
         Assert.Equal(0, trueCount);
         Assert.Equal(0, world.Instrumentation.TruncatedCount);
         Assert.True(firstTick[0]);
+        Assert.True(telemetry.QueryTruncated[0]);
     }
 
     [Fact]
