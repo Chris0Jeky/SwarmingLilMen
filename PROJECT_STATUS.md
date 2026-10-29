@@ -25,7 +25,11 @@ not made active merely because `SimConfig` contains related settings.
   calculated adapter/identity vectors are committed, and a fourth stochastic observer leaves every
   kinematic hash unchanged for 256 ticks. The deliberate canonical wander reference migration is
   tracked in [determinism](docs/DETERMINISM.md); cross-platform motion identity is not promised.
-  See the [stream ownership and byte contract](docs/RANDOM_STREAMS.md).
+  The local Release gate passes 941 tests. Both Windows jobs independently captured the new exact
+  trajectory in [run 40811616741](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40811616741),
+  with all logged component words rehashed; Ubuntu CI matched the Linux reference. Retained RNG
+  draws allocate zero bytes in the 100,000-batch regression. See the
+  [stream ownership and byte contract](docs/RANDOM_STREAMS.md).
 
 - **CI and regression gates:** PR #168 retains Ubuntu/Windows merge-result builds/tests and adds
   independent jobs for the exact PR head, logging its SHA. All four jobs passed 536 tests at
@@ -71,9 +75,10 @@ not made active merely because `SimConfig` contains related settings.
   seed, timestep, OS/architecture and .NET band. Committed eight-agent traces pin ticks
   0/1/16/64/256 and RNG sequences. Ubuntu x64 .NET 8.0.21 and 8.0.33 match; Windows x64 .NET 8.0.33
   matches legacy/RNG but has a separate exact canonical reference. The first canonical difference
-  is 1 ULP at tick 1; at tick 256 the largest component difference is 0.00012969970703125
-  (maximum 322 ULP). Both Windows CI jobs independently recorded the same result in
-  [run 40804377401](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/40804377401).
+  is 1 ULP at tick 1. The original pre-PCG trace had a tick-256 maximum component difference of
+  0.00012969970703125 (322 ULP); after the explicit named-stream migration it is
+  0.00009918212890625 (112 ULP), measured in both Windows jobs against Linux. The determinism guide
+  retains both experiments and their CI references.
   One-ULP force changes fail the ordinary golden assertions. The golden suite enforces the
   reviewed .NET 8 / x64 / Linux-or-Windows band; new bands require reviewed measured references.
   See [determinism and fixture policy](docs/DETERMINISM.md).

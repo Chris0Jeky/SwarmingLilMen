@@ -36,14 +36,14 @@ owner-authorized autonomous implementation and merge workflow.
 
 ## Tasks and proving checks
 
-- [ ] Pin external PCG words, independently calculated float/double/bounded words, named identity
+- [x] Pin external PCG words, independently calculated float/double/bounded words, named identity
   vectors, validation and interleaved-consumer independence in ordinary tests.
-- [ ] Implement the generator/factory and route canonical wander. Keep legacy bytes/fixtures intact.
-- [ ] Add an actually invoked fourth stochastic observer and prove 256 ticks of existing motion
+- [x] Implement the generator/factory and route canonical wander. Keep legacy bytes/fixtures intact.
+- [x] Add an actually invoked fourth stochastic observer and prove 256 ticks of existing motion
   are unchanged when it draws. Retain capacity/extra-agent isolation and cross-process checks.
-- [ ] Capture old-vs-new canonical checkpoint drift on Linux and Windows; commit reviewed exact
+- [x] Capture old-vs-new canonical checkpoint drift on Linux and Windows; commit reviewed exact
   references only after independently checking component words and hashes. Keep one-ULP witnesses.
-- [ ] Update determinism, source guidance and project status with the measured new scope/limits.
+- [x] Update determinism, source guidance and project status with the measured new scope/limits.
 - [ ] Run full Release non-performance gate, allocation gate, and exact-head/merge-result CI on
   Ubuntu and Windows; inspect logs and review the final published diff before merging.
 
