@@ -1,5 +1,5 @@
 using SwarmSim.Core.Canonical;
-using SwarmSim.Core.Utils;
+using Xunit.Abstractions;
 
 namespace SwarmSim.Tests;
 
@@ -9,6 +9,10 @@ namespace SwarmSim.Tests;
 /// </summary>
 public class CanonicalScenarioTests
 {
+    private readonly ITestOutputHelper _output;
+
+    public CanonicalScenarioTests(ITestOutputHelper output) => _output = output;
+
     [Fact]
     public void Separation_HeadOnClosestApproachStaysAbovePassThrough()
     {
@@ -55,16 +59,18 @@ public class CanonicalScenarioTests
         }
 
         float after = Distance(world);
+        _output.WriteLine($"Head-on: closest={minimum:R}, final={after:R}, ticks={ticks}.");
         Assert.True(minimum > 4.8f, $"Closest approach {minimum} should stay above 4.8.");
         Assert.True(after > 13.5f, $"Distance after {ticks} ticks was {after}, expected above 13.5.");
     }
 
     [Fact]
-    public void Alignment_DistinctHeadingsIncreaseMeanResultantLength()
+    public void Alignment_TripletReducesCircularHeadingVariance()
     {
-        // Milestone 4 (alignment). A loose flock with distinct headings. Separation never
-        // engages (neighbors start ~6 apart, radius 1.5). MaxForce is below a typical
-        // alignment steer, so alignment spends the budget before the zero-weight cohesion slot.
+        // Milestone 4: three different headings converge. Circular variance is 1 - the
+        // mean resultant length, so it handles angle wrapping without an arbitrary mean angle.
+        // Require at least 90% reduction over five simulated seconds, not a rounding-sized gain.
+        // This is the current weighted default pipeline, not the named isolation promised by #27.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 8,
@@ -87,7 +93,7 @@ public class CanonicalScenarioTests
         };
 
         var world = CreateWorld(settings);
-        float[] degrees = { -40f, -15f, 10f, 35f, 70f };
+        float[] degrees = { -60f, 0f, 60f };
         for (int i = 0; i < degrees.Length; i++)
         {
             float radians = degrees[i] * MathF.PI / 180f;
@@ -96,21 +102,27 @@ public class CanonicalScenarioTests
             Assert.True(world.TryAddBoid(position, velocity));
         }
 
-        float before = MeanResultantLength(world);
+        float before = 1f - MeanResultantLength(world);
         const float dt = 1f / 60f;
         for (int i = 0; i < 300; i++)
             world.Step(dt);
 
-        float after = MeanResultantLength(world);
-        Assert.True(after > before, $"Mean resultant length went from {before} to {after}.");
+        float after = 1f - MeanResultantLength(world);
+        _output.WriteLine($"Alignment: circular variance {before:R} -> {after:R} over 300 ticks.");
+        Assert.True(before > 0.3f, $"Initial circular variance {before} must make convergence observable.");
+        Assert.True(after <= before * 0.1f, $"Circular variance {before} -> {after}; expected at least 90% reduction.");
     }
 
-    [Fact]
-    public void Alignment_IsolatedBoidKeepsVelocity()
+    [Theory]
+    [InlineData(1f, 0f)]
+    [InlineData(0f, 1f)]
+    [InlineData(0.6f, 0.8f)]
+    public void Alignment_IsolatedBoidKeepsVelocity(float headingX, float headingY)
     {
         // Milestone 4 (alignment). A boid with no neighbors has no alignment steer.
         // Integration renormalizes the same heading through trig round trips, so the assertion uses a
-        // tolerance (1e-4 over 90 steps) rather than bit equality, which can differ across platforms.
+        // tolerance (1e-4 at speed 2 over 600 steps) rather than bit equality, which can differ
+        // across platforms. Axis-aligned and oblique headings cover both trig paths.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 4,
@@ -127,11 +139,16 @@ public class CanonicalScenarioTests
         };
 
         var world = CreateWorld(settings);
-        Assert.True(world.TryAddBoid(new Vec2(500f, 400f), new Vec2(0.6f, 0.8f)));
+        Assert.True(world.TryAddBoid(new Vec2(500f, 400f), new Vec2(headingX, headingY)));
         Vec2 before = world.Boids[0].Velocity;
 
-        for (int i = 0; i < 90; i++)
+        for (int i = 0; i < 600; i++)
+        {
             world.Step(1f / 60f);
+            Assert.Equal(0f, world.Instrumentation.SteeringMagnitudesSquared[0]);
+            Assert.Equal(before.X, world.Boids[0].Velocity.X, 1e-4f);
+            Assert.Equal(before.Y, world.Boids[0].Velocity.Y, 1e-4f);
+        }
 
         Vec2 after = world.Boids[0].Velocity;
         Assert.Equal(before.X, after.X, 1e-4f);
@@ -142,7 +159,7 @@ public class CanonicalScenarioTests
     public void Cohesion_LoneBoidMovesCloserToNeighbor()
     {
         // Milestone 5 (cohesion). One boid sits inside sense range (40) and outside
-        // separation range (3) of a single same-heading neighbor, so only cohesion steers.
+        // separation range (3) of a single same-heading neighbor, so initially only cohesion steers.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 4,
@@ -173,7 +190,8 @@ public class CanonicalScenarioTests
             world.Step(1f / 60f);
 
         float after = Distance(world);
-        Assert.True(after < before, $"Distance went from {before} to {after}.");
+        _output.WriteLine($"Cohesion pair: distance {before:R} -> {after:R} over 180 ticks.");
+        Assert.True(after <= before * 0.8f, $"Distance {before} -> {after}; expected at least 20% contraction.");
     }
 
     [Fact]
@@ -181,8 +199,9 @@ public class CanonicalScenarioTests
     {
         // Milestone 5 (cohesion). A rank of same-heading boids, far from the world edge.
         // Spacing (8) is outside the separation radius (2), so the radius to the centroid
-        // contracts by cohesion rather than by a pass-through. Minimum-image deltas keep
-        // the measure toroidal if a later horizon wraps.
+        // contracts by cohesion rather than by a pass-through. This finite horizon stays
+        // far from the edges, where the ordinary centroid is valid; seam geometry has its
+        // own two-cluster case below.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 8,
@@ -210,20 +229,23 @@ public class CanonicalScenarioTests
             Assert.True(world.TryAddBoid(new Vec2(500f, 400f + offsets[i]), new Vec2(1f, 0f)));
 
         float before = ClusterRadius(world);
-        for (int i = 0; i < 240; i++)
+        // Six seconds permits the outer boids to turn and translate; the target is a
+        // quarter-radius contraction, not an instantaneous heading change.
+        for (int i = 0; i < 360; i++)
             world.Step(1f / 60f);
 
         float after = ClusterRadius(world);
-        Assert.True(after < before, $"Cluster radius went from {before} to {after}.");
+        _output.WriteLine($"Cohesion rank: radius {before:R} -> {after:R} over 360 ticks.");
+        Assert.True(after <= before * 0.75f, $"Cluster radius {before} -> {after}; expected at least 25% contraction.");
     }
 
     [Fact]
-    public void CombinedRules_SeededFlockStaysFiniteAndMobile()
+    public void CombinedRules_ExplicitInteractingFlockStaysWithinPrioritySpeedBounds()
     {
-        // Composition stability. All three rules come from CanonicalWorld's default
-        // registration, using the settings weights, over a few hundred ticks of a flock
-        // placed by the repo Rng. Speed is renormalized to the target (droop can only
-        // lower it), so the upper bound is that target plus a small float tolerance.
+        // Default priority-mode stability, not classic-Reynolds composition. An explicit
+        // layout puts a close pair among a loose 4x4 flock so this cannot pass as an empty
+        // neighborhood test. The allowed speed lies between target*(1-droop) and target.
+        // No initialization or wander RNG is involved; named-stream changes cannot move it.
         var settings = new CanonicalWorldSettings
         {
             InitialCapacity = 32,
@@ -242,32 +264,122 @@ public class CanonicalScenarioTests
         };
 
         var world = CreateWorld(settings);
-        var rng = new Rng(settings.Seed);
         const int count = 16;
+        Vec2[] headings = { new(1f, 0f), new(0f, 1f), new(-1f, 0f), new(0f, -1f) };
         for (int i = 0; i < count; i++)
         {
-            float x = 300f + rng.NextFloat() * 200f;
-            float y = 200f + rng.NextFloat() * 200f;
-            float angle = rng.NextFloat() * MathF.PI * 2f;
-            Assert.True(world.TryAddBoid(new Vec2(x, y), new Vec2(MathF.Cos(angle), MathF.Sin(angle))));
+            var position = i == 1 ? new Vec2(352f, 250f) : new Vec2(350f + (i % 4) * 8f, 250f + (i / 4) * 8f);
+            Assert.True(world.TryAddBoid(position, headings[i % headings.Length]));
         }
 
-        const float stuckEpsilon = 1e-3f;
-        float speedCeiling = settings.TargetSpeed + 1e-3f;
+        const float speedTolerance = 1e-4f;
+        float speedFloor = settings.TargetSpeed * (1f - settings.SeparationSpeedDroop) - speedTolerance;
+        float speedCeiling = settings.TargetSpeed + speedTolerance;
         float dt = settings.FixedDeltaTime;
+        bool separationObserved = false, alignmentObserved = false, cohesionObserved = false, droopObserved = false;
         for (int tick = 0; tick < 400; tick++)
         {
             world.Step(dt);
+            separationObserved |= world.Instrumentation.AverageSeparationMagnitude > 0f;
+            alignmentObserved |= world.Instrumentation.AverageAlignmentMagnitude > 0f;
+            cohesionObserved |= world.Instrumentation.AverageCohesionMagnitude > 0f;
             for (int i = 0; i < world.Count; i++)
             {
                 Boid boid = world.Boids[i];
                 Assert.True(float.IsFinite(boid.Position.X) && float.IsFinite(boid.Position.Y), $"Non-finite position at tick {tick}, boid {i}.");
                 Assert.True(float.IsFinite(boid.Velocity.X) && float.IsFinite(boid.Velocity.Y), $"Non-finite velocity at tick {tick}, boid {i}.");
                 float speed = boid.Velocity.Length;
-                Assert.True(speed >= stuckEpsilon, $"Boid {i} speed {speed} is stuck at tick {tick}.");
+                Assert.True(speed >= speedFloor, $"Boid {i} speed {speed} is below the priority-mode floor {speedFloor} at tick {tick}.");
                 Assert.True(speed <= speedCeiling, $"Boid {i} speed {speed} exceeds {speedCeiling} at tick {tick}.");
+                droopObserved |= speed < settings.TargetSpeed - 0.01f;
             }
         }
+        Assert.True(separationObserved && alignmentObserved && cohesionObserved,
+            $"All three rules must contribute: separation={separationObserved}, alignment={alignmentObserved}, cohesion={cohesionObserved}.");
+        Assert.True(droopObserved, "This scene must exercise the intentional default speed droop, not only the target-speed ceiling.");
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void Cohesion_TwoCompactClustersApproachAcrossTheShortestImage(bool acrossSeam)
+    {
+        // Milestone 5's two-cluster geometry. The current weighted pipeline has no named
+        // rule-off switch, so this checks integrated cohesion, not alignment-off isolation.
+        // Both centers are 30 units apart in the periodic metric and within sense range.
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 6, WorldWidth = 128f, WorldHeight = 96f,
+            TargetSpeed = 2f, MaxForce = 4f, SenseRadius = 40f, SeparationRadius = 0.1f,
+            FieldOfView = 360f, SeparationWeight = 1.5f, AlignmentWeight = 1f, CohesionWeight = 1f,
+            SeparationPriorityRadiusFactor = 0f, SeparationPriorityExitFactor = 0f,
+            WanderStrength = 0f, WhiskerTimeHorizon = 0f, WhiskerWeight = 0f,
+            MaxTurnRateDegPerSecond = 720f, Seed = 41u
+        };
+        var world = CreateWorld(settings);
+        float left = acrossSeam ? 15f : 49f;
+        float right = acrossSeam ? 113f : 79f;
+        foreach (float center in new[] { left, right })
+            foreach (float offset in new[] { -1f, 0f, 1f })
+                Assert.True(world.TryAddBoid(new Vec2(center, 48f + offset), new Vec2(0f, 1f)));
+
+        float before = CenterDistance(world);
+        Assert.Equal(30f, before);
+        for (int tick = 0; tick < 180; tick++) world.Step(1f / 60f);
+        float after = CenterDistance(world);
+        _output.WriteLine($"Two clusters (seam={acrossSeam}): center distance {before:R} -> {after:R} over 180 ticks.");
+        Assert.True(after <= before * 0.8f, $"Cluster centers {before} -> {after}; expected at least 20% contraction along the shortest image.");
+    }
+
+    [Fact]
+    public void PriorityMode_DefaultDroopHasAFloorAndRecoversWhenThePairSeparates()
+    {
+        // Deliberate default speed semantics: priority reduces speed by at most 3%, then
+        // releases it after separation. This is not the classic constant-speed acceptance.
+        var settings = new CanonicalWorldSettings
+        {
+            InitialCapacity = 2, TargetSpeed = 2f, MaxForce = 1.5f, SenseRadius = 18f,
+            SeparationRadius = 6f, FieldOfView = 360f, WanderStrength = 0f,
+            WorldWidth = 128f, WorldHeight = 96f
+        };
+        var world = CreateWorld(settings);
+        Assert.True(world.TryAddBoid(new Vec2(60.5f, 48f), new Vec2(-1f, 0f)));
+        Assert.True(world.TryAddBoid(new Vec2(62f, 48f), new Vec2(1f, 0f)));
+        var telemetry = new CanonicalTelemetry(2);
+        float floor = settings.TargetSpeed * (1f - settings.SeparationSpeedDroop);
+        float minimumSpeed = settings.TargetSpeed;
+        bool priorityObserved = false;
+        for (int tick = 0; tick < 360; tick++)
+        {
+            world.Step(settings.FixedDeltaTime);
+            world.CaptureTelemetryInto(telemetry);
+            priorityObserved |= telemetry.SeparationPriorityTriggered;
+            foreach (Boid boid in world.Boids)
+            {
+                float speed = boid.Velocity.Length;
+                Assert.InRange(speed, floor - 1e-4f, settings.TargetSpeed + 1e-4f);
+                minimumSpeed = MathF.Min(minimumSpeed, speed);
+            }
+        }
+        _output.WriteLine($"Priority droop: minimum={minimumSpeed:R}, expected floor={floor:R}, final gap={Distance(world):R}.");
+        Assert.True(priorityObserved, "The close pair must engage priority before leaving the threshold.");
+        Assert.Equal(floor, minimumSpeed, 1e-4f);
+        Assert.True(Distance(world) > settings.SeparationPriorityExitFactor * settings.SenseRadius);
+        Assert.False(telemetry.SeparationPriorityTriggered);
+        foreach (Boid boid in world.Boids) Assert.Equal(settings.TargetSpeed, boid.Velocity.Length, 1e-4f);
+    }
+
+    private static float CenterDistance(CanonicalWorld world)
+    {
+        Vec2 Center(int start)
+        {
+            Vec2 anchor = world.Boids[start].Position;
+            Vec2 sum = Vec2.Zero;
+            for (int i = start; i < start + 3; i++)
+                sum += Vec2.MinimumImageDelta(anchor, world.Boids[i].Position, world.Settings.WorldWidth, world.Settings.WorldHeight);
+            return anchor + sum / 3f;
+        }
+        return Vec2.MinimumImageDelta(Center(0), Center(3), world.Settings.WorldWidth, world.Settings.WorldHeight).Length;
     }
 
     private static CanonicalWorld CreateWorld(CanonicalWorldSettings settings)
