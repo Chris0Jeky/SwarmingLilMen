@@ -1,7 +1,8 @@
 # Experiment foundation
 
-The C# engine currently supports two boids implementations. The legacy `World` is a fixed-capacity
-structure-of-arrays pipeline; `CanonicalWorld` is the target for new engine work. Neither is yet a
+The C# engine currently supports two boids implementations. The legacy `World` is a
+structure-of-arrays pipeline whose spawn calls can grow storage up to `MaxCapacity`;
+`CanonicalWorld` retains fixed storage and is the target for new engine work. Neither is yet a
 general-purpose dynamics kernel. This guide describes the shared configuration and diagnostics
 that experiments can rely on without a renderer.
 

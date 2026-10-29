@@ -75,7 +75,7 @@ public sealed class BehaviorSystem : ISimSystem
         for (int i = 0; i < count; i++)
         {
             // Skip dead agents
-            if (state[i].HasFlag(AgentState.Dead))
+            if ((state[i] & AgentState.Dead) != 0)
                 continue;
 
             int neighborCount = neighborCounts[i];

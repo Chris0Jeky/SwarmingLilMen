@@ -181,10 +181,35 @@ The following properties remain reserved: `AttackDamage`, `AttackRadius`, `Attac
 of `MutationRate` in `[0, 1]` and a non-null square aggression matrix remains; this work does
 not invent gameplay bounds for unused fields. JSON output requires finite numbers.
 
-**InitialCapacity** is the actual fixed legacy allocation limit and must be positive.
-**MaxCapacity** still has to be at least `InitialCapacity`, but arrays do not grow toward it:
-spawning past the initial allocation returns `-1`. **CompactionInterval** must be at least
-one tick.
+## Population capacity
+
+Legacy **InitialCapacity** is the positive starting allocation (default `100000`).
+**MaxCapacity** is the occupied-slot ceiling (default `200000`) and must be at least
+`InitialCapacity`. Both must fit .NET's
+[`Array.MaxLength`](https://learn.microsoft.com/en-us/dotnet/api/system.array.maxlength?view=net-8.0)
+element-count limit. That limit does not guarantee enough memory for an allocation.
+
+`World.AddAgent`, `AddRandomAgent`, and `SpawnAgentsInCircle` grow storage when the current
+allocation fills: double it, capped at `MaxCapacity`. All agent arrays, sensing scratch and grid
+links grow together. Existing agent indices, state, random sequence and simulation time survive;
+growth does not compact dead slots or reset systems. `Count` includes dead slots until
+`CompactDeadAgents` removes them, and compaction retains its existing index-remapping behavior.
+**CompactionInterval** must be at least one tick. Storage never shrinks automatically.
+
+At the maximum, the single-agent methods return `-1`; the circle method returns the number it
+actually added. Refused capacity requests consume no random draws. Growth allocations occur in
+spawn calls, while ordinary spawns with room and later simulation ticks reuse storage. Reacquire
+borrowed world-array references and spans after a spawn that may grow capacity. Copied snapshots
+remain unchanged; mutations outside `SimulationRunner.Advance` still require
+`NotifyWorldMutated()` before capturing the new state for interpolation. Grid object identity is
+preserved, and newly spawned agents enter it on the next `Rebuild`, as before.
+
+This intentionally changes the former fixed-allocation behavior: requests between the initial
+allocation and the configured maximum now succeed. A rejected `AddRandomAgent` also no longer
+advances randomness. Set `MaxCapacity == InitialCapacity` when fixed legacy storage is required.
+Canonical settings have no `MaxCapacity`: canonical storage remains fixed at its effective
+`InitialCapacity`. Legacy headless runs accept `--agents` through `MaxCapacity` and finish any
+required growth before allocating their metric buffers or writing output.
 
 ## A practical tuning sequence
 

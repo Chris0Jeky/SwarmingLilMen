@@ -31,7 +31,7 @@ public sealed class WanderSystem : ISimSystem
         for (int i = 0; i < count; i++)
         {
             // Skip dead agents
-            if (state[i].HasFlag(AgentState.Dead))
+            if ((state[i] & AgentState.Dead) != 0)
                 continue;
 
             // Add small random force

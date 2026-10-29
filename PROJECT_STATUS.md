@@ -8,7 +8,7 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 ## What the engine is today
 
 SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Two boids engines
-coexist deliberately: legacy `World` is a fixed-capacity SoA pipeline and the default renderer;
+coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time growth and the default renderer;
 `CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
 independent stochastic consumers. The reusable general-purpose kernel, Vicsek/ACO foundations
 and intent composition remain roadmap work.
@@ -39,6 +39,17 @@ not made active merely because `SimConfig` contains related settings.
   `f342bc9695e2707e930e0e5e0fac85db84a2c449`. Genome validation tests reject every covered invalid
   rate/deviation without consuming RNG draws. Removing the guards in an isolated copy produced
   eight expected failures. The main branch received this change through a merge commit.
+- **Legacy population capacity:** `InitialCapacity` controls initial storage and `MaxCapacity`
+  bounds occupied slots. Spawn calls grow geometrically while preserving agent data/indices,
+  sensing scratch, grid links, simulation time and RNG state; reaching the ceiling consumes no
+  random draws. Borrowed arrays/spans must be reacquired after growth; copied snapshots remain
+  valid and mutation notification remains explicit. The CLI accepts populations up to the legacy
+  maximum. Fourteen new regressions plus an independent Wrap/Reflect/Clamp probe compare grown
+  and preallocated worlds through spawn, compaction, refill and subsequent ticks. Existing exact
+  traces remain unchanged. Equivalent bit masks replace seven legacy `Enum.HasFlag` calls that
+  boxed under Tier0: fresh-process grown/preallocated probes now allocate zero bytes for 1,000
+  ticks with normal tiering and with tiering disabled. This finding is separate from the unresolved
+  canonical BenchmarkDotNet 5 B/op observation below. See [population limits](docs/PARAMETER_GUIDE.md).
 - **Foundation gate:** PR #170 passed all 697 Release non-performance tests on Ubuntu and Windows,
   against both the merge result and exact head `5f08a9f331944f65c7665ab91fd86dd3c7ea6614`.
 - **Configuration:** both config types load and save JSON, including the legacy rectangular
@@ -221,8 +232,8 @@ benchmark commands, explicit historical measurement labels and the actual sequen
 browser-demo semantics. The old readiness checklist points scheduling back to the epic instead
 of directing new work to closed issues.
 
-Other tracked residue: fixed legacy capacity versus reserved `MaxCapacity` (#62); runtime help
-synchronization (#39); remaining scenario/composition coverage (#41); and publication-scanner
+Other tracked residue: runtime help synchronization (#39); remaining scenario/composition
+coverage (#41); and publication-scanner
 indirection gaps (#164). A green engine suite does not validate
 renderer interaction, browser demos, or a deployment.
 

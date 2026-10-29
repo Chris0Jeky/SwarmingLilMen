@@ -27,8 +27,8 @@ internal sealed class PreparedSimulation
         else
         {
             SimConfig config = request.Legacy!;
-            if (request.AgentCount > config.InitialCapacity)
-                throw new ArgumentException("--agents exceeds the legacy InitialCapacity.");
+            if (request.AgentCount > config.MaxCapacity)
+                throw new ArgumentException("--agents exceeds the legacy MaxCapacity.");
             _legacy = new World(config);
             Spawn(config.WorldWidth, config.WorldHeight, config.MaxSpeed);
         }

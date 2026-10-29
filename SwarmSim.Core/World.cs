@@ -9,11 +9,12 @@ namespace SwarmSim.Core;
 /// This class owns all agent data and provides controlled access for systems.
 ///
 /// INVARIANTS:
-/// - Count <= Capacity always holds
+/// - Count <= Capacity <= Config.MaxCapacity always holds
 /// - Active agents are in indices [0, Count)
 /// - Dead/free slots managed via free-list (not yet implemented)
 /// - All arrays have length == Capacity
-/// - No allocations during Tick() after initialization
+/// - Storage grows only during spawn calls; Tick() does not allocate
+/// Array references and spans must be reacquired after a spawn that grows Capacity.
 /// </summary>
 public sealed class World
 {
@@ -105,7 +106,7 @@ public sealed class World
     }
 
     /// <summary>
-    /// Initializes or resizes all arrays to the given capacity.
+    /// Initializes empty storage and systems once during construction.
     /// </summary>
     private void Initialize(int capacity)
     {
@@ -168,8 +169,63 @@ public sealed class World
     }
 
     /// <summary>
+    /// Reserves a slot before a spawn mutates state or consumes randomness. Existing indices,
+    /// arrays' contents, systems, grid links and simulation time survive geometric growth.
+    /// </summary>
+    private bool EnsureSpawnCapacity()
+    {
+        if (Count < Capacity)
+            return true;
+        if (Count >= Config.MaxCapacity)
+            return false;
+
+        int capacity = (int)Math.Min(2L * Capacity, Config.MaxCapacity);
+        // Prepare every replacement before publishing any world array. If allocation fails,
+        // Count and existing agent data stay intact; already enlarged scratch remains usable.
+        float[] x = CopyToCapacity(X, capacity);
+        float[] y = CopyToCapacity(Y, capacity);
+        float[] vx = CopyToCapacity(Vx, capacity);
+        float[] vy = CopyToCapacity(Vy, capacity);
+        float[] fx = CopyToCapacity(Fx, capacity);
+        float[] fy = CopyToCapacity(Fy, capacity);
+        float[] energy = CopyToCapacity(Energy, capacity);
+        float[] health = CopyToCapacity(Health, capacity);
+        float[] age = CopyToCapacity(Age, capacity);
+        byte[] group = CopyToCapacity(Group, capacity);
+        AgentState[] state = CopyToCapacity(State, capacity);
+        Genome[] genomes = CopyToCapacity(Genomes, capacity);
+        float[] lastAttackTime = CopyToCapacity(LastAttackTime, capacity);
+        _senseSystem.EnsureCapacity(capacity);
+        Grid.EnsureCapacity(capacity);
+
+        X = x;
+        Y = y;
+        Vx = vx;
+        Vy = vy;
+        Fx = fx;
+        Fy = fy;
+        Energy = energy;
+        Health = health;
+        Age = age;
+        Group = group;
+        State = state;
+        Genomes = genomes;
+        LastAttackTime = lastAttackTime;
+        Capacity = capacity;
+        return true;
+    }
+
+    private static T[] CopyToCapacity<T>(T[] source, int capacity)
+    {
+        var destination = new T[capacity];
+        source.CopyTo(destination, 0);
+        return destination;
+    }
+
+    /// <summary>
     /// Adds a new agent to the world at the specified position.
-    /// Returns the index of the new agent, or -1 if at capacity.
+    /// Grows storage when needed, up to Config.MaxCapacity. Returns the new agent's index,
+    /// or -1 for non-finite coordinates or when the maximum occupied-slot count is reached.
     /// </summary>
     public int AddAgent(
         float x, float y,
@@ -179,7 +235,7 @@ public sealed class World
         // -1 also covers non-finite coordinates.
         if (!float.IsFinite(x) || !float.IsFinite(y))
             return -1;
-        if (Count >= Capacity)
+        if (!EnsureSpawnCapacity())
             return -1;
 
         int idx = Count++;
@@ -211,10 +267,14 @@ public sealed class World
     }
 
     /// <summary>
-    /// Adds a new agent with random position and genome.
+    /// Adds a new agent with random position and genome, growing storage when needed.
+    /// Returns -1 at Config.MaxCapacity without consuming random draws.
     /// </summary>
     public int AddRandomAgent(byte group = 0)
     {
+        if (!EnsureSpawnCapacity())
+            return -1;
+
         float x = Rng.NextFloat(0f, Config.WorldWidth);
         float y = Rng.NextFloat(0f, Config.WorldHeight);
         Genome genome = Genome.Random(Rng);
@@ -223,7 +283,8 @@ public sealed class World
     }
 
     /// <summary>
-    /// Spawns multiple agents in a circular region.
+    /// Spawns agents in a circular region, growing storage up to Config.MaxCapacity.
+    /// Returns the number added; a full world stops the batch without extra random draws.
     /// </summary>
     public int SpawnAgentsInCircle(float centerX, float centerY, float radius, int count, byte group = 0)
     {
@@ -237,9 +298,12 @@ public sealed class World
             throw new ArgumentOutOfRangeException(nameof(radius));
 
         int spawned = 0;
-        // Stop once full: further iterations could only burn RNG draws and change later spawns.
-        for (int i = 0; i < count && Count < Capacity; i++)
+        for (int i = 0; i < count; i++)
         {
+            // Reserve before drawing: reaching the ceiling must not alter later random state.
+            if (!EnsureSpawnCapacity())
+                break;
+
             (float dx, float dy) = Rng.NextPointInCircle(radius);
             float x = centerX + dx;
             float y = centerY + dy;
@@ -287,7 +351,8 @@ public sealed class World
 
         for (int readIdx = 0; readIdx < Count; readIdx++)
         {
-            if (State[readIdx].HasFlag(AgentState.Dead))
+            // A mask also avoids Enum.HasFlag boxing before tiered JIT optimization.
+            if ((State[readIdx] & AgentState.Dead) != 0)
             {
                 removed++;
                 continue;

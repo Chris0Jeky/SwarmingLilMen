@@ -26,7 +26,7 @@ so passing a legacy file to the canonical engine fails before output is created.
 | `--config FILE` | None | Sparse native configuration file |
 | `--seed N` | Resolved configuration seed | Integer from 0 through 2147483647 |
 | `--ticks N` | `600` | Non-negative logical step count; zero records initial state only |
-| `--agents N` | `400` | Positive initial population; must fit resolved initial capacity |
+| `--agents N` | `400` | Positive initial population; at most legacy `MaxCapacity` or canonical effective `InitialCapacity` |
 | `--metrics NAME,NAME,...` | `population,meanSpeed,polarization` | Registered channel names, case-sensitive, in exact CSV order |
 | `--list-metrics` | — | Lists names, applicability and cost for `--engine`; creates no run |
 | `--out DIRECTORY` | `runs` | Parent of a new run directory; existing runs are preserved |
@@ -38,6 +38,13 @@ Duplicate options, unknown options, malformed numeric values, and unexpected pos
 are usage errors. Exit codes are `0` for success, `1` for configuration/replay/I/O/run failure,
 and `2` for invalid command-line usage. Errors go to standard error; success prints the new run
 directory to standard output.
+
+Legacy spawning may grow its arrays from `InitialCapacity` up to `MaxCapacity` during preflight.
+The recorded configuration retains both configured limits; metric capture and exact-neighbor
+scratch use the resulting world capacity, so every requested agent is included. Setting the two
+limits equal keeps storage fixed. Canonical capacity remains fixed at `max(1, InitialCapacity)`.
+The same rules apply to every sweep cell, including a grid over legacy `InitialCapacity`.
+See [population capacity](PARAMETER_GUIDE.md#population-capacity) for growth and snapshot contracts.
 
 ## Run-directory contract
 
