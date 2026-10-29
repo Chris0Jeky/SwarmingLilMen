@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Reflection;
 using SwarmSim.Core.Canonical;
 using Xunit;
 
@@ -164,14 +163,8 @@ public sealed class QueryTruncationInstrumentationTests
             TargetSpeed = 1f,
             WanderStrength = 0f,
         };
-        var world = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
-
-        // The constructor seeds default rules; clear them to exercise the zero-rules path,
-        // where Step skips neighbor queries entirely.
-        FieldInfo? rulesField = typeof(CanonicalWorld).GetField("_rules", BindingFlags.NonPublic | BindingFlags.Instance);
-        Assert.NotNull(rulesField);
-        var rules = Assert.IsType<List<IRule>>(rulesField.GetValue(world));
-        rules.Clear();
+        var world = new CanonicalWorld(settings,
+            new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight), CanonicalPipeline.Empty());
 
         for (int i = 0; i < 6; i++)
             Assert.True(world.TryAddBoid(new Vec2(50f + i * 0.5f, 50f), new Vec2(1f, 0f)));

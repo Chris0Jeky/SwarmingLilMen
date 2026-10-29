@@ -1,4 +1,5 @@
 using System.IO;
+using System.Text.Json.Serialization;
 using SwarmSim.Core.Configuration;
 using SwarmSim.Core.Utils;
 
@@ -6,18 +7,29 @@ namespace SwarmSim.Core.Canonical;
 
 public sealed class CanonicalWorldSettings
 {
+    /// <summary>
+    /// Built-in composition used by the two-argument world constructor and the CLI. Omitted JSON
+    /// means Enhanced, including old complete manifests. Enhanced is omitted when serializing to
+    /// preserve that contract. An explicitly injected pipeline takes precedence over this factory choice.
+    /// </summary>
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public CanonicalMode Mode { get; init; } = CanonicalMode.Enhanced;
+
     public int InitialCapacity { get; init; } = 1024;
     public float TargetSpeed { get; init; } = 1f;
     /// <summary>
-    /// Per-tick ceiling on the TOTAL composed steering magnitude for one boid, in units of
+    /// In Enhanced mode, the per-tick ceiling on the TOTAL composed steering magnitude, in units of
     /// speed per second. It is a single shared budget, not a per-contribution allowance: whisker
     /// avoidance, separation, alignment, cohesion and wander all draw from the same remainder in
     /// that order, and once it is spent later contributions receive nothing. Separation
     /// additionally withholds whatever it leaves unspent from alignment, cohesion and wander -
     /// that priority behaviour is unchanged; what it may no longer do is spend beyond this
     /// ceiling.
+    /// In the explicitly selected ClassicReynolds mode this is instead a per-rule allowance:
+    /// each of three contributions is clamped independently and summed without a shared
+    /// post-clamp. Its total can exceed MaxForce. Injected pipelines use their chosen resolver.
     /// <para>
-    /// The bound holds to within float rounding, not exactly. Contributions are summed as
+    /// The enhanced total bound holds to within float rounding, not exactly. Contributions are summed as
     /// normalized vectors, so the composed magnitude can exceed this value by a few ULP - measured
     /// at 2 ULP (2.5000005 against a 2.5 ceiling) on roughly a quarter of agent-ticks in a dense
     /// crowd. Assert against a small relative tolerance rather than a bare
@@ -28,8 +40,8 @@ public sealed class CanonicalWorldSettings
     /// Enforced since issue #19. Before that fix separation clamped to a fresh MaxForce and added
     /// on top of an already-spent whisker budget, so one tick could compose up to 2x this value.
     /// <see cref="RuleInstrumentation.SteeringMagnitudesSquared"/> exposes the composed magnitude
-    /// so the invariant is checkable from outside; the composition order itself is a separate
-    /// design property owned by the steering-arbitration work.
+    /// so the selected resolver's invariant is checkable from outside. Composition order belongs
+    /// to the explicitly chosen pipeline.
     /// </remarks>
     public float MaxForce { get; init; } = 0.2f;
     public float SenseRadius { get; init; } = 10f;
@@ -61,6 +73,16 @@ public sealed class CanonicalWorldSettings
     public float FixedDeltaTime { get; init; } = 1f / 60f;
 
     public CanonicalWorldSettings() { }
+
+    /// <summary>
+    /// Supported classic baseline: full-circle observation and three independent-clamp/sum rules.
+    /// Enhancement knobs retain their serialized values but their stages are absent in this mode.
+    /// </summary>
+    public static CanonicalWorldSettings ClassicReynolds() => new()
+    {
+        Mode = CanonicalMode.ClassicReynolds,
+        FieldOfView = 360f
+    };
 
     /// <summary>
     /// Maps a complete SimConfig using the renderer's established numeric clamps. Shared names
@@ -108,6 +130,9 @@ public sealed class CanonicalWorldSettings
     public List<string> Validate()
     {
         var errors = new List<string>();
+        if (!Enum.IsDefined(Mode)) errors.Add("Unknown canonical Mode");
+        if (Mode == CanonicalMode.ClassicReynolds && FieldOfView != 360f)
+            errors.Add("ClassicReynolds mode requires FieldOfView 360");
         if (Seed > Rng.MaxSupportedSeed) errors.Add($"Seed must be between 0 and {Rng.MaxSupportedSeed}, inclusive");
         if (!float.IsFinite(TargetSpeed) || TargetSpeed <= 0f) errors.Add("TargetSpeed must be finite and positive");
         if (!float.IsFinite(MaxForce) || MaxForce <= 0f) errors.Add("MaxForce must be finite and positive");
@@ -141,7 +166,7 @@ public sealed class CanonicalWorldSettings
     /// <summary>Reads a JSON object; omitted fields retain their canonical defaults.</summary>
     public static CanonicalWorldSettings FromJson(string json) => ConfigurationJson.Deserialize<CanonicalWorldSettings>(json, config => config.Validate());
 
-    /// <summary>Serializes every canonical setting after validation.</summary>
+    /// <summary>Serializes resolved settings after validation; the compatibility default Mode is omitted.</summary>
     public string ToJson() => ConfigurationJson.Serialize(this, Validate());
 
     /// <summary>Writes a complete resolved configuration after validation succeeds.</summary>

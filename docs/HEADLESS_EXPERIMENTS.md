@@ -9,6 +9,7 @@ dependency graph. The default engine is canonical.
 ```sh
 dotnet run --project SwarmSim.Cli -c Release -- --scenario balanced --seed 7 --ticks 600 --agents 400 --out runs/
 dotnet run --project SwarmSim.Cli -c Release -- --config configs/canonical-balanced.json --seed 7 --ticks 600 --engine canonical --out runs/
+dotnet run --project SwarmSim.Cli -c Release -- --config configs/canonical-classic.json --seed 7 --ticks 600 --engine canonical --agents 400 --out runs/
 dotnet run --project SwarmSim.Cli -c Release -- --config configs/balanced.json --seed 7 --ticks 600 --engine legacy --out runs/
 ```
 
@@ -18,6 +19,16 @@ so passing a legacy file to the canonical engine fails before output is created.
 `--scenario balanced` name when you want the authored tuning applied to either engine. See the
 [configuration cookbook](CONFIGURATION_COOKBOOK.md) and
 [parameter mapping](PARAMETER_GUIDE.md#legacy-to-canonical-mapping) for the differences that remain.
+
+Canonical defaults use the **Enhanced** composition. A native file can select
+`"Mode": "ClassicReynolds"` together with `"FieldOfView": 360`, as in
+[canonical-classic.json](../configs/canonical-classic.json). Classic installs only separation,
+alignment and cohesion, clamps each force independently to `MaxForce`, sums them without a shared
+post-clamp, then normalizes target speed. Its total force can exceed `MaxForce`; the enhanced
+mode retains its shared total budget. The classic mode omits whisker, wander, priority, shaping
+and turn-rate stages. See [canonical composition](CANONICAL_COMPOSITION.md) for the public API,
+candidate-cap limits and exact semantics. In sweep files, put `Mode` in the base configuration;
+v1 sweep axes remain numeric scalar fields.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -61,6 +72,11 @@ Each successful run publishes a new `runs/run-<random-id>/` child containing exa
 - **`log.txt`** — Run settings, output hashes, and elapsed run time. Timing is operational
   information and is excluded from the default metrics. Runtime metric scope is recorded here
   when those channels are selected.
+
+Enhanced canonical `Mode` is intentionally omitted from resolved JSON. A missing mode in old
+schema 1 or schema 2 manifests is pinned to Enhanced; classic manifests record their mode
+explicitly. This is the only optional-field exception to the complete-configuration check.
+Other required fields cannot be omitted and inherited from current defaults.
 
 `gitCommit` comes only from a validated revision embedded in the CLI assembly at build time:
 `SourceRevisionId` assembly metadata, or the revision appended to its informational version by

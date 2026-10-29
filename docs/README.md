@@ -10,8 +10,12 @@ ordering authority. Historical documents are context, not proof.
 - [`HEADLESS_EXPERIMENTS.md`](HEADLESS_EXPERIMENTS.md) - run artifacts, native configurations and exact manifest replay
 - [`METRICS.md`](METRICS.md) - reusable analysis probes, exact neighbor distributions and deterministic versus runtime channels
 - [`DETERMINISM.md`](DETERMINISM.md) - measured platform scope, exact golden traces and fixture policy
+- [`RANDOM_STREAMS.md`](RANDOM_STREAMS.md) - named PCG32 streams, independent ownership and the byte contract
+- [`CANONICAL_COMPOSITION.md`](CANONICAL_COMPOSITION.md) - bounded force policies, classic mode and measured cost
+- [`CANONICAL_BEHAVIOR_SCENARIOS.md`](CANONICAL_BEHAVIOR_SCENARIOS.md) - quantitative scenarios and mutation witnesses
 - [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
 - [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics
+- [`NATIVE_UI_VERIFICATION.md`](NATIVE_UI_VERIFICATION.md) - native Linux interactions, screenshots and exact evidence scope
 - [`QUICKSTART.md`](QUICKSTART.md) - five-minute setup and first run
 - [`CONTROLS.md`](CONTROLS.md) - renderer controls and runtime parameter editor
 - [`PARAMETER_GUIDE.md`](PARAMETER_GUIDE.md) - configuration field effects and ranges

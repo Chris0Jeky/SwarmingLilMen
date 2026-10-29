@@ -193,11 +193,13 @@ public sealed class ConfigurationJsonTests
         var config = new T();
         foreach (PropertyInfo property in typeof(T).GetProperties(BindingFlags.Instance | BindingFlags.Public))
         {
-            object value = property.PropertyType == typeof(float) ? 0.375f
+            object value = property.PropertyType == typeof(float) ?
+                (typeof(T) == typeof(CanonicalWorldSettings) && property.Name == nameof(CanonicalWorldSettings.FieldOfView) ? 360f : 0.375f)
                 : property.PropertyType == typeof(uint) ? 37u
                 : property.PropertyType == typeof(int) ? (property.Name == nameof(SimConfig.MaxCapacity) ? 17 : 7)
                 : property.PropertyType == typeof(BoundaryMode) ? BoundaryMode.Reflect
                 : property.PropertyType == typeof(SpeedModel) ? SpeedModel.Damped
+                : property.PropertyType == typeof(CanonicalMode) ? CanonicalMode.ClassicReynolds
                 : property.PropertyType == typeof(float[,]) ? new float[,] { { 0.1f, -0.8f }, { 0.9f, 0.2f } }
                 : throw new InvalidOperationException($"Add a non-default fixture value for {property.Name}.");
             Assert.NotEqual(property.GetValue(config), value);

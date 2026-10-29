@@ -82,15 +82,16 @@ public sealed class RuleInstrumentation
 
     /// <summary>
     /// Records the total composed steering vector a boid is about to integrate, as a squared
-    /// magnitude so the hot path stores one multiply-free value and no square root.
+    /// magnitude so the hot path stores one scalar without taking a square root.
     /// </summary>
     /// <remarks>
     /// <see cref="CanonicalWorld.Step"/> calls this after every contribution (whisker avoidance,
     /// separation, alignment, cohesion, wander) has been composed and immediately before velocity
     /// integration. The composed steering vector is otherwise a method local that later gets
     /// reshaped by avoidance blending and renormalized to the allowed speed, so this is the only
-    /// point at which the per-tick <see cref="CanonicalWorldSettings.MaxForce"/> budget is
-    /// observable from outside.
+    /// point at which the enhanced pipeline's per-tick <see cref="CanonicalWorldSettings.MaxForce"/>
+    /// budget is observable from outside. Classic Reynolds instead clamps each rule separately;
+    /// its recorded summed force can exceed MaxForce by design.
     /// </remarks>
     internal void RecordSteering(int index, float magnitudeSquared)
     {
@@ -103,7 +104,8 @@ public sealed class RuleInstrumentation
     /// <summary>
     /// Gets the squared magnitude of the total composed steering vector each active boid
     /// integrated on the most recent <see cref="CanonicalWorld.Step"/>. Compare against
-    /// <see cref="CanonicalWorldSettings.MaxForce"/> squared to check the per-tick force budget.
+    /// <see cref="CanonicalWorldSettings.MaxForce"/> squared to check the enhanced pipeline's
+    /// per-tick shared budget. Classic Reynolds has an independent per-rule bound, not this total bound.
     /// </summary>
     public ReadOnlySpan<float> SteeringMagnitudesSquared => _steeringMagnitudesSquared.AsSpan(0, _activeCount);
 
