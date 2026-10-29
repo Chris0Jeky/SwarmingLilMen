@@ -152,9 +152,68 @@ Examples:
   SwarmSim.Render --config configs/warbands.json -n 5000
   dotnet run --project SwarmSim.Cli -- --engine canonical --ticks 600
 
-Interactive Controls:
-  Press H inside the application to toggle the help overlay.
-  Press F12 to view snapshot/debug information.
+Legacy interactive controls (default renderer):
+PARAMETERS (1-8 to select)
+  1: Select Separation weight
+  2: Select Alignment weight
+  3: Select Cohesion weight
+  4: Select Separation radius
+  5: Select Sense radius
+  6: Select Max speed
+  7: Select Max force
+  8: Select Friction (Damped only)
+  Up/+/KP+: Increase selected parameter
+  Down/-/KP-: Decrease selected parameter
+  Shift: Hold for fine adjustment with any adjust key
+  Friction is inactive with ConstantSpeed (Damped only).
+PRESETS
+  F1: Load Balanced (Recommended)
+  F2: Load Strong Separation
+  F3: Load Tight Flocking
+  F4: Load Fast & Loose
+  F5: Load Slow & Cohesive
+WORLD
+  P: Print current parameters to the console
+  R: Reset/respawn the world
+  Esc: Quit
+  Left click: Spawn up to 50 agents at cursor (group 0)
+  Right click: Spawn up to 50 agents at cursor (group 1)
+  Space: Spawn up to 100 random agents across groups
+  X: Shake (add random velocity)
+  C: Export CSV snapshot
+VISUALIZATION
+  H: Toggle this help overlay
+  V: Toggle velocity vectors
+  S: Toggle sense radius circles (below 100 agents)
+  N: Toggle tracked-agent neighbor connections
+  F12: Toggle snapshot/debug overlay
+
+Canonical interactive controls (--canonical):
+PARAMETERS (1-7 to select)
+  1: Select Separation weight
+  2: Select Alignment weight
+  3: Select Cohesion weight
+  4: Select Separation radius
+  5: Select Sense radius
+  6: Select Target speed
+  7: Select Max force
+  Up/+/KP+: Increase selected parameter
+  Down/-/KP-: Decrease selected parameter
+  Shift: Hold for fine adjustment with any adjust key
+PRESETS
+  F1: Load Balanced (Recommended)
+  F2: Load Strong Separation
+  F3: Load Tight Flocking
+  F4: Load Fast & Loose
+  F5: Load Slow & Cohesive
+WORLD
+  P: Print current parameters to the console
+  R: Reset/respawn the world
+  Esc: Quit
+VISUALIZATION
+  H: Toggle this help overlay
+  O: Toggle interaction overlay
+  Tab: Cycle inspected boid
 
 Available presets:
   balanced        - Balanced (Recommended) :: Canonical boids tuning with smooth flocking

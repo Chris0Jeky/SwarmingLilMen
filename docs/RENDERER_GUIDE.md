@@ -62,21 +62,29 @@ of silently using unrelated canonical defaults.
 
 ## Controls
 
-Press **H** in either renderer for a partial in-app quick reference. The maintained complete
-reference is
+Press **H** in either renderer for its complete control inventory. The maintained reference is
 [`CONTROLS.md`](CONTROLS.md). Legacy highlights include spawning with mouse/Space, **R** reset,
 **V/S/N** visualization toggles, **F1-F5** presets, **C** CSV export, and **F12** snapshot/debug information
 (`Program.HandleInput`, `Program.DrawHelpOverlay`).
 
-Runtime parameter/help labels currently advertise `1-7` even though input accepts **1-8**, and the
-canonical panel omits several active controls; executable synchronization is tracked in
-[issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+Sense-radius circles are drawn only below 100 agents; the S binding's help states this limit.
+If parameter/preset changes and spawn/reset/shake actions arrive in the same frame, the later
+actions operate on the recreated active world rather than the discarded instance.
+
+`RendererControls` supplies the bindings consumed by both input paths and the labels in both
+overlays, the legacy parameter panel, canonical footer, parameter printing, and console help.
+Legacy labels advertise **1–8**; canonical accepts and advertises **1–7**. Headless regression
+coverage checks the shared inventory and effective parameter semantics. The
+[native verification record](NATIVE_UI_VERIFICATION.md) includes direct captures of both panels,
+real input/preset/custom-startup checks, exact binary identities and the same-frame spawn regression.
+Its scope is Linux software rendering, without a human sign-off or cross-platform GUI claim.
 
 Friction key **8** is currently a no-op for every registered legacy preset because those presets
 inherit `SpeedModel.ConstantSpeed`; it affects only an explicit custom legacy `Damped`
-configuration. Canonical settings do not consume friction. Issue #39 owns the executable/help
-alignment (`SimConfig.SpeedModel`; `IntegrateSystem.Run`; `Program.Parameters`, `Program.Presets`,
-`Program.ProcessCanonicalParameters`).
+configuration. The legacy panel, help and console messages label that limitation explicitly.
+Canonical settings do not consume friction, and canonical input now ignores key **8** instead
+of changing an unused value (`SimConfig.SpeedModel`; `IntegrateSystem.Run`;
+`RendererControls.ApplyParameters`; `Program.ProcessCanonicalParameters`).
 
 The canonical path has separate controls: **R** reset, **H** help, **O** selected-boid interaction
 overlay, **Tab** tracked-boid selection, parameter keys, and **F1-F5** presets

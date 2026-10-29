@@ -67,38 +67,22 @@ internal static class Program
     private static float _friction = 1f;           // Was 0.99 (CRITICAL FIX!)
     private static int _initialAgentCount = 400;
 
-    // Parameter info for display and adjustment
-    private struct AdjustableParameter
-    {
-        public string Name;
-        public string Key;
-        public float MinValue;
-        public float MaxValue;
-        public float StepSize;
-        public float FineStepSize;
-        public Func<float> GetValue;
-        public Action<float> SetValue;
-    }
-
-    private static readonly AdjustableParameter[] Parameters =
+    // Values stay here; names, key bindings and adjustment ranges live in the shared inventory.
+    private readonly record struct ParameterAccessor(Func<float> GetValue, Action<float> SetValue);
+    private static readonly ParameterAccessor[] Parameters =
     [
-        new() { Name = "Separation Weight", Key = "1", MinValue = 0f, MaxValue = 500f, StepSize = 10f, FineStepSize = 0.01f,
-            GetValue = () => _separationWeight, SetValue = v => _separationWeight = v },
-        new() { Name = "Alignment Weight", Key = "2", MinValue = 0f, MaxValue = 500f, StepSize = 10f, FineStepSize = 0.01f,
-            GetValue = () => _alignmentWeight, SetValue = v => _alignmentWeight = v },
-        new() { Name = "Cohesion Weight", Key = "3", MinValue = 0f, MaxValue = 10f, StepSize = 0.1f, FineStepSize = 0.0001f,
-            GetValue = () => _cohesionWeight, SetValue = v => _cohesionWeight = v },
-        new() { Name = "Separation Radius", Key = "4", MinValue = 5f, MaxValue = 200f, StepSize = 5f, FineStepSize = 1f,
-            GetValue = () => _separationRadius, SetValue = v => _separationRadius = v },
-        new() { Name = "Sense Radius", Key = "5", MinValue = 10f, MaxValue = 300f, StepSize = 10f, FineStepSize = 2f,
-            GetValue = () => _senseRadius, SetValue = v => _senseRadius = v },
-        new() { Name = "Max Speed", Key = "6", MinValue = 1f, MaxValue = 500f, StepSize = 10f, FineStepSize = 1f,
-            GetValue = () => _maxSpeed, SetValue = v => _maxSpeed = v },
-        new() { Name = "Max Force", Key = "7", MinValue = 0.1f, MaxValue = 20f, StepSize = 0.1f, FineStepSize = 0.01f,
-            GetValue = () => _maxForce, SetValue = v => _maxForce = v },
-        new() { Name = "Friction", Key = "8", MinValue = 0.8f, MaxValue = 1.0f, StepSize = 0.01f, FineStepSize = 0.001f,
-            GetValue = () => _friction, SetValue = v => _friction = v },
+        new(() => _separationWeight, v => _separationWeight = v),
+        new(() => _alignmentWeight, v => _alignmentWeight = v),
+        new(() => _cohesionWeight, v => _cohesionWeight = v),
+        new(() => _separationRadius, v => _separationRadius = v),
+        new(() => _senseRadius, v => _senseRadius = v),
+        new(() => _maxSpeed, v => _maxSpeed = v),
+        new(() => _maxForce, v => _maxForce = v),
+        new(() => _friction, v => _friction = v),
     ];
+
+    private static float GetParameterValue(int index) => Parameters[index].GetValue();
+    private static void SetParameterValue(int index, float value) => Parameters[index].SetValue(value);
 
     // Preset configurations
     private sealed class Preset
@@ -222,6 +206,7 @@ internal static class Program
     // registry Main actually resolves against. Must stay declared AFTER Presets: static field
     // initializers run in declaration order, so an earlier declaration would read a null Presets.
     internal static readonly IReadOnlyList<string> PresetIds = Array.ConvertAll(Presets, p => p.Id);
+    internal static readonly RendererControls Controls = new(Array.ConvertAll(Presets, p => p.Name));
 
     // Color palette for groups (16 colors)
     private static readonly Color[] GroupColors =
@@ -544,6 +529,7 @@ internal static class Program
 
         Raylib.InitWindow(WindowWidth, WindowHeight, WindowTitle);
         Raylib.SetTargetFPS(60);
+        Raylib.SetExitKey(Controls.ExitKey(RendererMode.Legacy));
 
         var world = CreateWorldWithCurrentParams();
         _world = world;
@@ -557,7 +543,9 @@ internal static class Program
         while (!Raylib.WindowShouldClose())
         {
             Debug.Assert(_world != null, nameof(_world) + " != null");
-            HandleInput(_world);
+            RendererInputSnapshot input = Controls.Capture(RendererMode.Legacy, RaylibRendererInput.Instance);
+            if (input.IsActive(RendererControlId.Quit)) break;
+            HandleInput(_world, input);
 
             float frameTime = Raylib.GetFrameTime();
             int stepsProcessed = _runner.Advance(frameTime);
@@ -667,74 +655,31 @@ internal static class Program
         Console.WriteLine($"Spawned {agentCount} agents across {groups} clusters.");
     }
 
-    private static void HandleInput(World world)
+    private static void HandleInput(World world, RendererInputSnapshot input)
     {
-        var config = world.Config;
-
-        // Check for shift key (fine adjustment)
-        _fineAdjustment = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
-
-        // === PARAMETER ADJUSTMENT ===
-        // Number keys 1-7: Select parameter to adjust
-        for (int i = 0; i < Parameters.Length; i++)
+        _fineAdjustment = input.IsActive(RendererControlId.FineAdjustment);
+        if (Controls.ApplyParameters(input, ref _selectedParameter, GetParameterValue, SetParameterValue, Console.Out, world.Config.SpeedModel))
         {
-            var keyCode = KeyboardKey.One + i;
-            if (Raylib.IsKeyPressed(keyCode))
-            {
-                _selectedParameter = i;
-                var param = Parameters[i];
-                float currentValue = param.GetValue();
-                Console.WriteLine($"Selected: {param.Name} = {currentValue:F4}");
-            }
-        }
-
-        // Up/Down arrows or +/- : Adjust selected parameter
-        bool increase = Raylib.IsKeyPressed(KeyboardKey.Up) ||
-                       Raylib.IsKeyPressed(KeyboardKey.Equal) ||
-                       Raylib.IsKeyPressed(KeyboardKey.KpAdd);
-        bool decrease = Raylib.IsKeyPressed(KeyboardKey.Down) ||
-                       Raylib.IsKeyPressed(KeyboardKey.Minus) ||
-                       Raylib.IsKeyPressed(KeyboardKey.KpSubtract);
-
-        if (increase || decrease)
-        {
-            var param = Parameters[_selectedParameter];
-            float currentValue = param.GetValue();
-            float step = _fineAdjustment ? param.FineStepSize : param.StepSize;
-
-            if (increase)
-                currentValue = Math.Min(currentValue + step, param.MaxValue);
-            else
-                currentValue = Math.Max(currentValue - step, param.MinValue);
-
-            param.SetValue(currentValue);
-            Console.WriteLine($"{param.Name} = {currentValue:F4} (Step: {step:F4})");
-
-            // Recreate world with new parameters
             RecreateWorldWithNewParams(world);
+            world = _world!;
         }
 
-        // === PRESETS (F1-F5) ===
-        if (Raylib.IsKeyPressed(KeyboardKey.F1)) { ApplyPreset(Presets[0]); RecreateWorldWithNewParams(world); }
-        if (Raylib.IsKeyPressed(KeyboardKey.F2)) { ApplyPreset(Presets[1]); RecreateWorldWithNewParams(world); }
-        if (Raylib.IsKeyPressed(KeyboardKey.F3)) { ApplyPreset(Presets[2]); RecreateWorldWithNewParams(world); }
-        if (Raylib.IsKeyPressed(KeyboardKey.F4)) { ApplyPreset(Presets[3]); RecreateWorldWithNewParams(world); }
-        if (Raylib.IsKeyPressed(KeyboardKey.F5)) { ApplyPreset(Presets[4]); RecreateWorldWithNewParams(world); }
-
-        // P: Print current configuration
-        if (Raylib.IsKeyPressed(KeyboardKey.P))
+        for (int i = 0; i < Presets.Length; i++)
         {
-            Console.WriteLine("\n=== Current Configuration ===");
-            foreach (var param in Parameters)
-            {
-                Console.WriteLine($"{param.Name}: {param.GetValue():F4}");
-            }
-            Console.WriteLine("=============================\n");
+            if (!input.IsActive(Controls.GetPreset(i).Id)) continue;
+            ApplyPreset(Presets[i]);
+            RecreateWorldWithNewParams(world);
+            world = _world!;
         }
+
+        // Remaining actions in this captured frame must target the newly active world.
+
+        if (input.IsActive(RendererControlId.PrintConfiguration))
+            Controls.PrintParameters(RendererMode.Legacy, GetParameterValue, Console.Out, _baseConfigTemplate.SpeedModel);
 
         // === EXISTING CONTROLS ===
         // Left click: Spawn agents at mouse position
-        if (Raylib.IsMouseButtonPressed(MouseButton.Left))
+        if (input.IsActive(RendererControlId.SpawnGroup0))
         {
             var mousePos = Raylib.GetMousePosition();
             int spawned = world.SpawnAgentsInCircle(mousePos.X, mousePos.Y, 50f, 50, group: 0);
@@ -743,7 +688,7 @@ internal static class Program
         }
 
         // Right click: Spawn different group
-        if (Raylib.IsMouseButtonPressed(MouseButton.Right))
+        if (input.IsActive(RendererControlId.SpawnGroup1))
         {
             var mousePos = Raylib.GetMousePosition();
             int spawned = world.SpawnAgentsInCircle(mousePos.X, mousePos.Y, 50f, 50, group: 1);
@@ -752,18 +697,15 @@ internal static class Program
         }
 
         // Space: Spawn random agents
-        if (Raylib.IsKeyPressed(KeyboardKey.Space))
+        if (input.IsActive(RendererControlId.SpawnRandom))
         {
-            for (int i = 0; i < 100; i++)
-            {
-                world.AddRandomAgent(group: (byte)(i % 4));
-            }
-            Console.WriteLine("Spawned 100 random agents");
+            int spawned = SpawnRandomAgents(world);
+            Console.WriteLine($"Spawned {spawned} random agents");
             ForceSnapshotRefresh("space spawn", notifyRunner: true);
         }
 
         // R: Reset world
-        if (Raylib.IsKeyPressed(KeyboardKey.R))
+        if (input.IsActive(RendererControlId.Reset))
         {
             // Clear all agents (mark all as dead and compact)
             for (int i = 0; i < world.Count; i++)
@@ -777,47 +719,47 @@ internal static class Program
         }
 
         // V: Toggle velocity vectors
-        if (Raylib.IsKeyPressed(KeyboardKey.V))
+        if (input.IsActive(RendererControlId.VelocityVectors))
         {
             _showVelocityVectors = !_showVelocityVectors;
             Console.WriteLine($"Velocity vectors: {(_showVelocityVectors ? "ON" : "OFF")}");
         }
 
         // S: Toggle sense radius visualization
-        if (Raylib.IsKeyPressed(KeyboardKey.S))
+        if (input.IsActive(RendererControlId.SenseCircles))
         {
             _showSenseRadius = !_showSenseRadius;
             Console.WriteLine($"Sense radius: {(_showSenseRadius ? "ON" : "OFF")}");
         }
 
         // N: Toggle neighbor connections
-        if (Raylib.IsKeyPressed(KeyboardKey.N))
+        if (input.IsActive(RendererControlId.NeighborLinks))
         {
             _showNeighborConnections = !_showNeighborConnections;
             Console.WriteLine($"Neighbor connections: {(_showNeighborConnections ? "ON" : "OFF")}");
         }
 
-        if (Raylib.IsKeyPressed(KeyboardKey.H))
+        if (input.IsActive(RendererControlId.Help))
         {
             _showHelpOverlay = !_showHelpOverlay;
             Console.WriteLine($"Help overlay: {(_showHelpOverlay ? "ON" : "OFF")}");
         }
 
-        if (Raylib.IsKeyPressed(KeyboardKey.F12))
+        if (input.IsActive(RendererControlId.DebugOverlay))
         {
             _showDebugOverlay = !_showDebugOverlay;
             Console.WriteLine($"Debug overlay: {(_showDebugOverlay ? "ON" : "OFF")}");
         }
 
         // C: Export CSV snapshot
-        if (Raylib.IsKeyPressed(KeyboardKey.C))
+        if (input.IsActive(RendererControlId.ExportCsv))
         {
             ExportCSV(world);
             Console.WriteLine("Exported CSV snapshot");
         }
 
         // X: "Shake" - add random velocity to break equilibrium
-        if (Raylib.IsKeyPressed(KeyboardKey.X))
+        if (input.IsActive(RendererControlId.Shake))
         {
             var rng = world.Rng;
             for (int i = 0; i < world.Count; i++)
@@ -830,6 +772,14 @@ internal static class Program
             }
             Console.WriteLine("Shook agents to break equilibrium!");
         }
+    }
+
+    internal static int SpawnRandomAgents(World world)
+    {
+        int spawned = 0;
+        for (int i = 0; i < 100; i++)
+            if (world.AddRandomAgent(group: (byte)(i % 4)) >= 0) spawned++;
+        return spawned;
     }
 
     private static void ApplyPreset(Preset preset)
@@ -901,7 +851,7 @@ internal static class Program
 
         if (_showHelpOverlay)
         {
-            DrawHelpOverlay();
+            DrawHelpOverlay(RendererMode.Legacy, _world?.Config.SpeedModel ?? _baseConfigTemplate.SpeedModel);
         }
 
         Raylib.EndDrawing();
@@ -941,7 +891,7 @@ internal static class Program
             Color color = GroupColors[group % GroupColors.Length];
 
             // Draw sense radius (if enabled and not too many agents)
-            if (_showSenseRadius && currCount < 100 && _world != null)
+            if (_showSenseRadius && currCount < RendererControls.SenseCircleAgentLimit && _world != null)
             {
                 Raylib.DrawCircleLines((int)x, (int)y, _world.Config.SenseRadius,
                     new Color(color.R, color.G, color.B, (byte)30));
@@ -991,7 +941,7 @@ internal static class Program
             Color color = GroupColors[group % GroupColors.Length];
 
             // Draw sense radius (if enabled and not too many agents)
-            if (_showSenseRadius && currCount < 100 && _world != null)
+            if (_showSenseRadius && currCount < RendererControls.SenseCircleAgentLimit && _world != null)
             {
                 Raylib.DrawCircleLines((int)x, (int)y, _world.Config.SenseRadius,
                     new Color(color.R, color.G, color.B, (byte)30));
@@ -1074,7 +1024,7 @@ internal static class Program
             Color color = GroupColors[group % GroupColors.Length];
 
             // Draw sense radius (if enabled and not too many agents)
-            if (_showSenseRadius && world.Count < 100)
+            if (_showSenseRadius && world.Count < RendererControls.SenseCircleAgentLimit)
             {
                 Raylib.DrawCircleLines((int)x, (int)y, world.Config.SenseRadius,
                     new Color(color.R, color.G, color.B, (byte)30));
@@ -1159,7 +1109,7 @@ internal static class Program
         int fps = Raylib.GetFPS();
 
         // Larger background panel for parameters
-        Raylib.DrawRectangle(0, 0, 450, 580, new Color(0, 0, 0, 200));
+        Raylib.DrawRectangle(0, 0, 450, 650, new Color(0, 0, 0, 200));
 
         // Title
         DrawText($"SwarmingLilMen - Dynamic Parameter Adjustment", padding, y, 20, Color.White);
@@ -1171,23 +1121,27 @@ internal static class Program
         y += lineHeight + 5;
 
         // === ADJUSTABLE PARAMETERS ===
-        DrawText($"PARAMETERS (1-7 to select, ↑↓/+- to adjust{(_fineAdjustment ? " [FINE]" : "")})", padding, y, 14, Color.SkyBlue);
+        DrawText(Controls.ParameterHeading(RendererMode.Legacy), padding, y, 14, Color.SkyBlue);
+        y += lineHeight;
+        DrawText(Controls.ParameterHint(RendererMode.Legacy) + (_fineAdjustment ? " [FINE]" : ""), padding, y, 11, Color.LightGray);
         y += lineHeight;
 
-        for (int i = 0; i < Parameters.Length; i++)
+        var parameterDefinitions = Controls.GetParameters(RendererMode.Legacy);
+        for (int i = 0; i < parameterDefinitions.Count; i++)
         {
-            var param = Parameters[i];
-            float value = param.GetValue();
+            var param = parameterDefinitions[i];
+            float value = GetParameterValue(i);
             bool isSelected = i == _selectedParameter;
 
             Color textColor = isSelected ? Color.Yellow : Color.White;
             Color valueColor = isSelected ? Color.Gold : Color.Gray;
-            string marker = isSelected ? "►" : " ";
+            string marker = isSelected ? ">" : " ";
 
-            string valueStr = param.Name.Contains("Weight") || param.Name.Contains("Friction")
+            string valueStr = param.Control is RendererControlId.SeparationWeight or RendererControlId.AlignmentWeight or RendererControlId.CohesionWeight or RendererControlId.Friction
                 ? $"{value:F6}" : $"{value:F1}";
 
-            DrawText($"{marker}[{param.Key}] {param.Name}:", padding, y, 14, textColor);
+            string keyLabel = Controls.GetBinding(RendererMode.Legacy, param.Control).KeyLabel;
+            DrawText($"{marker}[{keyLabel}] {param.DisplayName(RendererMode.Legacy)}:", padding, y, 14, textColor);
             DrawText($"{valueStr}", padding + 250, y, 14, valueColor);
 
             // Show adjustment hints for selected parameter
@@ -1199,16 +1153,19 @@ internal static class Program
 
             y += lineHeight - 2;
         }
+        DrawText(Controls.FrictionStatus(config.SpeedModel), padding, y, 12,
+            config.SpeedModel == SpeedModel.Damped ? Color.LightGray : Color.Orange);
+        y += lineHeight;
 
         y += 8;
 
         // === PRESETS ===
-        DrawText("PRESETS (F1-F5):", padding, y, 14, Color.SkyBlue);
+        DrawText($"PRESETS ({Controls.GetPreset(0).KeyLabel}-{Controls.GetPreset(Presets.Length - 1).KeyLabel}):", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
 
         for (int i = 0; i < Math.Min(5, Presets.Length); i++)
         {
-            DrawText($"  F{i + 1}: {Presets[i].Name}", padding, y, 12, Color.LightGray);
+            DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, Controls.GetPreset(i).Id)}", padding, y, 12, Color.LightGray);
             y += lineHeight - 4;
         }
 
@@ -1217,13 +1174,13 @@ internal static class Program
         // === VISUALIZATION ===
         DrawText("VISUALIZATION:", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
-        DrawText($"  [V] Velocity: {(_showVelocityVectors ? "ON" : "OFF")}", padding, y, 12,
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.VelocityVectors)}: {(_showVelocityVectors ? "ON" : "OFF")}", padding, y, 12,
             _showVelocityVectors ? Color.Green : Color.Gray);
         y += lineHeight - 4;
-        DrawText($"  [S] Sense Radius: {(_showSenseRadius ? "ON" : "OFF")}", padding, y, 12,
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.SenseCircles)}: {(_showSenseRadius ? "ON" : "OFF")}", padding, y, 12,
             _showSenseRadius ? Color.Green : Color.Gray);
         y += lineHeight - 4;
-        DrawText($"  [N] Neighbors: {(_showNeighborConnections ? "ON" : "OFF")}", padding, y, 12,
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.NeighborLinks)}: {(_showNeighborConnections ? "ON" : "OFF")}", padding, y, 12,
             _showNeighborConnections ? Color.Green : Color.Gray);
         y += lineHeight - 2;
         DrawText($"  Field of View: {_world?.Config.FieldOfView:F0}° | Sense Radius: {_world?.Config.SenseRadius:F0}", padding, y, 12, Color.LightGray);
@@ -1236,15 +1193,17 @@ internal static class Program
         // === CONTROLS ===
         DrawText("CONTROLS:", padding, y, 14, Color.SkyBlue);
         y += lineHeight;
-        DrawText("  Click: Spawn | Space: Random", padding, y, 12, Color.LightGray);
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.SpawnGroup0)} | {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.SpawnGroup1)}", padding, y, 12, Color.LightGray);
         y += lineHeight - 4;
-        DrawText("  [R] Reset | [X] Shake | [C] CSV", padding, y, 12, Color.LightGray);
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.SpawnRandom)}", padding, y, 12, Color.LightGray);
         y += lineHeight - 4;
-        DrawText("  [P] Print Config | ESC: Quit", padding, y, 12, Color.LightGray);
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.Reset)} | {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.Shake)} | {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.ExportCsv)}", padding, y, 12, Color.LightGray);
         y += lineHeight - 4;
-        DrawText("  Hold SHIFT for fine adjustment", padding, y, 12, Color.Gold);
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.PrintConfiguration)} | {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.Quit)}", padding, y, 12, Color.LightGray);
         y += lineHeight - 4;
-        DrawText($"  [H] Help Overlay [{(_showHelpOverlay ? "ON" : "OFF")}] | [F12] Debug Overlay", padding, y, 12, Color.LightGray);
+        DrawText($"  Hold {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.FineAdjustment)}", padding, y, 12, Color.Gold);
+        y += lineHeight - 4;
+        DrawText($"  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.Help)} [{(_showHelpOverlay ? "ON" : "OFF")}] | {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.DebugOverlay)}", padding, y, 12, Color.LightGray);
 
         // === CURRENT VALUES DISPLAY (right side panel) ===
         int rightX = WindowWidth - 300;
@@ -1272,11 +1231,11 @@ internal static class Program
         rightY += lineHeight - 4;
 
         // Show selected parameter in detail
-        if (_selectedParameter >= 0 && _selectedParameter < Parameters.Length)
+        if (_selectedParameter >= 0 && _selectedParameter < parameterDefinitions.Count)
         {
-            var param = Parameters[_selectedParameter];
+            var param = parameterDefinitions[_selectedParameter];
             rightY += 10;
-            DrawText($"Selected: {param.Name}", rightX, rightY, 12, Color.Yellow);
+            DrawText($"Selected: {param.DisplayName(RendererMode.Legacy)}", rightX, rightY, 12, Color.Yellow);
             rightY += lineHeight - 4;
             DrawText($"Range: [{param.MinValue:F2} - {param.MaxValue:F2}]", rightX, rightY, 12, Color.Gray);
         }
@@ -1303,59 +1262,28 @@ internal static class Program
 
         Write($"Prev #{prevSnapshot.CaptureVersion} ({prevSnapshot.AgentCount} agents)", Color.LightGray);
         Write($"Curr #{currSnapshot.CaptureVersion} ({currSnapshot.AgentCount} agents)", Color.LightGray);
-        Write($"Δ Count: {currSnapshot.AgentCount - prevSnapshot.AgentCount}", Color.Yellow);
+        Write($"Count delta: {currSnapshot.AgentCount - prevSnapshot.AgentCount}", Color.Yellow);
         Write($"Mutation: prev {prevSnapshot.MutationVersion}, curr {currSnapshot.MutationVersion}", Color.SkyBlue);
         Write($"Alpha: {alpha:F2} | Mode: {(interpolating ? "Interpolating" : "Direct")}", interpolating ? Color.Green : Color.Orange);
         Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
     }
 
-    private static void DrawHelpOverlay()
+    private static void DrawHelpOverlay(RendererMode mode, SpeedModel speedModel)
     {
-        int width = 640;
-        int height = 420;
+        IReadOnlyList<RendererHelpLine> lines = Controls.GetHelpLines(mode, speedModel);
+        int width = 900;
+        int height = 54 + lines.Count * 18;
         int x = (WindowWidth - width) / 2;
         int y = 40;
 
         Raylib.DrawRectangle(x, y, width, height, new Color(0, 0, 0, 230));
         Raylib.DrawRectangleLines(x, y, width, height, Color.SkyBlue);
 
-        int line = 0;
-        void Write(string text, Color color)
-        {
-            DrawText(text, x + 16, y + 20 + line * 18, 16, color);
-            line++;
-        }
-
-        Write("SwarmingLilMen – Help Overlay (press H to hide)", Color.Yellow);
-        line++;
-        Write("SPAWNING", Color.SkyBlue);
-        Write("  Left Click      Spawn 50 agents at cursor (group 0)", Color.LightGray);
-        Write("  Right Click     Spawn 50 agents at cursor (group 1)", Color.LightGray);
-        Write("  SPACE           Spawn 100 random agents", Color.LightGray);
-        line++;
-        Write("VISUALIZATION", Color.SkyBlue);
-        Write($"  V               Velocity vectors [{(_showVelocityVectors ? "ON" : "OFF")}]", Color.LightGray);
-        Write($"  S               Sense radius [{(_showSenseRadius ? "ON" : "OFF")}]", Color.LightGray);
-        Write($"  N               Neighbor connections [{(_showNeighborConnections ? "ON" : "OFF")}]", Color.LightGray);
-        Write($"  F12             Debug overlay [{(_showDebugOverlay ? "ON" : "OFF")}]", Color.LightGray);
-        var cfg = _world?.Config;
-        if (cfg != null)
-        {
-            Write($"  Vision: radius {cfg.SenseRadius:F0}, FOV {cfg.FieldOfView:F0}°, Max neighbors {cfg.MaxNeighbors}", Color.LightGray);
-        }
-        line++;
-        Write("PARAMETERS", Color.SkyBlue);
-        Write("  1-7             Select parameter to adjust", Color.LightGray);
-        Write("  ↑/↓ or +/-      Increase / decrease selected parameter", Color.LightGray);
-        Write("  SHIFT + ↑/↓     Fine adjustment", Color.LightGray);
-        line++;
-        Write("PRESETS & WORLD", Color.SkyBlue);
-        Write("  F1-F5           Load preset configurations", Color.LightGray);
-        Write("  P               Print current configuration to console", Color.LightGray);
-        Write("  R               Reset world to initial state", Color.LightGray);
-        Write("  X               Shake (adds random velocity)", Color.LightGray);
-        Write("  C               Export CSV snapshot", Color.LightGray);
-        Write("  ESC             Quit", Color.LightGray);
+        string helpKey = Controls.GetBinding(mode, RendererControlId.Help).KeyLabel;
+        DrawText($"{mode} controls (press {helpKey} to hide)", x + 16, y + 16, 18, Color.Yellow);
+        for (int i = 0; i < lines.Count; i++)
+            DrawText(lines[i].Text, x + 16, y + 44 + i * 18, 14,
+                lines[i].IsHeading ? Color.SkyBlue : Color.LightGray);
     }
 
     private static void PrintStartupBanner(int agentCount)
@@ -1367,7 +1295,7 @@ internal static class Program
         Console.WriteLine($"║  Starting with {agentCount} agents across 4 groups".PadRight(61) + "║");
         Console.WriteLine($"║  Fixed timestep: {config.FixedDeltaTime:F4}s | Interpolation: Enabled".PadRight(61) + "║");
         Console.WriteLine("║                                                              ║");
-        Console.WriteLine("║  Press H for help | Press F12 for debug overlay              ║");
+        Console.WriteLine(($"║  {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.Help)} | {Controls.ShortLabel(RendererMode.Legacy, RendererControlId.DebugOverlay)}").PadRight(61) + "║");
         Console.WriteLine("╚══════════════════════════════════════════════════════════════╝");
     }
 
@@ -1423,6 +1351,7 @@ internal static class Program
         Console.WriteLine("Launching canonical single-group simulation.");
         Raylib.InitWindow(WindowWidth, WindowHeight, $"SwarmingLilMen - Canonical Mode");
         Raylib.SetTargetFPS(60);
+        Raylib.SetExitKey(Controls.ExitKey(RendererMode.Canonical));
 
         var settings = BuildCanonicalWorldSettings();
         var canonicalWorld = CreateCanonicalWorld(settings, _initialAgentCount);
@@ -1438,12 +1367,13 @@ internal static class Program
 
         while (!Raylib.WindowShouldClose())
         {
-            if (Raylib.IsKeyPressed(KeyboardKey.Escape))
+            RendererInputSnapshot input = Controls.Capture(RendererMode.Canonical, RaylibRendererInput.Instance);
+            if (input.IsActive(RendererControlId.Quit))
             {
                 break;
             }
 
-            bool parametersChanged = ProcessCanonicalParameters();
+            bool parametersChanged = ProcessCanonicalParameters(input);
             if (parametersChanged)
             {
                 settings = BuildCanonicalWorldSettings();
@@ -1453,24 +1383,24 @@ internal static class Program
                 accumulator = 0f;
             }
 
-            if (Raylib.IsKeyPressed(KeyboardKey.R))
+            if (input.IsActive(RendererControlId.Reset))
             {
                 canonicalWorld = CreateCanonicalWorld(settings, _initialAgentCount);
                 SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
                 accumulator = 0f;
             }
 
-            if (Raylib.IsKeyPressed(KeyboardKey.H))
+            if (input.IsActive(RendererControlId.Help))
             {
                 showHelp = !showHelp;
             }
 
-            if (Raylib.IsKeyPressed(KeyboardKey.O))
+            if (input.IsActive(RendererControlId.Interactions))
             {
                 _canonicalOverlayVisible = !_canonicalOverlayVisible;
             }
 
-            if (Raylib.IsKeyPressed(KeyboardKey.Tab) && canonicalWorld.Count > 0)
+            if (input.IsActive(RendererControlId.NextSubject) && canonicalWorld.Count > 0)
             {
                 _overlaySubjectIndex = (_overlaySubjectIndex + 1) % canonicalWorld.Count;
             }
@@ -1521,7 +1451,7 @@ internal static class Program
                 DrawInteractionOverlay(canonicalWorld, settings, telemetry, neighborBuffer, neighborWeightBuffer);
             }
 
-            Raylib.DrawText($"Canonical Mode — {count} agents (single group)", 10, 8, 18, Color.Lime);
+            Raylib.DrawText($"Canonical Mode - {count} agents (single group)", 10, 8, 18, Color.Lime);
             Raylib.DrawText($"Target: {settings.TargetSpeed:F1} | Avg speed: {avgSpeed:F1}", 10, 32, 14, Color.SkyBlue);
             Raylib.DrawText($"Sense radius: {settings.SenseRadius:F1} | Separation radius: {settings.SeparationRadius:F1}", 10, 52, 14, Color.SkyBlue);
             Raylib.DrawText($"Max force: {settings.MaxForce:F2} | FOV: {settings.FieldOfView:F0}°", 10, 70, 14, Color.SkyBlue);
@@ -1532,24 +1462,12 @@ internal static class Program
             Raylib.DrawText($"Distance avg {telemetry.AverageNeighborDistance:F1} (min {telemetry.MinNeighborDistance:F1}, max {telemetry.MaxNeighborDistance:F1})", 10, 142, 14, Color.SkyBlue);
             Raylib.DrawText($"Separation priority: {(telemetry.SeparationPriorityTriggered ? "ACTIVE" : "idle")}", 10, 160, 14, telemetry.SeparationPriorityTriggered ? Color.Orange : Color.Gray);
 
-            if (_canonicalOverlayVisible)
-            {
-                Raylib.DrawText("O: toggle interactions | Tab: cycle subject", 10, WindowHeight - 68, 14, Color.Gray);
-            }
-            else
-            {
-                Raylib.DrawText("Press O to view interactions", 10, WindowHeight - 68, 14, Color.Gray);
-            }
-
-            Raylib.DrawText("1-7: select params | ↑/↓: adjust | SHIFT: fine", 10, WindowHeight - 48, 12, Color.Gray);
+            Raylib.DrawText($"{Controls.ShortLabel(RendererMode.Canonical, RendererControlId.Interactions)} [{(_canonicalOverlayVisible ? "ON" : "OFF")}] | {Controls.ShortLabel(RendererMode.Canonical, RendererControlId.NextSubject)}", 10, WindowHeight - 68, 14, Color.Gray);
+            Raylib.DrawText(Controls.ParameterHeading(RendererMode.Canonical) + " | " + Controls.ParameterHint(RendererMode.Canonical), 10, WindowHeight - 48, 12, Color.Gray);
+            Raylib.DrawText($"{Controls.ShortLabel(RendererMode.Canonical, RendererControlId.Reset)} | {Controls.ShortLabel(RendererMode.Canonical, RendererControlId.Help)} | {Controls.ShortLabel(RendererMode.Canonical, RendererControlId.Quit)}", 10, WindowHeight - 24, 14, Color.Gray);
             if (showHelp)
             {
-                Raylib.DrawText("Controls: R=respawn, H=toggle help, Esc=quit", 10, WindowHeight - 32, 14, Color.Gray);
-                Raylib.DrawText("Simple canonical Reynolds steering (single group)", 10, WindowHeight - 16, 12, Color.Gray);
-            }
-            else
-            {
-                Raylib.DrawText("Press H for controls", 10, WindowHeight - 24, 14, Color.Gray);
+                DrawHelpOverlay(RendererMode.Canonical, SpeedModel.ConstantSpeed);
             }
 
             Raylib.DrawFPS(WindowWidth - 90, 10);
@@ -1735,61 +1653,16 @@ internal static class Program
         return sum.Normalized;
     }
 
-    private static bool ProcessCanonicalParameters()
+    private static bool ProcessCanonicalParameters(RendererInputSnapshot input)
     {
-        bool changed = false;
-        _fineAdjustment = Raylib.IsKeyDown(KeyboardKey.LeftShift) || Raylib.IsKeyDown(KeyboardKey.RightShift);
+        _fineAdjustment = input.IsActive(RendererControlId.FineAdjustment);
+        bool changed = Controls.ApplyParameters(input, ref _selectedParameter, GetParameterValue, SetParameterValue, Console.Out);
 
-        for (int i = 0; i < Parameters.Length; i++)
-        {
-            var keyCode = KeyboardKey.One + i;
-            if (Raylib.IsKeyPressed(keyCode))
-            {
-                _selectedParameter = i;
-                var param = Parameters[i];
-                float currentValue = param.GetValue();
-                Console.WriteLine($"Selected: {param.Name} = {currentValue:F4}");
-            }
-        }
+        if (input.IsActive(RendererControlId.PrintConfiguration))
+            Controls.PrintParameters(RendererMode.Canonical, GetParameterValue, Console.Out, SpeedModel.ConstantSpeed);
 
-        bool increase = Raylib.IsKeyPressed(KeyboardKey.Up) ||
-                        Raylib.IsKeyPressed(KeyboardKey.Equal) ||
-                        Raylib.IsKeyPressed(KeyboardKey.KpAdd);
-        bool decrease = Raylib.IsKeyPressed(KeyboardKey.Down) ||
-                        Raylib.IsKeyPressed(KeyboardKey.Minus) ||
-                        Raylib.IsKeyPressed(KeyboardKey.KpSubtract);
-
-        if (increase || decrease)
-        {
-            var param = Parameters[_selectedParameter];
-            float currentValue = param.GetValue();
-            float step = _fineAdjustment ? param.FineStepSize : param.StepSize;
-
-            if (increase)
-                currentValue = Math.Min(currentValue + step, param.MaxValue);
-            else
-                currentValue = Math.Max(currentValue - step, param.MinValue);
-
-            param.SetValue(currentValue);
-            Console.WriteLine($"{param.Name} = {currentValue:F4} (Step: {step:F4})");
-            changed = true;
-        }
-
-        if (Raylib.IsKeyPressed(KeyboardKey.P))
-        {
-            Console.WriteLine("\n=== Current Configuration ===");
-            foreach (var param in Parameters)
-            {
-                Console.WriteLine($"{param.Name}: {param.GetValue():F4}");
-            }
-            Console.WriteLine("=============================\n");
-        }
-
-        if (Raylib.IsKeyPressed(KeyboardKey.F1)) { ApplyPreset(Presets[0]); changed = true; }
-        if (Raylib.IsKeyPressed(KeyboardKey.F2)) { ApplyPreset(Presets[1]); changed = true; }
-        if (Raylib.IsKeyPressed(KeyboardKey.F3)) { ApplyPreset(Presets[2]); changed = true; }
-        if (Raylib.IsKeyPressed(KeyboardKey.F4)) { ApplyPreset(Presets[3]); changed = true; }
-        if (Raylib.IsKeyPressed(KeyboardKey.F5)) { ApplyPreset(Presets[4]); changed = true; }
+        for (int i = 0; i < Presets.Length; i++)
+            if (input.IsActive(Controls.GetPreset(i).Id)) { ApplyPreset(Presets[i]); changed = true; }
 
         return changed;
     }
