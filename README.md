@@ -29,10 +29,10 @@ below are goals, not achieved throughput claims.
 This project is undergoing an architectural transition from an aggregate-driven systems approach
 to independently testable, Reynolds-style steering rules. Two implementations currently exist side-by-side:
 - **Legacy** (default renderer): Aggregate-driven SoA steering systems architecture
-- **Canonical** (`--canonical` flag): Core scaffolding and the three steering-rule implementations
-  include an equivalence-tested spatial contract, shared force budget and explicit reusable
-  researcher telemetry. Named policy composition, instrumentation UX and multi-group semantics
-  remain incomplete
+- **Canonical** (`--canonical` flag): Three steering rules, an equivalence-tested spatial contract,
+  reusable researcher telemetry, and named force policies with bounded observations. The default
+  enhanced composition preserves its shared force budget; a public classic-Reynolds configuration
+  uses independent rule clamps. Instrumentation UX and multi-group semantics remain incomplete
 
 For developers: See [`docs/archive/IMPLEMENTATION_EVOLUTION.md`](docs/archive/IMPLEMENTATION_EVOLUTION.md)
 for the preserved story of the pivot and `PROJECT_STATUS.md` for current evidence. New features
@@ -51,6 +51,8 @@ should target the canonical implementation.
 - ✅ Raylib-free experiments with native configurations, versioned manifests and exact CSV replay
 - ✅ Registered analysis channels, periodic centroids and opt-in exact nearest-neighbor statistics
 - ✅ Sequential seed/parameter sweeps with stable summary rows and replayable cell manifests
+- ✅ Named deterministic random streams and bounded, injectable force-policy compositions
+- ✅ Public classic-Reynolds configuration with independent rule clamps and named enable controls
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
 - ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
@@ -60,13 +62,14 @@ should target the canonical implementation.
 
 [Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) defines the execution order.
 
-- **Composition:** named RNG streams (#26), then bounded observations and intent arbitration
-  (#27), with reviewed deterministic references and an explicit RNG transition.
+- **Composition:** preserve the exact default traces while addressing the measured small-population
+  cost of the new bounded policy API (#27). See [composition and its limits](docs/CANONICAL_COMPOSITION.md).
 - **Proof of generality:** behavioral parity and legacy retirement criteria (#28), then a Vicsek
   consumer (#29) and a minimal scalar-field/ACO consumer (#30).
-- **Renderer readiness:** finish interactive telemetry/configuration acceptance (#20/#22),
-  synchronize effective controls and help (#39), and complete rule-control visuals and prescribed
-  behavioral scenarios (#40/#41).
+- **Renderer readiness:** complete rule-control visuals and the remaining named-composition
+  behavioral scenarios (#40/#41). Controls and configuration now have
+  [native Linux verification](docs/NATIVE_UI_VERIFICATION.md); the historical allocation
+  observation remains tracked in #20.
 - **Longer-term research:** multi-group behavior, lifecycle/evolution and performance approaches
   such as SIMD or parallel execution remain proposals, not shipped engine capabilities. The
   [vision](docs/ROADMAP-VISION.md) records the deferral boundary.
@@ -537,8 +540,10 @@ Quick checklist:
 Legacy Phases 0-2, fixed-timestep running, snapshot interpolation, and the renderer are implemented.
 The experiment foundation now includes headless runs, registered metrics, exact manifest replay
 and sequential sweeps. Seeded same-platform reproducibility, spatial-index equivalence,
-force-budget enforcement and explicit telemetry are covered. Named policy composition,
-instrumentation UX, multi-group semantics and interactive renderer acceptance remain open. See
+force-budget enforcement and explicit telemetry are covered. Bounded named force composition and
+public classic mode now preserve the default traces and old manifests; their measured performance
+cost is recorded. Instrumentation UX, multi-group semantics, behavioral parity and additional
+simulation foundations remain open. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
 ## 🔧 Troubleshooting

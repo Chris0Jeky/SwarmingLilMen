@@ -61,12 +61,16 @@ queries avoid revisiting the same cell, including worlds with only one or two ce
 
 - **MaxSpeed** is the legacy upper speed bound. `ConstantSpeed` is the historical name of the
   undamped mode; it skips friction but does not renormalize slower agents back to the ceiling.
-- **MaxForce** caps composed steering. Larger values permit faster steering changes, while
+- **MaxForce** bounds the legacy boid behavior budget and the complete canonical Enhanced
+  steering budget. Legacy wander is added separately and can exceed the behavior budget.
+  ClassicReynolds uses an independent per-rule cap before summing, so its total can also exceed
+  this value. Larger values permit faster steering changes, while
   excessive force can cause abrupt turns. Start around 20–30% of the intended speed, then tune
   with observed trajectories rather than treating that ratio as a physical invariant.
 - **Friction** is finite and in `[0, 1]`. Legacy applies this velocity multiplier each tick only
   under **SpeedModel.Damped**. The numeric JSON values are `0` ConstantSpeed and `1` Damped.
-  Canonical movement has no friction setting and maintains its target speed.
+  Canonical built-in pipelines have no friction setting and normalize nonzero velocity to their
+  target speed; Enhanced can reduce that target during priority speed droop.
 - **SeparationWeight / AlignmentWeight / CohesionWeight** must be finite. Signed values remain
   valid in legacy for compatibility. The canonical bridge clamps them to zero or above, and
   canonical rules also clamp negative weights.
@@ -90,18 +94,19 @@ rejected before world construction. Zero and unlimited modes above remain valid 
 direct construction and JSON loading.
 
 Legacy separation uses bounded linear radial falloff when accumulating direction; canonical
-separation additionally weights by inverse distance. Both use prioritized steering, but their
-behavior is not interchangeable.
+separation additionally weights by inverse distance. Legacy and canonical Enhanced use
+prioritized steering, with different behavior; ClassicReynolds uses independent clamps and a sum.
 
 ## Wander and canonical smoothing
 
 **WanderStrength** is finite and non-negative; the default `0` disables it.
 **WanderRate** is the finite, non-negative canonical wander-angle change limit in radians per
 second. It has no effect while wander is disabled.
+ClassicReynolds omits the wander policy regardless of these stored values.
 
-The following fields are active only in canonical motion, even when they are stored in
-`SimConfig`. `SimConfig.Validate` checks them before a loaded configuration reaches the
-canonical bridge.
+The following fields control the stages in canonical Enhanced, even when stored in `SimConfig`.
+Those stages are absent from ClassicReynolds. `SimConfig.Validate` checks their ranges before a
+loaded configuration reaches the canonical bridge.
 
 | Field | Accepted range and interpretation |
 | --- | --- |
@@ -130,7 +135,7 @@ capacity, or omit it to use `config.InitialCapacity`.
 | `WorldWidth / WorldHeight` | Same names | Copied; canonical geometry is periodic regardless of legacy boundary mode |
 | `FixedDeltaTime` | Same name | Copied; canonical callers must use it to schedule `Step` |
 | `MaxSpeed` | `TargetSpeed` | `max(0.01, value)`; legacy ceiling becomes canonical fixed target speed |
-| `MaxForce` | Same name | `max(0.01, value)`; both bound steering, while speed integration differs |
+| `MaxForce` | Same name | `max(0.01, value)`; bridge selects canonical Enhanced's shared total budget |
 | `SenseRadius` | Same name | `max(1, value)` |
 | `SeparationRadius` | Same name | `max(1, value)`; legacy zero-disable does not survive this compatibility mapping |
 | `SeparationWeight / AlignmentWeight / CohesionWeight` | Same names | Each becomes `max(0, value)`; separation weighting laws differ |
@@ -141,6 +146,7 @@ capacity, or omit it to use `config.InitialCapacity`.
 | `WhiskerTimeHorizon / WhiskerWeight` | Same names | Copied; legacy emergency collision override is a different mechanism |
 | All `SeparationPriority*` fields and `SeparationSpeedDroop` | Same names | Copied; legacy crowding controls are not equivalents |
 | `InitialCapacity` | `InitialCapacity` | Copied unless the caller supplies an explicit capacity |
+| No legacy counterpart | `Mode` | Bridge retains Enhanced; classic is a native canonical setting |
 | `Friction / SpeedModel` | None | Canonical target-speed motion does not model legacy damping |
 | `BoundaryMode` | None | Canonical is always periodic |
 | `GridCellSize` | None | Canonical spatial-index construction is a separate caller choice |
@@ -160,6 +166,14 @@ It requires positive finite target speed, maximum force, sense radius, world ext
 timestep; field of view must be in `(0, 360]`. Separation radius and the three steering weights
 must be finite, while their existing negative-value clamps remain available. Seed and smoothing
 controls follow the bounds above.
+
+`Mode` must be Enhanced or ClassicReynolds. Missing mode means Enhanced and is omitted when
+serializing that default. Classic requires `FieldOfView = 360`. Its `MaxForce` limits each of the
+three rule contributions independently before summing; there is no shared post-clamp, so the
+total can exceed `MaxForce`. Enhanced retains the shared total-force budget. Classic omits
+whiskers, wander, priority hysteresis/speed droop, shaped avoidance and turn-rate limiting even
+if those settings are nonzero. Both retain the configured candidate cap and truncation reporting.
+See [canonical composition](CANONICAL_COMPOSITION.md) for the public factories and replay contract.
 
 Native canonical capacity values below one retain the constructor's effective minimum of one;
 neighbor settings below four retain the minimum of four. Spatial-index compatibility and grid

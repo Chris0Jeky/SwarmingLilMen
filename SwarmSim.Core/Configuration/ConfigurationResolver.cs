@@ -95,6 +95,12 @@ public static class ConfigurationResolver
             foreach (JsonProperty property in document.RootElement.EnumerateObject())
                 merged[property.Name] = property.Value.Clone();
 
+        // This single optional compatibility field is omitted by default serialization. Keep it
+        // in the strict overlay schema without relaxing unknown-name checks for any other field.
+        if (canonical)
+            merged.TryAdd(nameof(CanonicalWorldSettings.Mode),
+                JsonSerializer.SerializeToElement(CanonicalMode.Enhanced, ConfigurationJson.Options));
+
         if (!string.IsNullOrWhiteSpace(scenarioName))
         {
             if (!Scenarios.TryGetValue(scenarioName, out string? scenario))

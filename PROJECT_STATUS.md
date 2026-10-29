@@ -10,14 +10,18 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Two boids engines
 coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time growth and the default renderer;
 `CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
-independent stochastic consumers. The reusable general-purpose kernel, Vicsek/ACO foundations
-and intent composition remain roadmap work.
+independent stochastic consumers. Bounded named force policies, two resolvers and explicit velocity
+stages now make steering composition real. The reusable general-purpose kernel and Vicsek/ACO
+foundations remain roadmap work.
 
 The browser demos are separate implementations. The existing public Pages site is unchanged by
 these native-engine changes. Combat, metabolism, reproduction and cross-group interactions are
 not made active merely because `SimConfig` contains related settings.
 
 ## Verified live state
+
+The current integrated Release gate passes **1,012 non-Performance tests** with no build warnings
+or errors. The historical counts below identify the specific additions that produced them.
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
   agent encoding; consumers retain independent generators. Canonical wander now uses a stream per
@@ -34,6 +38,19 @@ not made active merely because `SimConfig` contains related settings.
   alias pair is pinned to independent output vectors. See the
   [stream ownership and byte contract](docs/RANDOM_STREAMS.md).
 
+- **Canonical composition:** injected pipelines now own bounded relative-neighbor observations,
+  tagged force intents, a named resolver and explicit velocity stages. The default Enhanced
+  composition preserves exact platform fixtures and complete pre-change experiment replay.
+  Added local policies and trusted legacy-rule adapters now affect trajectories. Empty pipelines
+  preserve straight-line velocity bits; public ClassicReynolds configuration installs only the
+  three independently clamped rules and target-speed normalization. Named disabling stops emission;
+  a zero desired-speed weight is not a disable switch. Registration prevents shared mutable
+  components, forged output writers and world mutation during a tick, without retaining a world
+  through a saved component. Old schema 1/2 manifests without Mode retain Enhanced semantics.
+  This remains a force-policy API: public per-agent identity/noise, heading replacement and
+  Vicsek update ordering are not implemented. Warm allocation checks cover Enhanced, Classic and
+  Empty; the controlled 1k benchmark nevertheless shows a +16.53% cost, recorded below and kept as
+  follow-up work. See [contracts, replay and measured cost](docs/CANONICAL_COMPOSITION.md).
 - **CI and regression gates:** PR #168 retains Ubuntu/Windows merge-result builds/tests and adds
   independent jobs for the exact PR head, logging its SHA. All four jobs passed 536 tests at
   `f342bc9695e2707e930e0e5e0fac85db84a2c449`. Genome validation tests reject every covered invalid
@@ -97,7 +114,9 @@ not made active merely because `SimConfig` contains related settings.
   capture-every-tick variant. The old `CapturePerceptionSnapshot()` is an allocating compatibility
   adapter. The canonical renderer now explicitly reuses telemetry once per frame. Its overlay
   labels the fresh current-position query separately from recorded tick truncation. Headless tests
-  cover HUD value parity and recreation; actual graphics/manual verification remains outstanding.
+  cover HUD value parity and recreation; actual native Linux input and inspected screenshots are
+  now recorded in [native verification](docs/NATIVE_UI_VERIFICATION.md). Human sign-off and other
+  platforms' GUI behavior are not inferred from that evidence.
   See [renderer telemetry](docs/CANONICAL_RENDER_TELEMETRY.md).
 - **Trajectory preservation:** all four bounded canonical workloads retained their pre-change
   Linux hashes for all three repeats. Grid and naive state matches at every observed frame;
@@ -136,7 +155,7 @@ analysis preserves tiny signed offsets even in very large worlds. See [metrics](
 The CLI now selects registered channels with `--metrics`, records their order and determinism in
 schema 2 manifests, and verifies the complete deterministic CSV on replay. Original schema 1
 manifests remain replayable with byte-identical default CSV. Runtime-cost channels measure only
-Step and explicitly disable exact replay. The integrated Release suite passes 853 tests; a
+Step and explicitly disable exact replay. The suite passed 853 tests at the metrics addition; a
 separate 50k sparse/1,000-step proof observes zero current-thread allocation in physics, reused
 capture/sampling, buffered CSV writing and the final flush. It excludes setup, hashing and
 quadratic nearest-neighbor analysis. Exact measurement boundaries and the optional-centroid
@@ -146,14 +165,14 @@ Sequential parameter sweeps now resolve a native base configuration, unique seed
 grid axes in-process. Every cell is validated before output and receives its own replayable
 manifest/CSV/log; the sweep adds a deterministic summary of terminal values, defined-sample means
 and sample counts. The 3-seed × 4-value example produces 12 cells, byte-identical repeated
-summaries, and an independently replayable cell. The integrated suite passes 911 tests, including
+summaries, and an independently replayable cell. Its integrated gate passed 911 tests, including
 58 sweep cases. Runtime metrics are excluded from sweeps, which are capped at 10,000 cells and
 publish only after the complete attempt succeeds. This does not add parallel scheduling,
 statistics or plotting. See [parameter sweeps](docs/HEADLESS_EXPERIMENTS.md#parameter-sweeps).
 
 The CLI now avoids centroid work unless either centroid column is requested. The public
 parameterless motion probe still exposes all five channels; its explicit basic mode exposes only
-the three values it computes. The isolated integrated Release gate passes **918 tests**. Original
+the three values it computes. Its isolated integrated Release gate passed **918 tests**. Original
 schema 1 CSVs and selected schema 2 centroid/neighbor CSVs remain byte-identical on replay, and
 metric discovery is unchanged. One same-frame 50k/1,000-sample comparison measured 301.411 ms for
 the basic plan versus 2,191.723 ms for the full probe, both with zero current-thread allocation
@@ -222,6 +241,25 @@ identify the cause of the BDN reading. The nonzero observation is retained rathe
 away. These noisy cloud measurements do not establish a performance improvement or a universal
 zero-allocation promise.
 
+The composition change uses a committed [controlled benchmark wrapper](tools/CompositionCost/Program.cs)
+around the same canonical benchmark. On the host/runtime above, matching 64-invocation runs
+measured the following complete-tick means (all rows measured zero allocated bytes):
+
+| Agents | Before composition (ms) | With composition (ms) | Observed mean delta |
+|---:|---:|---:|---:|
+| 1,000 | 0.478583 | 0.653493 | +36.55% |
+| 10,000 | 7.4782 | 8.1232 | +8.63% |
+| 50,000 | 114.8636 | 95.8358 | −16.57% |
+
+The short 1k iterations warranted a matched confirmation at 1,024 invocations per iteration,
+three warmups and five measurements. That measured **0.481998 → 0.561671 ms/tick (+16.53%)**,
+again with zero allocated bytes. Including the before sample excluded by BenchmarkDotNet gives
++14.74%. These results retain a real observed small-population cost for follow-up; overlapping
+confidence intervals do not prove no regression, and the single 50k decrease is not a general
+speedup claim. Source identities, commands, uncertainty and all raw iteration averages are in
+the [composition cost record](docs/CANONICAL_COMPOSITION.md#measured-composition-cost-2026-10-29).
+The new zero rows do not establish the cause of the historical 10k nonzero observation above.
+
 The issue #67 query probe used 512 boids, seed 8181, radius/cell size 50, a 64-slot buffer, 4,096
 warmup queries and seven batches of 32,768 queries with tiering disabled. Adjacent baseline/final
 median ns/query were: grid sparse 439.5/453.2, grid dense 14,708.8/14,415.6, naive sparse
@@ -240,12 +278,13 @@ speedup or machine-independent performance bound.
    probes measured zero but did not identify that sample's cause. Native HUD/O/Tab/F12, all five
    presets and custom-startup acceptance now have recorded Linux evidence. Current overlay
    geometry still refreshes the index only when shown; the recorded tick label does not re-query.
-4. Build real observation/intent arbitration (#27) on the named RNG streams, preserving the settled
-   trace contract after the documented RNG transition. Extra positional rules are not yet a
-   general composition surface.
-5. Prove generality with Vicsek then a minimal scalar-field/ACO consumer (#29/#30), not speculative
-   state generics. Behavioral parity/retirement criteria (#28) and named rule-control visuals (#40)
-   depend on those settled seams. Neither engine is deleted without a migration decision.
+4. Address the measured composition cost (#27), preserving the exact default trajectories and
+   bounded observations. The new force-only API still needs a concrete consumer to earn public
+   per-agent identity/noise and heading/velocity update seams.
+5. Build behavioral parity and written retirement criteria (#28), then prove generality with
+   Vicsek and a minimal scalar-field/ACO consumer (#29/#30). Named rule-control visuals (#40)
+   can now consume the settled composition API. Neither engine is deleted without the owner's
+   eventual migration sign-off.
 
 The documentation residue audit (#60/#63) now uses stable source symbols, current headless and
 benchmark commands, explicit historical measurement labels and the actual sequential/stochastic

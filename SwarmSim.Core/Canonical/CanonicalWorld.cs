@@ -7,12 +7,16 @@ public sealed class CanonicalWorld
 {
     private readonly CanonicalWorldSettings _settings;
     private readonly ISpatialIndex _spatialIndex;
-    private readonly List<IRule> _rules = new();
+    private readonly CanonicalPipeline _pipeline;
+    private int _legacyRuleSequence;
+    private bool _isStepping;
+    private bool _usesWanderRandom;
 
     private Boid[] _activeBoids;
     private Boid[] _nextBoids;
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
+    private readonly NeighborView[] _neighborViewScratch;
     private readonly RuleInstrumentation _instrumentation;
     private readonly Pcg32State[] _wanderRngs;
     private readonly bool[] _priorityState;
@@ -31,9 +35,17 @@ public sealed class CanonicalWorld
     private int _lastTickAgentCount;
 
     public CanonicalWorld(CanonicalWorldSettings settings, ISpatialIndex spatialIndex)
+        : this(settings, spatialIndex, CanonicalPipeline.FromSettings(settings)) { }
+
+    /// <summary>Builds a world with only the supplied policies and stages; nothing is installed implicitly.</summary>
+    public CanonicalWorld(CanonicalWorldSettings settings, ISpatialIndex spatialIndex, CanonicalPipeline pipeline)
     {
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
+        _pipeline = pipeline ?? throw new ArgumentNullException(nameof(pipeline));
+        if (!Enum.IsDefined(settings.Mode)) throw new ArgumentOutOfRangeException(nameof(settings), "Unknown canonical mode.");
+        if (settings.Mode == CanonicalMode.ClassicReynolds && settings.FieldOfView != 360f)
+            throw new ArgumentException("Classic Reynolds mode requires a 360-degree field of view.", nameof(settings));
         Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
         RandomStreams = new RandomStreams(settings.Seed);
         if (!float.IsFinite(settings.TargetSpeed) || settings.TargetSpeed <= 0f)
@@ -215,6 +227,7 @@ public sealed class CanonicalWorld
         EffectiveMaxNeighbors = maxNeighbors;
         _neighborScratch = new int[maxNeighbors];
         _neighborWeightScratch = new float[maxNeighbors];
+        _neighborViewScratch = new NeighborView[maxNeighbors];
         _instrumentation = new RuleInstrumentation(capacity);
         _priorityState = new bool[capacity];
         _priorityBlend = new float[capacity];
@@ -227,7 +240,8 @@ public sealed class CanonicalWorld
 
         _spatialIndex.Initialize(capacity);
 
-        InitializeDefaultRules();
+        _pipeline.Attach();
+        _usesWanderRandom = _pipeline.FindPolicy(CanonicalPolicyIds.Wander)?.Policy is WanderPolicy { UsesRandom: true };
     }
 
     public int Count { get; private set; }
@@ -251,14 +265,61 @@ public sealed class CanonicalWorld
 
     public ulong TickCount => _tickCount;
 
+    public IReadOnlyList<PolicyMetadata> Policies => _pipeline.Policies;
+
+    /// <summary>
+    /// Explicit trusted compatibility path. The rule retains full-world/index access, but its
+    /// returned force is now resolved in stable priority order (before default wander).
+    /// </summary>
     public void AddRule(IRule rule)
     {
+        EnsureNotStepping();
         ArgumentNullException.ThrowIfNull(rule);
-        _rules.Add(rule);
+        AddPolicy(new TrustedLegacyRuleAdapter(rule, new PolicyMetadata($"legacy-rule-{_legacyRuleSequence++}")));
+    }
+
+    public void AddPolicy(ILocalSteeringPolicy policy)
+    {
+        EnsureNotStepping();
+        _pipeline.AddPolicy(policy);
+        if (policy is WanderPolicy { UsesRandom: true })
+        {
+            _usesWanderRandom = true;
+            for (int i = 0; i < Count; i++) InitializeWander(i);
+        }
+    }
+
+    /// <summary>Disables emission by stable ID; a zero rule weight is not an enable/disable switch.</summary>
+    public void SetPolicyEnabled(string id, bool enabled)
+    {
+        EnsureNotStepping();
+        var entry = _pipeline.FindPolicy(id) ?? throw new KeyNotFoundException($"Unknown policy '{id}'.");
+        entry.Enabled = enabled;
+    }
+
+    public bool IsPolicyEnabled(string id) =>
+        (_pipeline.FindPolicy(id) ?? throw new KeyNotFoundException($"Unknown policy '{id}'.")).Enabled;
+
+    /// <summary>Number of per-agent calls in the last completed/in-progress tick; absent IDs return zero.</summary>
+    public int GetPolicyExecutionCount(string id) => _pipeline.FindPolicy(id)?.Executions ?? 0;
+
+    public int GetStageExecutionCount(string id)
+    {
+        ArgumentNullException.ThrowIfNull(id);
+        if (_pipeline.PriorityStage?.Id == id) return _pipeline.PriorityExecutions;
+        for (int i = 0; i < _pipeline.VelocityStages.Length; i++)
+            if (_pipeline.VelocityStages[i].Id == id) return _pipeline.VelocityStageExecutions[i];
+        return 0;
+    }
+
+    private void EnsureNotStepping()
+    {
+        if (_isStepping) throw new InvalidOperationException("A pipeline cannot be changed or stepped recursively during Step.");
     }
 
     public bool TryAddBoid(Vec2 position, Vec2 velocity, byte group = 0)
     {
+        EnsureNotStepping();
         if (!float.IsFinite(position.X) || !float.IsFinite(position.Y) || !float.IsFinite(velocity.X) || !float.IsFinite(velocity.Y))
             return false;
         if (Count >= _activeBoids.Length)
@@ -269,11 +330,7 @@ public sealed class CanonicalWorld
             : velocity.WithLength(Settings.TargetSpeed);
 
         int index = Count;
-        if (Settings.WanderStrength > 0f)
-        {
-            _wanderRngs[index] = RandomStreams.CreateAgentState("canonical.wander", (ulong)index);
-            _wanderAngles[index] = _wanderRngs[index].NextFloat() * (MathF.PI * 2f);
-        }
+        if (_usesWanderRandom) InitializeWander(index);
         // Normalize at ingest so every stored position lies in [0, extent). Both spatial indexes
         // normalize before subtracting, while Vec2.MinimumImageDelta -- used by field-of-view
         // filtering and every steering rule -- subtracts the stored coordinates directly. A boid
@@ -288,8 +345,15 @@ public sealed class CanonicalWorld
         return true;
     }
 
+    private void InitializeWander(int index)
+    {
+        _wanderRngs[index] = RandomStreams.CreateAgentState("canonical.wander", (ulong)index);
+        _wanderAngles[index] = _wanderRngs[index].NextFloat() * (MathF.PI * 2f);
+    }
+
     public void SetVelocity(int index, Vec2 velocity)
     {
+        EnsureNotStepping();
         if (index < 0 || index >= Count)
             return;
         if (!float.IsFinite(velocity.X) || !float.IsFinite(velocity.Y))
@@ -302,105 +366,62 @@ public sealed class CanonicalWorld
 
     public void Step(float deltaTime)
     {
-        if (!float.IsFinite(deltaTime) || deltaTime <= 0f) throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta time must be finite and positive.");
+        if (!float.IsFinite(deltaTime) || deltaTime <= 0f)
+            throw new ArgumentOutOfRangeException(nameof(deltaTime), "Delta time must be finite and positive.");
+        EnsureNotStepping();
+        _isStepping = true;
+        try { StepCore(deltaTime); }
+        finally { _isStepping = false; }
+    }
 
+    private void StepCore(float deltaTime)
+    {
         var current = _activeBoids.AsSpan(0, Count);
         _spatialIndex.Rebuild(current);
         _instrumentation.Prepare(Count);
+        _pipeline.BeginTick();
         _neighborDistanceSum = 0f;
         _neighborDistanceSamples = 0;
         _minNeighborDistance = float.MaxValue;
         _maxNeighborDistance = 0f;
+        _separationPriorityTriggered = false;
         var next = _nextBoids.AsSpan(0, Count);
         float fieldOfViewCos = MathF.Cos((Settings.FieldOfView * MathF.PI / 180f) * 0.5f);
-        float separationEnterThreshold = MathF.Max(0f, Settings.SeparationPriorityRadiusFactor * Settings.SenseRadius);
-        float separationExitThreshold = MathF.Max(separationEnterThreshold, Settings.SeparationPriorityExitFactor * Settings.SenseRadius);
-        float rampInTime = Math.Max(Settings.SeparationPriorityRampInTime, 1e-6f);
-        float rampOutTime = Math.Max(Settings.SeparationPriorityRampOutTime, 1e-6f);
-        float holdTime = Math.Max(Settings.SeparationPriorityHoldTime, 0f);
-        _separationPriorityTriggered = false;
+        bool observeNeighbors = _pipeline.Entries.Length > 0 || _pipeline.PriorityStage is not null
+            || _pipeline.VelocityStages.Length > 0;
 
         for (int i = 0; i < Count; i++)
         {
             Boid boid = current[i];
             Vec2 steering = Vec2.Zero;
             float remainingForce = Settings.MaxForce;
-            bool separationDominant = false;
             Vec2 nearestDelta = Vec2.Zero;
-            int whiskerHitCount = 0;
+            int filtered = 0;
+            float neighborWeightSum = 0f;
+            float minDistForAgent = float.MaxValue;
+            float nearestAngle = 0f;
+            _whiskerCounts[i] = 0;
 
-            if (_rules.Count > 0)
+            if (observeNeighbors)
             {
                 SpatialQueryResult query = _spatialIndex.QueryNeighbors(current, i, Settings.SenseRadius, _neighborScratch);
                 _instrumentation.RecordTruncation(i, query.IsTruncated);
-                int neighborCount = query.Count;
-                float fieldOfViewDegrees = Settings.FieldOfView;
-
-                int filtered = FilterByFieldOfView(
-                    boid.Forward,
-                    boid.Position,
-                    _neighborScratch.AsSpan(0, neighborCount),
-                    _neighborWeightScratch,
-                    current,
-                    fieldOfViewCos,
-                    fieldOfViewDegrees,
-                    i,
-                    Settings.WorldWidth,
-                    Settings.WorldHeight,
-                    out float neighborWeightSum);
-                var neighbors = _neighborScratch.AsSpan(0, filtered);
-                var neighborWeights = _neighborWeightScratch.AsSpan(0, filtered);
-
-                if (filtered > 0 && remainingForce > 0f)
-                {
-                    Vec2 forward = boid.Forward;
-                    float lookAhead = Settings.TargetSpeed * MathF.Max(0.05f, Settings.WhiskerTimeHorizon);
-                    float whiskerRadius = MathF.Max(0.1f, Settings.SeparationRadius);
-                    Vec2 right = new Vec2(forward.Y, -forward.X);
-                    Vec2 whiskerAccum = Vec2.Zero;
-
-                    foreach (int idx in neighbors)
-                    {
-                        Vec2 toN = Vec2.MinimumImageDelta(boid.Position, current[idx].Position, Settings.WorldWidth, Settings.WorldHeight);
-                        float along = Vec2.Dot(forward, toN);
-                        if (along <= 0f || along > lookAhead) continue;
-                        float lateral = Vec2.Dot(right, toN);
-                        float absLat = MathF.Abs(lateral);
-                        if (absLat > whiskerRadius) continue;
-                        whiskerHitCount++;
-                        float side = lateral >= 0f ? 1f : -1f;
-                        float gain = (1f - absLat / whiskerRadius) * (1f - along / lookAhead);
-                        whiskerAccum += right * (side * gain);
-                    }
-
-                    if (!whiskerAccum.IsNearlyZero())
-                    {
-                        Vec2 desired = whiskerAccum.WithLength(Settings.TargetSpeed * Settings.WhiskerWeight);
-                        Vec2 steerW = desired - boid.Velocity;
-                        TryAccumulateSteering(ref steering, ref remainingForce, steerW, out _);
-                    }
-                }
-
-                _whiskerCounts[i] = whiskerHitCount;
-
-                float minDistForAgent = float.MaxValue;
-                float maxDistForAgent = 0f;
-                float distanceSum = 0f;
-                float nearestAngle = 0f;
-
+                filtered = FilterByFieldOfView(boid.Forward, boid.Position,
+                    _neighborScratch.AsSpan(0, query.Count), _neighborWeightScratch, current,
+                    fieldOfViewCos, Settings.FieldOfView, i, Settings.WorldWidth, Settings.WorldHeight,
+                    out neighborWeightSum);
+                var visible = _neighborScratch.AsSpan(0, filtered);
+                BuildLocalNeighbors(boid, current, visible);
                 if (filtered > 0)
                 {
-                    (distanceSum, minDistForAgent, maxDistForAgent, nearestDelta, _) = ComputeNeighborDistanceStats(
-                        current,
-                        boid.Position,
-                        neighbors,
-                        Settings.WorldWidth,
-                        Settings.WorldHeight);
+                    (float distanceSum, float minDistance, float maxDistance, Vec2 delta, _) =
+                        ComputeNeighborDistanceStats(current, boid.Position, visible, Settings.WorldWidth, Settings.WorldHeight);
+                    minDistForAgent = minDistance;
+                    nearestDelta = delta;
                     _neighborDistanceSum += distanceSum;
                     _neighborDistanceSamples += filtered;
                     _minNeighborDistance = MathF.Min(_minNeighborDistance, minDistForAgent);
-                    _maxNeighborDistance = MathF.Max(_maxNeighborDistance, maxDistForAgent);
-
+                    _maxNeighborDistance = MathF.Max(_maxNeighborDistance, maxDistance);
                     if (!nearestDelta.IsNearlyZero())
                     {
                         Vec2 toNearest = nearestDelta.Normalized;
@@ -408,197 +429,112 @@ public sealed class CanonicalWorld
                         nearestAngle = MathF.Acos(MathUtils.Clamp(dotProduct, -1f, 1f)) * 180f / MathF.PI;
                     }
                 }
-
-                _nearestDistances[i] = minDistForAgent;
-                _nearestAngles[i] = nearestAngle;
-
-                if (_priorityState[i] && _priorityHoldTimers[i] > 0f)
-                {
-                    _priorityHoldTimers[i] -= deltaTime;
-                }
-
-                bool shouldEnterPriority = filtered > 0 && minDistForAgent <= separationEnterThreshold;
-                if (shouldEnterPriority && !_priorityState[i])
-                {
-                    _priorityState[i] = true;
-                    _priorityHoldTimers[i] = holdTime;
-                }
-                else if (_priorityState[i])
-                {
-                    bool shouldExitPriority = (filtered == 0 || minDistForAgent >= separationExitThreshold) && _priorityHoldTimers[i] <= 0f;
-                    if (shouldExitPriority)
-                    {
-                        _priorityState[i] = false;
-                        _priorityHoldTimers[i] = 0f;
-                    }
-                }
-
-                float targetBlend = _priorityState[i] ? 1f : 0f;
-                float maxDelta = _priorityState[i] ? Math.Min(1f, deltaTime / rampInTime) : Math.Min(1f, deltaTime / rampOutTime);
-                _priorityBlend[i] = MathUtils.MoveTowards(_priorityBlend[i], targetBlend, maxDelta);
-                bool priorityActive = _priorityBlend[i] > 0f;
-                _separationPriorityTriggered |= priorityActive;
-                separationDominant = priorityActive;
-                float separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, _priorityBlend[i]);
-
-                var context = new RuleContext(
-                    Settings.TargetSpeed,
-                    Settings.MaxForce,
-                    Settings.SenseRadius,
-                    fieldOfViewCos,
-                    deltaTime,
-                    separationBoost,
-                    _instrumentation,
-                    Settings.WorldWidth,
-                    Settings.WorldHeight);
-
-                if (_rules.Count > 0)
-                {
-                    Vec2 separation = _rules[0].Compute(i, boid, current, neighbors, neighborWeights, context);
-                    // Separation draws from the same per-tick remainder as every other
-                    // contribution. It used to clamp to a fresh Settings.MaxForce and add on top
-                    // of an already-spent whisker budget, so one tick could compose up to 2x
-                    // MaxForce (issue #19). Its priority semantics are preserved: once separation
-                    // has spent, the rest of the budget is withheld from alignment, cohesion and
-                    // wander rather than shared with them.
-                    //
-                    // One reachable corner does differ, and only when MaxForce <= 1e-3: previously
-                    // a separation contribution clamped below the 1e-6 epsilon was dropped AND the
-                    // budget was left to the later rules, whereas now separation takes the whole
-                    // tiny budget. Measured at MaxForce = 1e-4: old gave sep=0 / cohesion=1e-4,
-                    // new gives sep=1e-4 / cohesion=0. That is the consistent behaviour, and the
-                    // shipped configs use 1.5-3.0 against a 0.2 default, but it is not a no-op.
-                    //
-                    // Note RecordSeparation below now reports the force ACTUALLY APPLIED rather
-                    // than the desired-then-clamped magnitude, matching how alignment and cohesion
-                    // already report. The renderer HUD's "Sep avg" and the per-agent inspector
-                    // read that value, so both read lower than before whenever the whisker has
-                    // already spent part of the budget.
-                    if (TryAccumulateSteering(ref steering, ref remainingForce, separation, out float sepMagnitude))
-                    {
-                        remainingForce = 0f;
-                        _instrumentation.RecordSeparation(i, sepMagnitude);
-                    }
-                }
-
-                if (_rules.Count > 1)
-                {
-                    Vec2 alignment = _rules[1].Compute(i, boid, current, neighbors, neighborWeights, context);
-                    float alignmentAttenuation = 1f - (_priorityBlend[i] * 0.7f);
-                    alignment *= alignmentAttenuation;
-                    if (TryAccumulateSteering(ref steering, ref remainingForce, alignment, out float alignMagnitude))
-                    {
-                        _instrumentation.RecordAlignment(i, alignMagnitude);
-                    }
-                }
-
-                if (_rules.Count > 2)
-                {
-                    Vec2 cohesion = _rules[2].Compute(i, boid, current, neighbors, neighborWeights, context);
-                    float cohesionAttenuation = 1f - (_priorityBlend[i] * 0.7f);
-                    cohesion *= cohesionAttenuation;
-                    if (TryAccumulateSteering(ref steering, ref remainingForce, cohesion, out float cohMagnitude))
-                    {
-                        _instrumentation.RecordCohesion(i, cohMagnitude);
-                    }
-                }
-
-                for (int ruleIndex = 3; ruleIndex < _rules.Count; ruleIndex++)
-                {
-                    _ = _rules[ruleIndex].Compute(i, boid, current, neighbors, neighborWeights, context);
-                }
-
-                _instrumentation.SetNeighborCount(i, filtered);
-                _instrumentation.SetNeighborWeightSum(i, neighborWeightSum);
             }
+            _nearestDistances[i] = observeNeighbors ? minDistForAgent : 0f;
+            _nearestAngles[i] = nearestAngle;
+            var observation = new LocalObservation(boid, _neighborViewScratch.AsSpan(0, filtered));
+            bool priorityApplied = false;
+            float separationMagnitude = 0f;
+            float alignmentMagnitude = 0f;
+            float cohesionMagnitude = 0f;
 
-            if (Settings.WanderStrength > 0f && remainingForce > 0f)
+            foreach (CanonicalPipeline.PolicyEntry entry in _pipeline.Entries)
             {
-                ref Pcg32State wanderRng = ref _wanderRngs[i];
-                float angleChange = (-1f + wanderRng.NextFloat() * 2f) * Settings.WanderRate * deltaTime;
-                _wanderAngles[i] += angleChange;
-                Vec2 wanderDirection = new Vec2(MathF.Cos(_wanderAngles[i]), MathF.Sin(_wanderAngles[i]));
-                Vec2 wander = wanderDirection * Settings.WanderStrength * Settings.TargetSpeed;
-                TryAccumulateSteering(ref steering, ref remainingForce, wander, out _);
-            }
+                if (!priorityApplied && _pipeline.PriorityStage is { } priority
+                    && entry.Metadata.Priority >= priority.Priority)
+                {
+                    ApplyPriority(i, filtered, minDistForAgent, deltaTime);
+                    priorityApplied = true;
+                }
+                if (!entry.Enabled || (entry.Metadata.RequiresRemainingForce && remainingForce <= 0f)) continue;
 
-            // Record the composed steering budget here and nowhere else: every contribution
-            // (whisker, separation, alignment, cohesion, wander) has landed, and the next line
-            // folds `steering` into a velocity that avoidance blending and speed renormalization
-            // then overwrite. After integration the MaxForce budget is no longer observable.
+                float separationBoost = MathUtils.Lerp(1f, Settings.SeparationPriorityBoost, _priorityBlend[i]);
+                var context = new LocalPolicyContext(Settings.TargetSpeed, Settings.MaxForce, Settings.SenseRadius,
+                    fieldOfViewCos, deltaTime, separationBoost, _priorityBlend[i],
+                    _wanderRngs.AsSpan(i, 1), _wanderAngles.AsSpan(i, 1), _whiskerCounts.AsSpan(i, 1));
+                var writer = new IntentWriter(entry.Metadata, _pipeline.IntentScratch[..entry.MaxIntents]);
+                if (entry.Policy is TrustedLegacyRuleAdapter legacy)
+                {
+                    // Only this explicitly named adapter receives full-world state/global indices.
+                    var legacyContext = new RuleContext(Settings.TargetSpeed, Settings.MaxForce, Settings.SenseRadius,
+                        fieldOfViewCos, deltaTime, separationBoost, _instrumentation, Settings.WorldWidth, Settings.WorldHeight);
+                    legacy.EmitTrusted(i, boid, current, _neighborScratch.AsSpan(0, filtered),
+                        _neighborWeightScratch.AsSpan(0, filtered), legacyContext, ref writer);
+                }
+                else
+                {
+                    entry.Policy.Emit(observation, context, ref writer);
+                }
+                writer.ValidateLease(entry.Metadata, _pipeline.IntentScratch[..entry.MaxIntents]);
+                entry.Executions++;
+                foreach (ref readonly SteeringIntent intent in writer.Written)
+                {
+                    if (!ReferenceEquals(intent.Metadata, entry.Metadata))
+                        throw new InvalidOperationException("A policy cannot forge another intent's arbitration metadata.");
+                    float applied = _pipeline.Resolver.Accumulate(intent, _priorityBlend[i], Settings.MaxForce,
+                        ref steering, ref remainingForce);
+                    if (!float.IsFinite(steering.X) || !float.IsFinite(steering.Y) || !float.IsFinite(applied))
+                        throw new InvalidOperationException("A steering resolver produced a nonfinite result.");
+                    switch (intent.Metadata.Role)
+                    {
+                        case SteeringRole.Separation: separationMagnitude += applied; break;
+                        case SteeringRole.Alignment: alignmentMagnitude += applied; break;
+                        case SteeringRole.Cohesion: cohesionMagnitude += applied; break;
+                    }
+                }
+            }
+            if (!priorityApplied && _pipeline.PriorityStage is not null)
+                ApplyPriority(i, filtered, minDistForAgent, deltaTime);
+
+            _instrumentation.SetNeighborCount(i, filtered);
+            _instrumentation.SetNeighborWeightSum(i, neighborWeightSum);
+            _instrumentation.RecordSeparation(i, separationMagnitude);
+            _instrumentation.RecordAlignment(i, alignmentMagnitude);
+            _instrumentation.RecordCohesion(i, cohesionMagnitude);
+            // Record force composition before explicitly installed velocity stages change it.
             _instrumentation.RecordSteering(i, steering.LengthSquared);
 
-            Vec2 nextVelocity = boid.Velocity + steering * deltaTime;
+            // A genuinely empty composition does not even add a signed zero to velocity.
+            Vec2 nextVelocity = _pipeline.Entries.Length == 0 ? boid.Velocity : boid.Velocity + steering * deltaTime;
             float prioritySpeed = Settings.TargetSpeed * (1f - Settings.SeparationSpeedDroop * _priorityBlend[i]);
             float allowedSpeed = _priorityBlend[i] > 0f ? prioritySpeed : Settings.TargetSpeed;
-
-            if (!nearestDelta.IsNearlyZero())
+            var velocityContext = new VelocityStageContext(boid, nearestDelta, _priorityBlend[i], allowedSpeed, deltaTime);
+            for (int stageIndex = 0; stageIndex < _pipeline.VelocityStages.Length; stageIndex++)
             {
-                float nearestDist = MathF.Sqrt(nearestDelta.LengthSquared);
-                float rSoft = Settings.SeparationRadius * 1.2f;
-                float rHard = separationEnterThreshold;
-                float rGradualStart = Settings.SeparationRadius * 2.0f;
-
-                if (nearestDist < rGradualStart)
-                {
-                    Vec2 awayDir = (-nearestDelta).Normalized;
-                    Vec2 forward = boid.Forward;
-                    Vec2 right = new Vec2(forward.Y, -forward.X);
-                    float lateralComponent = Vec2.Dot(awayDir, right);
-                    Vec2 lateralDir = right * MathF.Sign(lateralComponent);
-                    float blendWeight = MathUtils.SmoothStep(rHard, rSoft, nearestDist);
-                    Vec2 shapedAvoidance = Vec2.Lerp(awayDir, lateralDir, blendWeight);
-                    float distanceRatio = MathUtils.Clamp01((rGradualStart - nearestDist) / (rGradualStart - rHard));
-                    float gradualInfluence = distanceRatio * distanceRatio;
-                    float combinedInfluence = MathF.Max(_priorityBlend[i], gradualInfluence * 0.5f);
-                    Vec2 biasedVelocity = Vec2.Lerp(nextVelocity, shapedAvoidance.WithLength(allowedSpeed), combinedInfluence * 0.7f);
-                    nextVelocity = biasedVelocity;
-                }
+                nextVelocity = _pipeline.VelocityStages[stageIndex].Apply(velocityContext, nextVelocity);
+                _pipeline.VelocityStageExecutions[stageIndex]++;
+                if (!float.IsFinite(nextVelocity.X) || !float.IsFinite(nextVelocity.Y))
+                    throw new InvalidOperationException("A velocity stage produced a nonfinite result.");
             }
-            Vec2 normalizedCurrent = boid.Velocity.IsNearlyZero() ? boid.Forward : boid.Velocity;
-            float currentAngle = MathF.Atan2(normalizedCurrent.Y, normalizedCurrent.X);
-            float desiredAngle = MathF.Atan2(nextVelocity.Y, nextVelocity.X);
-            float deltaAngle = MathUtils.AngleDifference(currentAngle, desiredAngle);
-            float maxTurnRad = Settings.MaxTurnRateDegPerSecond * MathF.PI / 180f * deltaTime;
-            float clampedAngle = MathUtils.Clamp(deltaAngle, -maxTurnRad, maxTurnRad);
-            float finalAngle = currentAngle + clampedAngle;
-            Vec2 limitedDir = new Vec2(MathF.Cos(finalAngle), MathF.Sin(finalAngle));
-            nextVelocity = limitedDir.WithLength(allowedSpeed);
 
             Vec2 nextPosition = boid.Position + nextVelocity * deltaTime;
             (float wrappedX, float wrappedY) = MathUtils.WrapPosition(nextPosition.X, nextPosition.Y, Settings.WorldWidth, Settings.WorldHeight);
             nextPosition = new Vec2(wrappedX, wrappedY);
             next[i] = new Boid(nextPosition, nextVelocity, boid.Group);
         }
-
-        SwapBuffers();
+        (_activeBoids, _nextBoids) = (_nextBoids, _activeBoids);
         _tickCount++;
         _lastTickAgentCount = Count;
     }
 
-    private void SwapBuffers()
+    private void ApplyPriority(int index, int neighborCount, float nearestDistance, float deltaTime)
     {
-        ( _activeBoids, _nextBoids ) = ( _nextBoids, _activeBoids );
+        _pipeline.PriorityStage!.Apply(neighborCount, nearestDistance, deltaTime,
+            ref _priorityState[index], ref _priorityBlend[index], ref _priorityHoldTimers[index]);
+        _pipeline.PriorityExecutions++;
+        _separationPriorityTriggered |= _priorityBlend[index] > 0f;
     }
 
-    private static bool TryAccumulateSteering(ref Vec2 total, ref float remaining, Vec2 contribution, out float appliedMagnitude)
+    private void BuildLocalNeighbors(Boid self, ReadOnlySpan<Boid> boids, ReadOnlySpan<int> neighbors)
     {
-        appliedMagnitude = 0f;
-        if (remaining <= 0f)
-            return false;
-
-        float lengthSq = contribution.LengthSquared;
-        if (lengthSq <= 1e-6f)
-            return false;
-
-        float length = MathF.Sqrt(lengthSq);
-        float spend = MathF.Min(length, remaining);
-        Vec2 normalized = contribution / length;
-        Vec2 clamped = normalized * spend;
-        total += clamped;
-        remaining -= spend;
-        appliedMagnitude = spend;
-        return true;
+        for (int n = 0; n < neighbors.Length; n++)
+        {
+            Boid neighbor = boids[neighbors[n]];
+            Vec2 relative = Vec2.MinimumImageDelta(self.Position, neighbor.Position, Settings.WorldWidth, Settings.WorldHeight);
+            Vec2 reverse = Vec2.MinimumImageDelta(neighbor.Position, self.Position, Settings.WorldWidth, Settings.WorldHeight);
+            _neighborViewScratch[n] = new NeighborView(relative, reverse, neighbor.Velocity - self.Velocity,
+                neighbor.Velocity, neighbor.Group, _neighborWeightScratch[n], MathF.Sqrt(relative.LengthSquared));
+        }
     }
 
     private static (float distanceSum, float minDist, float maxDist, Vec2 nearestDelta, int nearestIdx) ComputeNeighborDistanceStats(
@@ -806,13 +742,6 @@ public sealed class CanonicalWorld
             nearestDistances,
             nearestAngles,
             whiskerCounts);
-    }
-
-    private void InitializeDefaultRules()
-    {
-        AddRule(new SeparationRule(_settings.SeparationWeight, _settings.SeparationRadius));
-        AddRule(new AlignmentRule(_settings.AlignmentWeight));
-        AddRule(new CohesionRule(_settings.CohesionWeight));
     }
 
     /// <summary>

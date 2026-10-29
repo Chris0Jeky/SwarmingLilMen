@@ -57,7 +57,8 @@ config.SaveToJson("resolved-experiment.json");
 An optional `defaults:` argument supplies an existing base configuration. Unspecified
 properties survive all later layers. Supplied defaults must already be JSON-serializable:
 non-finite values cannot be repaired by a later override because the base is serialized first.
-A saved resolved file pins every value; a short authored
+A saved resolved file pins every value; canonical Enhanced mode is omitted with the permanent
+meaning Enhanced, including in old complete manifests. A short authored
 recipe continues to inherit omitted defaults. Keep the bundled `configs/*.json` recipes sparse.
 
 For native canonical files, use `ConfigurationResolver.ResolveCanonicalSettings` with the
@@ -66,6 +67,20 @@ that one name and apply only fields that exist in canonical settings. Unspecifie
 canonical defaults, including its seed and capacity. To map an already resolved `SimConfig`
 instead, call `CanonicalWorldSettings.FromSimConfig(config)`; the mapping and its established
 renderer clamps are documented in [Parameter Guide](PARAMETER_GUIDE.md#legacy-to-canonical-mapping).
+
+### Selecting classic canonical composition
+
+The native canonical schema accepts `"Mode": "ClassicReynolds"` with `"FieldOfView": 360`.
+Use [configs/canonical-classic.json](../configs/canonical-classic.json) for a headless run, or
+`CanonicalWorldSettings.ClassicReynolds()` in code. Missing mode selects the established Enhanced
+pipeline; serializing Enhanced omits the optional field, while classic writes it explicitly.
+The renderer's legacy-shaped `SimConfig` bridge remains Enhanced.
+
+Classic means three independently clamped rule forces followed by their sum and target-speed
+normalization. `MaxForce` is a per-rule limit there, so the total can exceed it. Enhanced keeps
+its shared total force budget. Whisker, wander, priority, shaping and turn-rate settings remain
+serializable but their stages are absent from classic. See [canonical composition](CANONICAL_COMPOSITION.md)
+for bounded-neighbor semantics, custom pipeline ownership and replay compatibility.
 
 ## One scenario vocabulary, preserved entry points
 
@@ -125,8 +140,10 @@ The values describe intended group relationships; no combat system consumes them
 converter also works when a manifest embeds a `SimConfig` using ordinary
 `JsonSerializer.Serialize`, without custom serializer options.
 
-Enums continue to use numbers for compatibility. String names such as `"Damped"` are not
-accepted by these loaders, and undefined numeric enum values are rejected by validation.
+Legacy `BoundaryMode` and `SpeedModel` continue to use numbers for compatibility. String names
+such as `"Damped"` are not accepted for those fields. Native canonical `Mode` accepts the names
+`"Enhanced"` and `"ClassicReynolds"` (and their defined numeric values). Undefined enum values
+are rejected by validation.
 
 | Field | `0` | `1` | `2` |
 | --- | --- | --- | --- |

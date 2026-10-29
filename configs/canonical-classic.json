@@ -1,0 +1,6 @@
+{
+  "Mode": "ClassicReynolds",
+  "FieldOfView": 360,
+  "InitialCapacity": 1024,
+  "MaxNeighbors": 1024
+}

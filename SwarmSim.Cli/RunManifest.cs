@@ -170,8 +170,16 @@ internal sealed record RunRequest(
         string defaults = manifest.Engine == "canonical" ? new CanonicalWorldSettings().ToJson() : new SimConfig().ToJson();
         using JsonDocument schema = JsonDocument.Parse(defaults);
         foreach (JsonProperty property in schema.RootElement.EnumerateObject())
+        {
+            if (manifest.Engine == "canonical" && property.NameEquals(nameof(CanonicalWorldSettings.Mode)))
+                continue;
             if (!values.ContainsKey(property.Name))
                 throw new InvalidDataException($"Manifest resolvedConfig is missing '{property.Name}'; replay must not inherit current defaults.");
+        }
+        // Mode is the one versioned optional field: pre-composition manifests always mean
+        // Enhanced. Pin that meaning explicitly rather than inheriting a future settings default.
+        if (manifest.Engine == "canonical")
+            values.TryAdd(nameof(CanonicalWorldSettings.Mode), JsonSerializer.SerializeToElement(CanonicalMode.Enhanced));
         return values;
     }
 }
