@@ -26,9 +26,14 @@ internal static class Program
             Console.WriteLine("Running World Tick benchmarks...");
             BenchmarkRunner.Run<WorldTickBenchmarks>();
         }
+        else if (args.Length > 0 && args[0] == "--canonical")
+        {
+            Console.WriteLine("Running Canonical World Step benchmarks (telemetry capture off)...");
+            BenchmarkSwitcher.FromTypes(new[] { typeof(CanonicalWorldStepBenchmarks) }).RunAll(args: args[1..]);
+        }
         else
         {
-            Console.WriteLine("Running all benchmarks...");
+            Console.WriteLine("Running legacy World Tick and Grid benchmarks...");
             BenchmarkRunner.Run<WorldTickBenchmarks>();
             BenchmarkRunner.Run<GridBenchmarks>();
         }

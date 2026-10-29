@@ -16,15 +16,15 @@ public class UniformGridCellBudgetTests
     [InlineData(100f, 100f, 0.0001f)]     // 1e12 cells: Cols * Rows overflowed int
     [InlineData(100000f, 100000f, 0.001f)] // 1e16 cells: each count alone exceeds int
     [InlineData(1e30f, 1e30f, 1e-6f)]     // float quotient not representable as int
-    public void Validate_RejectsUnrepresentableOrOversizedGrid_WithoutAllocating(float width, float height, float senseRadius)
+    public void Validate_RejectsUnrepresentableOrOversizedGrid_WithoutAllocating(float width, float height, float gridCellSize)
     {
-        var config = new SimConfig { WorldWidth = width, WorldHeight = height, SenseRadius = senseRadius, InitialCapacity = 2 };
+        var config = new SimConfig { WorldWidth = width, WorldHeight = height, GridCellSize = gridCellSize, InitialCapacity = 2 };
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         var errors = config.Validate();
         long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
 
-        var error = Assert.Single(errors, e => e.Contains("SenseRadius", StringComparison.Ordinal) && e.Contains("grid cells", StringComparison.Ordinal));
+        var error = Assert.Single(errors, e => e.Contains("GridCellSize", StringComparison.Ordinal) && e.Contains("grid cells", StringComparison.Ordinal));
         Assert.Contains("WorldWidth", error, StringComparison.Ordinal);
         Assert.True(allocated < AllocationCeilingBytes, $"Validate allocated {allocated} bytes");
     }
@@ -32,7 +32,7 @@ public class UniformGridCellBudgetTests
     [Fact]
     public void World_RejectsOversizedGridAtPreflight_WithoutAllocating()
     {
-        var config = new SimConfig { WorldWidth = 100f, WorldHeight = 100f, SenseRadius = 0.01f, InitialCapacity = 2 };
+        var config = new SimConfig { WorldWidth = 100f, WorldHeight = 100f, GridCellSize = 0.01f, InitialCapacity = 2 };
 
         long before = GC.GetAllocatedBytesForCurrentThread();
         Assert.Throws<ArgumentException>(() => new World(config, seed: 1));
@@ -62,6 +62,23 @@ public class UniformGridCellBudgetTests
         Assert.Equal(UniformGrid.MaxCells, grid.TotalCells);
 
         Assert.Throws<ArgumentException>(() => new UniformGrid(1f, 2049f, 2048f, capacity: 2));
+    }
+
+    [Theory]
+    [InlineData(1e30f, 1e-30f)]
+    [InlineData(float.MaxValue, float.Epsilon)]
+    public void Ctor_UnderflowingWorldToCellRatioStillCreatesUsableGrid(float cellSize, float extent)
+    {
+        var grid = new UniformGrid(cellSize, extent, extent, capacity: 2);
+        var positions = new[] { 0f, extent * 0.5f };
+
+        grid.Rebuild(positions, positions, positions.Length);
+        var results = new int[2];
+        int count = grid.Query3x3(0f, 0f, results, results.Length);
+
+        Assert.Equal(2, count);
+        Array.Sort(results);
+        Assert.Equal(new[] { 0, 1 }, results);
     }
 
     [Fact]

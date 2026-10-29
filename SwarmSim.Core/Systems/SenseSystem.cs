@@ -14,12 +14,12 @@ namespace SwarmSim.Core.Systems;
 ///
 /// ALGORITHM:
 /// For each agent:
-/// 1. Query 3x3 grid neighborhood
+/// 1. Query cells covering SenseRadius, wrapping them in periodic worlds
 /// 2. For each neighbor within SenseRadius and FieldOfView:
 ///    - Count neighbors
 ///    - Accumulate separation vector (normalized away direction, bounded linear falloff)
 ///    - Accumulate alignment vector (sum of velocities)
-///    - Accumulate cohesion center (sum of positions)
+///    - Accumulate cohesion center (sum of nearest-image positions in periodic worlds)
 /// 3. Store aggregates for BehaviorSystem to use
 ///
 /// SEPARATION WEIGHTING:
@@ -135,6 +135,9 @@ public sealed class SenseSystem : ISimSystem
         float separationRadius = config.SeparationRadius;
         float separationRadiusSq = separationRadius * separationRadius;
         float fieldOfView = config.FieldOfView;
+        bool wrap = config.BoundaryMode == BoundaryMode.Wrap;
+        float worldWidth = config.WorldWidth;
+        float worldHeight = config.WorldHeight;
 
         // Clear aggregates
         Array.Clear(_neighborCount, 0, count);
@@ -163,8 +166,8 @@ public sealed class SenseSystem : ISimSystem
             float agentVy = vy[i];
             byte agentGroup = group[i];
 
-            // Query 3x3 neighborhood
-            int neighborCount = grid.Query3x3(agentX, agentY, neighbors, MaxNeighborsToCheck);
+            // Cell size is a tuning parameter; candidate coverage follows the sensing radius.
+            int neighborCount = grid.QueryNeighborhood(agentX, agentY, senseRadius, wrap, neighbors);
 
             int senseCount = 0;
             float separationAccumX = 0f;
@@ -199,6 +202,11 @@ public sealed class SenseSystem : ISimSystem
                 // Calculate distance
                 float dx = x[j] - agentX;
                 float dy = y[j] - agentY;
+                if (wrap)
+                {
+                    dx = MathUtils.MinimumImageDelta(dx, worldWidth);
+                    dy = MathUtils.MinimumImageDelta(dy, worldHeight);
+                }
                 float distSq = dx * dx + dy * dy;
 
                 // Check if within sense radius
@@ -241,9 +249,10 @@ public sealed class SenseSystem : ISimSystem
                 alignmentAccumVx += vx[j];
                 alignmentAccumVy += vy[j];
 
-                // Cohesion: sum of neighbor positions
-                cohesionAccumX += x[j];
-                cohesionAccumY += y[j];
+                // BehaviorSystem subtracts the focal position from the averaged center.
+                // Image-relative positions make that vector point across the nearest seam.
+                cohesionAccumX += wrap ? agentX + dx : x[j];
+                cohesionAccumY += wrap ? agentY + dy : y[j];
 
                 processedNeighbors++;
                 if (processedNeighbors >= maxNeighbors)

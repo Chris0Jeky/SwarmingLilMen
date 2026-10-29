@@ -1,3 +1,7 @@
+using System.IO;
+using SwarmSim.Core.Configuration;
+using SwarmSim.Core.Utils;
+
 namespace SwarmSim.Core.Canonical;
 
 public sealed class CanonicalWorldSettings
@@ -57,4 +61,89 @@ public sealed class CanonicalWorldSettings
     public float FixedDeltaTime { get; init; } = 1f / 60f;
 
     public CanonicalWorldSettings() { }
+
+    /// <summary>
+    /// Maps a complete SimConfig using the renderer's established numeric clamps. Shared names
+    /// do not imply equal dynamics: MaxSpeed is a legacy ceiling and TargetSpeed is canonical's
+    /// fixed speed. Legacy-only fields have no canonical counterpart and are intentionally omitted.
+    /// </summary>
+    public static CanonicalWorldSettings FromSimConfig(SimConfig config, int? initialCapacity = null)
+    {
+        ArgumentNullException.ThrowIfNull(config);
+        return new CanonicalWorldSettings
+        {
+            InitialCapacity = initialCapacity ?? config.InitialCapacity,
+            TargetSpeed = Math.Max(0.01f, config.MaxSpeed),
+            MaxForce = Math.Max(0.01f, config.MaxForce),
+            SenseRadius = Math.Max(1f, config.SenseRadius),
+            SeparationRadius = Math.Max(1f, config.SeparationRadius),
+            SeparationWeight = Math.Max(0f, config.SeparationWeight),
+            AlignmentWeight = Math.Max(0f, config.AlignmentWeight),
+            CohesionWeight = Math.Max(0f, config.CohesionWeight),
+            FieldOfView = config.FieldOfView,
+            WorldWidth = config.WorldWidth,
+            WorldHeight = config.WorldHeight,
+            FixedDeltaTime = config.FixedDeltaTime,
+            MaxNeighbors = config.MaxNeighbors,
+            WanderStrength = config.WanderStrength,
+            WanderRate = config.WanderRate,
+            MaxTurnRateDegPerSecond = config.MaxTurnRateDegPerSecond,
+            WhiskerTimeHorizon = config.WhiskerTimeHorizon,
+            WhiskerWeight = config.WhiskerWeight,
+            SeparationPriorityRadiusFactor = config.SeparationPriorityRadiusFactor,
+            SeparationPriorityExitFactor = config.SeparationPriorityExitFactor,
+            SeparationPriorityBoost = config.SeparationPriorityBoost,
+            SeparationPriorityHoldTime = config.SeparationPriorityHoldTime,
+            SeparationPriorityRampInTime = config.SeparationPriorityRampInTime,
+            SeparationPriorityRampOutTime = config.SeparationPriorityRampOutTime,
+            SeparationSpeedDroop = config.SeparationSpeedDroop,
+            Seed = config.Seed
+        };
+    }
+
+    /// <summary>
+    /// Validates serializable inputs while preserving the engine's minimum-capacity,
+    /// minimum-neighbor and finite control-clamping behavior.
+    /// </summary>
+    public List<string> Validate()
+    {
+        var errors = new List<string>();
+        if (Seed > Rng.MaxSupportedSeed) errors.Add($"Seed must be between 0 and {Rng.MaxSupportedSeed}, inclusive");
+        if (!float.IsFinite(TargetSpeed) || TargetSpeed <= 0f) errors.Add("TargetSpeed must be finite and positive");
+        if (!float.IsFinite(MaxForce) || MaxForce <= 0f) errors.Add("MaxForce must be finite and positive");
+        if (!float.IsFinite(SenseRadius) || SenseRadius <= 0f) errors.Add("SenseRadius must be finite and positive");
+        if (!float.IsFinite(FieldOfView) || FieldOfView <= 0f || FieldOfView > 360f) errors.Add("FieldOfView must be in (0, 360]");
+        if (!float.IsFinite(WorldWidth) || WorldWidth <= 0f) errors.Add("WorldWidth must be finite and positive");
+        if (!float.IsFinite(WorldHeight) || WorldHeight <= 0f) errors.Add("WorldHeight must be finite and positive");
+        if (!float.IsFinite(FixedDeltaTime) || FixedDeltaTime <= 0f) errors.Add("FixedDeltaTime must be finite and positive");
+        if (!float.IsFinite(SeparationRadius)) errors.Add("SeparationRadius must be finite");
+        if (!float.IsFinite(SeparationWeight)) errors.Add("SeparationWeight must be finite");
+        if (!float.IsFinite(AlignmentWeight)) errors.Add("AlignmentWeight must be finite");
+        if (!float.IsFinite(CohesionWeight)) errors.Add("CohesionWeight must be finite");
+        if (!float.IsFinite(MaxTurnRateDegPerSecond) || MaxTurnRateDegPerSecond < 0f) errors.Add("MaxTurnRateDegPerSecond must be finite and >= 0");
+        if (!float.IsFinite(WanderStrength) || WanderStrength < 0f) errors.Add("WanderStrength must be finite and >= 0");
+        if (!float.IsFinite(WanderRate) || WanderRate < 0f) errors.Add("WanderRate must be finite and >= 0");
+        if (!float.IsFinite(WhiskerTimeHorizon)) errors.Add("WhiskerTimeHorizon must be finite");
+        if (!float.IsFinite(WhiskerWeight) || WhiskerWeight < 0f) errors.Add("WhiskerWeight must be finite and >= 0");
+        if (!float.IsFinite(SeparationPriorityRadiusFactor)) errors.Add("SeparationPriorityRadiusFactor must be finite");
+        if (!float.IsFinite(SeparationPriorityExitFactor)) errors.Add("SeparationPriorityExitFactor must be finite");
+        if (!float.IsFinite(SeparationPriorityBoost) || SeparationPriorityBoost < 0f) errors.Add("SeparationPriorityBoost must be finite and >= 0");
+        if (!float.IsFinite(SeparationSpeedDroop) || SeparationSpeedDroop < 0f || SeparationSpeedDroop > 1f) errors.Add("SeparationSpeedDroop must be in [0, 1]");
+        if (!float.IsFinite(SeparationPriorityHoldTime)) errors.Add("SeparationPriorityHoldTime must be finite");
+        if (!float.IsFinite(SeparationPriorityRampInTime)) errors.Add("SeparationPriorityRampInTime must be finite");
+        if (!float.IsFinite(SeparationPriorityRampOutTime)) errors.Add("SeparationPriorityRampOutTime must be finite");
+        return errors;
+    }
+
+    /// <summary>Loads a partial JSON file over canonical defaults, then validates the result.</summary>
+    public static CanonicalWorldSettings LoadFromJson(string filePath) => FromJson(ConfigurationJson.ReadFile(filePath));
+
+    /// <summary>Reads a JSON object; omitted fields retain their canonical defaults.</summary>
+    public static CanonicalWorldSettings FromJson(string json) => ConfigurationJson.Deserialize<CanonicalWorldSettings>(json, config => config.Validate());
+
+    /// <summary>Serializes every canonical setting after validation.</summary>
+    public string ToJson() => ConfigurationJson.Serialize(this, Validate());
+
+    /// <summary>Writes a complete resolved configuration after validation succeeds.</summary>
+    public void SaveToJson(string filePath) => File.WriteAllText(filePath, ToJson());
 }

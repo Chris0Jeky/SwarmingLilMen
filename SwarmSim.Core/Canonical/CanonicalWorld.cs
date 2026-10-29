@@ -28,7 +28,7 @@ public sealed class CanonicalWorld
     private bool _separationPriorityTriggered;
     private float _minNeighborDistance = float.MaxValue;
     private float _maxNeighborDistance;
-    private PerceptionSnapshot _lastPerceptionSnapshot;
+    private int _lastTickAgentCount;
 
     public CanonicalWorld(CanonicalWorldSettings settings, ISpatialIndex spatialIndex)
     {
@@ -55,6 +55,41 @@ public sealed class CanonicalWorld
                 nameof(settings),
                 settings.MaxForce,
                 "MaxForce must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.FixedDeltaTime) || settings.FixedDeltaTime <= 0f)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.FixedDeltaTime,
+                "FixedDeltaTime must be finite and positive.");
+        }
+        if (!float.IsFinite(settings.SeparationRadius))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationRadius,
+                "SeparationRadius must be finite.");
+        }
+        if (!float.IsFinite(settings.SeparationWeight))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.SeparationWeight,
+                "SeparationWeight must be finite.");
+        }
+        if (!float.IsFinite(settings.AlignmentWeight))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.AlignmentWeight,
+                "AlignmentWeight must be finite.");
+        }
+        if (!float.IsFinite(settings.CohesionWeight))
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(settings),
+                settings.CohesionWeight,
+                "CohesionWeight must be finite.");
         }
         if (!float.IsFinite(settings.FieldOfView) || settings.FieldOfView <= 0f || settings.FieldOfView > 360f)
         {
@@ -544,7 +579,7 @@ public sealed class CanonicalWorld
 
         SwapBuffers();
         _tickCount++;
-        UpdatePerceptionSnapshot();
+        _lastTickAgentCount = Count;
     }
 
     private void SwapBuffers()
@@ -713,7 +748,71 @@ public sealed class CanonicalWorld
         return new SpatialQueryResult(visibleCount, query.IsTruncated);
     }
 
-    public PerceptionSnapshot CapturePerceptionSnapshot() => _lastPerceptionSnapshot;
+    /// <summary>
+    /// Explicitly copies the last tick's whole-world researcher telemetry into reusable,
+    /// caller-owned buffers. This does not query the spatial index or change the simulation.
+    /// </summary>
+    /// <remarks>
+    /// The destination must hold the boids present in the last completed tick. Boids added
+    /// between ticks first appear after the next <see cref="Step"/>. Before the first step,
+    /// capture returns tick zero, zero agents and empty per-agent spans. Buffer contents remain
+    /// unchanged until the caller explicitly captures into that destination again.
+    /// </remarks>
+    /// <exception cref="ArgumentNullException">The destination is null.</exception>
+    /// <exception cref="ArgumentException">The destination's capacity is too small.</exception>
+    public void CaptureTelemetryInto(CanonicalTelemetry destination)
+    {
+        ArgumentNullException.ThrowIfNull(destination);
+        if (destination.Capacity < _lastTickAgentCount)
+            throw new ArgumentException("Telemetry capacity must cover every agent in the last tick.", nameof(destination));
+
+        destination.Capture(
+            _tickCount,
+            _instrumentation,
+            _neighborDistanceSamples > 0 ? _neighborDistanceSum / _neighborDistanceSamples : 0f,
+            _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f,
+            _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f,
+            _separationPriorityTriggered,
+            _nearestDistances.AsSpan(0, _lastTickAgentCount),
+            _nearestAngles.AsSpan(0, _lastTickAgentCount),
+            _whiskerCounts.AsSpan(0, _lastTickAgentCount));
+    }
+
+    /// <summary>
+    /// Compatibility adapter for the old telemetry name. Allocates an independent snapshot
+    /// on each call after the first tick; prefer <see cref="CaptureTelemetryInto"/> with a reused
+    /// <see cref="CanonicalTelemetry"/> destination for allocation-free capture.
+    /// </summary>
+    public PerceptionSnapshot CapturePerceptionSnapshot()
+    {
+        if (_tickCount == 0)
+            return default;
+
+        var neighborStats = _instrumentation.NeighborCountStats;
+        float[] nearestDistances = new float[_lastTickAgentCount];
+        float[] nearestAngles = new float[_lastTickAgentCount];
+        int[] whiskerCounts = new int[_lastTickAgentCount];
+        Array.Copy(_nearestDistances, nearestDistances, _lastTickAgentCount);
+        Array.Copy(_nearestAngles, nearestAngles, _lastTickAgentCount);
+        Array.Copy(_whiskerCounts, whiskerCounts, _lastTickAgentCount);
+
+        return new PerceptionSnapshot(
+            _tickCount,
+            _lastTickAgentCount,
+            neighborStats.Avg,
+            _neighborDistanceSamples > 0 ? _neighborDistanceSum / _neighborDistanceSamples : 0f,
+            _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f,
+            _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f,
+            _instrumentation.AverageNeighborWeight,
+            _instrumentation.AverageSeparationMagnitude,
+            _instrumentation.AverageAlignmentMagnitude,
+            _instrumentation.AverageCohesionMagnitude,
+            neighborStats,
+            _separationPriorityTriggered,
+            nearestDistances,
+            nearestAngles,
+            whiskerCounts);
+    }
 
     private void InitializeDefaultRules()
     {
@@ -722,38 +821,10 @@ public sealed class CanonicalWorld
         AddRule(new CohesionRule(_settings.CohesionWeight));
     }
 
-    private void UpdatePerceptionSnapshot()
-    {
-        var neighborStats = _instrumentation.NeighborCountStats;
-        float avgDistance = _neighborDistanceSamples > 0 ? _neighborDistanceSum / _neighborDistanceSamples : 0f;
-        float minDistance = _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f;
-        float maxDistance = _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f;
-
-        float[] nearestDistancesCopy = new float[Count];
-        float[] nearestAnglesCopy = new float[Count];
-        int[] whiskerCountsCopy = new int[Count];
-        Array.Copy(_nearestDistances, nearestDistancesCopy, Count);
-        Array.Copy(_nearestAngles, nearestAnglesCopy, Count);
-        Array.Copy(_whiskerCounts, whiskerCountsCopy, Count);
-
-        _lastPerceptionSnapshot = new PerceptionSnapshot(
-            _tickCount,
-            Count,
-            neighborStats.Avg,
-            avgDistance,
-            minDistance,
-            maxDistance,
-            _instrumentation.AverageNeighborWeight,
-            _instrumentation.AverageSeparationMagnitude,
-            _instrumentation.AverageAlignmentMagnitude,
-            _instrumentation.AverageCohesionMagnitude,
-            neighborStats,
-            _separationPriorityTriggered,
-            nearestDistancesCopy,
-            nearestAnglesCopy,
-            whiskerCountsCopy);
-    }
-
+    /// <summary>
+    /// Legacy compatibility shape for researcher telemetry, not a policy observation.
+    /// New callers should reuse <see cref="CanonicalTelemetry"/> with explicit capture.
+    /// </summary>
     public readonly struct PerceptionSnapshot
     {
         public PerceptionSnapshot(

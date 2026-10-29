@@ -130,9 +130,9 @@ public sealed class World
         LastAttackTime = new float[capacity];
 
         // Initialize spatial grid
-        // Cell size = SenseRadius for optimal neighbor queries
+        // Sensing covers SenseRadius independently of the grid's tuning size.
         Grid = new UniformGrid(
-            cellSize: Config.SenseRadius,
+            cellSize: Config.GridCellSize,
             worldWidth: Config.WorldWidth,
             worldHeight: Config.WorldHeight,
             capacity: capacity);

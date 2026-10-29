@@ -16,7 +16,7 @@ namespace SwarmSim.Core.Spatial;
 /// ALGORITHM:
 /// - Grid cells are indexed as: cellIdx = col + row * Cols
 /// - Each cell has a linked list: Head[cell] points to first agent, Next[agent] points to next agent
-/// - Query scans 3×3 neighborhood for local agents
+/// - Query3x3 scans adjacent cells; radius queries cover all intersecting cells
 /// </summary>
 public sealed class UniformGrid
 {
@@ -95,8 +95,9 @@ public sealed class UniformGrid
         if (!float.IsFinite(c) || !float.IsFinite(r) || c > MaxCells || r > MaxCells)
             return false;
 
-        cols = (int)c;
-        rows = (int)r;
+        // Positive extents still need a cell when an extreme extent/cell ratio underflows.
+        cols = Math.Max(1, (int)c);
+        rows = Math.Max(1, (int)r);
         return (long)cols * rows <= MaxCells;
     }
 
@@ -330,6 +331,71 @@ public sealed class UniformGrid
     }
 
     /// <summary>
+    /// Gets legacy sensing candidates from cells covering the requested radius. Wrap queries
+    /// visit each periodic cell at most once, including worlds with only one or two cells.
+    /// Results retain cell traversal / linked-list order and may include agents outside the
+    /// circle; SenseSystem applies distance, group, and field-of-view filters afterwards.
+    /// Returns the candidate count, which may exceed the number written to the buffer.
+    /// </summary>
+    internal int QueryNeighborhood(float x, float y, float radius, bool wrap, Span<int> buffer)
+    {
+        // Keep the established bounded-world candidate order when adjacent cells suffice.
+        if (!wrap && radius <= CellSize)
+            return Query3x3(x, y, buffer, buffer.Length);
+
+        int firstCol;
+        int firstRow;
+        int colCount;
+        int rowCount;
+        if (wrap)
+        {
+            int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
+            int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
+            GetDirectionalCellReach(x, radius, _worldWidth, Cols, centerCol,
+                out int colsBefore, out int colsAfter, out bool scanAllCols);
+            GetDirectionalCellReach(y, radius, _worldHeight, Rows, centerRow,
+                out int rowsBefore, out int rowsAfter, out bool scanAllRows);
+            firstCol = scanAllCols ? 0 : centerCol - colsBefore;
+            firstRow = scanAllRows ? 0 : centerRow - rowsBefore;
+            colCount = scanAllCols ? Cols : colsBefore + colsAfter + 1;
+            rowCount = scanAllRows ? Rows : rowsBefore + rowsAfter + 1;
+        }
+        else
+        {
+            // Wider-than-cell queries need more than a 3x3 scan. As on the toroidal path,
+            // widen by a few extent ulps so float binning/comparison cannot drop edge cases.
+            double reachX = (double)radius + _worldWidth * MinimumImageUlpSlack;
+            double reachY = (double)radius + _worldHeight * MinimumImageUlpSlack;
+            firstCol = (int)Math.Clamp(Math.Floor(((double)x - reachX) / CellSize), 0, Cols - 1);
+            firstRow = (int)Math.Clamp(Math.Floor(((double)y - reachY) / CellSize), 0, Rows - 1);
+            int lastCol = (int)Math.Clamp(Math.Floor(((double)x + reachX) / CellSize), 0, Cols - 1);
+            int lastRow = (int)Math.Clamp(Math.Floor(((double)y + reachY) / CellSize), 0, Rows - 1);
+            colCount = lastCol - firstCol + 1;
+            rowCount = lastRow - firstRow + 1;
+        }
+
+        int count = 0;
+        for (int rowOffset = 0; rowOffset < rowCount; rowOffset++)
+        {
+            int row = wrap ? WrapCell(firstRow + rowOffset, Rows) : firstRow + rowOffset;
+            for (int colOffset = 0; colOffset < colCount; colOffset++)
+            {
+                int col = wrap ? WrapCell(firstCol + colOffset, Cols) : firstCol + colOffset;
+                int agentIndex = _head[col + row * Cols];
+                while (agentIndex != -1)
+                {
+                    if (count < buffer.Length)
+                        buffer[count] = agentIndex;
+                    count++;
+                    agentIndex = _next[agentIndex];
+                }
+            }
+        }
+
+        return count;
+    }
+
+    /// <summary>
     /// Queries a toroidal circular neighborhood for the canonical boids path without allocating.
     /// The legacy <see cref="Query3x3(float, float, Span{int}, int)"/> behavior is intentionally unchanged.
     /// </summary>
@@ -362,6 +428,10 @@ public sealed class UniformGrid
 
         int activeCount = count;
         float radiusSquared = radius * radius;
+        // Match NaiveSpatialIndex's cold path for subnormal or overflowed squared radii. Ordinary queries
+        // retain the existing float acceptance test, including its inclusive edge behavior.
+        bool preciseDistance = radiusSquared < 1.17549435e-38f || !float.IsFinite(radiusSquared);
+        double preciseRadiusSquared = (double)radius * radius;
         int centerCol = Math.Clamp((int)(x / CellSize), 0, Cols - 1);
         int centerRow = Math.Clamp((int)(y / CellSize), 0, Rows - 1);
         GetDirectionalCellReach(
@@ -388,7 +458,9 @@ public sealed class UniformGrid
                     {
                         float dx = MathUtils.MinimumImageDelta(xPositions[agentIndex] - x, _worldWidth);
                         float dy = MathUtils.MinimumImageDelta(yPositions[agentIndex] - y, _worldHeight);
-                        if (dx * dx + dy * dy <= radiusSquared)
+                        if (preciseDistance
+                            ? (double)dx * dx + (double)dy * dy <= preciseRadiusSquared
+                            : dx * dx + dy * dy <= radiusSquared)
                         {
                             InsertLowestBounded(buffer, ref written, agentIndex, ref truncated);
                         }
@@ -456,10 +528,9 @@ public sealed class UniformGrid
         // The running total is a double on purpose. Accumulating cell extents in float rounds in
         // BOTH directions, and when it rounds up the walk stops one cell early and silently drops
         // neighbours strictly inside the radius. That needs a cell size not exactly representable
-        // in binary32 plus a walk of hundreds of cells (radius/cellSize large), so no caller in
-        // this repository can reach it today -- every construction site passes
-        // cellSize == SenseRadius -- but the public constructor invites cellSize < radius, which
-        // is the ordinary grid-tuning move. Doubles remove the drift outright; the walk is O(cells)
+        // in binary32 plus a walk of hundreds of cells (radius/cellSize large), which is reachable
+        // when GridCellSize is tuned smaller than SenseRadius. Doubles remove the drift outright;
+        // the walk is O(cells)
         // per query, not per neighbour, so the cost is nil. The comparisons are non-strict so a
         // remaining per-edge ulp can only widen the scan, never shorten it.
         //

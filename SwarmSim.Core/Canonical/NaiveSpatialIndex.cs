@@ -67,6 +67,10 @@ public sealed class NaiveSpatialIndex : ISpatialIndex
             throw new ArgumentException("Boid count exceeds initialized capacity.", nameof(boids));
 
         float radiusSq = radius * radius;
+        // Preserve ordinary float comparisons (and trajectories). Extreme squared radii can
+        // underflow or overflow, so their circle test needs wider products on both sides.
+        bool preciseDistance = radiusSq < 1.17549435e-38f || !float.IsFinite(radiusSq);
+        double preciseRadiusSq = (double)radius * radius;
         int count = 0;
         bool isTruncated = false;
 
@@ -86,7 +90,9 @@ public sealed class NaiveSpatialIndex : ISpatialIndex
                 MathUtils.Wrap(boids[i].Position.X, _worldWidth) - selfX, _worldWidth);
             float dy = MathUtils.MinimumImageDelta(
                 MathUtils.Wrap(boids[i].Position.Y, _worldHeight) - selfY, _worldHeight);
-            if (dx * dx + dy * dy <= radiusSq)
+            if (preciseDistance
+                ? (double)dx * dx + (double)dy * dy <= preciseRadiusSq
+                : dx * dx + dy * dy <= radiusSq)
             {
                 if (count < results.Length)
                 {
