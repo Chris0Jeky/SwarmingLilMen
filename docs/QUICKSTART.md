@@ -25,7 +25,7 @@ cd SwarmingLilMen
 ## 2. Build
 
 ```bash
-dotnet build
+dotnet build SwarmingLilMen.sln --configuration Release
 ```
 
 Expected output: `Build succeeded. 0 Warning(s) 0 Error(s)`
@@ -33,24 +33,28 @@ Expected output: `Build succeeded. 0 Warning(s) 0 Error(s)`
 ## 3. Run Tests
 
 ```bash
-dotnet test SwarmingLilMen.sln --configuration Release --filter "Category!=Performance"
+dotnet test SwarmingLilMen.sln --configuration Release --no-build --filter "Category!=Performance" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
 Expect `Failed: 0`. The pass count grows with every merge, so the live figure lives in the
 verified-state block at the top of [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) rather than being
 copied here — a number pinned in a quickstart goes stale silently and makes a correct run look
-wrong. The four timing facts are excluded by this filter and live in the separate `Performance`
-category.
+wrong. Cases in the separate `Performance` category are excluded by this filter and run explicitly.
 
 ## 4. Play with the Code
 
 ### Option A: Run Headless
 
-Use the renderer project's headless benchmark mode; there is no root executable project.
+Use the standalone CLI for a fixed-tick experiment without a window:
 
 ```bash
-dotnet run --project SwarmSim.Render --configuration Release -- --benchmark --agent-count 1000
+dotnet run --project SwarmSim.Cli --configuration Release -- --engine canonical --scenario balanced --seed 7 --ticks 600 --agents 1000 --out runs/
 ```
+
+Each run creates a new child directory with `manifest.json`, `metrics.csv`, and `log.txt`.
+See [HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for replay and the native engine configuration
+schemas. The CLI uses `--agents`; the renderer uses `--agent-count`. The renderer's old
+`--benchmark` flag prints migration guidance and exits without running an experiment.
 
 ### Option B: Run the Renderer (Interactive)
 
@@ -157,10 +161,16 @@ five registered renderer presets (`SwarmSim.Render/Program.cs` (`Presets`)).
 ## 8. Run Benchmarks
 
 ```bash
+# Canonical full-step throughput and allocation measurements
+dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical
+
+# Legacy tick and grid benchmark suites
 dotnet run --project SwarmSim.Benchmarks -c Release
 ```
 
-This will create `BenchmarkDotNet.Artifacts/` with performance results.
+These create `BenchmarkDotNet.Artifacts/` with performance results. Read
+[PROJECT_STATUS.md](../PROJECT_STATUS.md#performance-evidence-and-its-limits) for the current
+measurement conditions and limits; core benchmarks do not measure renderer FPS.
 
 ## Next Steps
 

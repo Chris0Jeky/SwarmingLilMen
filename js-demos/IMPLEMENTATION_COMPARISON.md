@@ -3,7 +3,7 @@
 > [`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified
 > implementation, test, and performance state.
 
-This document was reconciled against the code on 2026-07-25. It is a compact qualitative reference,
+This document was reconciled against the code on 2026-10-29. It is a compact qualitative reference,
 not a promise that the independent browser demo and either C# path will remain feature-identical.
 
 ## Executable Paths
@@ -11,8 +11,8 @@ not a promise that the independent browser demo and either C# path will remain f
 | Path | Current role | Evidence |
 |------|--------------|----------|
 | JavaScript boids demo | Standalone browser teaching/prototyping demo | `js-demos/boids-basic/index.html` (`Boid`, `animate`) |
-| C# legacy | Default renderer and current BenchmarkDotNet target | `SwarmSim.Render/Program.cs` (`Program.Main`); `SwarmSim.Benchmarks/WorldTickBenchmarks.cs` (`WorldTickBenchmarks`, `Setup`) |
-| C# canonical | Opt-in, single-group future path via `--canonical` | `SwarmSim.Render/Program.cs` (`Program.RunCanonicalMode`, `Program.CreateCanonicalWorld`); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld`) |
+| C# legacy | Default renderer; selectable headless engine; legacy tick/grid benchmarks | `SwarmSim.Render/Program.cs` (`Program.Main`); `SwarmSim.Cli/RunOptions.cs` (`RunOptions.Parse`); `SwarmSim.Benchmarks/WorldTickBenchmarks.cs` (`WorldTickBenchmarks`, `Setup`) |
+| C# canonical | Default headless engine; opt-in single-group renderer via `--canonical`; dedicated full-step benchmarks | `SwarmSim.Cli/RunOptions.cs` (`RunOptions.Engine`); `SwarmSim.Render/Program.cs` (`Program.RunCanonicalMode`, `Program.CreateCanonicalWorld`); `SwarmSim.Benchmarks/CanonicalWorldStepBenchmarks.cs` (`CanonicalWorldStepBenchmarks`) |
 
 ## Source-Backed Behavior Comparison
 
@@ -24,36 +24,46 @@ not a promise that the independent browser demo and either C# path will remain f
 | Alignment/cohesion | Average neighbor velocity/position, then steer toward the desired velocity. | Sense aggregates feed `BehaviorSystem` steering. | Dedicated rules compute FOV-weighted averages. | `js-demos/boids-basic/index.html` (`align`, `cohere`); `SwarmSim.Core/Systems/BehaviorSystem.cs` (`BehaviorSystem.Run`); `SwarmSim.Core/Canonical/Rules/AlignmentRule.cs` (`AlignmentRule`); `SwarmSim.Core/Canonical/Rules/CohesionRule.cs` (`CohesionRule`) |
 | Speed/turn model | Velocity is renormalized to `targetSpeed` after steering. | Friction applies only in `Damped` mode; the active renderer configuration uses `ConstantSpeed`, skips friction, then constrains speed. | Target-derived speed with priority-mode separation droop plus an angular turn-rate limiter. | `js-demos/boids-basic/index.html` (`flock`, `update`); `SwarmSim.Core/Systems/IntegrateSystem.cs` (`IntegrateSystem.Run`); `SwarmSim.Render/Program.cs` (`Program.Main`); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld.Step`) |
 | Collision response | Separation reacts to current positions; no look-ahead pass exists. | A highest-priority hard override steers away inside `CollisionAvoidanceRadius` and consumes up to the remaining budget; separation/crowding steering runs only if budget remains. Phase 3 combat is not installed. | Whisker look-ahead, priority hysteresis, and shaped avoidance contribute steering; they are not a collision-free guarantee. | `js-demos/boids-basic/index.html` (`separate`); `SwarmSim.Core/Systems/BehaviorSystem.cs` (`BehaviorSystem.Run`, `CollisionAvoidanceRadius`); `SwarmSim.Render/Program.cs` (`Program.Main`); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld.Step`) |
-| Group semantics | One undivided boid collection. | Perception excludes other groups. | `Boid` stores a group, but the renderer creates only default-group boids and multi-group semantics remain incomplete. | `js-demos/boids-basic/index.html` (`Boid`, `flock`); `SwarmSim.Core/Systems/SenseSystem.cs` (`SenseSystem.Run`); `SwarmSim.Core/Canonical/Boid.cs` (`Boid`); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld`); `SwarmSim.Render/Program.cs` (`Program.SelectCanonicalTracked`); `PROJECT_STATUS.md` (`Canonical Boids Implementation (Post-P2 Rewrite)`) |
-| Allocation evidence | Unmeasured. | Unmeasured; no enforced allocation gate exists. | `Step()` refreshes a perception snapshot that allocates three result arrays. | `PROJECT_STATUS.md` (`Verified Live State (2026-08-08)`); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld.Step`, `CanonicalWorld.CapturePerceptionSnapshot`, `PerceptionSnapshot`) |
+| Group semantics | One undivided boid collection. | Perception excludes other groups. | `Boid` stores a group, but the renderer creates only default-group boids and multi-group semantics remain incomplete. | `js-demos/boids-basic/index.html` (`Boid`, `flock`); `SwarmSim.Core/Systems/SenseSystem.cs` (`SenseSystem.Run`); `SwarmSim.Core/Canonical/Boid.cs` (`Boid`); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld`); `SwarmSim.Render/Program.cs` (`Program.CreateCanonicalWorld`); [current status](../PROJECT_STATUS.md) |
+| Allocation evidence | No dated allocation measurement recorded here. | Legacy tick/grid benchmarks are separate workloads; their evidence does not establish renderer allocations. | `Step()` no longer allocates a snapshot. Bounded regressions cover stepping and explicit reusable telemetry; the compatibility snapshot adapter still allocates three arrays after the first tick. | [current measurements and limits](../PROJECT_STATUS.md#performance-evidence-and-its-limits); `SwarmSim.Core/Canonical/CanonicalWorld.cs` (`CanonicalWorld.Step`, `CanonicalWorld.CaptureTelemetryInto`, `CanonicalWorld.CapturePerceptionSnapshot`); `SwarmSim.Tests/CanonicalTelemetryTests.cs` (`StepAndExplicitReusableCaptureDoNotAllocateOverOneThousandWarmTicks`) |
 
 ## Performance Evidence
 
-Renderer FPS has not been measured for any of these three paths. JavaScript throughput and canonical
-throughput are also **unmeasured**. The repository's only current comparable sample is the legacy
-core timing category, captured on 2026-07-25 with:
+Current C# throughput and allocation evidence, workload definitions, runtime details and measurement
+caveats live in [PROJECT_STATUS.md](../PROJECT_STATUS.md#performance-evidence-and-its-limits).
+Canonical full-step BenchmarkDotNet cases now exist at 1k, 10k and 50k agents with telemetry capture
+off. Run them explicitly:
 
 ```powershell
 dotnet build SwarmingLilMen.sln --configuration Release
-dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj --configuration Release --no-build --filter "Category=Performance" --logger "console;verbosity=detailed" -- RunConfiguration.TreatNoTestsAsError=true
+dotnet run --project SwarmSim.Benchmarks --configuration Release --no-build -- --canonical
 ```
 
-| Measurement | 2026-07-25 result | Interpretation | Evidence |
-|-------------|-------------------|----------------|----------|
-| Legacy 1k tick | 0.172 ms/tick (5,801 operations/second) | One local simulation sample, not renderer FPS | `PROJECT_STATUS.md` (`Verified Live State (2026-08-08)`) |
-| Legacy 10k tick | 8.839 ms/tick (113.1 operations/second) | One local simulation sample | `PROJECT_STATUS.md` (`Verified Live State (2026-08-08)`) |
-| Legacy 50k tick | 162.815 ms/tick (6.14 operations/second) | The 16.67 ms/tick target is unmet | `PROJECT_STATUS.md` (`Verified Live State (2026-08-08)`) |
-| Legacy 50k grid rebuild | 0.102 ms | Grid-only cost, not a full tick | `PROJECT_STATUS.md` (`Verified Live State (2026-08-08)`) |
-| JavaScript renderer/core | Unmeasured | The UI displays instantaneous FPS, but this comparison records no dated result | `js-demos/boids-basic/index.html` (`animate`, `fps`) |
-| C# legacy renderer FPS | Unmeasured | The core timing test does not render | `SwarmSim.Tests/PerformanceTests.cs` (`PerformanceTests`, `Tick_With50kAgents_StaysWithinScalingEnvelope`) |
-| C# canonical core/renderer | Unmeasured | No canonical BenchmarkDotNet comparison exists | `SwarmSim.Benchmarks/WorldTickBenchmarks.cs` (`WorldTickBenchmarks`, `Setup`); `PROJECT_STATUS.md` (`Verified Live State (2026-08-08)`) |
+The earlier legacy timing table has been superseded as current evidence. Historical legacy samples
+and phase claims are preserved in the
+[archived status record](../docs/archive/PROJECT_STATUS_BEFORE_2026-10-29.md). They are not
+measurements of the current revision and should not be compared with newer canonical results as
+though the workload, host and code were controlled.
+
+Full renderer FPS remains unverified for both C# paths. This comparison also records no dated
+JavaScript throughput or allocation benchmark; an instantaneous FPS display is not a retained
+comparison. The interactive 50k/60 FPS target remains unmet. The canonical BenchmarkDotNet results
+and zero-allocation regressions have distinct measurement boundaries and do not establish a
+universal zero-allocation promise for rendering or arbitrary rules.
+
+For telemetry, reuse a caller-owned `CanonicalTelemetry` and call
+`CanonicalWorld.CaptureTelemetryInto` explicitly. The renderer follows that path once per frame
+through `Program.CaptureCanonicalTelemetry`. Calling the older `CapturePerceptionSnapshot`
+adapter intentionally allocates an independent snapshot; those allocations are no longer an
+automatic side effect of every `Step()`.
 
 ## Choosing a Path
 
 - Use the JavaScript demo for browser-local teaching and rapid visual experimentation.
-- Use the legacy C# path when comparing with the current renderer, tests, and benchmark suite.
+- Use the legacy C# path when comparing with the default renderer and legacy tick/grid suites.
 - Use the canonical C# path for new steering work, while preserving its current single-group and
-  unmeasured-performance limitations.
+  renderer-acceptance limitations. Use the standalone CLI for recorded fixed-tick runs and the
+  canonical benchmark route for scoped core measurements.
 
 Subjective judgments such as which path “looks better” require a visual comparison and are not
 encoded here as facts. Performance, collision quality, and allocation claims require their own

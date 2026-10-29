@@ -7,6 +7,13 @@
 **Status**: Planning
 **Priority**: High (Complete before Phase 3)
 
+> **Implementation reconciliation (2026-10-29):** The shipped renderer parser is
+> [`SwarmSim.Render/CommandLineOptions.cs`](../../SwarmSim.Render/CommandLineOptions.cs), with
+> `CommandLineOptions.Parse` and `GetHelpText`. `CommandLineArgs.cs` was a proposed name and never
+> became a repository file. The class and help examples below are historical design pseudocode,
+> not the current implementation or CLI contract. See [CONTROLS.md](../CONTROLS.md) and the
+> renderer's `--help` for maintained behavior.
+
 ## Problem Statement
 
 The current SwarmingLilMen project lacks discoverability and ease of use:
@@ -94,9 +101,9 @@ The current SwarmingLilMen project lacks discoverability and ease of use:
 ### Phase 2: Command-Line Arguments (PRIORITY 2) ✅
 
 #### 2.1 Argument Parser
-**Location**: New file `SwarmSim.Render/CommandLineArgs.cs`
+**Implemented location**: `SwarmSim.Render/CommandLineOptions.cs` (`CommandLineOptions.Parse`)
 
-**Design**:
+**Historical design proposal** (the proposed class name differs from the shipped parser):
 ```csharp
 public sealed class CommandLineArgs
 {
@@ -148,7 +155,7 @@ public sealed class CommandLineArgs
 ```
 
 #### 2.2 Help Text
-**Location**: `SwarmSim.Render/CommandLineArgs.cs`
+**Implemented location**: `SwarmSim.Render/CommandLineOptions.cs` (`CommandLineOptions.GetHelpText`)
 
 **Design**:
 ```
@@ -390,8 +397,8 @@ Check: Separation weight sufficient, MaxSpeed reasonable
 3. Update UI to show toggle states
 4. Test help overlay rendering
 
-**Session 3: Command-Line Interface**
-1. Create CommandLineArgs.cs with parser
+**Session 3: Command-Line Interface (historical proposal)**
+1. Implement the parser (shipped as `CommandLineOptions.cs`; the prototype above used `CommandLineArgs`)
 2. Add --help, --version, --list-presets handlers
 3. Implement preset loader
 4. Implement JSON config loader/saver
@@ -428,7 +435,7 @@ Check: Separation weight sufficient, MaxSpeed reasonable
 - [ ] All example configs load without errors
 
 ### Automated Tests
-- [ ] Test CommandLineArgs.Parse() with various inputs
+- [ ] Test the shipped `CommandLineOptions.Parse()` with various inputs (the prototype above used `CommandLineArgs`)
 - [ ] Test SimConfig.LoadFromJson() with valid/invalid files
 - [ ] Test preset name resolution
 - [ ] Test configuration validation

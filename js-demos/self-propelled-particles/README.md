@@ -282,8 +282,14 @@ Potential additions:
 - **Language**: Pure JavaScript (no dependencies)
 - **Canvas**: HTML5 2D rendering context
 - **Boundary**: Toroidal (periodic) wrapping
-- **Update**: Synchronous (all particles use t=n state to compute t=n+1)
+- **Update**: Sequential and in place. `animate` calls `Particle.update` in array order, so later
+  particles read positions and headings already advanced for earlier particles in the same frame.
 - **Noise**: Uniform distribution in [-η/2, η/2]
+
+The update ordering is part of this demo's model: it is not the synchronous, double-buffered
+Vicsek update in which every particle observes the same previous state. Quantitative comparisons
+of ordering or phase transitions must account for that difference. Initialization and noise use
+unseeded `Math.random`; see [`index.html`](index.html), `Particle.update` and `animate`.
 
 ## License
 

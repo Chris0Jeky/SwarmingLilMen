@@ -103,22 +103,23 @@ Each ant operates in one of two states:
 
 **Searching for Food:**
 ```
-1. Sense pheromone in three directions (left, forward, right)
-2. If pheromone detected:
-     Turn toward strongest trail (with some randomness)
+1. Check for nearby food before moving; if found, switch to "Returning"
+2. Otherwise sense pheromone in three directions (left, forward, right)
+3. Select a sensor proportionally to positive pheromone strength^alpha
+4. If the selected strength exceeds 0.1:
+     Use its direction plus random angular jitter in [-0.25, 0.25] radians
    Else:
-     Random walk
-3. Move forward
-4. If food source reached → switch to "Returning" state
+     Add random angular jitter in [-0.15, 0.15] radians to the current heading
+5. Move forward, subject to wall and boundary handling
 ```
 
 **Returning to Nest:**
 ```
 1. Record current position in path
-2. Head toward nest (simple homing)
-3. If nest reached:
+2. If already at the nest before moving:
      Deposit pheromone along recorded path
      Switch to "Searching" state
+3. Otherwise head toward the nest (simple homing) and move
 ```
 
 ### Pheromone Dynamics
@@ -127,7 +128,7 @@ Each ant operates in one of two states:
 ```javascript
 // When ant returns with food
 for (position in ant.path) {
-    grid[position] += pheromoneDeposit
+    grid[position] = Math.min(100, grid[position] + pheromoneDeposit)
 }
 ```
 
@@ -149,6 +150,12 @@ probability(direction) ∝ pheromone(direction)^α
 
 where α controls exploration vs exploitation
 ```
+
+`Ant.sensePheromone` samples the in-bounds left/forward/right sensor readings by roulette-wheel
+selection. Zero-strength readings have zero weight, including when alpha is zero. `Ant.update`
+then applies the selected-strength threshold and angular jitter shown above. This is a stochastic
+choice, not a strongest-trail rule; see [`index.html`](index.html), `Ant.sensePheromone` and
+`Ant.update`.
 
 ### Implementation Details
 
@@ -236,7 +243,10 @@ High traffic paths:
 - Deposit = 50: Very strong trails
 - **Question**: What's the optimal balance?
 
-**Expected Result**: Sweet spot around 10-15 provides good convergence without over-exploitation
+Each deposit is capped at 100 per cell, and repeated path positions can deposit into the same
+cell. Larger deposit settings can reach that cap sooner rather than strengthening a trail
+without limit (`Ant.depositPheromone`). An optimal deposit/evaporation balance has not been
+measured; compare repeated runs rather than treating 10-15 as a verified optimum.
 
 ### Experiment 4: The Double Bridge Experiment
 **Setup**: Classic ACO experiment
@@ -283,7 +293,7 @@ High traffic paths:
 - **Robotics**: Multi-robot path planning
 
 ### Why ACO Works Well
-1. **Parallel search**: Many ants explore simultaneously
+1. **Multiple searchers**: Many ants explore different routes
 2. **Positive feedback**: Good solutions attract more exploration
 3. **Adaptation**: Responds to environmental changes
 4. **Simplicity**: Easy to implement and tune
@@ -341,11 +351,16 @@ Convergence time is unmeasured and depends on the scenario and browser.
 
 Alternative: Per-ant trails (more accurate but slower)
 
-### Why Synchronous Updates?
-All ants update simultaneously (not sequential):
-- **Fairness**: No ant gets "first pick" advantage
-- **Parallelizable**: Could use Web Workers
-- **Deterministic**: Easier to debug
+### Update Order and Randomness
+
+`animate` updates and draws ants sequentially in array order. Every ant reads and writes the same
+mutable pheromone grid, so a deposit from an earlier ant is visible to later ants during that
+frame. The implementation does not buffer a simultaneous next state or guarantee order fairness.
+
+Initialization, weighted sensor choice, exploration and collision jitter use unseeded
+`Math.random`. Repeated runs are not deterministic, and moving this loop to workers would require
+an explicit policy for shared-grid updates and random streams. See [`index.html`](index.html),
+`animate`, `Ant.update`, `Ant.sensePheromone`, and `Ant.depositPheromone`.
 
 ### Simplifications vs Real ACO
 1. **No distance heuristic**: Real ACO uses distance to guide exploration

@@ -19,7 +19,16 @@ incomplete (`CommandLineOptions.Parse`, `--canonical` case):
 dotnet run --project SwarmSim.Render -- --canonical
 ```
 
-Use `--agent-count N` to override the initial population for the legacy window, the canonical renderer, and the headless `--benchmark` run (`Program.Main` writes `Program._initialAgentCount` before `Program.RunBenchmark` or `Program.RunCanonicalMode`; `Program.CreateCanonicalWorld` spawns that many boids). Run `--help` for the authoritative CLI.
+Use `--agent-count N` to override the initial population in either renderer
+(`Program.Main`, `Program.SpawnInitialAgents`, `Program.CreateCanonicalWorld`). Run `--help` for
+the authoritative renderer options. The former `--benchmark` flag now prints migration guidance
+and exits; fixed-tick experiments use `SwarmSim.Cli` and its `--agents` option:
+
+```sh
+dotnet run --project SwarmSim.Cli -c Release -- --engine canonical --scenario balanced --seed 7 --ticks 600 --agents 1000 --out runs/
+```
+
+See [HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for recorded runs and manifest replay.
 
 ## What the Legacy Renderer Shows
 
@@ -80,13 +89,19 @@ The legacy renderer requests a **60 FPS** frame cap and its active default confi
 `Raylib.SetTargetFPS(60)`). Those are scheduling
 settings, not measured throughput guarantees. Other `SimConfig` consumers may use different steps.
 
-The legacy-core sample comes from the explicit Release `Performance` test category. Its **50k tick**
-result misses the **16.67 ms/tick** target by more than an order of magnitude. The dated figures are
-deliberately not copied here — see the verified block in
-[`../PROJECT_STATUS.md`](../PROJECT_STATUS.md) for the command and the complete sample, which is one
-local measurement rather than a benchmark distribution. That test does not render a window and
-therefore is not renderer FPS evidence. Canonical throughput, renderer FPS, and allocation rates
-remain unmeasured.
+Canonical full-step throughput and allocation measurements are available through
+`SwarmSim.Benchmarks --canonical` (`CanonicalWorldStepBenchmarks`), with telemetry capture off.
+Current results, workload definitions and measurement caveats are maintained in
+[PROJECT_STATUS.md](../PROJECT_STATUS.md#performance-evidence-and-its-limits). Earlier legacy
+timings remain in the [historical status archive](archive/PROJECT_STATUS_BEFORE_2026-10-29.md).
+These headless core measurements do not establish renderer FPS or a universal allocation bound.
+The interactive 50k/60 FPS target remains unmet, and full renderer performance remains unverified.
+
+`CanonicalWorld.Step` no longer creates a perception snapshot automatically. Callers can reuse
+`CanonicalTelemetry` with `CaptureTelemetryInto`; the canonical renderer does so explicitly once
+per frame through `Program.CaptureCanonicalTelemetry`. The older `CapturePerceptionSnapshot`
+compatibility adapter still allocates three arrays on calls after the first tick. Allocation
+regressions cover the bounded step/capture path, not all rendering, logging or overlay drawing.
 
 ## Data Export
 
@@ -108,7 +123,7 @@ operational outputs should not be committed.
 
 Canonical perception semantics ([issue #18](https://github.com/Chris0Jeky/SwarmingLilMen/issues/18))
 and force-budget enforcement ([issue #19](https://github.com/Chris0Jeky/SwarmingLilMen/issues/19))
-are closed. Milestone 7 UX/test acceptance, milestones 8-10, multi-group semantics, canonical
-benchmarks, and renderer automation remain open.
-Phase 3 combat/metabolism work must wait for that readiness evidence; follow
-`PROJECT_STATUS.md` rather than historical phase percentages.
+are closed. Canonical benchmarks and explicit reusable telemetry are implemented. Remaining
+readiness, multi-group semantics, renderer acceptance and Phase 3 gates are tracked in
+[PROJECT_STATUS.md](../PROJECT_STATUS.md); historical phase percentages are not current acceptance
+evidence.

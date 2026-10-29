@@ -1,31 +1,36 @@
 # Phase 3 Readiness Checklist
 
-> [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source of truth for verified implementation,
-> test, and performance state; this checklist defines remaining canonical readiness work.
+> **Historical readiness checklist:** [`PROJECT_STATUS.md`](../PROJECT_STATUS.md) is the live source
+> of truth for verified implementation, test, and performance state. This document preserves prior
+> criteria and assessments; its unchecked boxes are not a current work queue. Select work from
+> [epic #10's current open children](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) and their
+> dependencies.
 
-**Last Updated**: 2026-07-25 (toroidal spatial-index contract and equivalence proof)
-**Current Status**: Core scaffolding, steering rules, and the perception contract exist;
-composition and instrumentation UX are partial, and milestones 8-10 remain incomplete
+**Last Updated**: 2026-10-29 (documentation and scheduling reconciliation)
+**Assessment context**: The milestone checklist and estimates below retain the earlier readiness
+assessment. This documentation update does not mark milestones complete or revalidate them.
 
-> This document outlines the concrete steps needed to complete the canonical boids implementation before starting Phase 3 (Combat & Metabolism).
+> Use the criteria below to assess evidence gaps before Phase 3 (Combat & Metabolism), after checking current implementation and issue state.
 
 ---
 
 ## Overview
 
-Before proceeding to Phase 3, we must complete the canonical boids implementation to provide a
-solid, debuggable foundation. The perception contract now enforces its radius/self/wrap
-requirements and milestone 6 now enforces its total `MaxForce` bound, but milestone 7 does not meet
-its full UX/test acceptance. Milestones 8-10, multi-group semantics, and canonical performance
-evidence remain incomplete.
+The earlier assessment required a complete, debuggable canonical foundation before Phase 3.
+It recorded the perception radius/self/wrap contract and total `MaxForce` bound, while leaving
+instrumentation UX, later milestones, multi-group semantics and performance evidence as gaps.
+Some of that work has since shipped, including canonical benchmarks and reusable telemetry.
+Current evidence and remaining limitations belong to [PROJECT_STATUS.md](../PROJECT_STATUS.md),
+not this preserved assessment.
 
-**Estimated Effort**: 1-2 weeks of focused development
+**Historical Estimated Effort**: 1-2 weeks of focused development; not a current forecast
 
 ---
 
-## Critical Path: Resolve Correctness Gaps and Complete Readiness
+## Historical Critical Path: Correctness Gaps and Readiness
 
-These are the remaining milestones from `archive/NewImplementation.md` that must be completed:
+The following checklist records the earlier assessment against `archive/NewImplementation.md`.
+Check current code, merged work and open issues before treating an entry as outstanding.
 
 ### ✅ Core Scaffolding and Single-Boid Path (Milestones 0-1)
 - [x] Core scaffolding (Vec2, Boid, World, Rng, interfaces)
@@ -71,9 +76,9 @@ These are the remaining milestones from `archive/NewImplementation.md` that must
 - [ ] Individual rule enable/disable controls and FOV adjustment
 - [ ] Acceptance tests proving rule toggles change the recorded contributions
 
-The missing milestone-7 slice is tracked in
-[issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40) and is intentionally outside
-epic #10's ordered Wave 0/Wave 1 execution.
+The milestone-7 follow-up was separated into
+[issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40). Its current scope and dependencies
+come from the issue and epic, not the archived Wave 0/Wave 1 grouping.
 
 ### 🔄 Milestone 8: Boundaries & Worlds (IN PROGRESS)
 **Goal**: Predictable edges so tests don't flake
@@ -421,12 +426,13 @@ Once all above tasks are complete, decide on migration strategy:
 | **Total** | **13-14 days** | |
 
 > **Planning boundary:** The table above is a historical estimate for its listed tasks. Its total
-> does not estimate issue-level scope, gates, reviews, or merge time for epic #10's full ordered
-> #11-#21 run or dependency-gated #40/#41, so it is not a current end-to-end forecast.
+> does not estimate issue-level scope, gates, reviews, or merge time for the current epic and its
+> open children, so it is not a current end-to-end forecast.
 
-**Canonical-readiness subset after Wave 0**: epic #10's ordered #17-#21 gates. The full overnight
-queue still begins with Wave 0 issues #11-#16. Multi-group and dependency-gated
-acceptance/instrumentation backlog (#40 and #41) remains outside the current overnight scope.
+The former Wave 0 and Wave 1 lists are historical ordering context. There is no fixed overnight
+queue in this document. Before scheduling work, inspect the epic's current open children,
+dependency gates and merged evidence; do not restart closed issues because their numbers appear
+in an old plan.
 
 ---
 
@@ -441,8 +447,8 @@ Phase 3 readiness achieved when:
 5. [ ] Visualization tools built for debugging
 6. [x] Comprehensive test suite (50+ tests passing)
 
-Only the test-count criterion is currently satisfied; the unchecked criteria remain required and
-the verified state above governs their evidence.
+These checkmarks preserve the earlier assessment. They do not establish present Phase 3 readiness;
+each criterion needs current evidence in `PROJECT_STATUS.md` and the corresponding issue.
 
 At that point, we have a **solid, debuggable, performant foundation** for Phase 3 combat and metabolism systems.
 
@@ -461,12 +467,14 @@ At that point, we have a **solid, debuggable, performant foundation** for Phase 
 
 When starting work on Phase 3 readiness:
 
-1. ✅ Read `archive/IMPLEMENTATION_EVOLUTION.md` to understand context
-2. ✅ Read this document to understand what needs doing
-3. Resume the first unmerged issue in epic #10's ordered #11-#21 queue
-4. Update `PROJECT_STATUS.md` as you complete tasks
-5. Run tests frequently to ensure nothing breaks
-6. Profile performance after each milestone
+1. Read [PROJECT_STATUS.md](../PROJECT_STATUS.md) for current implementation and evidence.
+2. Inspect [epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10), its current open
+   children and their dependencies.
+3. Select an eligible open task after checking merged work; do not resume from a fixed issue-number list.
+4. Use this checklist and `archive/IMPLEMENTATION_EVOLUTION.md` as historical criteria and rationale.
+5. Update `PROJECT_STATUS.md` with new evidence and run the Release gate documented in
+   [CONTRIBUTING.md](../CONTRIBUTING.md#running-tests).
+6. Profile changed hot paths when their performance needs validation.
 
-Do not select work by apparent speed; the epic's dependency order is authoritative.
-The #11-#16 Wave 0 gates precede this checklist's #17-#21 canonical behavior/fixture subset.
+Current issue dependencies govern scheduling. Historical wave names do not require repeating
+completed work, and this checklist does not declare a new milestone completion.

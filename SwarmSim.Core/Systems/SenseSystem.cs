@@ -234,7 +234,8 @@ public sealed class SenseSystem : ISimSystem
                     if (dist > 0.001f) // Avoid division by zero
                     {
                         // Normalize direction and scale by (1 - distance/radius)
-                        // This gives 1.0 repulsion at distance 0, 0.0 at separationRadius
+                        // Strength decreases linearly toward zero at separationRadius;
+                        // candidates nearer than 0.01 units were skipped by the guard above.
                         float repulsionStrength = (separationRadius - dist) / separationRadius;
                         float normX = dx / dist;
                         float normY = dy / dist;

@@ -23,7 +23,7 @@ The local publishing examples can be adapted; do not paste the workflow block ov
 # 0) Repo layout additions
 
 ```
-SwarmSim.sln
+SwarmingLilMen.sln
   /SwarmSim.Core
   /SwarmSim.Render
     /Properties
