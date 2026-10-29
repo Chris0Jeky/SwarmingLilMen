@@ -1,17 +1,21 @@
 # Canonical behavioral scenario coverage
 
-[Issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41) remains **partially complete**.
-The scenarios below exercise the current canonical pipeline over fixed logical ticks. They do
-not establish named rule isolation, classic-Reynolds composition, cross-engine parity, or a
-general-purpose kernel. Those contracts depend on [#27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)
-and [#28](https://github.com/Chris0Jeky/SwarmingLilMen/issues/28).
+[Issue #41](https://github.com/Chris0Jeky/SwarmingLilMen/issues/41) remains **partially complete**
+because the literal faster/slower overtaking model is unresolved. The scenarios below exercise
+Enhanced behavior, named single-rule isolation and ClassicReynolds constant speed over fixed
+logical ticks. They use the public composition contract from
+[#27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27). Cross-engine/reference parity remains
+[#28](https://github.com/Chris0Jeky/SwarmingLilMen/issues/28); no general-purpose kernel is implied.
 
-The executable inventory is [CanonicalScenarioTests](../SwarmSim.Tests/CanonicalScenarioTests.cs).
-Its eight test methods produce eleven cases: three isolated headings and two cluster placements
-are separate cases. Initial states are explicit; every case disables wander. The suite depends
-on no particular RNG sequence, wall clock, frame rate, or renderer.
+The executable inventory has nineteen cases. The eight methods in
+[CanonicalScenarioTests](../SwarmSim.Tests/CanonicalScenarioTests.cs) produce eleven Enhanced
+cases, including three isolated headings and two cluster placements. The five methods in
+[CanonicalNamedScenarioTests](../SwarmSim.Tests/CanonicalNamedScenarioTests.cs) produce eight
+named-composition cases, including three isolated rules and two cluster placements. Initial
+states are explicit; every case disables wander. Neither suite depends on a particular RNG
+sequence, wall clock, frame rate, or renderer.
 
-## Acceptance inventory
+## Enhanced acceptance inventory
 
 | Roadmap acceptance | Scenario method | Horizon | Observable assertion |
 | --- | --- | --- | --- |
@@ -31,39 +35,63 @@ priority semantics rather than an arbitrary near-zero threshold: with target spe
 0.03, the speed floor is 1.94. A user-selected droop of 1 permits zero speed and is outside that
 default non-stuck claim.
 
+## Named isolation and classic acceptance inventory
+
+These cases construct the supported ClassicReynolds mode and call `SetPolicyEnabled` with the
+published policy IDs. They never use rule positions or weights as an off switch. Every tick
+asserts that disabled rules execute zero times and have zero recorded contribution; the enabled
+rule executes once per agent. The absent enhanced policies/stages execute zero times, while the
+explicit target-speed stage executes once per agent.
+
+| Roadmap acceptance | Scenario method | Horizon | Observable assertion |
+| --- | --- | --- | --- |
+| [Milestone 6: isolated rules match rule-level behavior](archive/NewImplementation.md#milestone-6--rule-composition--stability) | `NamedIsolationMatchesTheRuleLevelUpdateOverMultipleTicks` (separation/alignment/cohesion) | 120 × 1/60 s = 2 s each | Four interacting agents have a complete full-circle neighborhood. Each next velocity and position matches the corresponding direct `IRule.Compute` result, independent clamp and target-speed update bit for bit. The chosen rule must produce nontrivial force. This checks composition wiring, not an independent reference model. |
+| [Milestone 3: approach and separation](archive/NewImplementation.md#milestone-3--separation), isolated separation | `SeparationOnlyKeepsAnApproachingOffsetPairClearAndThenSeparatesIt` | 360 × 1/60 s = 6 s | Two opposing headings with a one-unit lateral offset remain more than 1.5 units apart, then finish farther apart than initially. Straight-line pass-through reaches one unit and fails the clearance bound. This is an offset approaching pair, not faster/slower overtaking. |
+| [Milestone 4: heading convergence](archive/NewImplementation.md#milestone-4--alignment), isolated alignment | `AlignmentOnlyReducesTripletHeadingVariance` | 300 × 1/60 s = 5 s | Circular heading variance falls at least 90% while separation and cohesion are disabled by name. |
+| [Milestone 5: two clusters with alignment off](archive/NewImplementation.md#milestone-5--cohesion) | `CohesionOnlyPullsTwoClustersTogetherWithAlignmentDisabled` (interior/seam) | 180 × 1/60 s = 3 s | Two three-agent clusters close at least 20% of their initial 30-unit minimum-image center distance, with both alignment and separation disabled by name. |
+| [Milestone 6: constant speed, finite mobile agents](archive/NewImplementation.md#milestone-6--rule-composition--stability), ClassicReynolds | `ClassicCombinedFlockRemainsFiniteAndAtTargetSpeedWhileEveryRuleContributes` | 1,200 × 1/60 s = 20 s | A fixed 16-agent interacting layout exercises all three contributions without truncated neighborhoods. Every position/velocity is finite and every speed is within `TargetSpeed ± 1e-5`, here 2 ± 1e-5. No enhanced stage runs. |
+
+The constant-speed tolerance is an absolute float-normalization allowance, not an allowed droop.
+The existing Enhanced cases retain the distinct default 3% droop/floor/recovery assertions. These
+are finite-scenario claims: an exactly zero integrated velocity remains zero in the classic
+target-speed stage, so the test does not assert universal mobility for every possible force,
+timestep or initial condition.
+
 ## Current model boundaries
 
 - **Literal faster/slower overtaking is still unproved.** `CanonicalWorld.TryAddBoid` and
-  `SetVelocity` normalize each supplied velocity to the same world-wide `TargetSpeed`, and each
-  step renormalizes to the priority-adjusted speed. Supplying unequal velocity magnitudes does
-  not create a persistent faster follower and slower leader. This suite does not relabel an
-  oblique head-on pass as the missing overtaking acceptance. A supported experiment definition
-  must be settled before that case can be claimed.
+  `SetVelocity` normalize each supplied velocity to the same world-wide `TargetSpeed`. Both
+  built-in compositions then normalize speed each tick; Enhanced permits its documented
+  priority adjustment. Supplying unequal initial magnitudes does not create a persistent faster
+  follower and slower leader. A custom injected velocity stage can define a different model, but
+  no such model is claimed by these built-in-mode tests. Also, separation activates at or inside
+  `SeparationRadius`; it cannot generally guarantee avoiding entry into that same radius before
+  it has any nonzero input. A future overtaking experiment must name its speed model, activation
+  radius and clearance objective explicitly. This suite does not relabel an oblique encounter as
+  the missing acceptance.
 - **A neighbor must be sensed before cohesion can react.** The pair begins within `SenseRadius`
   and outside `SeparationRadius`. The roadmap wording about approaching a neighbor until it is
   within `R` cannot mean attraction to a neighbor initially outside perception with no other
   observation or steering source.
-- **A weight of zero is not a named off switch.** In the current rule implementations, scaling
-  the desired velocity to zero can still yield `-self.Velocity`. Whisker/shaped avoidance also
-  remains part of the inline pipeline. These tests do not edit `_rules`, assign positional test
-  rules, or claim that zero weights establish isolated rule composition. In particular, the
-  two-cluster cases prove integrated cohesion, not the roadmap's alignment-off isolation.
-- **Classic constant speed remains a separate acceptance.** The default priority mode
-  intentionally reduces speed near neighbors. The complete milestone-6 isolation and classic
-  composition cases must use #27's named contract when it exists; weakening default droop or
-  changing trajectories to imitate that future mode would be a behavior change.
+- **A weight of zero is not a named off switch.** Scaling the desired velocity to zero can
+  still yield `-self.Velocity`. Named cases use `SetPolicyEnabled`; Enhanced cases continue to
+  include that mode's explicit whisker/shaped-avoidance stages. Neither suite edits private rule
+  state or assigns positional test rules.
+- **Classic constant speed and Enhanced droop are separate acceptances.** Classic's independent
+  force caps and explicit speed stage are exercised as that model. Enhanced's shared total-force
+  budget, priority speed reduction and exact fixtures remain unchanged.
 
 No production implementation or golden fixture changes accompany this coverage expansion.
-The existing six-case inventory already covered several issue-41 behaviors; this work strengthens
-their observable margins, extends no-neighbor coverage, adds the two-cluster placements, and makes
-default speed semantics explicit. The issue remains open for the listed model/composition
-acceptance. Publication requires the Ubuntu and Windows gates on the reviewed revision.
+The first expansion strengthened the older six-case inventory into eleven Enhanced cases; the
+named-composition follow-up adds eight cases after the contract became available. The issue
+remains open for the overtaking definition above. Publication requires the Ubuntu and Windows
+gates on the reviewed revision.
 
 ## Run the scenarios
 
 ```sh
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release \
-  --filter "FullyQualifiedName~CanonicalScenarioTests" \
+  --filter "FullyQualifiedName~CanonicalScenarioTests|FullyQualifiedName~CanonicalNamedScenarioTests" \
   --logger "console;verbosity=detailed" \
   -- RunConfiguration.TreatNoTestsAsError=true
 ```
@@ -109,3 +137,34 @@ it unchanged. Its appropriate sabotage therefore introduces an unwanted empty-ne
 The convergence cases, by contrast, must fail when their corresponding positive contribution is
 removed. This distinction avoids claiming that an isolated boid needs a neighbor-driven rule to
 maintain its velocity.
+
+### Named-composition follow-up
+
+The Linux x64 / .NET 8.0.21 Release follow-up observed the following values. The acceptance bounds
+were present before this first behavioral run; none was loosened after observing the results.
+
+| Quantity | Observed value |
+| --- | --- |
+| Single-rule integration | Bit-identical next state for all three rules, four agents and 120 ticks each |
+| Separation-only pair closest / final distance | 3.1442914 / 22.13904, initially 6.0827627 |
+| Alignment-only circular variance, initial → final | 0.3333333 → 0.0019230843 |
+| Cohesion-only cluster distance, interior | 30 → 20.7042 |
+| Cohesion-only cluster distance, across seam | 30 → 20.704208 |
+| Classic interacting flock speed range | [1.9999998, 2.0000002] across 1,200 ticks and 16 agents |
+
+Four additional local mutations were compiled separately and reverted before the final gate.
+Each rule mutation suppresses only the local policy's emitted force, retaining the compatibility
+`IRule.Compute` path as the rule-level witness. This detects a broken named-policy dispatch/output
+even when the old rule arithmetic still works.
+
+| Isolated mutation | Failed named cases | Sensitivity demonstrated |
+| --- | ---: | --- |
+| Separation policy emits zero | 3 | Rule-level integration mismatch, lost pair clearance, missing contribution in the combined scene |
+| Alignment policy emits zero | 3 | Rule-level integration mismatch, lost heading convergence, missing contribution in the combined scene |
+| Cohesion policy emits zero | 4 | Rule-level integration mismatch, both cluster placements lose approach, missing contribution in the combined scene |
+| Target-speed stage returns its input unchanged | 4 | All three isolated integration cases and the combined constant-speed bound detect the missing stage |
+
+The eight new cases pass again with production source restored. The mutation variants are
+verification-only local edits and are absent from the publication patch. Exact fixtures remain
+unchanged; same-build rule-level agreement does not replace the independent reference/envelope
+work reserved for #28.
