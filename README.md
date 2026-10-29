@@ -49,6 +49,7 @@ should target the canonical implementation.
 - ✅ Canonical zero-allocation warm-tick regressions and a dedicated BenchmarkDotNet route
 - ✅ Raylib-free experiments with native configurations, versioned manifests and exact CSV replay
 - ✅ Registered analysis channels, periodic centroids and opt-in exact nearest-neighbor statistics
+- ✅ Sequential seed/parameter sweeps with stable summary rows and replayable cell manifests
 - ✅ Legacy uniform-grid boids pipeline and interactive Raylib renderer
 - ✅ Opt-in canonical single-group renderer with steering instrumentation
 - ✅ xUnit inventory whose non-performance subset forms the hosted CI gate; see the verified-state
@@ -102,6 +103,9 @@ dotnet run --project SwarmSim.Cli -c Release -- --scenario balanced --seed 7 --t
 
 # Use a native legacy configuration
 dotnet run --project SwarmSim.Cli -c Release -- --engine legacy --config configs/balanced.json --seed 7 --ticks 600 --out runs/
+
+# Run the bounded 3-seed × 4-value example (12 experiment cells)
+dotnet run --project SwarmSim.Cli -c Release -- --sweep configs/sweep-example.json --out sweeps/
 
 # Run the BenchmarkDotNet suite
 dotnet run --project SwarmSim.Benchmarks -c Release

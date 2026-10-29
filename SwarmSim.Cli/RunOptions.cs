@@ -12,6 +12,7 @@ internal sealed class RunOptions
     internal string? ConfigPath { get; private set; }
     internal string? Scenario { get; private set; }
     internal string? ManifestPath { get; private set; }
+    internal string? SweepPath { get; private set; }
     internal uint? Seed { get; private set; }
     internal int Ticks { get; private set; } = 600;
     internal int AgentCount { get; private set; } = 400;
@@ -35,7 +36,7 @@ internal sealed class RunOptions
                 else options.ListMetrics = true;
                 continue;
             }
-            if (option is not ("--engine" or "--config" or "--scenario" or "--manifest" or "--seed" or "--ticks" or "--agents" or "--out" or "--metrics"))
+            if (option is not ("--engine" or "--config" or "--scenario" or "--manifest" or "--sweep" or "--seed" or "--ticks" or "--agents" or "--out" or "--metrics"))
                 throw new UsageException($"Unknown option or argument '{option}'.");
             if (++index >= args.Length || string.IsNullOrWhiteSpace(args[index]) || args[index].StartsWith("--", StringComparison.Ordinal))
                 throw new UsageException($"Option '{option}' requires a value.");
@@ -54,6 +55,7 @@ internal sealed class RunOptions
                     options.Scenario = value;
                     break;
                 case "--manifest": options.ManifestPath = value; break;
+                case "--sweep": options.SweepPath = value; break;
                 case "--out": options.OutputDirectory = value; break;
                 case "--metrics":
                     options.RequestedMetrics = value.Split(',', StringSplitOptions.TrimEntries);
@@ -70,6 +72,9 @@ internal sealed class RunOptions
             }
         }
 
+        if (options.SweepPath is not null && seen.Any(option =>
+            option is not ("--sweep" or "--out" or "--help")))
+            throw new UsageException("--sweep can be combined only with --out or --help; all run settings belong in the sweep file.");
         if (options.ManifestPath is not null && seen.Any(option =>
             option is not ("--manifest" or "--out" or "--help")))
             throw new UsageException("--manifest can be combined only with --out or --help; run-setting overrides are not accepted during replay.");

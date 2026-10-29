@@ -35,9 +35,8 @@ def invoke(arguments, output):
     directories = list(output.iterdir())
     assert len(directories) == 1 and directories[0].is_dir(), directories
     run = directories[0]
-    # Windows can spell the same temp directory with a short-name alias. Check the
-    # reported directory's filesystem identity, not its spelling.
-    assert Path(completed.stdout.strip()).samefile(run), (completed.stdout, str(run))
+    # Windows may spell the same temporary directory using a different path alias.
+    assert Path(completed.stdout.strip()).samefile(run), completed.stdout
     assert sorted(path.name for path in run.iterdir()) == [
         "log.txt", "manifest.json", "metrics.csv"
     ]
@@ -90,6 +89,47 @@ def check_runtime_replay_rejection(parent):
     assert rejected.returncode == 1 and "nondeterministic runtime metrics" in rejected.stderr, rejected
     assert not destination.exists() and not rejected.stdout, rejected
     print("RUNTIME_METRICS_SMOKE exactReplay=rejected-before-output", flush=True)
+
+
+def check_sweep(parent):
+    def sweep(destination):
+        completed = subprocess.run(
+            [DOTNET, str(CLI), "--sweep", str(ROOT / "configs/sweep-example.json"), "--out", str(destination)],
+            cwd=parent, check=True, capture_output=True, text=True, timeout=120,
+        )
+        assert not completed.stderr, completed.stderr
+        run = Path(completed.stdout.strip())
+        assert run.is_dir() and run.parent.samefile(destination), completed.stdout
+        children = list(destination.iterdir())
+        assert len(children) == 1 and children[0].samefile(run), children
+        assert sorted(path.name for path in run.iterdir()) == [
+            *(f"cell-{index:06d}" for index in range(12)), "summary.csv"
+        ]
+        for index in range(12):
+            assert sorted(path.name for path in (run / f"cell-{index:06d}").iterdir()) == [
+                "log.txt", "manifest.json", "metrics.csv"
+            ]
+        return run
+
+    original = sweep(parent / "sweep-original")
+    repeated = sweep(parent / "sweep-repeat")
+    summary = (original / "summary.csv").read_bytes()
+    assert summary == (repeated / "summary.csv").read_bytes()
+    assert not summary.startswith(b"\xef\xbb\xbf") and b"\r" not in summary
+    rows = list(csv.reader(io.StringIO(summary.decode("utf-8"))))
+    assert len(rows) == 13 and rows[0] == [
+        "cellId", "engine", "seed", "ticks", "agents", "SeparationWeight",
+        "meanSpeed.terminal", "meanSpeed.mean", "meanSpeed.samples",
+        "polarization.terminal", "polarization.mean", "polarization.samples",
+    ], rows[:2]
+    for index, row in enumerate(rows[1:]):
+        assert row[:6] == [f"cell-{index:06d}", "canonical", str([13, 7, 11][index // 4]), "8", "12", str(index % 4)], row
+        assert row[8] == row[11] == "9", row
+        assert all(math.isfinite(float(row[column])) for column in (6, 7, 9, 10)), row
+    cell = original / "cell-000005"
+    replay = invoke(["--manifest", str(cell / "manifest.json")], parent / "sweep-cell-replay")
+    assert (cell / "metrics.csv").read_bytes() == (replay / "metrics.csv").read_bytes()
+    print(f"SWEEP_SMOKE cells=12 summary={hashlib.sha256(summary).hexdigest().upper()} repeat=identical cellReplay=identical", flush=True)
 
 
 def main():
@@ -146,6 +186,7 @@ def main():
             )
             check_selected_metrics(parent, engine)
         check_runtime_replay_rejection(parent)
+        check_sweep(parent)
 
 
 if __name__ == "__main__":
