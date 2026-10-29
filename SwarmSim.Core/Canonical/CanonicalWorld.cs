@@ -14,7 +14,7 @@ public sealed class CanonicalWorld
     private readonly int[] _neighborScratch;
     private readonly float[] _neighborWeightScratch;
     private readonly RuleInstrumentation _instrumentation;
-    private readonly Rng?[] _wanderRngs;
+    private readonly Pcg32Rng?[] _wanderRngs;
     private readonly bool[] _priorityState;
     private readonly float[] _priorityBlend;
     private readonly float[] _priorityHoldTimers;
@@ -35,6 +35,7 @@ public sealed class CanonicalWorld
         _settings = settings ?? throw new ArgumentNullException(nameof(settings));
         _spatialIndex = spatialIndex ?? throw new ArgumentNullException(nameof(spatialIndex));
         Rng.ValidateExternalSeed(settings.Seed, nameof(settings));
+        RandomStreams = new RandomStreams(settings.Seed);
         if (!float.IsFinite(settings.TargetSpeed) || settings.TargetSpeed <= 0f)
         {
             throw new ArgumentOutOfRangeException(
@@ -222,7 +223,7 @@ public sealed class CanonicalWorld
         _nearestAngles = new float[capacity];
         _whiskerCounts = new int[capacity];
         _wanderAngles = new float[capacity];
-        _wanderRngs = new Rng?[capacity];
+        _wanderRngs = new Pcg32Rng?[capacity];
 
         _spatialIndex.Initialize(capacity);
 
@@ -242,6 +243,9 @@ public sealed class CanonicalWorld
     public ReadOnlySpan<Boid> Boids => _activeBoids.AsSpan(0, Count);
 
     public CanonicalWorldSettings Settings => _settings;
+
+    /// <summary>Named stochastic consumers derive independent streams from the world seed.</summary>
+    public RandomStreams RandomStreams { get; }
 
     public RuleInstrumentation Instrumentation => _instrumentation;
 
@@ -267,9 +271,9 @@ public sealed class CanonicalWorld
         int index = Count;
         if (Settings.WanderStrength > 0f)
         {
-            Rng wanderRng = Rng.CreateFromDerivedSeed(DeriveWanderSeed(Settings.Seed, index));
+            Pcg32Rng wanderRng = RandomStreams.CreateStream("canonical.wander", (ulong)index);
             _wanderRngs[index] = wanderRng;
-            _wanderAngles[index] = wanderRng.NextFloat(0f, MathF.PI * 2f);
+            _wanderAngles[index] = wanderRng.NextFloat() * (MathF.PI * 2f);
         }
         // Normalize at ingest so every stored position lies in [0, extent). Both spatial indexes
         // normalize before subtracting, while Vec2.MinimumImageDelta -- used by field-of-view
@@ -283,15 +287,6 @@ public sealed class CanonicalWorld
         _activeBoids[index] = new Boid(new Vec2(wrappedX, wrappedY), normalizedVelocity, group);
         Count = index + 1;
         return true;
-    }
-
-    internal static uint DeriveWanderSeed(uint seed, int agentIndex)
-    {
-        uint value = seed + 0x9E3779B9u * ((uint)agentIndex + 1u);
-        value = (value ^ (value >> 16)) * 0x85EBCA6Bu;
-        value = (value ^ (value >> 13)) * 0xC2B2AE35u;
-        value ^= value >> 16;
-        return value;
     }
 
     public void SetVelocity(int index, Vec2 velocity)
@@ -520,8 +515,8 @@ public sealed class CanonicalWorld
 
             if (Settings.WanderStrength > 0f && remainingForce > 0f)
             {
-                Rng wanderRng = _wanderRngs[i]!;
-                float angleChange = wanderRng.NextFloat(-1f, 1f) * Settings.WanderRate * deltaTime;
+                Pcg32Rng wanderRng = _wanderRngs[i]!;
+                float angleChange = (-1f + wanderRng.NextFloat() * 2f) * Settings.WanderRate * deltaTime;
                 _wanderAngles[i] += angleChange;
                 Vec2 wanderDirection = new Vec2(MathF.Cos(_wanderAngles[i]), MathF.Sin(_wanderAngles[i]));
                 Vec2 wander = wanderDirection * Settings.WanderStrength * Settings.TargetSpeed;

@@ -48,8 +48,8 @@ public sealed class DeterminismTests
     [Trait("Category", "Determinism")]
     public void CanonicalWorld_WithWander_IsBitIdenticalAfter500Ticks()
     {
-        // The second stream derived from seed 42 is above the public range. Pinning that integer
-        // mapping plus same-platform repetition proves the internal compatibility path is used.
+        // Per-agent named PCG streams replace the previous derived System.Random seeds.
+        // Their integer/adaptor vectors are pinned separately in the named-stream tests.
         CanonicalWorldSettings settings = CreateCanonicalSettings(capacity: 8, seed: 42u);
         CanonicalWorld first = CreateCanonicalWorld(settings);
         CanonicalWorld second = CreateCanonicalWorld(settings);
@@ -59,11 +59,6 @@ public sealed class DeterminismTests
         Advance(first, TickCount);
         Advance(second, TickCount);
 
-        uint firstDerivedSeed = CanonicalWorld.DeriveWanderSeed(settings.Seed, agentIndex: 0);
-        uint secondDerivedSeed = CanonicalWorld.DeriveWanderSeed(settings.Seed, agentIndex: 1);
-        Assert.Equal(939_911_724u, firstDerivedSeed);
-        Assert.Equal(3_948_730_756u, secondDerivedSeed);
-        Assert.True(secondDerivedSeed > Rng.MaxSupportedSeed);
         string firstHash = SimulationKinematicHash.Compute(first);
         _output.WriteLine($"CANONICAL_WANDER_KINEMATIC_HASH={firstHash}");
         Assert.Equal(

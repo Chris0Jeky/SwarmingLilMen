@@ -9,14 +9,23 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 
 SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Two boids engines
 coexist deliberately: legacy `World` is a fixed-capacity SoA pipeline and the default renderer;
-`CanonicalWorld` is the target for new simulation work. The reusable general-purpose kernel,
-Vicsek/ACO foundations, named RNG streams and intent composition remain roadmap work.
+`CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
+independent stochastic consumers. The reusable general-purpose kernel, Vicsek/ACO foundations
+and intent composition remain roadmap work.
 
 The browser demos are separate implementations. The existing public Pages site is unchanged by
 these native-engine changes. Combat, metabolism, reproduction and cross-group interactions are
 not made active merely because `SimConfig` contains related settings.
 
 ## Verified live state
+
+- **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
+  agent encoding; consumers retain independent generators. Canonical wander now uses a stream per
+  stable insertion index. Legacy RNG behavior is unchanged. External PCG words and independently
+  calculated adapter/identity vectors are committed, and a fourth stochastic observer leaves every
+  kinematic hash unchanged for 256 ticks. The deliberate canonical wander reference migration is
+  tracked in [determinism](docs/DETERMINISM.md); cross-platform motion identity is not promised.
+  See the [stream ownership and byte contract](docs/RANDOM_STREAMS.md).
 
 - **CI and regression gates:** PR #168 retains Ubuntu/Windows merge-result builds/tests and adds
   independent jobs for the exact PR head, logging its SHA. All four jobs passed 536 tests at
