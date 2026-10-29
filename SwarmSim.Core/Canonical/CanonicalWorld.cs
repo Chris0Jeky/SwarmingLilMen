@@ -423,7 +423,11 @@ public sealed class CanonicalWorld
                     _maxNeighborDistance = MathF.Max(_maxNeighborDistance, maxDistance);
                     if (!nearestDelta.IsNearlyZero())
                     {
-                        Vec2 toNearest = nearestDelta.Normalized;
+                        // Preserve ordinary normalization exactly. A representable large distance
+                        // can have an overflowing squared float; divide by the recovered distance
+                        // in that exceptional case instead of producing a zero direction.
+                        Vec2 toNearest = float.IsFinite(nearestDelta.LengthSquared)
+                            ? nearestDelta.Normalized : nearestDelta / minDistForAgent;
                         float dotProduct = Vec2.Dot(boid.Forward, toNearest);
                         nearestAngle = MathF.Acos(MathUtils.Clamp(dotProduct, -1f, 1f)) * 180f / MathF.PI;
                     }
@@ -537,7 +541,7 @@ public sealed class CanonicalWorld
             Boid neighbor = boids[neighbors[n]];
             Vec2 relative = Vec2.MinimumImageDelta(self.Position, neighbor.Position, Settings.WorldWidth, Settings.WorldHeight);
             Vec2 reverse = Vec2.MinimumImageDelta(neighbor.Position, self.Position, Settings.WorldWidth, Settings.WorldHeight);
-            float dist = MathF.Sqrt(relative.LengthSquared);
+            float dist = NeighborDistance(relative);
             _neighborViewScratch[n] = new NeighborView(relative, reverse, neighbor.Velocity - self.Velocity,
                 neighbor.Velocity, neighbor.Group, _neighborWeightScratch[n], dist);
 
@@ -553,6 +557,15 @@ public sealed class CanonicalWorld
         }
 
         return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist, nearestDelta);
+    }
+
+    private static float NeighborDistance(Vec2 delta)
+    {
+        float squared = delta.LengthSquared;
+        // Keep the established float arithmetic for ordinary distances. Widen only when a
+        // subnormal/zero-underflow or overflowing square loses a representable geometric length.
+        if (float.IsNormal(squared)) return MathF.Sqrt(squared);
+        return (float)Math.Sqrt((double)delta.X * delta.X + (double)delta.Y * delta.Y);
     }
 
     private static int FilterByFieldOfView(

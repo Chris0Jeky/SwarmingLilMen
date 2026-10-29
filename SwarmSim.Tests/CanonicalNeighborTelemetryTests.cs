@@ -54,7 +54,7 @@ public sealed class CanonicalNeighborTelemetryTests
     [Theory]
     [InlineData(false)]
     [InlineData(true)]
-    public void FiniteExtremeCoordinatesPreserveExistingOverflowDiagnostics(bool grid)
+    public void FiniteExtremeCoordinatesRecoverRepresentableDistances(bool grid)
     {
         var settings = Settings(senseRadius: 1e25f, worldWidth: 1e25f);
         var world = Create(settings, grid);
@@ -65,14 +65,13 @@ public sealed class CanonicalNeighborTelemetryTests
         var telemetry = new CanonicalTelemetry(world.Count);
         world.CaptureTelemetryInto(telemetry);
 
-        // The query compares squared distances in double for this radius, while the existing
-        // float telemetry distance overflows. This optimization must not silently redefine it.
+        // The distance is representable even though its squared float intermediate overflows.
         Assert.Equal((1, 1, 1f), telemetry.NeighborCountStats);
-        Assert.Equal(new[] { 0f, 0f }, telemetry.NearestDistances.ToArray());
-        Assert.Equal(new[] { 0f, 0f }, telemetry.NearestAngles.ToArray());
-        Assert.Equal(float.PositiveInfinity, telemetry.AverageNeighborDistance);
-        Assert.Equal(0f, telemetry.MinNeighborDistance);
-        Assert.Equal(float.PositiveInfinity, telemetry.MaxNeighborDistance);
+        Assert.Equal(new[] { 5e24f, 5e24f }, telemetry.NearestDistances.ToArray());
+        Assert.Equal(new[] { 0f, 180f }, telemetry.NearestAngles.ToArray());
+        Assert.Equal(5e24f, telemetry.AverageNeighborDistance);
+        Assert.Equal(5e24f, telemetry.MinNeighborDistance);
+        Assert.Equal(5e24f, telemetry.MaxNeighborDistance);
     }
 
     private static CanonicalWorldSettings Settings(float senseRadius, float worldWidth = 100f) => new()

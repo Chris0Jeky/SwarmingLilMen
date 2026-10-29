@@ -12,6 +12,8 @@ ordering authority. Historical documents are context, not proof.
 - [`DETERMINISM.md`](DETERMINISM.md) - measured platform scope, exact golden traces and fixture policy
 - [`RANDOM_STREAMS.md`](RANDOM_STREAMS.md) - named PCG32 streams, independent ownership and the byte contract
 - [`CANONICAL_COMPOSITION.md`](CANONICAL_COMPOSITION.md) - bounded force policies, classic mode and measured cost
+- [`CANONICAL_NEIGHBOR_REUSE.md`](CANONICAL_NEIGHBOR_REUSE.md) - equivalent statistics reuse and matched timing evidence
+- [`CANONICAL_EXTREME_DISTANCES.md`](CANONICAL_EXTREME_DISTANCES.md) - representable-distance correction and wider numeric limits
 - [`CANONICAL_BEHAVIOR_SCENARIOS.md`](CANONICAL_BEHAVIOR_SCENARIOS.md) - quantitative scenarios and mutation witnesses
 - [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
 - [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics

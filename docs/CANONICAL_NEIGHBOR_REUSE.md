@@ -23,6 +23,11 @@ then against reuse. Each case runs with both Grid and Naive indexes:
 - Valid finite coordinates at a very large world scale retain the existing float-distance
   overflow diagnostics. This optimization does not silently change those diagnostics to double.
 
+Those bullets record the optimization's original equivalence check. The separate
+[extreme-distance correction](CANONICAL_EXTREME_DISTANCES.md) subsequently fixes the last case's
+incorrect zero/infinite distances and updates its expected values. The timing and identity
+measurements below remain records of the earlier, behavior-preserving reuse change.
+
 The full integrated Release suite passed **1,018 tests** locally, including the existing exact
 trajectory fixtures and zero-allocation checks. No golden fixture changed. Cross-platform CI is
 still required for the published change; a local result does not substitute for the Windows gate.
