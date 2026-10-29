@@ -36,8 +36,33 @@ and across comment separators, after escape decoding. CSS `image()`, `image-set(
 `cross-fade()`/`-webkit-cross-fade()` and `src()` are rejected as unsupported because they can load
 string URLs outside the supported `url(...)` grammar. No allowlisted demo needs those functions.
 
-These checks do not prove that arbitrary JavaScript is offline. Variable-key property access and
-destructuring can still obtain constructors; [issue #164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164)
-remains open for that limitation. Retain explicit artifact review and the publication allowlist.
+The JavaScript lexer also supplies code tokens to a bounded name-analysis pass. It rejects
+constructor acquisition through ordinary, quoted or computed object binding keys, including
+nested patterns and function parameters. Computed object keys must be a single unescaped safe
+string or numeric literal; escaped property names are not evaluated. This deliberately also
+rejects some harmless object-property definitions using the same unsupported syntax. Normal
+class constructors, ordinary data destructuring and inert strings/comments remain supported.
+
+Within one scanned script, visible function/class declarations and function/arrow assignments
+make nonliteral property access on those bare bindings unsupported. Straightforward bare-name
+aliases and `.bind(...)` aliases inherit that restriction. Plain `=` and logical `||=`, `??=`,
+`&&=` assignments contribute these restrictions even when their execution is conditional.
+Visible dangerous string-key bindings
+are rejected when used in a computed lookup, including simple literal concatenation, reassignment,
+`+=`, a one-string array's key coercion, and aliases. Escaped, interpolated or parenthesized
+string-key bindings are conservatively unresolved, even when a person can see a safe value.
+Line terminators, including those in comments, preserve semicolon-free alias boundaries;
+newlines before calls, indexing, member access, tagged templates or binary operators continue
+the expression. The analysis uses all visible assignments regardless of their
+order or scope, so shadowing or a later safe assignment does not clear a restriction. It does
+not confuse a bare local name such as `value` with a property name in `ui.value`.
+
+These checks do not prove that arbitrary JavaScript is offline. The existing demos need unresolved
+numeric/data indices and function dictionaries, so those uses remain admitted. The pass does not
+infer arbitrary member/returned values, interprocedural arguments, prototype changes, general
+coercions or bindings shared across script blocks. Those can still hide dynamic-code acquisition;
+[issue #164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164) remains open for the residual
+indirection scope. Retain explicit artifact review and the publication allowlist. This is neither
+a JavaScript execution engine nor a security sandbox.
 Opaque `data:`/`blob:` resource URLs, including images, are rejected; their decoded dependencies
 are not scanned. Scanner tests build temporary copies and never deploy Pages.

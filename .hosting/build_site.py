@@ -42,6 +42,7 @@ JS_CODE = {"eval", "Function"}
 JS_TIMERS = {"setTimeout", "setInterval"}
 # Reject computed access AND aliases of globals; a direct dotted access is still lexed normally.
 JS_GLOBALS = {"window", "globalThis", "self", "navigator", "document", "defaultView"}
+JS_UNSAFE_PROPERTIES = JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | {"constructor", "serviceWorker"}
 # These names also occur as ordinary coordinates, instance identity, etc.
 # Computed lookup is rejected; bare `this` is further restricted below.
 JS_COMPUTED_GLOBALS = {"this", "top", "parent", "frames"}
@@ -233,15 +234,168 @@ def _skip_js_trivia(text, i):
     return i
 
 
-def js_refs(text, *, function_body=False):
+def _reject_js_indirection(tokens):
+    """Bounded lexical facts, not JavaScript evaluation or scope/type inference.
+
+    Names are conservative across the whole script: any visible function/unsafe-key assignment
+    taints straightforward aliases, including earlier uses and later reassignments. Ordinary
+    unresolved data indices remain supported; arbitrary returned values/prototypes are not proved.
+    """
+    # Keep trivia line boundaries separately: ASI can end a bare alias, but a newline before
+    # a call, index, member, tagged template or binary operator continues its expression.
+    code, line_before = [], set()
+    for token in tokens:
+        if token[0] == "line":
+            line_before.add(len(code))
+        else:
+            code.append(token)
+    tokens = code
+    values = [value for _, value in tokens]
+    pairs, stack = {}, []
+    for i, (kind, value) in enumerate(tokens):
+        if kind not in {"punct", "lookup"}:
+            continue
+        if value in "([{":
+            stack.append(i)
+        elif value in ")]}":
+            if stack and values[stack[-1]] == {")": "(", "]": "[", "}": "{"}[value]:
+                start = stack.pop()
+                pairs[start] = i
+
+    functions, unsafe_keys, aliases = set(), set(), {}
+    terminal = {";", ",", ")", "]", "}"}
+
+    def at(i):
+        return values[i] if i < len(tokens) else ";"
+
+    def ends_value(i):
+        if i >= len(tokens):
+            return True
+        kind, value = tokens[i]
+        if kind == "punct" and value in terminal:
+            return True
+        if i not in line_before:
+            return False
+        # Unary !/~ and private-brand checks can begin a new expression statement. !=/!==
+        # continue the prior expression. A leading-dot number is tokenized as '.' plus a number;
+        # it starts a statement here, whereas an ordinary '.name' remains member continuation.
+        unary = value in {"~", "#"} or value == "!" and at(i + 1) != "="
+        leading_number = value == "." and i + 1 < len(tokens) and tokens[i + 1][0] == "number"
+        return (kind == "id" and value not in {"in", "instanceof"} or
+                kind in {"number", "string"} or
+                kind == "punct" and (value in {"{", "++", "--"} or unary or leading_number))
+
+    def arrow(start):
+        if start >= len(tokens):
+            return False
+        end = start if tokens[start][0] == "id" else pairs.get(start) if tokens[start] == ("punct", "(") else None
+        return end is not None and values[end + 1:end + 3] == ["=", ">"]
+
+    def binding(start):
+        parenthesized = start < len(tokens) and tokens[start] == ("punct", "(")
+        while start < len(tokens) and tokens[start] == ("punct", "("):
+            if arrow(start):
+                return "function", None
+            start += 1
+        # `async` is also a legal ordinary binding name. Only consume the keyword form.
+        if (start + 1 < len(tokens) and tokens[start] == ("id", "async") and
+                (tokens[start + 1] == ("id", "function") or arrow(start + 1))):
+            start += 1
+        if start >= len(tokens):
+            return None, None
+        kind, value = tokens[start]
+        if kind == "id" and value in {"function", "class"} or arrow(start):
+            return "function", None
+        if kind == "id" and (ends_value(start + 1) or values[start + 1:start + 4] == [".", "bind", "("]):
+            return "alias", value
+        if kind == "opaque" and value == "template":
+            return "key", None
+        if kind in {"string", "template"}:
+            end = start + 1
+            while at(end) == "+" and end + 1 < len(tokens) and tokens[end + 1][0] in {"string", "template"}:
+                value += tokens[end + 1][1]
+                end += 2
+            # Escapes, coercion and nonliteral suffixes are deliberately not evaluated.
+            return "key", None if parenthesized or "\\" in value or not ends_value(end) else value
+        if value == "[" and pairs.get(start) == start + 2 and tokens[start + 1][0] in {"string", "template"}:
+            value = tokens[start + 1][1]  # a one-string array also coerces to a property key
+            return "key", None if "\\" in value else value
+        return None, None
+
+    for i, (kind, name) in enumerate(tokens):
+        if kind == "id" and name in {"function", "class"}:
+            following = i + 2 if at(i + 1) == "*" else i + 1
+            if following < len(tokens) and tokens[following][0] == "id":
+                functions.add(values[following])
+        if kind != "id" or i and values[i - 1] == ".":
+            continue
+        rhs = i + 2 if at(i + 1) == "=" and at(i + 2) not in {"=", ">"} else None
+        compound = at(i + 1) == "+" and at(i + 2) == "="
+        if compound:
+            rhs = i + 3
+        if at(i + 1) in {"|", "&", "?"} and at(i + 2) == at(i + 1) and at(i + 3) == "=":
+            rhs = i + 4  # ||=, &&= and ??= may install the RHS; taint is deliberately monotone
+        if rhs is None:
+            continue
+        category, value = binding(rhs)
+        if category == "function":
+            functions.add(name)
+        elif category == "alias":
+            aliases.setdefault(value, set()).add(name)
+        elif category == "key" and (compound or value is None or value in JS_UNSAFE_PROPERTIES):
+            unsafe_keys.add(name)
+
+    for tainted in (functions, unsafe_keys):
+        pending = list(tainted)
+        while pending:
+            for alias in aliases.get(pending.pop(), ()):
+                if alias not in tainted:
+                    tainted.add(alias)
+                    pending.append(alias)
+
+    # Prefix counts keep nested computed lookups linear rather than rescanning each key's span.
+    unsafe_counts = [0]
+    for i, (kind, value) in enumerate(tokens):
+        unsafe_counts.append(unsafe_counts[-1] + (kind == "id" and value in unsafe_keys and
+                             not (i and values[i - 1] == ".")))
+    for i, (kind, value) in enumerate(tokens):
+        previous = at(i - 1) if i else ";"
+        if (kind in {"id", "string"} and previous in {"{", ","} and at(i + 1) in {":", "=", ",", "}"} and
+                (value in JS_UNSAFE_PROPERTIES or kind == "string" and "\\" in value)):
+            raise ValueError("unsupported dynamic property binding: " + value)
+        if kind not in {"punct", "lookup"} or value != "[":
+            continue
+        end = pairs.get(i)
+        if end is None:
+            raise ValueError("cannot analyse computed property: unclosed bracket")
+        literal = (end == i + 2 and (tokens[i + 1][0] == "number" or
+                   tokens[i + 1][0] in {"string", "template"} and "\\" not in values[i + 1] and
+                   values[i + 1] not in JS_UNSAFE_PROPERTIES))
+        if previous in {"{", ","} and at(end + 1) == ":" and not literal:
+            raise ValueError("computed object property binding is not supported")
+        if kind == "lookup":
+            receiver = i - 3 if values[max(0, i - 2):i] == ["?", "."] else i - 1
+            if (not literal and receiver >= 0 and tokens[receiver][0] == "id" and values[receiver] in functions and
+                    not (receiver and values[receiver - 1] == ".")):
+                raise ValueError("computed property access on a function binding is not supported: " + values[receiver])
+            if unsafe_counts[end] != unsafe_counts[i + 1]:
+                name = next(values[j] for j in range(i + 1, end) if unsafe_counts[j + 1] != unsafe_counts[j])
+                raise ValueError("computed property key alias cannot be resolved safely: " + name)
+
+
+def js_refs(text, *, function_body=False, _tokens=None):
     """Yield the single literal URL of each fetch/import/Worker/... in code; raise ValueError for anything
     that cannot be resolved statically. Comments, strings, regex literals and template text are inert;
     `${...}` parts of a template are code. A heuristic lexer, not a parser: when unsure it must reject."""
     i, n, regex_ok, after_dot, templates = 0, len(text), True, False, []  # templates: open `{` count per `${`
     either = False  # the previous token was `)` or `}`: a following `/` is ambiguous
     braces = 0  # when recursively scanning a timer's function body, find its closing brace
+    tokens = [] if _tokens is None else _tokens
     while i < n:
+        trivia_start = i
         i = _skip_js_trivia(text, i)
+        if JS_LINE_END.search(text, trivia_start, i):
+            tokens.append(("line", ""))
         if i == n:
             break
         c = text[i]
@@ -250,6 +404,7 @@ def js_refs(text, *, function_body=False):
         if function_body and not templates:
             if c == "}":
                 if braces == 0:
+                    tokens.append(("punct", "}"))
                     return i + 1
                 braces -= 1
             elif c == "{":
@@ -257,21 +412,32 @@ def js_refs(text, *, function_body=False):
         dotted, after_dot = after_dot, c == "."
         ambiguous, either = either, either if c in "?." else c in ")}"
         if c == "/" and (regex_ok or ambiguous):
+            tokens.append(("opaque", "regex") if not ambiguous else ("punct", "/"))
             i, regex_ok = (_slash(text, i), True) if ambiguous else (_regex(text, i), False)
         elif c in "\"'":
-            i, regex_ok = _quoted(text, i), False
+            end = _quoted(text, i)
+            tokens.append(("string", text[i + 1:end - 1]))
+            i, regex_ok = end, False
         elif c == "`" or (c == "}" and templates and templates[-1] == 0):
             if c == "}":
+                tokens.append(("punct", ")"))
                 templates.pop()
+            start = i
             i, expression = _template_text(text, i + 1)
+            if c == "`":
+                tokens.append(("opaque", "template") if expression else ("template", text[start + 1:i - 1]))
             if expression:
                 templates.append(0)
+                tokens.append(("punct", "("))
             regex_ok = expression
         elif c in "{}" and templates:
+            tokens.append(("punct", c))
             templates[-1] += 1 if c == "{" else -1
             i, regex_ok = i + 1, True
         elif c.isdigit():
-            i, regex_ok = JS_NUMBER.match(text, i).end(), False
+            end = JS_NUMBER.match(text, i).end()
+            tokens.append(("number", text[i:end]))
+            i, regex_ok = end, False
         elif c == "\\":
             raise ValueError("cannot analyse script: unicode escape in an identifier")
         elif c == "[" and (not regex_ok or dotted):
@@ -280,13 +446,14 @@ def js_refs(text, *, function_body=False):
             # single, unescaped safe literals; call/function results are opaque.
             literal = JS_PROPERTY.match(text, key)
             safe_literal = (literal and text.startswith("]", _skip_js_trivia(text, literal.end())) and
-                            next(g for g in literal.groups() if g is not None) not in
-                            JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | {"constructor", "serviceWorker"})
+                            next(g for g in literal.groups() if g is not None) not in JS_UNSAFE_PROPERTIES)
             if ambiguous or (key < n and text[key] in "\"'`" and not safe_literal):
                 raise ValueError("computed string or function property access is not supported")
+            tokens.append(("lookup", "["))
             i, regex_ok = i + 1, True
         elif word := JS_IDENT.match(text, i):
             name, start, i = word.group(), word.start(), word.end()
+            tokens.append(("id", name))
             regex_ok = name in JS_REGEX_AFTER and not dotted
             if name in JS_DENIED:
                 raise ValueError(f"forbidden network API {name}: demos must work offline")
@@ -323,10 +490,11 @@ def js_refs(text, *, function_body=False):
                     raise ValueError(f"{name} requires a literal function callback; strings, computed callbacks and aliases are forbidden")
                 if func:
                     # Do not exempt names in the header from the existing identifier checks.
-                    yield from js_refs(text[arg:func.end()])
+                    tokens.append(("punct", "("))
+                    yield from js_refs(text[arg:func.end()], _tokens=tokens)
                     # A function expression can be coerced to a string: function(){} + code.
                     # Scan its whole body and require the next token to end the argument.
-                    end = yield from js_refs(text[func.end():], function_body=True)
+                    end = yield from js_refs(text[func.end():], function_body=True, _tokens=tokens)
                     i = _skip_js_trivia(text, func.end() + end)
                     if i == n or text[i] not in ",)":
                         raise ValueError(f"{name} requires a literal function callback without further computation")
@@ -350,13 +518,17 @@ def js_refs(text, *, function_body=False):
                 if ref is not None:
                     yield ref
         elif c in "+-" and text.startswith(c * 2, i):
+            tokens.append(("punct", c * 2))
             i += 2  # ++ and -- keep the state: `a++ / 2` divides
         else:
+            tokens.append(("punct", c))
             i, regex_ok = i + 1, c not in ")]"
     if templates:
         raise ValueError("cannot analyse script: unterminated template expression")
     if function_body:
         raise ValueError("cannot analyse script: unterminated timer function body")
+    if _tokens is None:
+        _reject_js_indirection(tokens)
 
 
 def read_allowlist(root):
