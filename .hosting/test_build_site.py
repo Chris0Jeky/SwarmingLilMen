@@ -438,6 +438,43 @@ class ScannerBypassTests(unittest.TestCase):
             with self.subTest(js=js):
                 self.reject(js, "forbidden dynamic code API Function")
 
+    def test_numeric_literal_cannot_swallow_constructor_tokens(self):
+        for js in ('0..constructor.constructor(source)()',
+                   '0x0.constructor.constructor(source)()',
+                   '1e2.constructor.constructor(source)()'):
+            with self.subTest(js=js):
+                self.reject(js, "forbidden dynamic code property constructor")
+
+    def test_css_import_without_whitespace_or_after_comment_is_checked(self):
+        for css in ('@import"https://example.test/remote.css";',
+                    '@import/**/"https://example.test/remote.css";',
+                    r'@\69mport/**/"https://example.test/remote.css";'):
+            with self.subTest(css=css):
+                self.reject('<style>' + css + '</style>', "remote reference", kind="raw")
+                tmp, root = make_repo(["js-demos/a/style.css"], {"js-demos/a/style.css": css})
+                self.addCleanup(tmp.cleanup)
+                errors = build_site.build(root, root / "_site")
+                self.assertTrue(any("remote reference" in error for error in errors), errors)
+                self.assertFalse((root / "_site").exists())
+
+    def test_css_import_comment_separated_allowlisted_reference_passes(self):
+        for css in ('@import"ok.js";', '@import/**/"ok.js";', r'@\69mport/**/"ok.js";'):
+            with self.subTest(css=css):
+                self.assertEqual(self.scan('<style>' + css + '</style>', kind="raw"), [])
+
+    def test_css_image_resource_functions_fail_closed(self):
+        for function in ('image-set', '-webkit-image-set', 'image', 'cross-fade', '-webkit-cross-fade', 'src'):
+            for url in ('https://example.test/image.png', 'missing.png', 'ok.js'):
+                with self.subTest(function=function, url=url):
+                    self.reject(f'<style>a{{background:{function}("{url}" 1x)}}</style>',
+                                "unsupported CSS resource function", kind="raw")
+
+    def test_css_escapes_cannot_manufacture_string_or_comment_boundaries(self):
+        for prefix in (r'''content:"\"";''', r'--x:\/\*;', r'--x:\2f\2a;'):
+            with self.subTest(prefix=prefix):
+                css = 'a{' + prefix + 'background:image-set("https://example.test/x.png" 1x)}'
+                self.reject('<style>' + css + '</style>', "unsupported CSS resource function", kind="raw")
+
     def test_indirect_function_constructors_are_rejected(self):
         for js in ('''(function(){}).constructor("return globalThis['fetch']('https://example.test/x')")();''',
                    "const F = (() => {}).constructor; F(source)()",
