@@ -6,8 +6,9 @@ OS/architecture/.NET band. The committed golden traces make changes to that cont
 They compare a new run with fixed reference data, so a runtime or implementation change cannot
 pass merely because two fresh runs changed together.
 
-Cross-platform agreement is measured by the Ubuntu and Windows CI matrix. A passing pair of
-runs establishes agreement for those tested environments and experiments; it does not establish
+The Ubuntu and Windows CI matrix verifies each platform against its own reviewed reference.
+Comparing the recorded states measures agreement or difference between those environments; two
+passing platform-specific fixtures do not imply equal trajectories. The checks do not establish
 bit-portable transcendental math or a permanent `System.Random` sequence across future .NET
 releases. See the verified-state section of [PROJECT_STATUS.md](../PROJECT_STATUS.md) for the
 latest platform evidence. The initial reference was authored and checked on Ubuntu. Windows CI
@@ -124,13 +125,15 @@ neither absolute differences nor ULP distances are used as an acceptance toleran
 The automated witness increases `MaxForce` by one representable float value while keeping the
 initial state identical:
 
-| Engine | Original force bits | Changed force bits | First differing checkpoint on the reference environment |
-| --- | --- | --- | --- |
-| Legacy | `40400000` (`3`) | `40400001` | Tick `1` |
-| Canonical | `3F400000` (`0.75`) | `3F400001` | Tick `1` |
+| Engine | Original force bits | Changed force bits | First differing checkpoint, Ubuntu | First differing checkpoint, Windows |
+| --- | --- | --- | --- | --- |
+| Legacy | `40400000` (`3`) | `40400001` | Tick `1` | Tick `1` |
+| Canonical | `3F400000` (`0.75`) | `3F400001` | Tick `1` | Tick `16` |
 
-Both changed trajectories differ at every subsequent recorded checkpoint. `GOLDEN_ONE_ULP`
-logs their expected and actual hashes. During fixture authorship, an isolated copy of the
+Each changed trajectory differs at every recorded checkpoint from its first difference onward.
+Windows canonical's tick-1 result remains equal to its own baseline, then differs at tick 16;
+the witness compares against the selected platform fixture. `GOLDEN_ONE_ULP` logs expected and
+actual hashes. During fixture authorship on Ubuntu, an isolated copy of the
 ordinary checkpoint tests was also run with those constants changed; both golden assertions
 failed. The shared implementation and committed scenario constants remain unchanged.
 
