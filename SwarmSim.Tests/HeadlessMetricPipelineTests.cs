@@ -90,13 +90,25 @@ public sealed class HeadlessMetricPipelineTests(ITestOutputHelper output)
     [Fact]
     [Trait("Category", "Performance")]
     public void SparseCanonical50k_SeparatesPhysicsObserverAndBufferedFileAllocations()
+        => RunSparseCanonical50k(LinearChannels, compareMotionDomains: true);
+
+    [Fact]
+    [Trait("Category", "Performance")]
+    public void SparseCanonical50k_CoreChannelsOnly_SeparatesPhysicsObserverAndBufferedFileAllocations()
+        => RunSparseCanonical50k(
+            ["population", "meanSpeed", "polarization", "centroidX", "centroidY", "runtime.wallMilliseconds", "runtime.allocatedBytes"],
+            compareMotionDomains: false);
+
+    private void RunSparseCanonical50k(string[] channels, bool compareMotionDomains)
     {
         const int count = 50_000;
         const int warmup = 100;
         const int samples = 1000;
-        RunRequest request = CanonicalRequest(count, 100_000f, 100f, LinearChannels);
+        RunRequest request = CanonicalRequest(count, 100_000f, 100f, channels);
         var simulation = new PreparedSimulation(request);
         var observer = new ExperimentMetrics(request, simulation);
+        int wallIndex = Array.IndexOf(channels, "runtime.wallMilliseconds");
+        int allocationIndex = Array.IndexOf(channels, "runtime.allocatedBytes");
         string path = Path.Combine(Path.GetTempPath(), $"swarm-metric-pipeline-{Guid.NewGuid():N}.csv");
         long pipelineBytes = 0L, physicsBytes = 0L, writerBytes = 0L;
         double physicsMilliseconds = 0d;
@@ -118,13 +130,13 @@ public sealed class HeadlessMetricPipelineTests(ITestOutputHelper output)
                     observer.StepAndSample();
                     long sampled = GC.GetAllocatedBytesForCurrentThread();
                     pipelineBytes += sampled - before;
-                    physicsMilliseconds += observer.Values[10];
-                    physicsBytes += (long)observer.Values[11];
+                    physicsMilliseconds += observer.Values[wallIndex];
+                    physicsBytes += (long)observer.Values[allocationIndex];
                     csv.WriteRow(warmup + i + 1, observer.Values);
                     writerBytes += GC.GetAllocatedBytesForCurrentThread() - sampled;
                 }
                 double pipelineMilliseconds = (Stopwatch.GetTimestamp() - started) * 1000d / Stopwatch.Frequency;
-                output.WriteLine($"50k sparse canonical; warmup={warmup}; measuredSteps={samples}; world=100000x100000; senseRadius=100; MaxNeighbors=32; channels={string.Join(',', LinearChannels)}");
+                output.WriteLine($"50k sparse canonical; warmup={warmup}; measuredSteps={samples}; world=100000x100000; senseRadius=100; MaxNeighbors=32; channels={string.Join(',', channels)}");
                 output.WriteLine($"Physics current-thread bytes={physicsBytes}; capture/frame/plan bytes={pipelineBytes - physicsBytes}; buffered CSV write bytes={writerBytes}");
                 output.WriteLine($"Physics milliseconds={physicsMilliseconds:F3}; total measured pipeline milliseconds={pipelineMilliseconds:F3} (shared-host observation, not a throughput gate)");
                 long beforeFlush = GC.GetAllocatedBytesForCurrentThread();
@@ -135,6 +147,7 @@ public sealed class HeadlessMetricPipelineTests(ITestOutputHelper output)
             Assert.Equal(0L, pipelineBytes - physicsBytes);
             Assert.Equal(0L, writerBytes);
             Assert.Equal(count, observer.Values[0]);
+            if (!compareMotionDomains) return;
 
             // Isolate the current motion probe's circular-centroid overhead on one real
             // captured frame. Both paths compute all five channels; neither advances physics.
@@ -155,7 +168,7 @@ public sealed class HeadlessMetricPipelineTests(ITestOutputHelper output)
             start = Stopwatch.GetTimestamp();
             for (int i = 0; i < samples; i++) motion.Sample(periodic, values);
             double periodicMs = (Stopwatch.GetTimestamp() - start) * 1000d / Stopwatch.Frequency;
-            output.WriteLine($"Motion-only 50k x {samples}: Euclidean={euclideanMs:F3}ms; periodic={periodicMs:F3}ms. Periodic trigonometry is currently paid even when only the three default columns are requested.");
+            output.WriteLine($"Full motion probe, 50k x {samples}: Euclidean={euclideanMs:F3}ms; periodic={periodicMs:F3}ms. Both paths explicitly include centroids; the CLI's basic motion selection skips that work.");
         }
         finally { File.Delete(path); }
     }

@@ -53,7 +53,11 @@ internal static class MetricCatalog
         // buffers only when at least one of that probe's channels is requested.
         if (requestedMetrics.Any(name => nearest.Channels.Contains(name, StringComparer.Ordinal)))
             nearest = new ExactNearestNeighborProbe(capacity);
-        IMetricProbe[] common = [new MotionMetricProbe(), nearest, runtimeCosts];
+        // Empty selection is used only for discovery, which must retain the full schema.
+        bool includeCentroids = requestedMetrics.Length == 0 ||
+            requestedMetrics.Contains("centroidX", StringComparer.Ordinal) ||
+            requestedMetrics.Contains("centroidY", StringComparer.Ordinal);
+        IMetricProbe[] common = [new MotionMetricProbe(includeCentroids), nearest, runtimeCosts];
         if (engine == "legacy") return common;
         IMetricProbe boids = canonical is null
             ? new BoidsRuleMetricProbe(new RuleInstrumentation(1))
