@@ -60,9 +60,9 @@ public sealed class VicsekModelTests
         world.Step();
 
         // Heading changed to pi/4, yet this tick's displacement used the old axis-aligned velocity.
-        Assert.Equal(1f + NoNoise.Speed, world.Agents[0].Position.X, 5f);
-        Assert.Equal(5f, world.Agents[0].Position.Y, 5f);
-        Assert.Equal(5f + NoNoise.Speed, world.Agents[1].Position.Y, 5f);
+        Assert.Equal(1f + NoNoise.Speed, world.Agents[0].Position.X, 5);
+        Assert.Equal(5f, world.Agents[0].Position.Y, 5);
+        Assert.Equal(5f + NoNoise.Speed, world.Agents[1].Position.Y, 5);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public sealed class VicsekModelTests
         second.Step();
 
         for (int i = 0; i < positions.Length; i++)
-            Assert.Equal(Heading(first.Agents[i]) * 2f, Heading(second.Agents[i]), 5f);
+            Assert.Equal(Heading(first.Agents[i]) * 2f, Heading(second.Agents[i]), 5);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class VicsekModelTests
 
         var wrapped = new VicsekWorld(NoNoise, [new Vec2(9.99f, 5f)], [0f]);
         wrapped.Step();
-        Assert.Equal(9.99f + NoNoise.Speed - 10f, wrapped.Agents[0].Position.X, 4f);
+        Assert.Equal(9.99f + NoNoise.Speed - 10f, wrapped.Agents[0].Position.X, 4);
     }
 
     [Fact]
