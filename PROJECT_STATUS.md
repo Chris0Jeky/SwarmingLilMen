@@ -36,7 +36,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,113 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,138 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Vicsek foundation:** `VicsekWorld` runs the original synchronous model through the unchanged
