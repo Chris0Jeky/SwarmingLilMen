@@ -1,3 +1,5 @@
+using System.Runtime;
+
 namespace SwarmSim.Tests;
 
 public sealed class AllocationMeasurementTests
@@ -10,5 +12,5 @@ public sealed class AllocationMeasurementTests
     /// </summary>
     [Fact]
     public void ZeroAllocationAssertionsRunWithoutBackgroundCollection() =>
-        Assert.Equal(false, GC.GetConfigurationVariables()["Concurrent"]);
+        Assert.Equal(GCLatencyMode.Batch, GCSettings.LatencyMode);
 }
