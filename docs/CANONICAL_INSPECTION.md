@@ -22,10 +22,28 @@ markers and the gold selected marker identify the inspected input positions.
 - Gray links: visible neighbors without a colored applied contribution. Disabled, zero-result
   and budget-suppressed rules have zero magnitude and no colored links.
 
-The panel reports the tick, three applied magnitudes and resolved-force magnitude. Truncation is
-explicit. The query uses the simulation's pre-FOV cap and built-in spatial ordering. Enhanced
-separation can reserve the budget and suppress alignment/cohesion while their switches remain ON.
+The panel reports the tick, three applied magnitudes and resolved-force magnitude. The status line
+keeps two things apart: what the tick **recorded** (input count and whether the simulation's own
+query truncated) and what is **displayed** (links drawn, the cap, and whether links were omitted).
+The overlay's reusable buffers hold 128 entries, so the display cap is the smaller of 128 and the
+simulation's `MaxNeighbors`. With the default settings they coincide; with, say, `MaxNeighbors=256`
+and 140 boids in range the line reads `Tick 1 recorded: 139 inputs, no truncation | Displayed: 128
+links, cap 128 reached, links omitted`. A capped display does not show every contributing input. The
+query uses the simulation's pre-FOV cap and built-in spatial ordering. Before the first completed
+tick the line reads `waiting for first completed tick`; a subject spawned after the last tick reads
+`subject not recorded`. Enhanced separation can reserve the budget and suppress alignment/cohesion
+while their switches remain ON.
 Whisker/wander policies and velocity stages remain independently active.
+
+### Not shown
+
+The #192 rewrite replaced the earlier interaction overlay wholesale and no longer draws its red
+whisker-hit markers (and the "whisker hits" count), the green mean-heading line, the
+`Proj / Lat` velocity readout or the full sense-radius circle (the gold arc is a full circle only
+at 360 degrees). They went with the old draw routine when it was replaced in one commit, in favor
+of explaining one tick's rule inputs and resolved force; the gray whisker circle now shows
+geometry only, without claiming an avoidance force. No documented control depended on them (**O**
+and **Tab** are unchanged). They were not restored; issue #194 tracks whether to bring any back.
 
 ## Data and cost
 
@@ -50,6 +68,11 @@ round-trip switches, recreation/reset copies, last-tick/current-position diverge
 late spawns, resolved force before velocity stages, zero warm query allocation and arc geometry at
 1°, 90°, 270° and 360°. Existing exact golden fixtures are unchanged. Obsolete current-position
 status-string tests were replaced with last-tick data/query tests.
+
+The follow-up for #193/#194 added tests for the exact status strings, a dense 140-boid
+`MaxNeighbors=256` display-cap regression, the production reset step (`ResetCanonicalWorld`, so
+dropping its switch copy fails) and inspected-boid persistence; the non-Performance suite then
+passed 1,156 tests.
 
 Eight **1920 × 1080 native Raylib render-target images** were inspected on Windows x64, .NET 8,
 Raylib 5.5 and Intel Arc OpenGL 3.3, using the production overlay/help methods. The explicit six-boid

@@ -35,7 +35,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,147 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,156 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
@@ -157,7 +157,8 @@ or errors. The historical counts below identify the specific additions that prod
   A 256-boid/1,000-warm-tick regression fell from 3,144,000 allocated bytes to zero, including a
   capture-every-tick variant. The old `CapturePerceptionSnapshot()` is an allocating compatibility
   adapter. The canonical renderer now explicitly reuses telemetry once per frame. Its overlay
-  labels the fresh current-position query separately from recorded tick truncation. Headless tests
+  status line reports the recorded tick's inputs and truncation separately from the displayed
+  links and 128-entry display cap. Headless tests
   cover HUD value parity and recreation; actual native Linux input and inspected screenshots are
   now recorded in [native verification](docs/NATIVE_UI_VERIFICATION.md). Human sign-off and other
   platforms' GUI behavior are not inferred from that evidence.

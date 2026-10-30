@@ -12,42 +12,39 @@ world recreation, and the rest of rendering are not claimed to be allocation-fre
 
 ## Reading the interaction overlay
 
-Press **O** to show the interaction overlay and **Tab** to choose its subject. The existing
-status row distinguishes two moments:
+Press **O** to show the inspection overlay and **Tab** to choose its subject; the geometry, links
+and force arrow are described in [canonical inspection](CANONICAL_INSPECTION.md). It draws from the
+last completed tick's recorded inputs, not the moved positions, so its picture matches the forces
+the HUD telemetry reports. Its status line is built by
+`CanonicalInspectionOverlay.FormatStatus` and keeps the recorded tick separate from the display:
 
-- **Now: whisker hits …** describes the drawn links and markers, queried from the boids' current
-  positions. A following **query capped at …** belongs to that current-position query.
-- **Tick N: query capped at …** reports the selected boid's recorded truncation during completed
-  tick N, before integration. **Tick N: no truncation** means that query omitted no candidates.
-  Before the first completed tick, the label reads **Tick: pending**. A subject absent from that
-  tick is explicitly marked **subject not recorded**.
+- **Tick N recorded: K inputs, no truncation** (or **simulation query truncated**) is the selected
+  boid's `Instrumentation.NeighborCounts` and `QueryTruncated` value for completed tick N.
+- **Displayed: D links, cap C** is what the overlay's fixed 128-entry buffers could draw. When
+  the display cap is reached it adds **reached, links omitted**: with `MaxNeighbors` above 128 the
+  tick can record more inputs than are shown.
+- **waiting for first completed tick** appears before any tick has completed, and **subject not
+  recorded** when the selected boid was spawned after the last tick.
 
-For example, `Now: whisker hits 0 | Tick 2: query capped at 4` is possible after a dense cluster
-disperses: steering used a capped query before the agents moved, and the current view no longer
-needs that cap. The two values may also disagree in the opposite direction as agents converge.
+The overlay requeries the spatial index through `QueryLastTickVisibleNeighbors` only while it is
+shown; capturing telemetry does not query or rebuild the index.
 
-The current-position visualization still calls `QueryVisibleNeighbors`, which rebuilds the
-spatial index. That work runs only while the interaction overlay is shown. Capturing telemetry
-does not query or rebuild the index. Splitting the core query API into explicit refresh/read
-operations is outside this renderer change.
-
-Controls, HUD coordinates, font sizes, colors, and simulation settings are unchanged. **F12**
-belongs to the legacy renderer's snapshot/debug overlay; the canonical interaction control is
-**O**.
+The HUD gains the S/A/C ON/OFF row and the **8** field-of-view parameter; telemetry fields,
+buffers and simulation settings are unchanged. **F12** belongs to the legacy renderer's
+snapshot/debug overlay; the canonical inspection control is **O**.
 
 ## Verification and remaining manual check
 
-The renderer tests exercise the actual capture and status-formatting helpers without opening
-a graphics window:
+The renderer tests exercise the actual capture helpers without opening a graphics window:
 
 ```bash
 dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter FullyQualifiedName~CanonicalRendererTelemetryTests -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
 They cover 1,000 warm ticks with zero current-thread allocation from stepping plus reused
-capture, existing HUD value parity, reset and capacity changes, differing current/tick query
-caps, and subjects without a completed-tick record. They do not prove visual parity or rendered
-frame rate.
+capture, existing HUD value parity, and reset and capacity changes. The overlay's status strings,
+the 140-boid `MaxNeighbors=256` display-cap case and reset persistence are pinned in
+`CanonicalInspectionTests`. None of this proves visual parity or rendered frame rate.
 
 The manual acceptance check remains outstanding. This change was developed without an
 interactive display or virtual framebuffer. On a machine with the Raylib native dependencies
@@ -58,6 +55,7 @@ dotnet run --project SwarmSim.Render -c Release -- --canonical
 ```
 
 Confirm the HUD values and layout, toggle **O**, cycle subjects with **Tab**, respawn with **R**,
-and change a parameter or preset. Check that the two status labels remain readable and that
-recreated worlds do not display the previous world's diagnostics. Separately launch the default
+and change a parameter or preset. Check that the status line remains readable, that the inspected
+boid survives a parameter change, and that recreated worlds do not display the previous world's
+diagnostics. Separately launch the default
 legacy renderer and check **F12** for the issue's legacy overlay parity check.
