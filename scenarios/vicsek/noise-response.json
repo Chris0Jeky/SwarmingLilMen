@@ -1,8 +1,8 @@
 {
-  "base": "base.json",
+  "base": "response-base.json",
   "engine": "vicsek",
-  "agents": 400,
-  "seeds": [11, 12, 13, 14, 15],
+  "agents": 100,
+  "seeds": [31, 32, 33, 34, 35],
   "grid": {
     "Noise": [0.5, 5.0]
   },

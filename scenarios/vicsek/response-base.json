@@ -1,0 +1,7 @@
+{
+  "Speed": 0.03,
+  "InteractionRadius": 1,
+  "WorldWidth": 5,
+  "WorldHeight": 5,
+  "FixedDeltaTime": 1
+}
