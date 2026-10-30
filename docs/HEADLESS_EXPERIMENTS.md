@@ -32,7 +32,7 @@ v1 sweep axes remain numeric scalar fields.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--engine legacy\|canonical\|vicsek` | `canonical` | Selects the engine and native file schema |
+| `--engine legacy\|canonical\|vicsek\|aco` | `canonical` | Selects the engine and native file schema |
 | `--scenario NAME` | None | Shared named configuration overlay |
 | `--config FILE` | None | Sparse native configuration file |
 | `--seed N` | Resolved configuration seed | Integer from 0 through 2147483647 |
@@ -132,6 +132,9 @@ builds the requested plan, and its channel order determines the CSV header and m
 All engines expose population, mean speed, polarization, centroid and exact nearest-neighbor
 statistics. The canonical engine additionally exposes the `boids.*` instrumentation channels.
 The [Vicsek engine](VICSEK.md) has no named scenarios and records spawn model `vicsek-uniform-v1`.
+The [ACO engine](ACO.md) has no named scenarios, records spawn model `aco-nest-v1` and adds
+`aco.foodReturned`, `aco.carrying` and `aco.fieldTotal`, which must be requested by name. Its
+kinematic hash covers ant motion only, not the field.
 Definitions, percentile interpolation, stationary-member convention and missing-value behavior
 are specified in [METRICS.md](METRICS.md). The CLI selects live agents from engine state; legacy
 dead slots are excluded. Canonical and legacy Wrap worlds use periodic distances/circular
@@ -181,7 +184,7 @@ pins configuration and the full CSV hash.
 ## Visual reports
 
 `--visual` makes any run show its behaviour without a GPU, display or extra dependency. It works
-alone, with `--manifest` replay (hashes are still verified) and with `--sweep`, for either engine:
+alone, with `--manifest` replay (hashes are still verified) and with `--sweep`, for any engine:
 
 ```powershell
 dotnet run --project SwarmSim.Cli -c Release -- --engine canonical --agents 400 --ticks 600 --seed 7 --out runs --visual

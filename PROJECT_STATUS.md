@@ -12,8 +12,10 @@ coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time g
 `CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
 independent stochastic consumers. Bounded named force policies, two resolvers and explicit velocity
 stages now make steering composition real. Synchronous Vicsek particles now run headless through
-the shared neighborhood, RNG, metric, manifest and sweep seams with no boids change. ACO and a
-reusable general-purpose kernel remain roadmap work.
+the shared neighborhood, RNG, metric, manifest and sweep seams with no boids change. A minimal ant
+colony adds the first non-agent state, a scalar pheromone field with its own phase, through the same
+CLI spine, which now consults one engine registry. The shared part is that experiment spine: a
+reusable simulation kernel or scheduler remains roadmap work.
 
 The browser demos are separate implementations. The existing public Pages site is unchanged by
 these native-engine changes. Combat, metabolism, reproduction and cross-group interactions are
@@ -36,9 +38,24 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,172 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,234 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
+- **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
+  `AntColonyWorld` runs a minimal foraging colony with its own ant shape, one retained named stream
+  per ant, and distinct agent and field phases: the agent phase reads field(t) and buffers deposits,
+  and the field phase applies them in ant order and evaporates. Sixty-two analytical and CLI tests
+  pin the phases, stream use, conditional draws, sensors, food conservation, repeat and replay
+  bytes, exact field bits and zero warm-tick allocation. At 300 ants, five locked seeds return
+  2300-2450 units against 490-519 for `Deposit = 0`, ratios 4.49-4.90 and ensemble 4.67, inside bands
+  committed in `61748c7` before those seeds ran. All 13 source mutations fail, nine of them only
+  through analytic tests. Filmstrips show a two-way trail with pheromone and none without. This is a
+  foraging comparison with no optimization-quality claim. Engine dispatch moved from seven CLI files
+  to one registry with all three earlier engines byte-identical. **The epic's core claim holds for
+  the experiment spine: three foundations share registry, metrics, RNG contract, manifests, sweeps
+  and reports. There is still no shared simulation kernel or scheduler,** and hash version 1 cannot
+  see the field. See [the model and evidence](docs/ACO.md) and
+  [the seam inventory](docs/VICSEK.md#seam-inventory-update-aco).
 - **Vicsek foundation:** `VicsekWorld` runs the original synchronous model through the unchanged
   `ISpatialIndex`, named streams and `polarization` probe, with no change to `Canonical/` or legacy
   code. Twenty-five analytical and CLI tests pin old-state reads, old-velocity positions, self
@@ -347,7 +364,8 @@ speedup or machine-independent performance bound.
    bounded observations. The new force-only API still needs a concrete consumer to earn public
    per-agent identity/noise and heading/velocity update seams.
 5. Complete qualification and runtime work for the implemented behavioral parity harness (#28),
-   then prove generality with Vicsek and a minimal scalar-field/ACO consumer (#29/#30).
+   then prove generality with Vicsek and a minimal scalar-field/ACO consumer (#29/#30, both on
+   open branches at this update; see the verified state above).
    Named rule-control visuals (#40) now consume the settled composition API; native-input and
    human acceptance remain open. Neither engine is deleted without the owner's
    eventual migration sign-off.

@@ -69,6 +69,7 @@ public sealed class ScalarField
         }
     }
 
+    // ponytail: nearest cell, so a sensor sees one cell. Bilinear sampling if trails ever alias.
     private int CellIndex(float x, float y)
     {
         if (!float.IsFinite(x) || !float.IsFinite(y))
