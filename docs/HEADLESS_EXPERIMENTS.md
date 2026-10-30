@@ -32,7 +32,7 @@ v1 sweep axes remain numeric scalar fields.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--engine legacy\|canonical` | `canonical` | Selects the engine and native file schema |
+| `--engine legacy\|canonical\|vicsek` | `canonical` | Selects the engine and native file schema |
 | `--scenario NAME` | None | Shared named configuration overlay |
 | `--config FILE` | None | Sparse native configuration file |
 | `--seed N` | Resolved configuration seed | Integer from 0 through 2147483647 |
@@ -127,8 +127,9 @@ comma-separated names is trimmed; empty entries are usage errors. The shared `Me
 builds the requested plan, and its channel order determines the CSV header and manifest array.
 `--list-metrics` may be combined with `--engine` and `--help`, without run-setting arguments.
 
-Both engines expose population, mean speed, polarization, centroid and exact nearest-neighbor
+All engines expose population, mean speed, polarization, centroid and exact nearest-neighbor
 statistics. The canonical engine additionally exposes the `boids.*` instrumentation channels.
+The [Vicsek engine](VICSEK.md) has no named scenarios and records spawn model `vicsek-uniform-v1`.
 Definitions, percentile interpolation, stationary-member convention and missing-value behavior
 are specified in [METRICS.md](METRICS.md). The CLI selects live agents from engine state; legacy
 dead slots are excluded. Canonical and legacy Wrap worlds use periodic distances/circular

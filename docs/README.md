@@ -17,6 +17,7 @@ ordering authority. Historical documents are context, not proof.
 - [`BEHAVIORAL_PARITY.md`](BEHAVIORAL_PARITY.md) - four-model scenario runner, fixed seed calibration and explicit verification gates
 - [`LEGACY_RETIREMENT.md`](LEGACY_RETIREMENT.md) - group, lifecycle, behavioral, performance and migration criteria
 - [`CANONICAL_BEHAVIOR_SCENARIOS.md`](CANONICAL_BEHAVIOR_SCENARIOS.md) - quantitative scenarios and mutation witnesses
+- [`VICSEK.md`](VICSEK.md) - second foundation, measured noise response and the kernel seam inventory
 - [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
 - [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics
 - [`NATIVE_UI_VERIFICATION.md`](NATIVE_UI_VERIFICATION.md) - native Linux interactions, screenshots and exact evidence scope
