@@ -9,6 +9,7 @@ internal sealed class ExperimentMetrics
     private readonly PreparedSimulation _simulation;
     private readonly KinematicSample[] _agents;
     private readonly double[] _values;
+    private int _count;
     private readonly RuntimeCostMetricProbe _runtimeCosts = new();
 
     internal ExperimentMetrics(RunRequest request, PreparedSimulation simulation)
@@ -23,11 +24,13 @@ internal sealed class ExperimentMetrics
 
     internal MetricPlan Plan { get; }
     internal ReadOnlySpan<double> Values => _values;
+    /// <summary>The agents captured by the latest Sample(); borrowed, valid until the next sample.</summary>
+    internal ReadOnlySpan<KinematicSample> Agents => _agents.AsSpan(0, _count);
 
     internal void Sample()
     {
-        int count = _simulation.Capture(_agents);
-        var frame = new MetricFrame(_agents.AsSpan(0, count), _simulation.Domain);
+        _count = _simulation.Capture(_agents);
+        var frame = new MetricFrame(_agents.AsSpan(0, _count), _simulation.Domain);
         Plan.Sample(frame, _values);
     }
 
