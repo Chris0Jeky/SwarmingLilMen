@@ -42,7 +42,8 @@ v1 sweep axes remain numeric scalar fields.
 | `--list-metrics` | — | Lists names, applicability and cost for `--engine`; creates no run |
 | `--out DIRECTORY` | `runs` | Parent of a new run directory; existing runs are preserved |
 | `--manifest FILE` | None | Replays a completed manifest into a new run directory |
-| `--sweep FILE` | None | Sequential parameter sweep into a new sweep directory; combine only with `--out` or `--help` |
+| `--sweep FILE` | None | Sequential parameter sweep into a new sweep directory; combine only with `--out`, `--visual` or `--help` |
+| `--visual` | Off | Also write `filmstrip.png` and `report.html` per run (and `index.html` per sweep); see [visual reports](#visual-reports) |
 | `--help` | — | Prints usage |
 
 Duplicate options, unknown options, malformed numeric values, and unexpected positional arguments
@@ -59,7 +60,8 @@ See [population capacity](PARAMETER_GUIDE.md#population-capacity) for growth and
 
 ## Run-directory contract
 
-Each successful run publishes a new `runs/run-<random-id>/` child containing exactly:
+Each successful run publishes a new `runs/run-<random-id>/` child containing exactly (plus the
+`--visual` files described under [visual reports](#visual-reports) when requested):
 
 - **`manifest.json`** — Schema version 2, run ID and creation UTC, engine, seed, tick count,
   agent count, fixed timestep, complete resolved native configuration, requested metrics,
@@ -175,6 +177,37 @@ and exact position/velocity float bits. It does not include RNG state, groups, e
 or every internal engine field, and is not a complete restart checkpoint. The manifest separately
 pins configuration and the full CSV hash.
 
+## Visual reports
+
+`--visual` makes any run show its behaviour without a GPU, display or extra dependency. It works
+alone, with `--manifest` replay (hashes are still verified) and with `--sweep`, for either engine:
+
+```powershell
+dotnet run --project SwarmSim.Cli -c Release -- --engine canonical --agents 400 --ticks 600 --seed 7 --out runs --visual
+```
+
+A visual run directory holds the usual three files plus:
+
+- **`filmstrip.png`** — 8 panels (4x2) at evenly spaced ticks including 0 and the last (fewer
+  panels, deduplicated, when ticks < 7). Each panel keeps the world's aspect ratio at about 480 px
+  wide. An agent is a short line along its heading, coloured by heading angle on a hue wheel (east
+  is red): an ordered flock is one colour, disorder is a rainbow; stationary agents are grey dots.
+  Line length follows the panel size, not world units. The tick number is drawn in each corner.
+- **`report.html`** — one self-contained page (no external URLs or scripts, light/dark, phone-width):
+  engine, seed, ticks, agents, final kinematic hash, git commit, the filmstrip inline, and one
+  sparkline per `metrics.csv` column with first/last/min/max. Undefined (empty) cells are skipped,
+  leaving a gap rather than a zero.
+
+A visual sweep gives every cell those two files and adds `index.html` at the sweep root: one row
+per cell with its parameter values, terminal metric values and a thumbnail linking to that cell's
+`report.html` by relative path. Without `--visual` the output files are exactly as before.
+
+Rendering reads the metric sampler's capture buffer only, copies just the 8 chosen frames, and
+never touches the simulation, so `metrics.csv`, the hashes and the RNG are unchanged.
+PNG bytes are repeatable on one machine. Pictures are written through the same staging directory,
+so a failed render publishes nothing. The renderer needs only positions, velocities and world
+extent, so any foundation that implements `PreparedSimulation.Capture` gets it.
+
 ## Replay
 
 ```sh
@@ -257,7 +290,7 @@ every resolved configuration, population capacity, simulation construction and i
 sampling for every cell. The product is bounded at **10,000 cells**, checked before expansion
 with overflow-safe multiplication. This is a cell-count limit, not a runtime budget: exact
 nearest-neighbor channels still have their documented O(N²) analysis cost in every cell.
-`--sweep` can be combined only with `--out` and `--help`; engine, ticks, population and metrics
+`--sweep` can be combined only with `--out`, `--visual` and `--help`; engine, ticks, population and metrics
 belong in the sweep file rather than competing command-line overrides.
 
 ### Cell order and output
@@ -271,7 +304,7 @@ by planned cell index, independently of the order supplied to it.
 
 A successful invocation prints one new `sweeps/sweep-<random-id>/` path. That directory contains
 `summary.csv` plus one directory per cell. Each cell contains exactly the same three files as a
-single run: `manifest.json`, `metrics.csv` and `log.txt`. The manifest keeps its ordinary random
+single run (five with `--visual`): `manifest.json`, `metrics.csv` and `log.txt`. The manifest keeps its ordinary random
 run ID; replay does not depend on the containing cell directory name. Complete native settings
 are available in each manifest, while summary configuration columns contain the swept numeric
 properties, along with engine, seed, ticks and agent count.
