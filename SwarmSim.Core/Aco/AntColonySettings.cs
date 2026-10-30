@@ -13,7 +13,7 @@ public sealed class AntColonySettings
     /// <summary>Pheromone one returning ant adds to its cell per tick.</summary>
     public float Deposit { get; init; } = 1f;
     /// <summary>Fraction of every cell lost per field update.</summary>
-    public float Evaporation { get; init; } = 0.02f;
+    public float Evaporation { get; init; } = 0.01f;
     /// <summary>
     /// Ticks per field update. It is recorded in every manifest and fixed at 1.
     /// </summary>
@@ -21,10 +21,10 @@ public sealed class AntColonySettings
     public int FieldCadence { get; init; } = 1;
     public float Speed { get; init; } = 1f;
     /// <summary>Full width in radians of the uniform per-tick wander of a searching ant.</summary>
-    public float TurnNoise { get; init; } = 0.5f;
+    public float TurnNoise { get; init; } = 0.3f;
     /// <summary>Angle in radians of the left and right sensors, and of the turn toward them.</summary>
-    public float SensorAngle { get; init; } = 0.5f;
-    public float SensorDistance { get; init; } = 4f;
+    public float SensorAngle { get; init; } = 1f;
+    public float SensorDistance { get; init; } = 12f;
     public int FieldColumns { get; init; } = 60;
     public int FieldRows { get; init; } = 60;
     public float NestX { get; init; } = 40f;
