@@ -50,6 +50,21 @@ jobs:
       - name: Verify headless artifacts and manifest replay
         run: python .github/scripts/smoke_headless.py
 
+      - name: Probe native renderer (Mesa and Xvfb)
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a dotnet run --project tools/RendererProbe -c Release --no-build -- artifacts/renderer-probe/ci
+
+      - name: Retain renderer feedback
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: renderer-probe-integration
+          path: artifacts/renderer-probe/ci/
+          if-no-files-found: warn
+          retention-days: 7
+
   exact-head:
     # Keep the merge-ref integration gate above and independently prove the reviewed commit.
     name: Exact head (${{ matrix.os }})
@@ -84,3 +99,18 @@ jobs:
 
       - name: Verify headless artifacts and manifest replay
         run: python .github/scripts/smoke_headless.py
+
+      - name: Probe native renderer (Mesa and Xvfb)
+        if: runner.os == 'Linux'
+        env:
+          LIBGL_ALWAYS_SOFTWARE: '1'
+        run: xvfb-run -a dotnet run --project tools/RendererProbe -c Release --no-build -- artifacts/renderer-probe/ci
+
+      - name: Retain renderer feedback
+        if: always() && runner.os == 'Linux'
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: renderer-probe-exact-head
+          path: artifacts/renderer-probe/ci/
+          if-no-files-found: warn
+          retention-days: 7

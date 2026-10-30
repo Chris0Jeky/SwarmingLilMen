@@ -15,6 +15,7 @@ public sealed class RuleInstrumentation
     private readonly float[] _alignmentMagnitudes;
     private readonly float[] _cohesionMagnitudes;
     private readonly float[] _steeringMagnitudesSquared;
+    private readonly Vec2[] _steeringVectors;
     private readonly bool[] _queryTruncated;
     private int _activeCount;
 
@@ -29,6 +30,7 @@ public sealed class RuleInstrumentation
         _alignmentMagnitudes = new float[capacity];
         _cohesionMagnitudes = new float[capacity];
         _steeringMagnitudesSquared = new float[capacity];
+        _steeringVectors = new Vec2[capacity];
         _queryTruncated = new bool[capacity];
     }
 
@@ -41,6 +43,7 @@ public sealed class RuleInstrumentation
         Array.Clear(_alignmentMagnitudes, 0, _activeCount);
         Array.Clear(_cohesionMagnitudes, 0, _activeCount);
         Array.Clear(_steeringMagnitudesSquared, 0, _activeCount);
+        Array.Clear(_steeringVectors, 0, _activeCount);
         Array.Clear(_queryTruncated, 0, _activeCount);
     }
 
@@ -81,8 +84,7 @@ public sealed class RuleInstrumentation
     }
 
     /// <summary>
-    /// Records the total composed steering vector a boid is about to integrate, as a squared
-    /// magnitude so the hot path stores one scalar without taking a square root.
+    /// Records the total composed steering vector a boid is about to integrate and its squared magnitude.
     /// </summary>
     /// <remarks>
     /// <see cref="CanonicalWorld.Step"/> calls this after every contribution (whisker avoidance,
@@ -93,11 +95,17 @@ public sealed class RuleInstrumentation
     /// budget is observable from outside. Classic Reynolds instead clamps each rule separately;
     /// its recorded summed force can exceed MaxForce by design.
     /// </remarks>
-    internal void RecordSteering(int index, float magnitudeSquared)
+    internal void RecordSteering(int index, Vec2 steering)
     {
         if (index < _activeCount)
-            _steeringMagnitudesSquared[index] = magnitudeSquared;
+        {
+            _steeringVectors[index] = steering;
+            _steeringMagnitudesSquared[index] = steering.LengthSquared;
+        }
     }
+
+    /// <summary>Last-tick resolved forces, before velocity stages; these are not velocity deltas.</summary>
+    public ReadOnlySpan<Vec2> SteeringVectors => _steeringVectors.AsSpan(0, _activeCount);
 
     public ReadOnlySpan<int> NeighborCounts => _neighborCounts.AsSpan(0, _activeCount);
 

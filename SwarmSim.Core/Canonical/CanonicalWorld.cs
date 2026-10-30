@@ -495,7 +495,7 @@ public sealed class CanonicalWorld
             _instrumentation.RecordAlignment(i, alignmentMagnitude);
             _instrumentation.RecordCohesion(i, cohesionMagnitude);
             // Record force composition before explicitly installed velocity stages change it.
-            _instrumentation.RecordSteering(i, steering.LengthSquared);
+            _instrumentation.RecordSteering(i, steering);
 
             // A genuinely empty composition does not even add a signed zero to velocity.
             Vec2 nextVelocity = _pipeline.Entries.Length == 0 ? boid.Velocity : boid.Velocity + steering * deltaTime;
@@ -649,11 +649,29 @@ public sealed class CanonicalWorld
     /// <param name="weights">Caller-owned field-of-view weight buffer.</param>
     /// <returns>The visible count and whether the bounded spatial query omitted candidates.</returns>
     public SpatialQueryResult QueryVisibleNeighbors(int index, Span<int> buffer, Span<float> weights)
+        => QueryVisibleNeighbors(_activeBoids.AsSpan(0, Count), index, buffer, weights);
+
+    /// <summary>
+    /// Inputs to the last completed tick, paired with Instrumentation. Empty before the first tick.
+    /// This borrowed view is overwritten by the next Step; copy it to retain it across steps.
+    /// </summary>
+    public ReadOnlySpan<Boid> LastTickInputs => _nextBoids.AsSpan(0, _lastTickAgentCount);
+
+    /// <summary>
+    /// Requeries the last tick's input positions with the supplied buffer cap. Use EffectiveMaxNeighbors
+    /// to reproduce the built-in indexes' steering candidate set, rather than querying moved agents.
+    /// </summary>
+    public SpatialQueryResult QueryLastTickVisibleNeighbors(int index, Span<int> buffer, Span<float> weights)
     {
-        if (index < 0 || index >= Count)
+        EnsureNotStepping();
+        return QueryVisibleNeighbors(LastTickInputs, index, buffer, weights);
+    }
+
+    private SpatialQueryResult QueryVisibleNeighbors(ReadOnlySpan<Boid> boids, int index, Span<int> buffer, Span<float> weights)
+    {
+        if (index < 0 || index >= boids.Length)
             return new SpatialQueryResult(0, false);
 
-        var boids = _activeBoids.AsSpan(0, Count);
         int outputCapacity = Math.Min(buffer.Length, weights.Length);
         _spatialIndex.Rebuild(boids);
         SpatialQueryResult query = _spatialIndex.QueryNeighbors(

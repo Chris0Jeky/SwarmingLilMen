@@ -314,8 +314,8 @@ public sealed class MetricsContractTests
         instrumentation.RecordAlignment(1, 3f);
         instrumentation.RecordCohesion(0, 4f);
         instrumentation.RecordCohesion(1, 6f);
-        instrumentation.RecordSteering(0, 9f);
-        instrumentation.RecordSteering(1, 25f);
+        instrumentation.RecordSteering(0, new Vec2(3f, 0f));
+        instrumentation.RecordSteering(1, new Vec2(3f, 4f));
         instrumentation.RecordTruncation(1, true);
         var probe = new BoidsRuleMetricProbe(instrumentation);
         var values = new double[5];

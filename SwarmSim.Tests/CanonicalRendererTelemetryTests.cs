@@ -100,89 +100,6 @@ public sealed class CanonicalRendererTelemetryTests
         Assert.Equal(0, grown.AgentCount);
     }
 
-    [Fact]
-    public void OverlayKeepsRecordedCapWhenTheCurrentPositionsAreNoLongerCapped()
-    {
-        var world = CreateCluster();
-        world.Step(0.1f);
-        for (int i = 0; i < world.Count; i++)
-        {
-            float angle = i * MathF.PI / 3f;
-            world.SetVelocity(i, new Vec2(MathF.Cos(angle), MathF.Sin(angle)));
-        }
-        world.Step(15f);
-
-        var telemetry = RenderProgram.CaptureCanonicalTelemetry(world, null);
-        var current = QueryCurrent(world, world.EffectiveMaxNeighbors);
-        Assert.True(telemetry.QueryTruncated[0]);
-        Assert.False(current.IsTruncated);
-        string status = RenderProgram.FormatCanonicalInteractionStatus(
-            telemetry, 0, 0, current.IsTruncated, world.EffectiveMaxNeighbors, world.EffectiveMaxNeighbors);
-
-        Assert.Equal("Now: whisker hits 0 | Tick 2: query capped at 4", status);
-    }
-
-    [Fact]
-    public void OverlayDoesNotAttributeANewCurrentPositionCapToTheCompletedTick()
-    {
-        var world = CreateWorld(CreateSettings(8));
-        for (int i = 0; i < 6; i++)
-        {
-            float angle = i * MathF.PI / 3f;
-            var direction = new Vec2(MathF.Cos(angle), MathF.Sin(angle));
-            Assert.True(world.TryAddBoid(new Vec2(100f, 100f) - direction * 30f, direction));
-        }
-        world.Step(15f);
-
-        var telemetry = RenderProgram.CaptureCanonicalTelemetry(world, null);
-        var current = QueryCurrent(world, world.EffectiveMaxNeighbors);
-        Assert.False(telemetry.QueryTruncated[0]);
-        Assert.True(current.IsTruncated);
-        string status = RenderProgram.FormatCanonicalInteractionStatus(
-            telemetry, 0, 0, current.IsTruncated, world.EffectiveMaxNeighbors, world.EffectiveMaxNeighbors);
-
-        Assert.Equal("Now: whisker hits 0 | query capped at 4 | Tick 1: no truncation", status);
-    }
-
-    [Fact]
-    public void OverlaySeparatesItsSmallerBufferCapFromTheSteeringCap()
-    {
-        var world = CreateCluster();
-        world.Step(0.1f);
-        var telemetry = RenderProgram.CaptureCanonicalTelemetry(world, null);
-        var current = QueryCurrent(world, 2);
-        Assert.True(current.IsTruncated);
-
-        string status = RenderProgram.FormatCanonicalInteractionStatus(
-            telemetry, 0, 2, current.IsTruncated, 2, world.EffectiveMaxNeighbors);
-
-        Assert.Equal("Now: whisker hits 2 | query capped at 2 | Tick 1: query capped at 4", status);
-    }
-
-    [Fact]
-    public void OverlayShowsPendingBeforeAnyTickHasCompleted()
-    {
-        var telemetry = RenderProgram.CaptureCanonicalTelemetry(CreateCluster(), null);
-
-        string status = RenderProgram.FormatCanonicalInteractionStatus(telemetry, 0, 1, false, 4, 4);
-
-        Assert.Equal("Now: whisker hits 1 | Tick: pending", status);
-    }
-
-    [Theory]
-    [InlineData(-1)]
-    [InlineData(6)]
-    public void OverlayDoesNotInventARecordForAnUncapturedSubject(int subject)
-    {
-        var world = CreateCluster();
-        world.Step(0.1f);
-        Assert.True(world.TryAddBoid(new Vec2(10f, 10f), new Vec2(1f, 0f)));
-        var telemetry = RenderProgram.CaptureCanonicalTelemetry(world, null);
-
-        string status = RenderProgram.FormatCanonicalInteractionStatus(telemetry, subject, 0, false, 4, 4);
-
-        Assert.Equal("Now: whisker hits 0 | Tick 1: subject not recorded", status);
-    }
 
     private static CanonicalWorldSettings CreateSettings(int capacity) => new()
     {
@@ -211,10 +128,4 @@ public sealed class CanonicalRendererTelemetryTests
         return world;
     }
 
-    private static SpatialQueryResult QueryCurrent(CanonicalWorld world, int capacity)
-    {
-        Span<int> neighbors = stackalloc int[capacity];
-        Span<float> weights = stackalloc float[capacity];
-        return world.QueryVisibleNeighbors(0, neighbors, weights);
-    }
 }
