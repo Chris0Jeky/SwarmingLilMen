@@ -13,11 +13,11 @@ public static class Program
             RunOptions options = RunOptions.Parse(args);
             if (options.Help)
             {
-                output.WriteLine("""
+                output.WriteLine($"""
                     SwarmSim.Cli — deterministic headless experiments
                     Usage: dotnet run --project SwarmSim.Cli -- [options]
 
-                      --engine legacy|canonical|vicsek
+                      --engine {EngineRegistry.NameChoices}
                                                  Engine and native config schema (default: canonical)
                       --scenario NAME            Shared boids scenario before file/seed overrides
                       --config FILE              Native engine JSON configuration

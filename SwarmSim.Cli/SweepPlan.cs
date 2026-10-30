@@ -1,10 +1,7 @@
 using System.Globalization;
 using System.Text.Json;
 using SwarmSim.Core;
-using SwarmSim.Core.Canonical;
-using SwarmSim.Core.Configuration;
 using SwarmSim.Core.Utils;
-using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Cli;
 
@@ -42,8 +39,8 @@ internal sealed class SweepPlan
         string baseFile = ReadString(Require(fields, "base"), "base");
         string engine = fields.TryGetValue("engine", out JsonElement engineValue)
             ? ReadString(engineValue, "engine").ToLowerInvariant() : "canonical";
-        if (engine is not ("canonical" or "legacy" or "vicsek"))
-            throw new ArgumentException("Sweep engine must be canonical, legacy or vicsek.");
+        EngineDefinition definition = EngineRegistry.Find(engine)
+            ?? throw new ArgumentException($"Sweep engine must be {EngineRegistry.NameList}.");
         int ticks = ReadCount(Require(fields, "ticks"), "ticks", allowZero: true);
         int agents = fields.TryGetValue("agents", out JsonElement agentValue)
             ? ReadCount(agentValue, "agents", allowZero: false) : 400;
@@ -52,12 +49,7 @@ internal sealed class SweepPlan
         if (!MetricCatalog.ValidateSelection(engine, metrics))
             throw new ArgumentException("Sweeps require deterministic metrics; runtime cost channels cannot produce a byte-repeatable summary or exact cell replay.");
 
-        using JsonDocument schema = JsonDocument.Parse(engine switch
-        {
-            "vicsek" => new VicsekSettings().ToJson(),
-            "canonical" => new CanonicalWorldSettings().ToJson(),
-            _ => new SimConfig().ToJson()
-        });
+        using JsonDocument schema = JsonDocument.Parse(definition.DefaultSettingsJson());
         SweepAxis[] axes = ReadAxes(Require(fields, "grid"), schema.RootElement);
         int count = seeds.Length;
         foreach (SweepAxis axis in axes)
@@ -76,12 +68,7 @@ internal sealed class SweepPlan
         });
         Dictionary<string, JsonElement> baseValues = ReadObject(baseDocument.RootElement, "base configuration");
         // Resolve the base once; do not reread a mutable file between cells.
-        CanonicalWorldSettings? canonical = engine == "canonical"
-            ? ConfigurationResolver.ResolveCanonicalSettings(overrides: baseValues) : null;
-        SimConfig? legacy = engine == "legacy"
-            ? ConfigurationResolver.ResolveSimConfig(overrides: baseValues) : null;
-        VicsekSettings? vicsek = engine == "vicsek"
-            ? ConfigurationResolver.ResolveVicsekSettings(overrides: baseValues) : null;
+        object baseSettings = definition.Resolve(null, null, baseValues, null);
 
         var cells = new SweepCell[count];
         int combinations = count / seeds.Length;
@@ -101,12 +88,8 @@ internal sealed class SweepPlan
                 for (int axis = 0; axis < axes.Length; axis++)
                     overrides.Add(axes[axis].Name, axes[axis].Values[selected[axis]]);
                 overrides.Add(nameof(SimConfig.Seed), JsonSerializer.SerializeToElement(seed));
-                RunRequest request = vicsek is not null
-                    ? RunRequest.ForVicsek(ticks, agents, ConfigurationResolver.ResolveVicsekSettings(overrides: overrides, defaults: vicsek), null)
-                    : canonical is not null
-                    ? new(engine, ticks, agents, null, ConfigurationResolver.ResolveCanonicalSettings(overrides: overrides, defaults: canonical), null)
-                    : new(engine, ticks, agents, ConfigurationResolver.ResolveSimConfig(overrides: overrides, defaults: legacy), null, null);
-                request = request with { RequestedMetrics = metrics.ToArray() };
+                var request = new RunRequest(engine, ticks, agents, definition.Resolve(null, null, overrides, baseSettings), null)
+                    { RequestedMetrics = metrics.ToArray() };
 
                 // Check every configuration and initial metric state before any sweep output.
                 // Only one world is retained during preflight; execution constructs it afresh.

@@ -2,15 +2,11 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using SwarmSim.Core;
 using SwarmSim.Core.Canonical;
-using SwarmSim.Core.Configuration;
-using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Cli;
 
 internal sealed class RunManifest
 {
-    internal const string SupportedSpawnModel = "uniform-single-group-v1";
-    internal const string VicsekSpawnModel = "vicsek-uniform-v1";
     internal static readonly JsonSerializerOptions JsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -41,8 +37,6 @@ internal sealed class RunManifest
     public required string MetricsSha256 { get; init; }
     public required RuntimeIdentity Runtime { get; init; }
 
-    internal static string SpawnModelFor(string engine) => engine == "vicsek" ? VicsekSpawnModel : SupportedSpawnModel;
-
     internal static RunManifest Read(string path)
     {
         using JsonDocument document = JsonDocument.Parse(File.ReadAllText(path));
@@ -51,16 +45,16 @@ internal sealed class RunManifest
             ?? throw new InvalidDataException("A replay manifest must be a JSON object.");
         if (manifest.SchemaVersion is not (1 or 2))
             throw new InvalidDataException($"Unsupported manifest schemaVersion {manifest.SchemaVersion}; expected 1 or 2.");
-        if (manifest.Engine is not ("legacy" or "canonical" or "vicsek"))
-            throw new InvalidDataException("Manifest engine must be legacy, canonical or vicsek.");
-        if (manifest.Engine == "vicsek" && manifest.SchemaVersion == 1)
-            throw new InvalidDataException("Vicsek manifests require schema 2.");
+        EngineDefinition engine = EngineRegistry.Find(manifest.Engine)
+            ?? throw new InvalidDataException($"Manifest engine must be {EngineRegistry.NameList}.");
+        if (manifest.SchemaVersion < engine.MinimumManifestSchema)
+            throw new InvalidDataException($"{engine.Name} manifests require schema {engine.MinimumManifestSchema}.");
         if (manifest.Ticks < 0 || manifest.AgentCount <= 0 || !float.IsFinite(manifest.FixedDeltaTime) || manifest.FixedDeltaTime <= 0f)
             throw new InvalidDataException("Manifest ticks, agentCount, or fixedDeltaTime is invalid.");
         if (manifest.RunId is null || !manifest.RunId.StartsWith("run-", StringComparison.Ordinal) ||
             !Guid.TryParseExact(manifest.RunId.AsSpan(4), "N", out _) || manifest.CreatedUtc == default)
             throw new InvalidDataException("Manifest run identity is invalid.");
-        if (manifest.SpawnModel != SpawnModelFor(manifest.Engine) || manifest.KinematicHashVersion != 1)
+        if (manifest.SpawnModel != engine.SpawnModel || manifest.KinematicHashVersion != 1)
             throw new InvalidDataException("Manifest spawn model or hash version is unsupported.");
         if (manifest.RequestedMetrics is null)
             throw new InvalidDataException("Manifest requestedMetrics must be an array of registered channel names.");
@@ -128,20 +122,20 @@ internal sealed record RunRequest(
     string Engine,
     int Ticks,
     int AgentCount,
-    SimConfig? Legacy,
-    CanonicalWorldSettings? Canonical,
+    object Settings,
     RunManifest? Replay)
 {
-    internal VicsekSettings? Vicsek { get; init; }
+    /// <summary>The original boids shape: exactly one of the two settings is present.</summary>
+    internal RunRequest(string engine, int ticks, int agentCount, SimConfig? legacy, CanonicalWorldSettings? canonical, RunManifest? replay)
+        : this(engine, ticks, agentCount, (object?)legacy ?? canonical!, replay) { }
+
     internal string[] RequestedMetrics { get; init; } = MetricCatalog.DefaultMetrics.ToArray();
     /// <summary>Also render filmstrip.png and report.html; never influences the simulation.</summary>
     internal bool Visual { get; init; }
-    internal uint Seed => Vicsek?.Seed ?? Canonical?.Seed ?? Legacy!.Seed;
-    internal float FixedDeltaTime => Vicsek?.FixedDeltaTime ?? Canonical?.FixedDeltaTime ?? Legacy!.FixedDeltaTime;
-    internal string ConfigJson => Vicsek?.ToJson() ?? Canonical?.ToJson() ?? Legacy!.ToJson();
-
-    internal static RunRequest ForVicsek(int ticks, int agentCount, VicsekSettings settings, RunManifest? replay) =>
-        new("vicsek", ticks, agentCount, null, null, replay) { Vicsek = settings };
+    internal EngineDefinition Definition => EngineRegistry.Get(Engine);
+    internal uint Seed => Definition.Seed(Settings);
+    internal float FixedDeltaTime => Definition.FixedDeltaTime(Settings);
+    internal string ConfigJson => Definition.SettingsJson(Settings);
 
     internal static RunRequest Resolve(RunOptions options)
     {
@@ -150,13 +144,9 @@ internal sealed record RunRequest(
             RunManifest manifest = RunManifest.Read(options.ManifestPath);
             if (manifest.MetricsDeterministic == false)
                 throw new InvalidDataException("Exact replay is unavailable for manifests containing nondeterministic runtime metrics.");
-            Dictionary<string, JsonElement> values = ReadCompleteConfig(manifest);
-            RunRequest replay = manifest.Engine switch
-            {
-                "vicsek" => ForVicsek(manifest.Ticks, manifest.AgentCount, ConfigurationResolver.ResolveVicsekSettings(overrides: values), manifest),
-                "canonical" => new(manifest.Engine, manifest.Ticks, manifest.AgentCount, null, ConfigurationResolver.ResolveCanonicalSettings(overrides: values), manifest),
-                _ => new(manifest.Engine, manifest.Ticks, manifest.AgentCount, ConfigurationResolver.ResolveSimConfig(overrides: values), null, manifest)
-            };
+            EngineDefinition engine = EngineRegistry.Get(manifest.Engine);
+            Dictionary<string, JsonElement> values = ReadCompleteConfig(manifest, engine);
+            var replay = new RunRequest(manifest.Engine, manifest.Ticks, manifest.AgentCount, engine.Resolve(null, null, values, null), manifest);
             if (replay.Seed != manifest.Seed || replay.FixedDeltaTime != manifest.FixedDeltaTime)
                 throw new InvalidDataException("Manifest seed/fixedDeltaTime metadata does not match resolvedConfig.");
             return replay with { RequestedMetrics = manifest.RequestedMetrics.ToArray() };
@@ -166,18 +156,12 @@ internal sealed record RunRequest(
         if (options.Seed.HasValue)
             overrides[nameof(SimConfig.Seed)] = JsonSerializer.SerializeToElement(options.Seed.Value);
         MetricCatalog.ValidateSelection(options.Engine, options.RequestedMetrics);
-        RunRequest request = options.Engine switch
-        {
-            "vicsek" => ForVicsek(options.Ticks, options.AgentCount, ConfigurationResolver.ResolveVicsekSettings(options.ConfigPath, overrides), null),
-            "canonical" => new(options.Engine, options.Ticks, options.AgentCount, null,
-                ConfigurationResolver.ResolveCanonicalSettings(options.Scenario, options.ConfigPath, overrides), null),
-            _ => new(options.Engine, options.Ticks, options.AgentCount,
-                ConfigurationResolver.ResolveSimConfig(options.Scenario, options.ConfigPath, overrides), null, null)
-        };
-        return request with { RequestedMetrics = options.RequestedMetrics.ToArray() };
+        object settings = EngineRegistry.Get(options.Engine).Resolve(options.Scenario, options.ConfigPath, overrides, null);
+        return new RunRequest(options.Engine, options.Ticks, options.AgentCount, settings, null)
+            { RequestedMetrics = options.RequestedMetrics.ToArray() };
     }
 
-    private static Dictionary<string, JsonElement> ReadCompleteConfig(RunManifest manifest)
+    private static Dictionary<string, JsonElement> ReadCompleteConfig(RunManifest manifest, EngineDefinition engine)
     {
         if (manifest.ResolvedConfig.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException("Manifest resolvedConfig must be a complete native configuration object.");
@@ -185,24 +169,16 @@ internal sealed record RunRequest(
         foreach (JsonProperty property in manifest.ResolvedConfig.EnumerateObject())
             if (!values.TryAdd(property.Name, property.Value.Clone()))
                 throw new InvalidDataException($"Manifest contains duplicate configuration field '{property.Name}'.");
-        string defaults = manifest.Engine switch
-        {
-            "vicsek" => new VicsekSettings().ToJson(),
-            "canonical" => new CanonicalWorldSettings().ToJson(),
-            _ => new SimConfig().ToJson()
-        };
-        using JsonDocument schema = JsonDocument.Parse(defaults);
+        using JsonDocument schema = JsonDocument.Parse(engine.DefaultSettingsJson());
         foreach (JsonProperty property in schema.RootElement.EnumerateObject())
         {
-            if (manifest.Engine == "canonical" && property.NameEquals(nameof(CanonicalWorldSettings.Mode)))
+            if (engine.VersionedOptionalField is { } optional && property.NameEquals(optional.Name))
                 continue;
             if (!values.ContainsKey(property.Name))
                 throw new InvalidDataException($"Manifest resolvedConfig is missing '{property.Name}'; replay must not inherit current defaults.");
         }
-        // Mode is the one versioned optional field: pre-composition manifests always mean
-        // Enhanced. Pin that meaning explicitly rather than inheriting a future settings default.
-        if (manifest.Engine == "canonical")
-            values.TryAdd(nameof(CanonicalWorldSettings.Mode), JsonSerializer.SerializeToElement(CanonicalMode.Enhanced));
+        if (engine.VersionedOptionalField is { } pinned)
+            values.TryAdd(pinned.Name, pinned.Meaning());
         return values;
     }
 }
