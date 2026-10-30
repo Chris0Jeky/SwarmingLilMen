@@ -16,6 +16,9 @@ public sealed class VicsekWorld
     public const string SpawnStream = "vicsek.spawn";
     public const string NoiseStream = "vicsek.noise";
 
+    /// <summary>Largest supported population; three N-sized buffers stay well inside address limits.</summary>
+    public const int MaxAgents = 1 << 26;
+
     private readonly ISpatialIndex _index;
     private readonly Pcg32Rng _noise;
     private readonly int[] _neighbors;
@@ -107,8 +110,8 @@ public sealed class VicsekWorld
     private static Boid[] Spawn(VicsekSettings settings, int agentCount)
     {
         Validate(settings);
-        if (agentCount <= 0)
-            throw new ArgumentOutOfRangeException(nameof(agentCount), "Agent count must be positive.");
+        if (agentCount <= 0 || agentCount > MaxAgents)
+            throw new ArgumentOutOfRangeException(nameof(agentCount), $"Agent count must be from 1 through {MaxAgents}.");
         Pcg32Rng random = new RandomStreams(settings.Seed).CreateStream(SpawnStream);
         var agents = new Boid[agentCount];
         for (int i = 0; i < agents.Length; i++)

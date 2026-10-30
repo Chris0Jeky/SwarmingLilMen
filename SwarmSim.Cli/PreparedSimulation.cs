@@ -20,6 +20,8 @@ internal sealed class PreparedSimulation
         _request = request;
         if (request.Vicsek is not null)
         {
+            if (request.AgentCount > VicsekWorld.MaxAgents)
+                throw new ArgumentException($"--agents exceeds the Vicsek maximum of {VicsekWorld.MaxAgents}.");
             _vicsek = new VicsekWorld(request.Vicsek, request.AgentCount);
         }
         else if (request.Canonical is not null)

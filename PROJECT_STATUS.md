@@ -36,16 +36,16 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,172 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,174 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Vicsek foundation:** `VicsekWorld` runs the original synchronous model through the unchanged
   `ISpatialIndex`, named streams and `polarization` probe, with no change to `Canonical/` or legacy
-  code. Twenty-five analytical and CLI tests pin old-state reads, old-velocity positions, self
+  code. Twenty-seven analytical and CLI tests pin old-state reads, old-velocity positions, self
   counted once, radian noise, seams, the zero-resultant rule, untruncated neighborhoods, grid/naive
   equivalence, repeat/replay bytes and zero warm-tick allocation. Five locked seeds (N=100, density
   4) measure order 0.988 at η=0.5 and 0.126-0.136 at η=5, inside bands committed before those seeds
-  ran. Six source mutations fail. This is a finite noise-response result, not a phase-transition
+  ran. Seven source mutations fail. This is a finite noise-response result, not a phase-transition
   measurement. The seam inventory finds engine dispatch spread across seven CLI files and force
   composition unable to express heading replacement. See
   [the model, evidence and seam inventory](docs/VICSEK.md).
