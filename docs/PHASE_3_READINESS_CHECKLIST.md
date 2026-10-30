@@ -69,7 +69,8 @@ Check current code, merged work and open issues before treating an entry as outs
 ### 🔄 Milestone 7: Instrumentation & UX (PARTIAL)
 - [x] Instrumentation (neighbor counts, weights, rule contributions)
 - [x] Basic selected-boid inspection overlay (perception bounds, neighbor links, whisker markers,
-  aggregate metrics)
+  aggregate metrics; the later rewrite dropped the whisker-hit markers, see
+  [Not shown](CANONICAL_INSPECTION.md))
 - [x] Heading-centered FOV arc visualization
 - [x] Rule-colored inputs to applied aggregate rules, from last-tick positions
 - [x] Actual resolved steering-vector arrow before velocity stages
