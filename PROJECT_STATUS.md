@@ -44,8 +44,11 @@ or errors. The historical counts below identify the specific additions that prod
   completed tick's inputs. The existing double buffer supplies positions; force instrumentation
   adds 8 bytes per capacity slot and retains its squared-magnitude API. Headless tests cover
   independent rule effects, caps, timing, geometry and zero warm query allocation; exact goldens
-  remain unchanged. Eight native Raylib render-target images were inspected. Windows OS-input
-  injection and direct framebuffer/DPI export did not qualify, so native input and human visual
+  remain unchanged. The reusable `tools/RendererProbe` passes 112 native event-playback and pixel
+  checks in eight captures, with an HTML gallery and JSON/build-hash report. Removing the force-arrow
+  draw call causes seven expected failures. Linux CI runs it under Mesa/Xvfb for integration and
+  exact-head builds and retains feedback artifacts; Windows local GPU execution is also verified.
+  Windows OS-input injection and direct framebuffer/DPI export did not qualify, so OS input and human visual
   acceptance remain open in #40. See [inspection semantics and evidence](docs/CANONICAL_INSPECTION.md).
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional

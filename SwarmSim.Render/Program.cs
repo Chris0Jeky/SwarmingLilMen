@@ -282,7 +282,7 @@ internal static class Program
         CompactionInterval = 600
     };
 
-    private static void ApplyBaseConfig(SimConfig config)
+    internal static void ApplyBaseConfig(SimConfig config)
     {
         _baseConfigTemplate = CopyConfig(config);
         SyncParametersWithConfig(_baseConfigTemplate);
@@ -1276,7 +1276,7 @@ internal static class Program
         Write($"Accumulator: {_runner.Accumulator:F4} / {_runner.FixedDeltaTime:F4}", Color.LightGray);
     }
 
-    private static void DrawHelpOverlay(RendererMode mode, SpeedModel speedModel)
+    internal static void DrawHelpOverlay(RendererMode mode, SpeedModel speedModel)
     {
         IReadOnlyList<RendererHelpLine> lines = Controls.GetHelpLines(mode, speedModel);
         int width = 900;
@@ -1527,7 +1527,7 @@ internal static class Program
         => Math.Max(0, Math.Min(bufferLength, effectiveMaxNeighbors));
 
 
-    private static bool ProcessCanonicalParameters(RendererInputSnapshot input)
+    internal static bool ProcessCanonicalParameters(RendererInputSnapshot input)
     {
         _fineAdjustment = input.IsActive(RendererControlId.FineAdjustment);
         bool changed = Controls.ApplyParameters(input, ref _selectedParameter, GetCanonicalParameterValue, SetCanonicalParameterValue, Console.Out);
@@ -1616,7 +1616,7 @@ internal static class Program
         return newWorld;
     }
 
-    private static CanonicalWorldSettings BuildCanonicalWorldSettings()
+    internal static CanonicalWorldSettings BuildCanonicalWorldSettings()
     {
         return BuildCanonicalWorldSettings(BuildCurrentConfig(), _initialAgentCount);
     }

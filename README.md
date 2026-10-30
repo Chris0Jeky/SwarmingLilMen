@@ -461,6 +461,17 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build --filter 
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" --collect:"XPlat Code Coverage" -- RunConfiguration.TreatNoTestsAsError=true
 ```
 
+For quick native visual feedback, run:
+
+```bash
+dotnet run --project tools/RendererProbe -c Release
+```
+
+It prints a local HTML gallery and returns pass/fail for eight deterministic captures and 112
+native-input/pixel checks. The JSON report records observed forces, counts and build hashes.
+Linux CI runs it under Mesa/Xvfb and retains the images for both the integration ref and exact
+PR head. See [the probe guide and acceptance limits](docs/CANONICAL_INSPECTION.md#fast-visual-feedback).
+
 ## 📊 Benchmarking
 
 ```bash

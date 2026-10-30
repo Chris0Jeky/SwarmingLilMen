@@ -61,18 +61,54 @@ tick. The separation pair moves one neighbor inside its radius.
 | Capture | Observed result |
 |---|---|
 | [All rules / 270°](verification/canonical-inspection/all-rules.png) | Blue/violet inputs; separation 0, alignment 1.749, cohesion 5.691. |
-| [Separation on](verification/canonical-inspection/separation-on.png) / [off](verification/canonical-inspection/separation-off.png) | Orange input and force 20 become alignment 1.486 / cohesion 6.175 after S. |
+| [Separation on](verification/canonical-inspection/separation-on.png) / [off](verification/canonical-inspection/separation-off.png) | Orange input and force 20 become alignment 1.613 / cohesion 6.702 after S. |
 | [Alignment off](verification/canonical-inspection/alignment-off.png) | Alignment 0; cohesion remains 5.691. |
 | [Cohesion off](verification/canonical-inspection/cohesion-off.png) | Cohesion 0; alignment remains 1.749. |
 | [90° FOV](verification/canonical-inspection/fov-90.png) / [360° FOV](verification/canonical-inspection/fov-360.png) | One forward neighbor versus five visible neighbors; sector versus full circle. |
 | [Help](verification/canonical-inspection/help.png) | 1–8 parameters and S/A/C/O/Tab fit the existing panel. |
 
-These are native **drawing** checks with synthetic key snapshots routed through the production
-inventory, not OS keyboard acceptance. The actual renderer window launched and was captured, but
+These are native **drawing and event-playback** checks through Raylib's native input adapter,
+the production control inventory and parameter dispatch, not OS keyboard acceptance.
+The actual renderer window launched and was captured, but
 Windows computer-use key/click injection did not change its state. Direct framebuffer export also
 showed a DPI-size mismatch; the explicit render target avoids presenting that as a full-window
-capture. Physical keyboard input, full-window DPI behavior, Linux/macOS execution of the new UI and
+capture. Physical keyboard input, full-window DPI behavior, Linux/macOS interactive desktop behavior and
 human acceptance remain unverified. **Issue #40 and milestone 7 remain partial.**
+
+## Fast visual feedback
+
+From the repository root:
+
+```powershell
+dotnet run --project tools/RendererProbe -c Release
+```
+
+The probe creates a new timestamped directory under `artifacts/renderer-probe/`, prints the
+`index.html` gallery path, and exits **0 for pass, 1 for failed checks, 2 for invalid output
+arguments**. An optional directory argument must name a path that does not already exist.
+Open the gallery for full-size PNGs and named failures; `report.json` includes the observed
+forces/input counts, runtime, assembly versions and SHA-256 build hashes. Assembly versions
+identify the build's Git revision but do not assert that its source checkout was clean.
+
+The eight cases run **112 assertions**: native S/A/C playback changes applied contributions;
+8/arrows/Shift reach the production FOV configuration; O/Tab/H/R map to their actions; pixel
+probes check front/top/rear arc coverage, colored links outside the legend, actual force tips,
+help-panel drawing and image dimensions. It uses the production overlay and help functions,
+with a small deterministic scene presentation. It does not drive the interactive main loop.
+Render targets avoid OS scaling and screenshot focus dependencies; exact whole-image hashes
+are not a cross-GPU acceptance criterion. The raylib 5.5 event IDs come from
+[its native playback implementation](https://github.com/raysan5/raylib/blob/5.5/src/rcore.c).
+
+On the recorded Windows host the checks/captures took **1.64 seconds**, excluding build/startup.
+Removing the production force-arrow draw call made all seven non-help cases fail and the
+process exit 1; restoring it passes. This mutation demonstrates a missing visual is detected.
+
+Linux needs a graphics context. CI runs the same probe with Mesa software rendering under
+`xvfb-run -a` for both the integration ref and exact PR head, and uploads the gallery/report as
+`renderer-probe-integration` and `renderer-probe-exact-head` (seven-day retention), including
+failed-check evidence. Native library/context startup failures may occur before any capture;
+inspect the job log in that case. Windows CI compiles the probe; local Windows execution supplies
+the hardware-renderer evidence. No new package is required beyond the renderer's existing Raylib.
 
 Reproduce the headless checks with:
 
