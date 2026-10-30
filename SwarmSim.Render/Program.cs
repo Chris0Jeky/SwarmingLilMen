@@ -65,6 +65,7 @@ internal static class Program
     private static float _maxSpeed = 10f;             // Was 6
     private static float _maxForce = 2.5f;
     private static float _friction = 1f;           // Was 0.99 (CRITICAL FIX!)
+    private static float _fieldOfView = 270f;
     private static int _initialAgentCount = 400;
 
     // Values stay here; names, key bindings and adjustment ranges live in the shared inventory.
@@ -83,6 +84,12 @@ internal static class Program
 
     private static float GetParameterValue(int index) => Parameters[index].GetValue();
     private static void SetParameterValue(int index, float value) => Parameters[index].SetValue(value);
+    private static float GetCanonicalParameterValue(int index) => index == 7 ? _fieldOfView : GetParameterValue(index);
+    private static void SetCanonicalParameterValue(int index, float value)
+    {
+        if (index == 7) _fieldOfView = value;
+        else SetParameterValue(index, value);
+    }
 
     // Preset configurations
     private sealed class Preset
@@ -291,6 +298,7 @@ internal static class Program
         _separationWeight = config.SeparationWeight;
         _alignmentWeight = config.AlignmentWeight;
         _cohesionWeight = config.CohesionWeight;
+        _fieldOfView = config.FieldOfView;
     }
 
     internal static SimConfig CopyConfig(SimConfig source)
@@ -373,7 +381,7 @@ internal static class Program
             GridCellSize = template.GridCellSize,
             SenseRadius = _senseRadius,
             SeparationRadius = _separationRadius,
-            FieldOfView = template.FieldOfView,
+            FieldOfView = _fieldOfView,
             SeparationWeight = _separationWeight,
             AlignmentWeight = _alignmentWeight,
             CohesionWeight = _cohesionWeight,
@@ -1385,10 +1393,14 @@ internal static class Program
 
             if (input.IsActive(RendererControlId.Reset))
             {
-                canonicalWorld = CreateCanonicalWorld(settings, _initialAgentCount);
+                var resetWorld = CreateCanonicalWorld(settings, _initialAgentCount);
+                CanonicalInspectionOverlay.CopyRuleSwitches(canonicalWorld, resetWorld);
+                canonicalWorld = resetWorld;
                 SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
                 accumulator = 0f;
             }
+
+            CanonicalInspectionOverlay.ApplyRuleSwitches(input, canonicalWorld);
 
             if (input.IsActive(RendererControlId.Help))
             {
@@ -1448,7 +1460,7 @@ internal static class Program
 
             if (_canonicalOverlayVisible && canonicalWorld.Count > 0 && _overlaySubjectIndex >= 0)
             {
-                DrawInteractionOverlay(canonicalWorld, settings, telemetry, neighborBuffer, neighborWeightBuffer);
+                CanonicalInspectionOverlay.Draw(canonicalWorld, _overlaySubjectIndex, neighborBuffer, neighborWeightBuffer);
             }
 
             Raylib.DrawText($"Canonical Mode - {count} agents (single group)", 10, 8, 18, Color.Lime);
@@ -1461,6 +1473,7 @@ internal static class Program
             Raylib.DrawText($"Align avg {telemetry.AverageAlignmentMagnitude:F2} | Coh avg {telemetry.AverageCohesionMagnitude:F2}", 10, 124, 14, Color.SkyBlue);
             Raylib.DrawText($"Distance avg {telemetry.AverageNeighborDistance:F1} (min {telemetry.MinNeighborDistance:F1}, max {telemetry.MaxNeighborDistance:F1})", 10, 142, 14, Color.SkyBlue);
             Raylib.DrawText($"Separation priority: {(telemetry.SeparationPriorityTriggered ? "ACTIVE" : "idle")}", 10, 160, 14, telemetry.SeparationPriorityTriggered ? Color.Orange : Color.Gray);
+            CanonicalInspectionOverlay.DrawRuleSwitches(canonicalWorld, 10, 186);
 
             Raylib.DrawText($"{Controls.ShortLabel(RendererMode.Canonical, RendererControlId.Interactions)} [{(_canonicalOverlayVisible ? "ON" : "OFF")}] | {Controls.ShortLabel(RendererMode.Canonical, RendererControlId.NextSubject)}", 10, WindowHeight - 68, 14, Color.Gray);
             Raylib.DrawText(Controls.ParameterHeading(RendererMode.Canonical) + " | " + Controls.ParameterHint(RendererMode.Canonical), 10, WindowHeight - 48, 12, Color.Gray);
@@ -1494,30 +1507,6 @@ internal static class Program
         return reusableTelemetry;
     }
 
-    /// <summary>
-    /// Distinguishes the current-position visualization from truncation recorded before the
-    /// completed tick integrated. The current query never supplies the tick's truncation value.
-    /// </summary>
-    internal static string FormatCanonicalInteractionStatus(
-        CanonicalTelemetry telemetry,
-        int subjectIndex,
-        int currentWhiskerHits,
-        bool currentQueryTruncated,
-        int currentQueryCapacity,
-        int steeringQueryCapacity)
-    {
-        string currentStatus = currentQueryTruncated ? $" | query capped at {currentQueryCapacity}" : string.Empty;
-        string tickStatus;
-        if (telemetry.TickCount == 0)
-            tickStatus = "Tick: pending";
-        else if (subjectIndex < 0 || subjectIndex >= telemetry.AgentCount)
-            tickStatus = $"Tick {telemetry.TickCount}: subject not recorded";
-        else
-            tickStatus = telemetry.QueryTruncated[subjectIndex]
-                ? $"Tick {telemetry.TickCount}: query capped at {steeringQueryCapacity}"
-                : $"Tick {telemetry.TickCount}: no truncation";
-        return $"Now: whisker hits {currentWhiskerHits}{currentStatus} | {tickStatus}";
-    }
 
     /// <summary>
     /// Gets the query capacity the interaction overlay must use so it matches the simulation's
@@ -1528,9 +1517,8 @@ internal static class Program
     /// no truncation in exactly the cases where the simulation did truncate.
     /// </summary>
     /// <remarks>
-    /// The fresh query draws the current-position links and whisker markers and is labeled
-    /// "Now". Its result can differ from what the completed tick saw before integration.
-    /// The separately labeled tick status uses <see cref="CanonicalTelemetry.QueryTruncated"/>.
+    /// Inspection requeries the last completed tick's inputs, so its links and force diagnostics
+    /// refer to the same pre-integration positions.
     /// </remarks>
     /// <param name="bufferLength">Entries available in the overlay's own buffers.</param>
     /// <param name="effectiveMaxNeighbors">The simulation's own per-boid candidate cap.</param>
@@ -1538,128 +1526,14 @@ internal static class Program
     internal static int ComputeOverlayQueryCapacity(int bufferLength, int effectiveMaxNeighbors)
         => Math.Max(0, Math.Min(bufferLength, effectiveMaxNeighbors));
 
-    private static void DrawInteractionOverlay(
-        CanonicalWorld world,
-        CanonicalWorldSettings settings,
-        CanonicalTelemetry telemetry,
-        int[] neighborBuffer,
-        float[] weightBuffer)
-    {
-        if (_overlaySubjectIndex < 0 || _overlaySubjectIndex >= world.Count)
-            return;
-
-        var subject = world.Boids[_overlaySubjectIndex];
-        var center = new Vector2(subject.Position.X, subject.Position.Y);
-        Raylib.DrawCircleLines((int)center.X, (int)center.Y, settings.SenseRadius, Color.Yellow);
-
-        if (settings.FieldOfView < 360f)
-        {
-            float halfAngle = MathF.PI * settings.FieldOfView / 360f;
-            float baseAngle = MathF.Atan2(subject.Forward.Y, subject.Forward.X);
-            var leftPoint = center + new Vector2(MathF.Cos(baseAngle - halfAngle), MathF.Sin(baseAngle - halfAngle)) * settings.SenseRadius;
-            var rightPoint = center + new Vector2(MathF.Cos(baseAngle + halfAngle), MathF.Sin(baseAngle + halfAngle)) * settings.SenseRadius;
-            Raylib.DrawLineEx(center, leftPoint, 1.5f, Color.Gold);
-            Raylib.DrawLineEx(center, rightPoint, 1.5f, Color.Gold);
-        }
-
-        var forward = new Vector2(subject.Forward.X, subject.Forward.Y);
-        Raylib.DrawLineEx(center, center + forward * settings.SeparationRadius, 1.5f, Color.SkyBlue);
-
-        float lookAhead = settings.TargetSpeed * MathF.Max(0.05f, settings.WhiskerTimeHorizon);
-        float whiskerRadius = MathF.Max(0.1f, settings.SeparationRadius);
-        var lookaheadPoint = center + forward * lookAhead;
-        Raylib.DrawLineEx(center, lookaheadPoint, 1.5f, Color.SkyBlue);
-        Raylib.DrawCircleLines((int)lookaheadPoint.X, (int)lookaheadPoint.Y, whiskerRadius, Color.SkyBlue);
-
-        int overlayCapacity = ComputeOverlayQueryCapacity(
-            Math.Min(neighborBuffer.Length, weightBuffer.Length),
-            world.EffectiveMaxNeighbors);
-        SpatialQueryResult visibleQuery = world.QueryVisibleNeighbors(
-            _overlaySubjectIndex,
-            neighborBuffer.AsSpan(0, overlayCapacity),
-            weightBuffer.AsSpan(0, overlayCapacity));
-        int neighborCount = visibleQuery.Count;
-        int whiskerHits = 0;
-        foreach (int idx in neighborBuffer.AsSpan(0, neighborCount))
-        {
-            if (idx < 0 || idx >= world.Count)
-                continue;
-
-            var neighbor = world.Boids[idx];
-            var pos = new Vector2(neighbor.Position.X, neighbor.Position.Y);
-
-            var forwardVec = new Vec2(subject.Forward.X, subject.Forward.Y);
-            var perp = new Vec2(-forwardVec.Y, forwardVec.X);
-            Vec2 delta = Vec2.MinimumImageDelta(
-                subject.Position,
-                neighbor.Position,
-                settings.WorldWidth,
-                settings.WorldHeight);
-            DrawToroidalOverlayLink(center, pos, delta, Color.Lime);
-            float along = Vec2.Dot(forwardVec, delta);
-            float lateralWhisker = Vec2.Dot(perp, delta);
-            if (along > 0f && along <= lookAhead && MathF.Abs(lateralWhisker) <= whiskerRadius)
-            {
-                whiskerHits++;
-                Raylib.DrawCircleV(pos, 4f, Color.Red);
-            }
-            else
-            {
-                Raylib.DrawCircleV(pos, 3f, Color.Orange);
-            }
-        }
-
-        Raylib.DrawCircleV(center, 5f, Color.Yellow);
-        string status = FormatCanonicalInteractionStatus(telemetry, _overlaySubjectIndex,
-            whiskerHits, visibleQuery.IsTruncated, overlayCapacity, world.EffectiveMaxNeighbors);
-        Raylib.DrawText(status, 10, WindowHeight - 92, 14, Color.Orange);
-
-        Vec2 meanHeading = ComputeMeanHeading(world);
-        var meanHeadingVec = new Vector2(meanHeading.X, meanHeading.Y);
-        Raylib.DrawLineEx(center, center + meanHeadingVec * settings.SenseRadius * 0.3f, 1.5f, Color.Green);
-        float projection = Vec2.Dot(subject.Velocity, meanHeading);
-        Vec2 perpHeading = new Vec2(-meanHeading.Y, meanHeading.X);
-        float lateral = Vec2.Dot(subject.Velocity, perpHeading);
-        Raylib.DrawText($"Proj: {projection:F2} | Lat: {MathF.Abs(lateral):F2}", 10, WindowHeight - 110, 14, Color.SkyBlue);
-    }
-
-    private static void DrawToroidalOverlayLink(Vector2 subject, Vector2 neighbor, Vec2 minimumImageDelta, Color color)
-    {
-        var delta = new Vector2(minimumImageDelta.X, minimumImageDelta.Y);
-        Vector2 wrappedNeighbor = subject + delta;
-        Raylib.DrawLineEx(subject, wrappedNeighbor, 1f, color);
-
-        if (Vector2.DistanceSquared(wrappedNeighbor, neighbor) > 0.01f)
-        {
-            Vector2 wrappedSubject = neighbor - delta;
-            Raylib.DrawLineEx(neighbor, wrappedSubject, 1f, color);
-        }
-    }
-
-    private static Vec2 ComputeMeanHeading(CanonicalWorld world)
-    {
-        Vec2 sum = Vec2.Zero;
-        foreach (var boid in world.Boids)
-        {
-            if (boid.Velocity.IsNearlyZero())
-                continue;
-
-            sum += boid.Velocity.Normalized;
-        }
-
-        if (sum.IsNearlyZero())
-            return new Vec2(1f, 0f);
-
-        return sum.Normalized;
-    }
 
     private static bool ProcessCanonicalParameters(RendererInputSnapshot input)
     {
         _fineAdjustment = input.IsActive(RendererControlId.FineAdjustment);
-        bool changed = Controls.ApplyParameters(input, ref _selectedParameter, GetParameterValue, SetParameterValue, Console.Out);
+        bool changed = Controls.ApplyParameters(input, ref _selectedParameter, GetCanonicalParameterValue, SetCanonicalParameterValue, Console.Out);
 
         if (input.IsActive(RendererControlId.PrintConfiguration))
-            Controls.PrintParameters(RendererMode.Canonical, GetParameterValue, Console.Out, SpeedModel.ConstantSpeed);
+            Controls.PrintParameters(RendererMode.Canonical, GetCanonicalParameterValue, Console.Out, SpeedModel.ConstantSpeed);
 
         for (int i = 0; i < Presets.Length; i++)
             if (input.IsActive(Controls.GetPreset(i).Id)) { ApplyPreset(Presets[i]); changed = true; }
@@ -1721,7 +1595,7 @@ internal static class Program
         }
     }
 
-    private static CanonicalWorld RecreateCanonicalWorld(CanonicalWorld oldWorld, CanonicalWorldSettings settings)
+    internal static CanonicalWorld RecreateCanonicalWorld(CanonicalWorld oldWorld, CanonicalWorldSettings settings)
     {
         var snapshots = new List<(Vec2 position, Vec2 velocity)>(oldWorld.Count);
         foreach (var boid in oldWorld.Boids)
@@ -1730,6 +1604,7 @@ internal static class Program
         }
 
         var newWorld = new CanonicalWorld(settings, new GridSpatialIndex(settings.SenseRadius, settings.WorldWidth, settings.WorldHeight));
+        CanonicalInspectionOverlay.CopyRuleSwitches(oldWorld, newWorld);
         foreach (var (position, velocity) in snapshots)
         {
             if (newWorld.TryAddBoid(position, velocity))

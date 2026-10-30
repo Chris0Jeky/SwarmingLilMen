@@ -70,11 +70,15 @@ Check current code, merged work and open issues before treating an entry as outs
 - [x] Instrumentation (neighbor counts, weights, rule contributions)
 - [x] Basic selected-boid inspection overlay (perception bounds, neighbor links, whisker markers,
   aggregate metrics)
-- [ ] Complete FOV arc visualization
-- [ ] Rule-colored neighbor/contribution links
-- [ ] Actual steering-vector arrow
-- [ ] Individual rule enable/disable controls and FOV adjustment
-- [ ] Acceptance tests proving rule toggles change the recorded contributions
+- [x] Heading-centered FOV arc visualization
+- [x] Rule-colored inputs to applied aggregate rules, from last-tick positions
+- [x] Actual resolved steering-vector arrow before velocity stages
+- [x] Named S/A/C rule controls and key-8 FOV adjustment
+- [x] Headless acceptance tests proving rule keys change the recorded contributions
+- [ ] Native OS-input and human visual acceptance of the new controls and overlay
+
+[Inspection semantics and native render-target evidence](CANONICAL_INSPECTION.md) record what was
+verified on Windows and distinguish it from full-window DPI/input behavior and human sign-off.
 
 The milestone-7 follow-up was separated into
 [issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40). Its current scope and dependencies
