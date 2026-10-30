@@ -39,14 +39,13 @@ public sealed class CanonicalInspectionTests
     }
 
     [Fact]
-    public void RuleSwitchesSurviveParameterRecreationAndResetCopies()
+    public void RuleSwitchesSurviveParameterRecreationAndTheResetStep()
     {
         var world = Cluster();
         world.SetPolicyEnabled(CanonicalPolicyIds.Separation, false);
         world.SetPolicyEnabled(CanonicalPolicyIds.Cohesion, false);
         var recreated = RenderProgram.RecreateCanonicalWorld(world, world.Settings);
-        var reset = RenderProgram.CreateCanonicalWorld(world.Settings, 3);
-        CanonicalInspectionOverlay.CopyRuleSwitches(world, reset);
+        var reset = RenderProgram.ResetCanonicalWorld(world, world.Settings, 3);
         foreach (var replacement in new[] { recreated, reset })
         {
             Assert.False(replacement.IsPolicyEnabled(CanonicalPolicyIds.Separation));
@@ -55,6 +54,63 @@ public sealed class CanonicalInspectionTests
         }
         Assert.Equal(world.Boids.ToArray(), recreated.Boids.ToArray());
     }
+
+    [Fact]
+    public void StatusTextSeparatesRecordedTickFromDisplayedLinksAndCap()
+    {
+        Assert.Equal("Tick 7 recorded: 5 inputs, no truncation | Displayed: 5 links, cap 16 | Gray links: no applied rule",
+            CanonicalInspectionOverlay.FormatStatus(7, true, true, 5, false, 5, 16, false));
+        Assert.Equal("Tick 7 recorded: 139 inputs, no truncation | Displayed: 128 links, cap 128 reached, links omitted | Gray links: no applied rule",
+            CanonicalInspectionOverlay.FormatStatus(7, true, true, 139, false, 128, 128, true));
+        Assert.Equal("Tick 7 recorded: 16 inputs, simulation query truncated | Displayed: 16 links, cap 16 reached, links omitted | Gray links: no applied rule",
+            CanonicalInspectionOverlay.FormatStatus(7, true, true, 16, true, 16, 16, true));
+        Assert.Equal("Inspection: waiting for first completed tick", CanonicalInspectionOverlay.FormatStatus(0, false, false, 0, false, 0, 0, false));
+        Assert.Equal("Tick 7: subject not recorded", CanonicalInspectionOverlay.FormatStatus(7, true, false, 0, false, 0, 0, false));
+    }
+
+    [Fact]
+    public void DenseSceneAboveTheDisplayBufferReportsAllRecordedInputsButOnlyTheDisplayedLinks()
+    {
+        var settings = new CanonicalWorldSettings { InitialCapacity = 140, WorldWidth = 1920, WorldHeight = 1080,
+            SenseRadius = 200, FieldOfView = 360, MaxNeighbors = 256 };
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(200, 1920, 1080));
+        for (int i = 0; i < 140; i++) world.TryAddBoid(new Vec2(900 + i * 0.1f, 500), new Vec2(1, 0));
+        var neighbors = new int[128];
+        var weights = new float[128];
+        Assert.Equal(256, world.EffectiveMaxNeighbors);
+        Assert.Equal("Inspection: waiting for first completed tick", CanonicalInspectionOverlay.Inspect(world, 0, neighbors, weights).Status);
+
+        world.Step(settings.FixedDeltaTime);
+        var inspection = CanonicalInspectionOverlay.Inspect(world, 0, neighbors, weights);
+        Assert.Equal(139, world.Instrumentation.NeighborCounts[0]);
+        Assert.False(world.Instrumentation.QueryTruncated[0]);
+        Assert.Equal(128, inspection.Result.Count);
+        Assert.True(inspection.Result.IsTruncated);
+        Assert.Equal("Tick 1 recorded: 139 inputs, no truncation | Displayed: 128 links, cap 128 reached, links omitted | Gray links: no applied rule",
+            inspection.Status);
+        world.TryAddBoid(new Vec2(100, 100), new Vec2(1, 0));
+        Assert.Equal("Tick 1 recorded: 139 inputs, no truncation | Displayed: 128 links, cap 128 reached, links omitted | Gray links: no applied rule",
+            CanonicalInspectionOverlay.Inspect(world, 0, neighbors, weights).Status);
+    }
+
+    [Fact]
+    public void LateSpawnedSubjectIsReportedAsNotRecorded()
+    {
+        var world = Cluster();
+        world.Step(0.1f);
+        world.TryAddBoid(new Vec2(900, 900), new Vec2(1, 0));
+        Assert.Equal("Tick 1: subject not recorded", CanonicalInspectionOverlay.Inspect(world, 2, new int[16], new float[16]).Status);
+    }
+
+    [Theory]
+    [InlineData(0, 5, 0)]
+    [InlineData(3, 5, 3)]
+    [InlineData(4, 5, 4)]
+    [InlineData(9, 5, 4)]
+    [InlineData(2, 0, 0)]
+    [InlineData(-1, 5, 0)]
+    public void ParameterRecreationKeepsTheInspectedBoidWhenItStillExists(int subject, int count, int expected)
+        => Assert.Equal(expected, CanonicalInspectionOverlay.KeepSubject(subject, count));
 
     [Fact]
     public void LegacyKeysDoNotToggleCanonicalPolicies()

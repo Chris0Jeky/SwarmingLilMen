@@ -73,11 +73,41 @@ internal static class CanonicalInspectionOverlay
         return vector.LengthSquared() > 128f * 128f ? Vector2.Normalize(vector) * 128f : vector;
     }
 
+    /// <summary>Displayed link query for the selected boid, with its status line.</summary>
+    internal readonly record struct InspectionQuery(SpatialQueryResult Result, string Status);
+
+    // Recorded tick facts (what the simulation used) and displayed facts (what fits the overlay's
+    // fixed buffers) are reported separately: a display cap below the simulation's cap can omit links.
+    internal static string FormatStatus(ulong tick, bool hasCompletedTick, bool subjectRecorded, int recordedInputs,
+        bool recordedTruncated, int displayedLinks, int displayCap, bool displayCapped)
+    {
+        if (!hasCompletedTick) return "Inspection: waiting for first completed tick";
+        if (!subjectRecorded) return $"Tick {tick}: subject not recorded";
+        return $"Tick {tick} recorded: {recordedInputs} inputs, {(recordedTruncated ? "simulation query truncated" : "no truncation")}"
+            + $" | Displayed: {displayedLinks} links, cap {displayCap}{(displayCapped ? " reached, links omitted" : "")}"
+            + " | Gray links: no applied rule";
+    }
+
+    internal static InspectionQuery Inspect(CanonicalWorld world, int subjectIndex, int[] neighbors, float[] weights)
+    {
+        ulong tick = world.TickCount;
+        if (world.LastTickInputs.IsEmpty) return new(default, FormatStatus(tick, false, false, 0, false, 0, 0, false));
+        if ((uint)subjectIndex >= (uint)world.LastTickInputs.Length) return new(default, FormatStatus(tick, true, false, 0, false, 0, 0, false));
+        int capacity = Program.ComputeOverlayQueryCapacity(Math.Min(neighbors.Length, weights.Length), world.EffectiveMaxNeighbors);
+        SpatialQueryResult query = world.QueryLastTickVisibleNeighbors(subjectIndex, neighbors.AsSpan(0, capacity), weights.AsSpan(0, capacity));
+        return new(query, FormatStatus(tick, true, true, world.Instrumentation.NeighborCounts[subjectIndex],
+            world.Instrumentation.QueryTruncated[subjectIndex], query.Count, capacity, query.IsTruncated));
+    }
+
+    /// <summary>Keeps the inspected boid across recreation (order is preserved), clamping if it no longer exists.</summary>
+    internal static int KeepSubject(int subjectIndex, int boidCount) => Math.Clamp(subjectIndex, 0, Math.Max(0, boidCount - 1));
+
     internal static void Draw(CanonicalWorld world, int subjectIndex, int[] neighbors, float[] weights)
     {
+        InspectionQuery inspection = Inspect(world, subjectIndex, neighbors, weights);
         if ((uint)subjectIndex >= (uint)world.LastTickInputs.Length)
         {
-            Raylib.DrawText("Inspection: waiting for a completed tick", 10, Raylib.GetScreenHeight() - 100, 18, Color.Gold);
+            Raylib.DrawText(inspection.Status, 10, Raylib.GetScreenHeight() - 100, 18, Color.Gold);
             return;
         }
 
@@ -86,8 +116,7 @@ internal static class CanonicalInspectionOverlay
         var center = new Vector2(subject.Position.X, subject.Position.Y);
         var forward = new Vector2(subject.Forward.X, subject.Forward.Y);
         world.TryGetMetrics(subjectIndex, out var applied);
-        int capacity = Program.ComputeOverlayQueryCapacity(Math.Min(neighbors.Length, weights.Length), world.EffectiveMaxNeighbors);
-        SpatialQueryResult query = world.QueryLastTickVisibleNeighbors(subjectIndex, neighbors.AsSpan(0, capacity), weights.AsSpan(0, capacity));
+        SpatialQueryResult query = inspection.Result;
 
         for (int n = 0; n < query.Count; n++)
         {
@@ -120,8 +149,9 @@ internal static class CanonicalInspectionOverlay
         Raylib.DrawCircleLines((int)whiskerEnd.X, (int)whiskerEnd.Y, MathF.Max(0.1f, settings.SeparationRadius), Color.Gray);
         DrawArrow(center, center + forward * 28f, Color.LightGray, 1f);
         Vec2 force = world.Instrumentation.SteeringVectors[subjectIndex];
-        DrawArrow(center, center + SteeringOffset(force, settings.MaxForce), Color.White, 3f);
+        // Marker first: the arrow must stay visible over it for small forces.
         Raylib.DrawCircleV(center, 6f, Color.Gold);
+        DrawArrow(center, center + SteeringOffset(force, settings.MaxForce), Color.White, 3f);
         Raylib.DrawText($"#{subjectIndex}", (int)center.X + 10, (int)center.Y + 8, 18, Color.Gold);
 
         int panelX = Raylib.GetScreenWidth() - 610;
@@ -134,7 +164,7 @@ internal static class CanonicalInspectionOverlay
         Raylib.DrawText($"White arrow: resolved force {force.Length:F3}", panelX + 18, 204, 18, Color.White);
         Raylib.DrawText("64px / MaxForce; capped at 128px", panelX + 18, 228, 16, Color.LightGray);
         Raylib.DrawText("Gold: FOV arc | Gray: heading / whisker", panelX + 18, 258, 18, Color.Gold);
-        Raylib.DrawText($"Tick inputs: {query.Count} visible | {(query.IsTruncated ? $"query capped at {capacity}" : "no truncation")} | Gray links: no applied rule", 10, Raylib.GetScreenHeight() - 100, 18, Color.LightGray);
+        Raylib.DrawText(inspection.Status, 10, Raylib.GetScreenHeight() - 100, 18, Color.LightGray);
     }
 
     private static void DrawArrow(Vector2 start, Vector2 end, Color color, float width)

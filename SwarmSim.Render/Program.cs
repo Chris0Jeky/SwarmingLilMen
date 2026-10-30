@@ -1387,15 +1387,13 @@ internal static class Program
                 settings = BuildCanonicalWorldSettings();
                 canonicalWorld = RecreateCanonicalWorld(canonicalWorld, settings);
                 SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
-                _overlaySubjectIndex = 0;
+                _overlaySubjectIndex = CanonicalInspectionOverlay.KeepSubject(_overlaySubjectIndex, canonicalWorld.Count);
                 accumulator = 0f;
             }
 
             if (input.IsActive(RendererControlId.Reset))
             {
-                var resetWorld = CreateCanonicalWorld(settings, _initialAgentCount);
-                CanonicalInspectionOverlay.CopyRuleSwitches(canonicalWorld, resetWorld);
-                canonicalWorld = resetWorld;
+                canonicalWorld = ResetCanonicalWorld(canonicalWorld, settings, _initialAgentCount);
                 SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
                 accumulator = 0f;
             }
@@ -1507,7 +1505,6 @@ internal static class Program
         return reusableTelemetry;
     }
 
-
     /// <summary>
     /// Gets the query capacity the interaction overlay must use so it matches the simulation's
     /// per-boid candidate CAP. The overlay owns a fixed 128-entry buffer, but
@@ -1516,16 +1513,11 @@ internal static class Program
     /// Querying with the wider buffer would draw neighbours steering discarded and would report
     /// no truncation in exactly the cases where the simulation did truncate.
     /// </summary>
-    /// <remarks>
-    /// Inspection requeries the last completed tick's inputs, so its links and force diagnostics
-    /// refer to the same pre-integration positions.
-    /// </remarks>
     /// <param name="bufferLength">Entries available in the overlay's own buffers.</param>
     /// <param name="effectiveMaxNeighbors">The simulation's own per-boid candidate cap.</param>
     /// <returns>The smaller of the two, never negative.</returns>
     internal static int ComputeOverlayQueryCapacity(int bufferLength, int effectiveMaxNeighbors)
         => Math.Max(0, Math.Min(bufferLength, effectiveMaxNeighbors));
-
 
     internal static bool ProcessCanonicalParameters(RendererInputSnapshot input)
     {
@@ -1593,6 +1585,14 @@ internal static class Program
 
             Console.WriteLine($"  Agent #{idx}: Pos=({boid.Position.X:F1},{boid.Position.Y:F1}) Speed={boid.Velocity.Length:F2} Neighbors={metrics.NeighborCount} WeightSum={metrics.NeighborWeightSum:F2} Sep={metrics.SeparationMagnitude:F2} Align={metrics.AlignmentMagnitude:F2} Coh={metrics.CohesionMagnitude:F2}");
         }
+    }
+
+    /// <summary>A fresh world for R; the S/A/C switches are carried over from <paramref name="previous"/>.</summary>
+    internal static CanonicalWorld ResetCanonicalWorld(CanonicalWorld previous, CanonicalWorldSettings settings, int agentCount)
+    {
+        var world = CreateCanonicalWorld(settings, agentCount);
+        CanonicalInspectionOverlay.CopyRuleSwitches(previous, world);
+        return world;
     }
 
     internal static CanonicalWorld RecreateCanonicalWorld(CanonicalWorld oldWorld, CanonicalWorldSettings settings)
