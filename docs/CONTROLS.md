@@ -123,9 +123,10 @@ not maintain another list of preset names.
 `RendererControlsTests` covers all pressed-key bindings, both Shift keys, mouse controls,
 cross-engine exclusions, canonical FOV adjustment, adjustment/printing semantics,
 the actual legacy friction speed-model distinction, and bounded spawn counts. The CLI-help
-transcript is also checked against the README. These are headless checks; manual inspection of
-both overlays remains an acceptance step for
-[issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+transcript is also checked against the README. [Native verification](NATIVE_UI_VERIFICATION.md)
+records automated Linux UI checks of both overlays and controls, completing the synchronization
+tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39). Human sign-off,
+Windows/macOS GUI coverage and renderer FPS remain unverified.
 
 `CanonicalInspectionTests` covers named key-to-rule effects, independent classic contributions,
 switch persistence, last-tick query identity/caps, unchanged future trajectories, zero warm query
