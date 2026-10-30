@@ -134,6 +134,8 @@ internal sealed record RunRequest(
 {
     internal VicsekSettings? Vicsek { get; init; }
     internal string[] RequestedMetrics { get; init; } = MetricCatalog.DefaultMetrics.ToArray();
+    /// <summary>Also render filmstrip.png and report.html; never influences the simulation.</summary>
+    internal bool Visual { get; init; }
     internal uint Seed => Vicsek?.Seed ?? Canonical?.Seed ?? Legacy!.Seed;
     internal float FixedDeltaTime => Vicsek?.FixedDeltaTime ?? Canonical?.FixedDeltaTime ?? Legacy!.FixedDeltaTime;
     internal string ConfigJson => Vicsek?.ToJson() ?? Canonical?.ToJson() ?? Legacy!.ToJson();

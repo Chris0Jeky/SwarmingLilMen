@@ -27,11 +27,14 @@ public static class Program
                       --metrics NAME,NAME,...    Exact metric columns in the requested order
                       --list-metrics             Show available names for the selected engine
                       --out DIRECTORY            Parent for a new run directory (default: runs)
-                      --manifest FILE            Replay recorded settings; only --out may override
-                      --sweep FILE               Run a deterministic parameter grid; only --out may override
+                      --manifest FILE            Replay recorded settings; only --out and --visual may be added
+                      --sweep FILE               Run a deterministic parameter grid; only --out and --visual may be added
+                      --visual                   Also write filmstrip.png and report.html (sweeps: plus index.html)
                       --help                     Show this help
 
                     Outputs: manifest.json, metrics.csv, log.txt in a new run-<id> child.
+                    --visual adds filmstrip.png and report.html (self-contained, no GPU or display needed);
+                    it never changes the simulation, metrics.csv or hashes. Valid with --manifest and --sweep.
                     Sweeps: summary.csv and replayable cell directories in a new sweep-<id> child.
                     Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians).
                     Default metrics: population,meanSpeed,polarization.
@@ -47,7 +50,7 @@ public static class Program
             }
             string directory = options.SweepPath is null
                 ? ExperimentRunner.Run(options)
-                : SweepRunner.Run(options.SweepPath, options.OutputDirectory);
+                : SweepRunner.Run(options.SweepPath, options.OutputDirectory, options.Visual);
             output.WriteLine(directory);
             return 0;
         }

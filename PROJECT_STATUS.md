@@ -36,7 +36,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,138 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,172 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Vicsek foundation:** `VicsekWorld` runs the original synchronous model through the unchanged
@@ -49,6 +49,12 @@ or errors. The historical counts below identify the specific additions that prod
   measurement. The seam inventory finds engine dispatch spread across seven CLI files and force
   composition unable to express heading replacement. See
   [the model, evidence and seam inventory](docs/VICSEK.md).
+- **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
+  agents) and a self-contained `report.html` to any run, replay or sweep cell, plus an `index.html`
+  for sweeps, using only the standard library and no display. Tests prove it leaves `metrics.csv`
+  and hashes unchanged and decode the PNG independently (34 cases in `VisualReportTests`). The
+  picture is checked by eye only for one canonical and one legacy 400-agent run; no render-time or
+  large-population cost was measured. See [visual reports](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
 - **Canonical inspection:** S/A/C switch the named separation/alignment/cohesion policies;
   key 8 adjusts FOV and switch state survives recreation/reset. The overlay now draws a gold
   FOV arc, rule-colored input links and the actual white resolved-force arrow, all using the last
