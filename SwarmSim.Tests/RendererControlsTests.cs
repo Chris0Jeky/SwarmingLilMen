@@ -41,6 +41,10 @@ public sealed class RendererControlsTests
         };
         if (canonical)
         {
+            expected.Add(KeyboardKey.Eight, RendererControlId.FieldOfView);
+            expected.Add(KeyboardKey.S, RendererControlId.ToggleSeparation);
+            expected.Add(KeyboardKey.A, RendererControlId.ToggleAlignment);
+            expected.Add(KeyboardKey.C, RendererControlId.ToggleCohesion);
             expected.Add(KeyboardKey.O, RendererControlId.Interactions);
             expected.Add(KeyboardKey.Tab, RendererControlId.NextSubject);
         }
@@ -101,7 +105,7 @@ public sealed class RendererControlsTests
             Assert.Contains(binding.KeyLabel + ": " + binding.Description, help, StringComparison.Ordinal);
             Assert.StartsWith(binding.KeyLabel + ":", controls.ShortLabel(mode, binding.Id), StringComparison.Ordinal);
         }
-        Assert.Contains(canonical ? "1-7" : "1-8", controls.ParameterHeading(mode), StringComparison.Ordinal);
+        Assert.Contains("1-8", controls.ParameterHeading(mode), StringComparison.Ordinal);
         Assert.Contains("KP+", controls.ParameterHint(mode), StringComparison.Ordinal);
         Assert.Contains("KP-", controls.ParameterHint(mode), StringComparison.Ordinal);
         Assert.Contains("Shift", controls.ParameterHint(mode), StringComparison.Ordinal);
@@ -135,20 +139,29 @@ public sealed class RendererControlsTests
     }
 
     [Fact]
-    public void CanonicalFrictionKeyCannotSelectOrModifyFrictionEvenAfterALegacySelection()
+    public void CanonicalEighthParameterAdjustsFieldOfViewWithCoarseFineAndBoundedSteps()
     {
-        var values = new[] { 5f, 2.5f, 0.5f, 30f, 100f, 10f, 2.5f, 0.95f };
-        int selected = 7;
+        var values = new[] { 5f, 2.5f, 0.5f, 30f, 100f, 10f, 2.5f, 270f };
+        int selected = 0;
         RendererInputSnapshot input = RenderProgram.Controls.Capture(RendererMode.Canonical,
             new FakeInput { Pressed = KeyboardKey.Eight });
 
         Assert.False(RenderProgram.Controls.ApplyParameters(input, ref selected, i => values[i], (i, value) => values[i] = value, TextWriter.Null));
-        Assert.Equal(0, selected);
-        Assert.Equal(0.95f, values[7]);
+        Assert.Equal(7, selected);
+        Assert.Equal(RendererControlId.FieldOfView, RenderProgram.Controls.GetParameters(RendererMode.Canonical)[selected].Control);
         input = RenderProgram.Controls.Capture(RendererMode.Canonical, new FakeInput { Pressed = KeyboardKey.Up });
         Assert.True(RenderProgram.Controls.ApplyParameters(input, ref selected, i => values[i], (i, value) => values[i] = value, TextWriter.Null));
-        Assert.Equal(15f, values[0]);
-        Assert.Equal(0.95f, values[7]);
+        Assert.Equal(285f, values[7]);
+        values[7] = 359f;
+        RenderProgram.Controls.ApplyParameters(input, ref selected, i => values[i], (i, value) => values[i] = value, TextWriter.Null);
+        Assert.Equal(360f, values[7]);
+        input = RenderProgram.Controls.Capture(RendererMode.Canonical, new FakeInput { Pressed = KeyboardKey.Down, Held = KeyboardKey.LeftShift });
+        RenderProgram.Controls.ApplyParameters(input, ref selected, i => values[i], (i, value) => values[i] = value, TextWriter.Null);
+        Assert.Equal(359f, values[7]);
+        values[7] = 1f;
+        RenderProgram.Controls.ApplyParameters(input, ref selected, i => values[i], (i, value) => values[i] = value, TextWriter.Null);
+        Assert.Equal(1f, values[7]);
+        Assert.Equal(5f, values[0]);
     }
 
     [Fact]

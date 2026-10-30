@@ -69,6 +69,12 @@ Headless tests cover renderer configuration, telemetry and command handling; the
 graphics or native input. Actual UI behavior requires running the window. Renderer `--benchmark`
 prints migration guidance; use `SwarmSim.Cli` for experiments and `SwarmSim.Benchmarks` for timing.
 
+For canonical overlay/control changes, also run `dotnet run --project tools/RendererProbe -c Release`.
+It asserts native event playback and pixels, then prints an HTML gallery and JSON report under
+`artifacts/renderer-probe/`. Linux CI runs it with Mesa/Xvfb. Inspect changed captures; do not confuse
+this controlled render-target proof with OS keyboard/focus, full-window DPI or human acceptance.
+See `docs/CANONICAL_INSPECTION.md` for scope and failure interpretation.
+
 ## Rules that bind
 
 These lived in the old long-form `AGENTS.md`. Claude does not read `AGENTS.md`, so they are stated

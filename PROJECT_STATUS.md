@@ -1,6 +1,6 @@
 # SwarmingLilMen — verified project state
 
-**Updated: 2026-10-29.** This file describes current capabilities and the evidence behind them.
+**Updated: 2026-10-30.** This file describes current capabilities and the evidence behind them.
 [The earlier tracker](docs/archive/PROJECT_STATUS_BEFORE_2026-10-29.md) preserves historical logs,
 measurements and superseded plans. [Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10)
 is the roadmap and ordering authority; historical phase checklists are not a second work queue.
@@ -35,7 +35,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,137 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,147 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
@@ -44,6 +44,18 @@ or errors. The historical counts below identify the specific additions that prod
   and hashes unchanged and decode the PNG independently (34 cases in `VisualReportTests`). The
   picture is checked by eye only for one canonical and one legacy 400-agent run; no render-time or
   large-population cost was measured. See [visual reports](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
+- **Canonical inspection:** S/A/C switch the named separation/alignment/cohesion policies;
+  key 8 adjusts FOV and switch state survives recreation/reset. The overlay now draws a gold
+  FOV arc, rule-colored input links and the actual white resolved-force arrow, all using the last
+  completed tick's inputs. The existing double buffer supplies positions; force instrumentation
+  adds 8 bytes per capacity slot and retains its squared-magnitude API. Headless tests cover
+  independent rule effects, caps, timing, geometry and zero warm query allocation; exact goldens
+  remain unchanged. The reusable `tools/RendererProbe` passes 112 native event-playback and pixel
+  checks in eight captures, with an HTML gallery and JSON/build-hash report. Removing the force-arrow
+  draw call causes seven expected failures. Linux CI runs it under Mesa/Xvfb for integration and
+  exact-head builds and retains feedback artifacts; Windows local GPU execution is also verified.
+  Windows OS-input injection and direct framebuffer/DPI export did not qualify, so OS input and human visual
+  acceptance remain open in #40. See [inspection semantics and evidence](docs/CANONICAL_INSPECTION.md).
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
   agent encoding; consumers retain independent generators. Canonical wander now uses a stream per
@@ -319,14 +331,14 @@ speedup or machine-independent performance bound.
 3. Investigate the earlier canonical 10k BenchmarkDotNet 5 B/op observation (#20); direct warm-tick
    probes measured zero but did not identify that sample's cause. Native HUD/O/Tab/F12, all five
    presets and custom-startup acceptance now have recorded Linux evidence. Current overlay
-   geometry still refreshes the index only when shown; the recorded tick label does not re-query.
+   geometry refreshes the index only when shown, using the completed tick's input positions.
 4. Address the measured composition cost (#27), preserving the exact default trajectories and
    bounded observations. The new force-only API still needs a concrete consumer to earn public
    per-agent identity/noise and heading/velocity update seams.
 5. Complete qualification and runtime work for the implemented behavioral parity harness (#28),
    then prove generality with Vicsek and a minimal scalar-field/ACO consumer (#29/#30).
-   Named rule-control visuals (#40)
-   can now consume the settled composition API. Neither engine is deleted without the owner's
+   Named rule-control visuals (#40) now consume the settled composition API; native-input and
+   human acceptance remain open. Neither engine is deleted without the owner's
    eventual migration sign-off.
 
 The documentation residue audit (#60/#63) now uses stable source symbols, current headless and
