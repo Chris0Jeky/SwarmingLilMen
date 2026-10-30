@@ -3,13 +3,14 @@ using System.Globalization;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using SwarmSim.Cli.Visual;
 using SwarmSim.Core.Metrics;
 
 namespace SwarmSim.Cli;
 
 internal static class ExperimentRunner
 {
-    internal static string Run(RunOptions options) => Run(RunRequest.Resolve(options), options.OutputDirectory);
+    internal static string Run(RunOptions options) => Run(RunRequest.Resolve(options) with { Visual = options.Visual }, options.OutputDirectory);
 
     internal static string Run(RunRequest request, string outputDirectory)
     {
@@ -21,6 +22,8 @@ internal static class ExperimentRunner
         using JsonDocument resolved = JsonDocument.Parse(request.ConfigJson);
         var simulation = new PreparedSimulation(request);
         var observer = new ExperimentMetrics(request, simulation);
+        FrameRecorder? frames = request.Visual
+            ? new FrameRecorder(request.Ticks, simulation.WorldWidth, simulation.WorldHeight) : null;
         string parent = Path.GetFullPath(outputDirectory);
         (string? commit, bool? dirty) = RunProvenance.Git();
         RuntimeIdentity runtime = RunProvenance.Runtime();
@@ -41,11 +44,13 @@ internal static class ExperimentRunner
             {
                 var csv = new MetricCsvWriter(metrics, observer.Plan);
                 csv.WriteRow(0, observer.Values);
+                frames?.Capture(0, observer.Agents);
                 // Count upward from zero so int.MaxValue ticks does not overflow after the last step.
                 for (int index = 0; index < request.Ticks; index++)
                 {
                     observer.StepAndSample();
                     csv.WriteRow(index + 1, observer.Values);
+                    frames?.Capture(index + 1, observer.Agents);
                 }
             }
             elapsed.Stop();
@@ -96,6 +101,9 @@ internal static class ExperimentRunner
                 if (request.Replay is not null)
                     log.WriteLine($"Verified replay of {request.Replay.RunId}");
             }
+
+            if (frames is not null)
+                RunReport.Write(staging, frames, manifest);
 
             Directory.Move(staging, destination); // Same-parent publish; fails if destination exists.
             return destination;

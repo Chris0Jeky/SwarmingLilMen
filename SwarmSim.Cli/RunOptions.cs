@@ -20,6 +20,7 @@ internal sealed class RunOptions
     internal string[] RequestedMetrics { get; private set; } = MetricCatalog.DefaultMetrics.ToArray();
     internal bool ListMetrics { get; private set; }
     internal bool Help { get; private set; }
+    internal bool Visual { get; private set; }
 
     internal static RunOptions Parse(string[] args)
     {
@@ -30,9 +31,10 @@ internal sealed class RunOptions
             string option = args[index];
             if (!seen.Add(option))
                 throw new UsageException($"Option '{option}' was specified more than once.");
-            if (option is "--help" or "--list-metrics")
+            if (option is "--help" or "--list-metrics" or "--visual")
             {
                 if (option == "--help") options.Help = true;
+                else if (option == "--visual") options.Visual = true;
                 else options.ListMetrics = true;
                 continue;
             }
@@ -75,11 +77,11 @@ internal sealed class RunOptions
         if (options.Engine == "vicsek" && options.Scenario is not null)
             throw new UsageException("--scenario names boids recipes; the vicsek engine takes --config.");
         if (options.SweepPath is not null && seen.Any(option =>
-            option is not ("--sweep" or "--out" or "--help")))
-            throw new UsageException("--sweep can be combined only with --out or --help; all run settings belong in the sweep file.");
+            option is not ("--sweep" or "--out" or "--visual" or "--help")))
+            throw new UsageException("--sweep can be combined only with --out, --visual or --help; all run settings belong in the sweep file.");
         if (options.ManifestPath is not null && seen.Any(option =>
-            option is not ("--manifest" or "--out" or "--help")))
-            throw new UsageException("--manifest can be combined only with --out or --help; run-setting overrides are not accepted during replay.");
+            option is not ("--manifest" or "--out" or "--visual" or "--help")))
+            throw new UsageException("--manifest can be combined only with --out, --visual or --help; run-setting overrides are not accepted during replay.");
         if (options.ListMetrics && seen.Any(option => option is not ("--list-metrics" or "--engine" or "--help")))
             throw new UsageException("--list-metrics can be combined only with --engine or --help.");
         return options;

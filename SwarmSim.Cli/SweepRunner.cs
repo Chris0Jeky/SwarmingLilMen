@@ -1,14 +1,15 @@
 using System.Text;
+using SwarmSim.Cli.Visual;
 
 namespace SwarmSim.Cli;
 
 internal static class SweepRunner
 {
-    internal static string Run(string sweepFile, string outputDirectory) =>
-        Run(SweepPlan.Load(sweepFile), outputDirectory);
+    internal static string Run(string sweepFile, string outputDirectory, bool visual = false) =>
+        Run(SweepPlan.Load(sweepFile), outputDirectory, visual: visual);
 
     internal static string Run(SweepPlan plan, string outputDirectory,
-        Func<RunRequest, string, string>? executeCell = null)
+        Func<RunRequest, string, string>? executeCell = null, bool visual = false)
     {
         Func<RunRequest, string, string> runCell = executeCell ?? ExperimentRunner.Run;
         string parent = Path.GetFullPath(outputDirectory);
@@ -26,7 +27,7 @@ internal static class SweepRunner
             var results = new SweepCellSummary[plan.Cells.Count];
             foreach (SweepCell cell in plan.Cells)
             {
-                string completed = runCell(cell.Request, work);
+                string completed = runCell(visual ? cell.Request with { Visual = true } : cell.Request, work);
                 string cellPath = Path.Combine(staging, cell.Id);
                 // The normal run ID remains inside the manifest. Only its containing directory
                 // receives the stable planned cell ID; manifest replay never relies on its path.
@@ -37,6 +38,8 @@ internal static class SweepRunner
             using (var output = new StreamWriter(new FileStream(Path.Combine(staging, "summary.csv"),
                        FileMode.CreateNew, FileAccess.Write, FileShare.None), new UTF8Encoding(false)))
                 SweepSummary.Write(output, plan, results);
+            if (visual)
+                SweepReport.Write(staging, plan, results);
             Directory.Move(staging, destination);
             return destination;
         }

@@ -43,6 +43,8 @@ internal sealed class PreparedSimulation
     internal CanonicalWorld? Canonical => _canonical;
     internal int MetricCapacity => _vicsek is not null ? _request.AgentCount
         : _canonical is not null ? Math.Max(1, _request.Canonical!.InitialCapacity) : _legacy!.Capacity;
+    internal float WorldWidth => _request.Vicsek?.WorldWidth ?? _request.Canonical?.WorldWidth ?? _request.Legacy!.WorldWidth;
+    internal float WorldHeight => _request.Vicsek?.WorldHeight ?? _request.Canonical?.WorldHeight ?? _request.Legacy!.WorldHeight;
     internal MetricDomain Domain => _vicsek is not null
         ? MetricDomain.Toroidal(_request.Vicsek!.WorldWidth, _request.Vicsek.WorldHeight)
         : _canonical is not null
