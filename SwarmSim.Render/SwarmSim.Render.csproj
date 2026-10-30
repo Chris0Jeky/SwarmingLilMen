@@ -11,6 +11,7 @@
 
   <ItemGroup>
     <InternalsVisibleTo Include="SwarmSim.Tests" />
+    <InternalsVisibleTo Include="SwarmSim.Render.Probe" />
   </ItemGroup>
 
   <ItemGroup>

@@ -13,12 +13,18 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwarmSim.Cli", "SwarmSim.Cl
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SwarmSim.Parity", "SwarmSim.Parity\SwarmSim.Parity.csproj", "{AE3E7343-D4A8-498A-A2F4-6E9033B64F59}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RendererProbe", "tools\RendererProbe\RendererProbe.csproj", "{D7D4BEE7-9A46-452A-A852-A8B5B7994352}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{D7D4BEE7-9A46-452A-A852-A8B5B7994352}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7D4BEE7-9A46-452A-A852-A8B5B7994352}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7D4BEE7-9A46-452A-A852-A8B5B7994352}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7D4BEE7-9A46-452A-A852-A8B5B7994352}.Release|Any CPU.Build.0 = Release|Any CPU
 		{673E12CF-1C18-476A-B046-6E9D028DB8CB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{673E12CF-1C18-476A-B046-6E9D028DB8CB}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{673E12CF-1C18-476A-B046-6E9D028DB8CB}.Release|Any CPU.ActiveCfg = Release|Any CPU

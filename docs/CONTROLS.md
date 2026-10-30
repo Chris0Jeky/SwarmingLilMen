@@ -27,7 +27,7 @@ Keys **1–7** affect both renderer paths. The legacy renderer additionally acce
 renderer preset uses `SpeedModel.ConstantSpeed`, where changing friction leaves the simulation
 unchanged. An authored legacy configuration must select `SpeedModel.Damped` for friction to affect
 motion. The panel, parameter selection/adjustment messages, and **P** output state when friction
-is inactive. Canonical input rejects key **8** and does not display or print friction as a control.
+is inactive. Canonical uses **8** for field of view and does not display or print friction as a control.
 
 | Key | Parameter | Range | Normal step | Fine step |
 | --- | --- | ---: | ---: | ---: |
@@ -39,6 +39,7 @@ is inactive. Canonical input rejects key **8** and does not display or print fri
 | 6 | Max speed (legacy) / target speed (canonical) | 1–500 | 10 | 1 |
 | 7 | Max force | 0.1–20 | 0.1 | 0.01 |
 | 8 | Friction (legacy, Damped only) | 0.8–1.0 | 0.01 | 0.001 |
+| 8 | Field of view (canonical, degrees) | 1–360 | 15 | 1 |
 
 Changing a value rebuilds the current world configuration while preserving agent positions and
 velocities. The adjustment applies on the next simulation tick. Press **P** to print the resulting
@@ -68,6 +69,24 @@ Spawning respects available capacity. Mouse and Space messages report the actual
 
 - **O** – Toggle the selected-boid interaction overlay
 - **Tab** – Cycle the boid inspected by the interaction overlay
+- **S / A / C** – Independently enable/disable the named separation / alignment / cohesion rules.
+  Their ON/OFF state is always visible and survives parameter changes, presets and reset.
+- **8**, then **↑/↓** – Adjust FOV by 15 degrees; hold **Shift** for 1-degree steps.
+
+The inspection overlay uses the **last completed tick's input positions**, not the moved positions.
+Its gold arc is the heading-centered FOV at the sense radius. A white arrow shows the actual resolved
+force before velocity shaping/normalization (64 pixels per MaxForce, visually capped at 128 pixels).
+Gray arrows/circles show heading and whisker geometry. A zero force has no white arrow.
+
+Orange, blue and violet parallel links identify weighted inputs to applied separation, alignment
+and cohesion respectively. They are inputs to aggregate rules, **not per-neighbor force vectors**.
+Separation links exclude coincident/tiny-distance neighbors and the zero-influence radius boundary.
+Disabled, zero-result or budget-suppressed rules have no colored links; gray links show remaining
+visible neighbors. The selected-boid panel reports the three applied magnitudes and the tick number.
+The bounded query retains the simulation's neighbor cap and labels truncation explicitly.
+
+Rule switches use `SetPolicyEnabled`, not weight zero. Whisker avoidance, wander and velocity stages
+retain their own behavior: switching off the three named rules does not switch off those enhancements.
 
 ## Presets & CLI
 
@@ -95,19 +114,19 @@ dotnet run --project SwarmSim.Cli -c Release -- --engine canonical --scenario ba
 names/ranges/steps, preset labels, and help descriptions. Both input loops capture that inventory
 before dispatch. Both **H** overlays, the legacy parameter panel, canonical footer, parameter
 printing, and the interactive sections of `--help` use the same entries. The legacy heading is
-**1–8**; canonical is **1–7**. Preset names are supplied by `Program.Presets`, so the inventory does
+**1–8** in both modes, with an engine-specific eighth parameter. Preset names are supplied by `Program.Presets`, so the inventory does
 not maintain another list of preset names.
 
 `RendererControlsTests` covers all pressed-key bindings, both Shift keys, mouse controls,
-cross-engine exclusions, canonical rejection of friction selection, adjustment/printing semantics,
+cross-engine exclusions, canonical FOV adjustment, adjustment/printing semantics,
 the actual legacy friction speed-model distinction, and bounded spawn counts. The CLI-help
 transcript is also checked against the README. [Native verification](NATIVE_UI_VERIFICATION.md)
 records automated Linux UI checks of both overlays and controls, completing the synchronization
 tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39). Human sign-off,
 Windows/macOS GUI coverage and renderer FPS remain unverified.
 
-Canonical individual-rule toggles and the additional inspection visuals in
-[issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40) remain separate work. Rule
-controls depend on the named composition API from
-[issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27); this inventory does not introduce
-positional rule toggles or interpret a zero weight as a disabled rule.
+`CanonicalInspectionTests` covers named key-to-rule effects, independent classic contributions,
+switch persistence, last-tick query identity/caps, unchanged future trajectories, zero warm query
+allocation, force-vector identity and arc geometry. [Inspection verification](CANONICAL_INSPECTION.md)
+separates native drawing evidence from Windows input and human acceptance still open in
+[issue #40](https://github.com/Chris0Jeky/SwarmingLilMen/issues/40).

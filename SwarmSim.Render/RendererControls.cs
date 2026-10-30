@@ -12,7 +12,7 @@ internal enum RendererControlId
     Preset1, Preset2, Preset3, Preset4, Preset5,
     PrintConfiguration, Reset, Help, Quit,
     SpawnGroup0, SpawnGroup1, SpawnRandom, VelocityVectors, SenseCircles, NeighborLinks, DebugOverlay, ExportCsv, Shake,
-    Interactions, NextSubject
+    Interactions, NextSubject, FieldOfView, ToggleSeparation, ToggleAlignment, ToggleCohesion
 }
 
 /// <summary>The only platform-specific input boundary; tests supply key/mouse states directly.</summary>
@@ -92,7 +92,8 @@ internal sealed class RendererControls
         new(7, RendererControlId.Friction, "Friction", 0.8f, 1f, 0.01f, 0.001f)
     ];
     private static readonly IReadOnlyList<RendererParameter> LegacyParameters = Array.AsReadOnly(Parameters);
-    private static readonly IReadOnlyList<RendererParameter> CanonicalParameters = Array.AsReadOnly(Parameters[..7]);
+    private static readonly IReadOnlyList<RendererParameter> CanonicalParameters = Array.AsReadOnly<RendererParameter>(
+        [.. Parameters[..7], new(7, RendererControlId.FieldOfView, "Field of view", 1f, 360f, 15f, 1f)]);
     private readonly IReadOnlyList<RendererControlBinding> _legacy;
     private readonly IReadOnlyList<RendererControlBinding> _canonical;
     private readonly RendererControlBinding[] _presets;
@@ -144,7 +145,7 @@ internal sealed class RendererControls
         return new(mode, active);
     }
 
-    /// <summary>Shared effective parameter dispatch; canonical cannot select the legacy friction slot.</summary>
+    /// <summary>Shared effective parameter dispatch; slot 8 is engine-specific (FOV or friction).</summary>
     internal bool ApplyParameters(RendererInputSnapshot input, ref int selected,
         Func<int, float> getValue, Action<int, float> setValue, TextWriter output,
         SpeedModel speedModel = SpeedModel.ConstantSpeed)
@@ -239,6 +240,9 @@ internal sealed class RendererControls
         bindings.Add(new(RendererControlId.Help, "Visualization", "H", "Toggle this help overlay", "Help", [KeyboardKey.H]));
         if (mode == RendererMode.Canonical)
         {
+            bindings.Add(new(RendererControlId.ToggleSeparation, "Visualization", "S", "Toggle named separation rule", "Separation", [KeyboardKey.S]));
+            bindings.Add(new(RendererControlId.ToggleAlignment, "Visualization", "A", "Toggle named alignment rule", "Alignment", [KeyboardKey.A]));
+            bindings.Add(new(RendererControlId.ToggleCohesion, "Visualization", "C", "Toggle named cohesion rule", "Cohesion", [KeyboardKey.C]));
             bindings.Add(new(RendererControlId.Interactions, "Visualization", "O", "Toggle interaction overlay", "Interactions", [KeyboardKey.O]));
             bindings.Add(new(RendererControlId.NextSubject, "Visualization", "Tab", "Cycle inspected boid", "Next boid", [KeyboardKey.Tab]));
         }

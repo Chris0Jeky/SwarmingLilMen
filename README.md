@@ -69,7 +69,8 @@ should target the canonical implementation.
   (#29) and a minimal scalar-field/ACO consumer (#30). The [comparison harness](docs/BEHAVIORAL_PARITY.md)
   and [legacy retirement checklist](docs/LEGACY_RETIREMENT.md) are now implemented; the measured
   full 100-run calibration exceeds the 60-second goal.
-- **Renderer readiness:** complete rule-control visuals and define the remaining faster/slower
+- **Renderer readiness:** qualify native input/human acceptance for the new
+  [rule-control inspection visuals](docs/CANONICAL_INSPECTION.md) and define the remaining faster/slower
   overtaking scenario (#40/#41). Nineteen quantitative canonical cases now cover integrated and
   named-rule behavior. Controls and configuration have
   [native Linux verification](docs/NATIVE_UI_VERIFICATION.md); the historical allocation
@@ -199,7 +200,7 @@ VISUALIZATION
   F12: Toggle snapshot/debug overlay
 
 Canonical interactive controls (--canonical):
-PARAMETERS (1-7 to select)
+PARAMETERS (1-8 to select)
   1: Select Separation weight
   2: Select Alignment weight
   3: Select Cohesion weight
@@ -207,6 +208,7 @@ PARAMETERS (1-7 to select)
   5: Select Sense radius
   6: Select Target speed
   7: Select Max force
+  8: Select Field of view
   Up/+/KP+: Increase selected parameter
   Down/-/KP-: Decrease selected parameter
   Shift: Hold for fine adjustment with any adjust key
@@ -222,6 +224,9 @@ WORLD
   Esc: Quit
 VISUALIZATION
   H: Toggle this help overlay
+  S: Toggle named separation rule
+  A: Toggle named alignment rule
+  C: Toggle named cohesion rule
   O: Toggle interaction overlay
   Tab: Cycle inspected boid
 
@@ -453,6 +458,17 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build --filter 
 # Run the same gate with coverage (coverlet.collector is already referenced)
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" --collect:"XPlat Code Coverage" -- RunConfiguration.TreatNoTestsAsError=true
 ```
+
+For quick native visual feedback, run:
+
+```bash
+dotnet run --project tools/RendererProbe -c Release
+```
+
+It prints a local HTML gallery and returns pass/fail for eight deterministic captures and 112
+native-input/pixel checks. The JSON report records observed forces, counts and build hashes.
+Linux CI runs it under Mesa/Xvfb and retains the images for both the integration ref and exact
+PR head. See [the probe guide and acceptance limits](docs/CANONICAL_INSPECTION.md#fast-visual-feedback).
 
 ## 📊 Benchmarking
 
