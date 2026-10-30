@@ -1,0 +1,11 @@
+{
+  "base": "base.json",
+  "engine": "aco",
+  "agents": 300,
+  "seeds": [41, 42, 43, 44, 45],
+  "grid": {
+    "Deposit": [0, 1]
+  },
+  "ticks": 2000,
+  "metrics": ["aco.foodReturned", "aco.carrying", "aco.fieldTotal"]
+}
