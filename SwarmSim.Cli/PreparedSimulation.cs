@@ -3,6 +3,7 @@ using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Metrics;
 using SwarmSim.Core.Utils;
+using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Cli;
 
@@ -12,11 +13,16 @@ internal sealed class PreparedSimulation
     private readonly RunRequest _request;
     private readonly World? _legacy;
     private readonly CanonicalWorld? _canonical;
+    private readonly VicsekWorld? _vicsek;
 
     internal PreparedSimulation(RunRequest request)
     {
         _request = request;
-        if (request.Canonical is not null)
+        if (request.Vicsek is not null)
+        {
+            _vicsek = new VicsekWorld(request.Vicsek, request.AgentCount);
+        }
+        else if (request.Canonical is not null)
         {
             CanonicalWorldSettings settings = request.Canonical;
             if (request.AgentCount > Math.Max(1, settings.InitialCapacity))
@@ -35,8 +41,11 @@ internal sealed class PreparedSimulation
     }
 
     internal CanonicalWorld? Canonical => _canonical;
-    internal int MetricCapacity => _canonical is not null ? Math.Max(1, _request.Canonical!.InitialCapacity) : _legacy!.Capacity;
-    internal MetricDomain Domain => _canonical is not null
+    internal int MetricCapacity => _vicsek is not null ? _request.AgentCount
+        : _canonical is not null ? Math.Max(1, _request.Canonical!.InitialCapacity) : _legacy!.Capacity;
+    internal MetricDomain Domain => _vicsek is not null
+        ? MetricDomain.Toroidal(_request.Vicsek!.WorldWidth, _request.Vicsek.WorldHeight)
+        : _canonical is not null
         ? MetricDomain.Toroidal(_request.Canonical!.WorldWidth, _request.Canonical.WorldHeight)
         : _request.Legacy!.BoundaryMode == BoundaryMode.Wrap
             ? MetricDomain.Toroidal(_request.Legacy.WorldWidth, _request.Legacy.WorldHeight)
@@ -44,25 +53,30 @@ internal sealed class PreparedSimulation
 
     internal void Step()
     {
-        if (_canonical is not null)
+        if (_vicsek is not null)
+            _vicsek.Step();
+        else if (_canonical is not null)
             _canonical.Step(_request.FixedDeltaTime);
         else
             _legacy!.Tick();
     }
 
-    internal string KinematicHash() => _canonical is not null
+    internal string KinematicHash() => _vicsek is not null
+        ? SimulationKinematicHash.Compute(_vicsek)
+        : _canonical is not null
         ? SimulationKinematicHash.Compute(_canonical)
         : SimulationKinematicHash.Compute(_legacy!);
 
     internal int Capture(Span<KinematicSample> destination)
     {
-        int required = _canonical?.Count ?? _legacy!.Count;
+        int required = _vicsek?.Agents.Length ?? _canonical?.Count ?? _legacy!.Count;
         if (destination.Length < required)
             throw new ArgumentException("Capture buffer must hold every simulation slot; state is never truncated.", nameof(destination));
         int count = 0;
-        if (_canonical is not null)
+        if (_vicsek is not null || _canonical is not null)
         {
-            foreach (Boid boid in _canonical.Boids)
+            ReadOnlySpan<Boid> agents = _vicsek is not null ? _vicsek.Agents : _canonical!.Boids;
+            foreach (Boid boid in agents)
                 destination[count++] = new(boid.Position.X, boid.Position.Y, boid.Velocity.X, boid.Velocity.Y);
         }
         else

@@ -46,8 +46,8 @@ internal static class MetricCatalog
     private static IMetricProbe[] CreateProbes(string engine, string[] requestedMetrics, int capacity,
         CanonicalWorld? canonical, RuntimeCostMetricProbe runtimeCosts)
     {
-        if (engine is not ("legacy" or "canonical"))
-            throw new ArgumentException("Metric engine must be legacy or canonical.", nameof(engine));
+        if (engine is not ("legacy" or "canonical" or "vicsek"))
+            throw new ArgumentException("Metric engine must be legacy, canonical or vicsek.", nameof(engine));
         var nearest = new ExactNearestNeighborProbe(0);
         // Metadata registration is cheap. Allocate the four capacity-sized exact-analysis
         // buffers only when at least one of that probe's channels is requested.
@@ -58,7 +58,8 @@ internal static class MetricCatalog
             requestedMetrics.Contains("centroidX", StringComparer.Ordinal) ||
             requestedMetrics.Contains("centroidY", StringComparer.Ordinal);
         IMetricProbe[] common = [new MotionMetricProbe(includeCentroids), nearest, runtimeCosts];
-        if (engine == "legacy") return common;
+        // Polarization already is the Vicsek order parameter; the kinematic probes need no change.
+        if (engine is "legacy" or "vicsek") return common;
         IMetricProbe boids = canonical is null
             ? new BoidsRuleMetricProbe(new RuleInstrumentation(1))
             : new CompletedStepBoidsMetricProbe(canonical);

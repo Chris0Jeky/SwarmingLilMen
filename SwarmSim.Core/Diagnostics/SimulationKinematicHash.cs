@@ -1,6 +1,7 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Core.Diagnostics;
 
@@ -38,9 +39,19 @@ public static class SimulationKinematicHash
     public static string Compute(CanonicalWorld world)
     {
         ArgumentNullException.ThrowIfNull(world);
+        return Compute(world.Boids);
+    }
 
+    /// <summary>Computes the version-1 ordered kinematic hash for a Vicsek world.</summary>
+    public static string Compute(VicsekWorld world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        return Compute(world.Agents);
+    }
+
+    private static string Compute(ReadOnlySpan<Boid> boids)
+    {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        ReadOnlySpan<Boid> boids = world.Boids;
         AppendInt32(hash, boids.Length);
 
         foreach (Boid boid in boids)

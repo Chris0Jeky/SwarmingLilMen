@@ -17,8 +17,9 @@ public static class Program
                     SwarmSim.Cli — deterministic headless experiments
                     Usage: dotnet run --project SwarmSim.Cli -- [options]
 
-                      --engine legacy|canonical  Engine and native config schema (default: canonical)
-                      --scenario NAME            Shared named scenario before file/seed overrides
+                      --engine legacy|canonical|vicsek
+                                                 Engine and native config schema (default: canonical)
+                      --scenario NAME            Shared boids scenario before file/seed overrides
                       --config FILE              Native engine JSON configuration
                       --seed N                   Seed in 0..2147483647 (default: resolved config)
                       --ticks N                  Non-negative logical step count (default: 600)
@@ -32,7 +33,7 @@ public static class Program
 
                     Outputs: manifest.json, metrics.csv, log.txt in a new run-<id> child.
                     Sweeps: summary.csv and replayable cell directories in a new sweep-<id> child.
-                    Native canonical files use TargetSpeed; legacy files use MaxSpeed.
+                    Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians).
                     Default metrics: population,meanSpeed,polarization.
                     Runtime cost metrics are nondeterministic and disable exact manifest replay.
                     Exit codes: 0 success, 1 run/config/replay/I/O failure, 2 invalid usage.

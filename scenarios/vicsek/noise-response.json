@@ -1,0 +1,11 @@
+{
+  "base": "base.json",
+  "engine": "vicsek",
+  "agents": 400,
+  "seeds": [11, 12, 13, 14, 15],
+  "grid": {
+    "Noise": [0.5, 5.0]
+  },
+  "ticks": 2000,
+  "metrics": ["polarization"]
+}
