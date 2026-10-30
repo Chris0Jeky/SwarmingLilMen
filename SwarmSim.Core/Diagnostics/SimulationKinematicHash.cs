@@ -1,6 +1,8 @@
 using System.Buffers.Binary;
 using System.Security.Cryptography;
+using SwarmSim.Core.Aco;
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Metrics;
 using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Core.Diagnostics;
@@ -47,6 +49,29 @@ public static class SimulationKinematicHash
     {
         ArgumentNullException.ThrowIfNull(world);
         return Compute(world.Agents);
+    }
+
+    /// <summary>
+    /// Computes the version-1 ordered kinematic hash for an ant colony. As for every engine this
+    /// covers motion only: loads, food and the scalar field are outside version 1.
+    /// </summary>
+    public static string Compute(AntColonyWorld world)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        var samples = new KinematicSample[world.Ants.Length];
+        world.CopyKinematics(samples);
+
+        using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
+        AppendInt32(hash, samples.Length);
+        foreach (KinematicSample sample in samples)
+        {
+            AppendSingle(hash, sample.X);
+            AppendSingle(hash, sample.Y);
+            AppendSingle(hash, sample.Vx);
+            AppendSingle(hash, sample.Vy);
+        }
+
+        return Convert.ToHexString(hash.GetHashAndReset());
     }
 
     private static string Compute(ReadOnlySpan<Boid> boids)

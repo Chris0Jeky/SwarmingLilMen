@@ -1,5 +1,6 @@
 using System.Text.Json;
 using SwarmSim.Core;
+using SwarmSim.Core.Aco;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Configuration;
 using SwarmSim.Core.Diagnostics;
@@ -75,6 +76,13 @@ internal sealed class EngineDefinition
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
         request => new VicsekSimulation(request), _ => []);
 
+    internal static readonly EngineDefinition Aco = Native<AntColonySettings>(
+        "aco", "aco-nest-v1", minimumManifestSchema: 2, acceptsScenario: false,
+        (_, file, overrides, defaults) => ConfigurationResolver.ResolveAntColonySettings(file, overrides, defaults),
+        settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
+        request => new AcoSimulation(request),
+        simulation => [new AntColonyMetricProbe((simulation as AcoSimulation)?.World)]);
+
     private static EngineDefinition Native<TSettings>(string name, string spawnModel, int minimumManifestSchema, bool acceptsScenario,
         Func<string?, string?, IReadOnlyDictionary<string, JsonElement>?, TSettings?, TSettings> resolve,
         Func<TSettings, string> json, Func<TSettings, uint> seed, Func<TSettings, float> fixedDeltaTime,
@@ -101,7 +109,7 @@ internal sealed class EngineDefinition
 internal static class EngineRegistry
 {
     private static readonly EngineDefinition[] Definitions =
-        [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek];
+        [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek, EngineDefinition.Aco];
 
     /// <summary>For messages: "a, b or c".</summary>
     internal static string NameList => string.Join(", ", Definitions[..^1].Select(engine => engine.Name)) + " or " + Definitions[^1].Name;
@@ -230,4 +238,23 @@ internal sealed class VicsekSimulation(RunRequest request) : IHeadlessSimulation
     public void Step() => _world.Step();
     public string KinematicHash() => SimulationKinematicHash.Compute(_world);
     public int Capture(Span<KinematicSample> destination) => AgentCapture.Copy(_world.Agents, destination);
+}
+
+internal sealed class AcoSimulation(RunRequest request) : IHeadlessSimulation
+{
+    private readonly AntColonySettings _settings = (AntColonySettings)request.Settings;
+
+    internal AntColonyWorld World { get; } = new((AntColonySettings)request.Settings, request.AgentCount);
+    public int MetricCapacity => request.AgentCount;
+    public float WorldWidth => _settings.WorldWidth;
+    public float WorldHeight => _settings.WorldHeight;
+    public MetricDomain Domain => MetricDomain.Toroidal(_settings.WorldWidth, _settings.WorldHeight);
+    public void Step() => World.Step();
+    public string KinematicHash() => SimulationKinematicHash.Compute(World);
+
+    public int Capture(Span<KinematicSample> destination)
+    {
+        World.CopyKinematics(destination);
+        return World.Ants.Length;
+    }
 }
