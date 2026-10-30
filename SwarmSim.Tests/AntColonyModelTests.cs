@@ -19,6 +19,13 @@ public sealed class AntColonyModelTests
         NestX = 5f, NestY = 5f, NestRadius = 2f, FoodX = 5f, FoodY = 30f, FoodRadius = 2f, Seed = seed
     };
 
+    /// <summary>Bounded so that a broken model fails its test rather than hanging the suite.</summary>
+    private static void StepUntil(AntColonyWorld world, Func<bool> done)
+    {
+        for (int tick = 0; tick < 20_000 && !done(); tick++) world.Step();
+        Assert.True(done(), "The awaited condition never held.");
+    }
+
     private static Ant Searching(float x, float y, float heading = 0f) => new(new Vec2(x, y), heading, Carrying: false);
     private static Ant Returning(float x, float y) => new(new Vec2(x, y), 0f, Carrying: true);
 
@@ -32,8 +39,7 @@ public sealed class AntColonyModelTests
     public void TheAgentPhaseNeverWritesTheField()
     {
         var world = new AntColonyWorld(new AntColonySettings { Seed = 3u }, 64);
-        while (world.FoodReturned == 0) world.Step();
-        while (world.CarryingCount == 0) world.Step();
+        StepUntil(world, () => world.FoodReturned > 0 && world.CarryingCount > 0);
         uint[] before = Bits(world);
         Assert.Contains(before, bits => bits != 0u);
 
@@ -154,13 +160,13 @@ public sealed class AntColonyModelTests
         var on = new AntColonyWorld(new AntColonySettings { Deposit = 1f, Seed = 4u }, 64);
 
         int tick = 0;
-        while (on.Field.Total() == 0d)
+        for (; tick < 2000 && on.Field.Total() == 0d; tick++)
         {
             Assert.Equal(State(off), State(on));
             off.Step();
             on.Step();
-            tick++;
         }
+        Assert.True(on.Field.Total() > 0d);
         Assert.Equal(State(off), State(on)); // Ticks so far read a field that was still empty.
 
         for (; tick < 2000; tick++)
@@ -320,7 +326,7 @@ public sealed class AntColonyModelTests
     public void ATrailFadesOnceTheFoodIsGone()
     {
         var world = new AntColonyWorld(new AntColonySettings { FoodAmount = 40, Evaporation = 0.02f, Seed = 3u }, 128);
-        while (world.FoodReturned < 40) world.Step();
+        StepUntil(world, () => world.FoodReturned == 40);
         double peak = world.Field.Total();
         Assert.True(peak > 0d);
 
@@ -376,7 +382,7 @@ public sealed class AntColonyModelTests
     public void TheProbeReportsExactWorldCountersWithoutAllocating()
     {
         var world = new AntColonyWorld(new AntColonySettings { Seed = 2u }, 64);
-        while (world.FoodReturned < 3 || world.CarryingCount == 0) world.Step();
+        StepUntil(world, () => world.FoodReturned >= 3 && world.CarryingCount > 0);
         var probe = new AntColonyMetricProbe(world);
         var output = new double[3];
 
