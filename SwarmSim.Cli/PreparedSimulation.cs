@@ -36,6 +36,8 @@ internal sealed class PreparedSimulation
 
     internal CanonicalWorld? Canonical => _canonical;
     internal int MetricCapacity => _canonical is not null ? Math.Max(1, _request.Canonical!.InitialCapacity) : _legacy!.Capacity;
+    internal float WorldWidth => _canonical is not null ? _request.Canonical!.WorldWidth : _request.Legacy!.WorldWidth;
+    internal float WorldHeight => _canonical is not null ? _request.Canonical!.WorldHeight : _request.Legacy!.WorldHeight;
     internal MetricDomain Domain => _canonical is not null
         ? MetricDomain.Toroidal(_request.Canonical!.WorldWidth, _request.Canonical.WorldHeight)
         : _request.Legacy!.BoundaryMode == BoundaryMode.Wrap
