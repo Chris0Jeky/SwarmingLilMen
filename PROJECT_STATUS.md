@@ -40,6 +40,11 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 The current integrated Release gate passes **1,234 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
+**One known instability:** existing zero-allocation tests read a single sample of the thread counter
+and fail intermittently on a loaded Windows desktop (3 of 20 full runs; 1 of 15 with every ACO and
+field test excluded), each time a different test among `CanonicalInspectionTests`, `Pcg32RngTests`,
+`LegacyCapacityGrowthTests` and `MetricsContractTests`. The ACO tests take the least of several
+samples instead and did not fail in those 20 runs. The older tests are unchanged.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
   `AntColonyWorld` runs a minimal foraging colony with its own ant shape, one retained named stream

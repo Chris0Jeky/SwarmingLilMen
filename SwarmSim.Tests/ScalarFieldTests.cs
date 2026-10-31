@@ -139,11 +139,7 @@ public sealed class ScalarFieldTests
             }
             _ = field.Total();
         }
-        Work();
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        Work();
-
-        Assert.Equal(0L, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0L, AntColonyModelTests.LeastAllocated(Work));
     }
 }

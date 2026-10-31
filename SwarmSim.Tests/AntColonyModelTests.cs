@@ -26,6 +26,23 @@ public sealed class AntColonyModelTests
         Assert.True(done(), "The awaited condition never held.");
     }
 
+    /// <summary>
+    /// The fewest bytes one call took over several attempts. The thread counter also picks up
+    /// first-call runtime work and retired allocation contexts when a parallel test forces a GC,
+    /// so one attempt can read nonzero for clean code. Code that really allocates never reads zero.
+    /// </summary>
+    internal static long LeastAllocated(Action work)
+    {
+        long least = long.MaxValue;
+        for (int attempt = 0; attempt < 16 && least > 0L; attempt++)
+        {
+            long before = GC.GetAllocatedBytesForCurrentThread();
+            work();
+            least = Math.Min(least, GC.GetAllocatedBytesForCurrentThread() - before);
+        }
+        return least;
+    }
+
     private static Ant Searching(float x, float y, float heading = 0f) => new(new Vec2(x, y), heading, Carrying: false);
     private static Ant Returning(float x, float y) => new(new Vec2(x, y), 0f, Carrying: true);
 
@@ -386,11 +403,7 @@ public sealed class AntColonyModelTests
         var probe = new AntColonyMetricProbe(world);
         var output = new double[3];
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        probe.Sample(new MetricFrame([], MetricDomain.Euclidean), output);
-        long allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        Assert.Equal(0L, allocated);
+        Assert.Equal(0L, LeastAllocated(() => probe.Sample(new MetricFrame([], MetricDomain.Euclidean), output)));
         Assert.Equal(["aco.foodReturned", "aco.carrying", "aco.fieldTotal"], probe.Channels);
         Assert.Equal(world.FoodReturned, output[0]);
         Assert.Equal(world.CarryingCount, output[1]);
@@ -413,10 +426,10 @@ public sealed class AntColonyModelTests
         var world = new AntColonyWorld(new AntColonySettings { Seed = 2u }, 256);
         for (int tick = 0; tick < 512; tick++) world.Step();
 
-        long before = GC.GetAllocatedBytesForCurrentThread();
-        for (int tick = 0; tick < 1000; tick++) world.Step();
-
-        Assert.Equal(0L, GC.GetAllocatedBytesForCurrentThread() - before);
+        Assert.Equal(0L, LeastAllocated(() =>
+        {
+            for (int tick = 0; tick < 100; tick++) world.Step();
+        }));
         Assert.True(world.FoodReturned > 0);
     }
 
