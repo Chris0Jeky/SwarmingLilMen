@@ -41,6 +41,9 @@ public sealed class AntColonySettings
     /// <summary>Supported values are 0 through <see cref="Rng.MaxSupportedSeed"/>, inclusive.</summary>
     public uint Seed { get; init; } = 123456u;
 
+    /// <summary>Largest supported pheromone grid, matching the spatial grid's cell limit.</summary>
+    public const int MaxFieldCells = 1 << 22;
+
     public AntColonySettings() { }
 
     public List<string> Validate()
@@ -68,12 +71,16 @@ public sealed class AntColonySettings
         NonNegative(SensorAngle, nameof(SensorAngle));
         Positive(SensorDistance, nameof(SensorDistance));
         if (FieldColumns <= 0 || FieldRows <= 0) errors.Add("FieldColumns and FieldRows must be positive");
+        else if ((long)FieldColumns * FieldRows > MaxFieldCells) errors.Add($"FieldColumns times FieldRows must not exceed {MaxFieldCells}");
         Positive(NestRadius, nameof(NestRadius));
         Positive(FoodRadius, nameof(FoodRadius));
         if (FoodAmount < 0) errors.Add("FoodAmount must be non-negative");
         Positive(WorldWidth, nameof(WorldWidth));
         Positive(WorldHeight, nameof(WorldHeight));
         Positive(FixedDeltaTime, nameof(FixedDeltaTime));
+        // A longer step can jump over a circle forever: ants would starve without any error.
+        if (Speed * FixedDeltaTime > 2f * MathF.Min(NestRadius, FoodRadius))
+            errors.Add("Speed times FixedDeltaTime must not exceed the nest or food diameter");
         Inside(NestX, WorldWidth, nameof(NestX));
         Inside(NestY, WorldHeight, nameof(NestY));
         Inside(FoodX, WorldWidth, nameof(FoodX));

@@ -27,10 +27,10 @@ public sealed class AntColonyWorld
     private int _depositCount;
     private bool _agentPhaseDone;
 
-    /// <summary>Starts every ant at the nest centre with a uniform heading from the spawn stream.</summary>
     /// <summary>Largest supported colony; each ant retains its own generator object.</summary>
     public const int MaxAnts = 1 << 24;
 
+    /// <summary>Starts every ant at the nest centre with a uniform heading from the spawn stream.</summary>
     public AntColonyWorld(AntColonySettings settings, int antCount)
         : this(settings, Spawn(settings, antCount)) { }
 
@@ -52,6 +52,10 @@ public sealed class AntColonyWorld
             _forage[i] = streams.CreateStream(ForageStream, (ulong)i);
         foreach (Ant ant in ants)
             if (ant.Carrying) CarryingCount++;
+        // A supplied load came from the food supply, so food stays conserved from tick zero.
+        if (CarryingCount > FoodRemaining)
+            throw new ArgumentException("Initial ants cannot carry more than FoodAmount.", nameof(ants));
+        FoodRemaining -= CarryingCount;
     }
 
     public AntColonySettings Settings { get; }

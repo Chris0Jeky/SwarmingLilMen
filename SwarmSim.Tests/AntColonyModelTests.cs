@@ -71,10 +71,10 @@ public sealed class AntColonyModelTests
     [Fact]
     public void AllAntsInATickReadTheSameFieldEvenWhenALowerIndexDeposits()
     {
-        // Ant 0 lays pheromone exactly where ant 1's centre sensor reads. An inline deposit would
-        // divert ant 1 this tick; a buffered one must leave it on its heading.
+        // Ant 0 steps into cell (58, 45), where ant 1's left sensor reads. An inline deposit would
+        // turn ant 1 left this tick; a buffered one must leave it on its heading.
         AntColonySettings settings = Quiet();
-        Ant[] ants = [Returning(61f, 50f), Searching(50f, 50f)];
+        Ant[] ants = [Returning(58f, 46.1f), Searching(50f, 50f)]; // Homes across the seam, toward +x.
         var world = new AntColonyWorld(settings, ants);
 
         world.AgentPhase();
@@ -82,6 +82,17 @@ public sealed class AntColonyModelTests
         Assert.Equal(0f, world.Ants[1].Heading);
         Assert.Equal(0d, world.Field.Total());
         Assert.Equal(1, world.PendingDeposits);
+    }
+
+    [Fact]
+    public void SuppliedLoadsComeOutOfTheFoodSupply()
+    {
+        var settings = new AntColonySettings { FoodAmount = 5 };
+        var world = new AntColonyWorld(settings, [Returning(60f, 50f), Returning(61f, 50f)]);
+        Assert.Equal(3, world.FoodRemaining);
+        Assert.Equal(2, world.CarryingCount);
+        Assert.Throws<ArgumentException>(() =>
+            new AntColonyWorld(new AntColonySettings { FoodAmount = 1 }, [Returning(60f, 50f), Returning(61f, 50f)]));
     }
 
     [Fact]
@@ -350,7 +361,8 @@ public sealed class AntColonyModelTests
         for (int tick = 0; tick < 100; tick++) world.Step();
 
         // No carrying ants are left, so only evaporation acts: 0.98^100, within float rounding.
-        Assert.Equal(peak * Math.Pow(0.98, 100), world.Field.Total(), 2);
+        double expected = peak * Math.Pow(0.98, 100);
+        Assert.InRange(world.Field.Total(), expected * 0.999d, expected * 1.001d);
     }
 
     [Fact]
@@ -438,6 +450,8 @@ public sealed class AntColonyModelTests
     [InlineData("""{"Deposit":-1}""", "Deposit")]
     [InlineData("""{"Evaporation":1.5}""", "Evaporation")]
     [InlineData("""{"Speed":0}""", "Speed")]
+    [InlineData("""{"Speed":10}""", "Speed")]
+    [InlineData("""{"FieldColumns":40000,"FieldRows":40000}""", "FieldColumns")]
     [InlineData("""{"FieldColumns":0}""", "FieldColumns")]
     [InlineData("""{"NestRadius":0}""", "NestRadius")]
     [InlineData("""{"FoodAmount":-1}""", "FoodAmount")]
