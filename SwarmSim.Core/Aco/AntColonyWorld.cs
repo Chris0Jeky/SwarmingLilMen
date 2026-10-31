@@ -28,6 +28,9 @@ public sealed class AntColonyWorld
     private bool _agentPhaseDone;
 
     /// <summary>Starts every ant at the nest centre with a uniform heading from the spawn stream.</summary>
+    /// <summary>Largest supported colony; each ant retains its own generator object.</summary>
+    public const int MaxAnts = 1 << 24;
+
     public AntColonyWorld(AntColonySettings settings, int antCount)
         : this(settings, Spawn(settings, antCount)) { }
 
@@ -184,8 +187,8 @@ public sealed class AntColonyWorld
     private static Ant[] Spawn(AntColonySettings settings, int antCount)
     {
         Validate(settings);
-        if (antCount <= 0)
-            throw new ArgumentOutOfRangeException(nameof(antCount), "Ant count must be positive.");
+        if (antCount <= 0 || antCount > MaxAnts)
+            throw new ArgumentOutOfRangeException(nameof(antCount), $"Ant count must be from 1 through {MaxAnts}.");
         Pcg32Rng random = new RandomStreams(settings.Seed).CreateStream(SpawnStream);
         var ants = new Ant[antCount];
         for (int i = 0; i < ants.Length; i++)

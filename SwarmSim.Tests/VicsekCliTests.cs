@@ -62,10 +62,12 @@ public sealed class VicsekCliTests
         Assert.Contains("--config", result.Error, StringComparison.Ordinal);
     }
 
-    [Fact]
-    public void ImpossiblePopulationFailsAsARunErrorBeforeAllocating()
+    [Theory]
+    [InlineData("vicsek")]
+    [InlineData("aco")]
+    public void ImpossiblePopulationFailsAsARunErrorBeforeAllocating(string engine)
     {
-        var result = SweepCliTests.Run("--engine", "vicsek", "--agents", "2000000000", "--ticks", "1");
+        var result = SweepCliTests.Run("--engine", engine, "--agents", "2000000000", "--ticks", "1");
         Assert.Equal(1, result.Code);
         Assert.Contains("--agents exceeds", result.Error, StringComparison.Ordinal);
     }

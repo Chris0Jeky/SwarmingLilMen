@@ -81,7 +81,8 @@ internal sealed class EngineDefinition
         "aco", "aco-nest-v1", minimumManifestSchema: 2, acceptsScenario: false,
         (_, file, overrides, defaults) => ConfigurationResolver.ResolveAntColonySettings(file, overrides, defaults),
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
-        request => new AcoSimulation(request),
+        request => request.AgentCount <= AntColonyWorld.MaxAnts ? new AcoSimulation(request)
+            : throw new ArgumentException($"--agents exceeds the ACO maximum of {AntColonyWorld.MaxAnts}."),
         simulation => [new AntColonyMetricProbe((simulation as AcoSimulation)?.World)]);
 
     private static EngineDefinition Native<TSettings>(string name, string spawnModel, int minimumManifestSchema, bool acceptsScenario,
