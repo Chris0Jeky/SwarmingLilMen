@@ -1,6 +1,7 @@
 # Experiment foundation
 
-The C# engine currently supports two boids implementations. The legacy `World` is a
+This guide covers the two boids implementations; [Vicsek](VICSEK.md) and [ACO](ACO.md) share the
+experiment spine and have their own guides. The legacy `World` is a
 structure-of-arrays pipeline whose spawn calls can grow storage up to `MaxCapacity`;
 `CanonicalWorld` retains fixed storage and is the target for new engine work. Neither is yet a
 general-purpose dynamics kernel. This guide describes the shared configuration and diagnostics
@@ -107,6 +108,5 @@ results and host limitations belong in [PROJECT_STATUS.md](../PROJECT_STATUS.md)
 [Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) remains the ordering authority:
 golden traces and an explicit platform contract; a Core-only headless runner with manifests;
 registered metrics whose analysis neighborhoods are independent of steering caps; deterministic
-parameter/seed sweeps; named RNG streams; then actual intent composition. Vicsek and ACO should
-test whether those contracts generalize. Their existence as browser demos is not evidence that
-the C# kernel already supports those foundations.
+parameter/seed sweeps; named RNG streams; then actual intent composition. The
+[seam inventory](VICSEK.md#seam-inventory) records how far those contracts generalized.

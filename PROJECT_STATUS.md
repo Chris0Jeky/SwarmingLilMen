@@ -7,7 +7,8 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 
 ## What the engine is today
 
-SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Two boids engines
+SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Besides Vicsek and
+ACO foundations, two boids engines
 coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time growth and the default renderer;
 `CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
 independent stochastic consumers. Bounded named force policies, two resolvers and explicit velocity
@@ -373,10 +374,10 @@ speedup or machine-independent performance bound.
 4. Address the measured composition cost (#27), preserving the exact default trajectories and
    bounded observations. The new force-only API still needs a concrete consumer to earn public
    per-agent identity/noise and heading/velocity update seams.
-5. Complete qualification and runtime work for the implemented behavioral parity harness (#28),
-   then prove generality with Vicsek and a minimal scalar-field/ACO consumer (#29/#30, both on
-   open branches at this update; see the verified state above).
-   Named rule-control visuals (#40) now consume the settled composition API; native-input and
+5. Complete qualification and runtime work for the implemented behavioral parity harness (#28).
+   Vicsek and ACO are complete on the shared spine. The honest next generality question is a real
+   scheduler and a hash that sees field state; a third foundation's phases still live inside its
+   own world. Named rule-control visuals (#40) now consume the settled composition API; native-input and
    human acceptance remain open. Neither engine is deleted without the owner's
    eventual migration sign-off.
 
