@@ -1,0 +1,6 @@
+{
+  "WorldWidth": 200, "WorldHeight": 200, "FixedDeltaTime": 0.1, "TargetSpeed": 10,
+  "MaxForce": 5, "SenseRadius": 40, "SeparationRadius": 6, "FieldOfView": 300,
+  "SeparationWeight": 1.5, "AlignmentWeight": 3, "CohesionWeight": 0.5,
+  "WanderStrength": 0.1, "MaxNeighbors": 16, "InitialCapacity": 256
+}

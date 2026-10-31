@@ -1,0 +1,40 @@
+{
+  "entries": [
+    {
+      "name": "canonical-flock", "engine": "canonical", "config": "gallery/canonical-flock.json",
+      "agents": 150, "ticks": 300, "seed": 7,
+      "metrics": ["population", "polarization"],
+      "expect": { "population": { "min": 150, "max": 150 }, "polarization": { "min": 0.6 } }
+    },
+    {
+      "name": "legacy-balanced", "engine": "legacy", "config": "../configs/balanced.json",
+      "agents": 300, "ticks": 300, "seed": 7,
+      "metrics": ["population", "meanSpeed"],
+      "expect": { "population": { "min": 300, "max": 300 }, "meanSpeed": { "min": 4, "max": 10.5 } }
+    },
+    {
+      "name": "vicsek-low-noise", "engine": "vicsek", "config": "vicsek/response-base.json", "settings": { "Noise": 0.5 },
+      "agents": 100, "ticks": 2000, "seed": 7,
+      "metrics": ["polarization"],
+      "expect": { "polarization": { "min": 0.8 } }
+    },
+    {
+      "name": "vicsek-high-noise", "engine": "vicsek", "config": "vicsek/response-base.json", "settings": { "Noise": 5.0 },
+      "agents": 100, "ticks": 2000, "seed": 7,
+      "metrics": ["polarization"],
+      "expect": { "polarization": { "max": 0.4 } }
+    },
+    {
+      "name": "aco-pheromone", "engine": "aco", "config": "aco/base.json", "settings": { "Deposit": 1 },
+      "agents": 300, "ticks": 2000, "seed": 7,
+      "metrics": ["aco.foodReturned"],
+      "expect": { "aco.foodReturned": { "min": 1200 } }
+    },
+    {
+      "name": "aco-control", "engine": "aco", "config": "aco/base.json", "settings": { "Deposit": 0 },
+      "agents": 300, "ticks": 2000, "seed": 7,
+      "metrics": ["aco.foodReturned"],
+      "expect": { "aco.foodReturned": { "min": 150, "max": 800 } }
+    }
+  ]
+}
