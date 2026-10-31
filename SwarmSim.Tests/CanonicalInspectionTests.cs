@@ -59,13 +59,30 @@ public sealed class CanonicalInspectionTests
     public void StatusTextSeparatesRecordedTickFromDisplayedLinksAndCap()
     {
         Assert.Equal("Tick 7 recorded: 5 inputs, no truncation | Displayed: 5 links, cap 16 | Gray links: no applied rule",
-            CanonicalInspectionOverlay.FormatStatus(7, true, true, 5, false, 5, 16, false));
+            CanonicalInspectionOverlay.FormatStatus(7, true, true, 5, false, 5, 16));
         Assert.Equal("Tick 7 recorded: 139 inputs, no truncation | Displayed: 128 links, cap 128 reached, links omitted | Gray links: no applied rule",
-            CanonicalInspectionOverlay.FormatStatus(7, true, true, 139, false, 128, 128, true));
-        Assert.Equal("Tick 7 recorded: 16 inputs, simulation query truncated | Displayed: 16 links, cap 16 reached, links omitted | Gray links: no applied rule",
-            CanonicalInspectionOverlay.FormatStatus(7, true, true, 16, true, 16, 16, true));
-        Assert.Equal("Inspection: waiting for first completed tick", CanonicalInspectionOverlay.FormatStatus(0, false, false, 0, false, 0, 0, false));
-        Assert.Equal("Tick 7: subject not recorded", CanonicalInspectionOverlay.FormatStatus(7, true, false, 0, false, 0, 0, false));
+            CanonicalInspectionOverlay.FormatStatus(7, true, true, 139, false, 128, 128));
+        Assert.Equal("Tick 7 recorded: 16 inputs, simulation query truncated | Displayed: 16 links, cap 16 | Gray links: no applied rule",
+            CanonicalInspectionOverlay.FormatStatus(7, true, true, 16, true, 16, 16));
+        Assert.Equal("Inspection: waiting for first completed tick", CanonicalInspectionOverlay.FormatStatus(0, false, false, 0, false, 0, 0));
+        Assert.Equal("Tick 7: subject not recorded", CanonicalInspectionOverlay.FormatStatus(7, true, false, 0, false, 0, 0));
+    }
+
+    [Fact]
+    public void TruncatedCandidatesAreNotOmittedLinksWhenEveryRecordedInputIsDrawn()
+    {
+        var settings = new CanonicalWorldSettings { InitialCapacity = 40, WorldWidth = 1920, WorldHeight = 1080,
+            SenseRadius = 200, FieldOfView = 360, MaxNeighbors = 16 };
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(200, 1920, 1080));
+        for (int i = 0; i < 40; i++) world.TryAddBoid(new Vec2(900 + i * 0.1f, 500), new Vec2(1, 0));
+        world.Step(settings.FixedDeltaTime);
+
+        var inspection = CanonicalInspectionOverlay.Inspect(world, 0, new int[128], new float[128]);
+
+        Assert.True(world.Instrumentation.QueryTruncated[0]);
+        Assert.True(inspection.Result.IsTruncated);
+        Assert.Equal("Tick 1 recorded: 16 inputs, simulation query truncated | Displayed: 16 links, cap 16 | Gray links: no applied rule",
+            inspection.Status);
     }
 
     [Fact]
