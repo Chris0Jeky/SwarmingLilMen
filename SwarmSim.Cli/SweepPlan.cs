@@ -175,7 +175,7 @@ internal sealed class SweepPlan
         return element.EnumerateObject().ToDictionary(property => property.Name, property => property.Value.Clone(), StringComparer.Ordinal);
     }
 
-    private static void RejectDuplicates(JsonElement element, string path)
+    internal static void RejectDuplicates(JsonElement element, string path)
     {
         if (element.ValueKind == JsonValueKind.Object)
         {

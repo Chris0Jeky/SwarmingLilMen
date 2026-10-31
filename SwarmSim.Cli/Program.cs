@@ -29,6 +29,7 @@ public static class Program
                       --out DIRECTORY            Parent for a new run directory (default: runs)
                       --manifest FILE            Replay recorded settings; only --out and --visual may be added
                       --sweep FILE               Run a deterministic parameter grid; only --out and --visual may be added
+                      --gallery FILE             Run a curated behaviour gallery with pass/fail bands; only --out may be added
                       --visual                   Also write filmstrip.png and report.html (sweeps: plus index.html)
                       --help                     Show this help
 
@@ -39,7 +40,8 @@ public static class Program
                     Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians); aco files use Deposit and Evaporation (Deposit 0 is the control).
                     Default metrics: population,meanSpeed,polarization.
                     Runtime cost metrics are nondeterministic and disable exact manifest replay.
-                    Exit codes: 0 success, 1 run/config/replay/I/O failure, 2 invalid usage.
+                    Exit codes: 0 success (gallery: every band holds), 1 run/config/replay/I/O failure (gallery: or any band fails,
+                    with output still published), 2 invalid usage.
                     """);
                 return 0;
             }
@@ -47,6 +49,13 @@ public static class Program
             {
                 MetricCatalog.WriteAvailable(options.Engine, output);
                 return 0;
+            }
+            if (options.GalleryPath is not null)
+            {
+                GalleryResult gallery = Gallery.Run(options.GalleryPath, options.OutputDirectory);
+                output.WriteLine(gallery.Directory);
+                foreach (string line in gallery.Lines) output.WriteLine(line);
+                return gallery.Passed ? 0 : 1;
             }
             string directory = options.SweepPath is null
                 ? ExperimentRunner.Run(options)
