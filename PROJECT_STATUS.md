@@ -7,7 +7,8 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 
 ## What the engine is today
 
-SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Two boids engines
+SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Besides Vicsek and
+ACO foundations, two boids engines
 coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time growth and the default renderer;
 `CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
 independent stochastic consumers. Bounded named force policies, two resolvers and explicit velocity
@@ -71,7 +72,7 @@ or errors. The historical counts below identify the specific additions that prod
   pheromone) in 1.8 s of run time on the recorded host, prints one PASS/FAIL line per entry, and
   publishes `index.html` plus `summary.json` over ordinary replayable run directories. Bands are
   coarse final-quarter-mean sanity checks set from seeds 1-10, not determinism or science gates;
-  the locked Vicsek and ACO tests remain the evidence. 43 `GalleryTests` (including the committed
+  the locked Vicsek and ACO tests remain the evidence. 44 `GalleryTests` (including the committed
   recipe in about 2 s on the recorded host); inverting a bound, widening the quarter window and reversing the failure sort
   each fail tests. Filmstrips seen by eye on one machine only. See
   [behaviour gallery](docs/HEADLESS_EXPERIMENTS.md#behaviour-gallery).
@@ -373,10 +374,10 @@ speedup or machine-independent performance bound.
 4. Address the measured composition cost (#27), preserving the exact default trajectories and
    bounded observations. The new force-only API still needs a concrete consumer to earn public
    per-agent identity/noise and heading/velocity update seams.
-5. Complete qualification and runtime work for the implemented behavioral parity harness (#28),
-   then prove generality with Vicsek and a minimal scalar-field/ACO consumer (#29/#30, both on
-   open branches at this update; see the verified state above).
-   Named rule-control visuals (#40) now consume the settled composition API; native-input and
+5. Complete qualification and runtime work for the implemented behavioral parity harness (#28).
+   Vicsek and ACO are complete on the shared spine. The honest next generality question is a real
+   scheduler and a hash that sees field state; a third foundation's phases still live inside its
+   own world. Named rule-control visuals (#40) now consume the settled composition API; native-input and
    human acceptance remain open. Neither engine is deleted without the owner's
    eventual migration sign-off.
 

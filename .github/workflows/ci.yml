@@ -65,6 +65,18 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+      - name: Run behaviour gallery
+        run: dotnet run --project SwarmSim.Cli -c Release --no-build -- --gallery scenarios/gallery.json --out artifacts/gallery
+
+      - name: Retain behaviour gallery
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: behaviour-gallery-integration-${{ matrix.os }}
+          path: artifacts/gallery/
+          if-no-files-found: warn
+          retention-days: 7
+
   exact-head:
     # Keep the merge-ref integration gate above and independently prove the reviewed commit.
     name: Exact head (${{ matrix.os }})
@@ -112,5 +124,17 @@ jobs:
         with:
           name: renderer-probe-exact-head
           path: artifacts/renderer-probe/ci/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Run behaviour gallery
+        run: dotnet run --project SwarmSim.Cli -c Release --no-build -- --gallery scenarios/gallery.json --out artifacts/gallery
+
+      - name: Retain behaviour gallery
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: behaviour-gallery-exact-head-${{ matrix.os }}
+          path: artifacts/gallery/
           if-no-files-found: warn
           retention-days: 7

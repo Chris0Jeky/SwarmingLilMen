@@ -15,12 +15,15 @@ unreviewed merge is ever in scope — that dial presumes the laws it is declared
 ## What this is
 
 Deterministic 2D swarm simulation in C#/.NET 8: `SwarmSim.Core` (library),
-`SwarmSim.Cli` (display-free runs, replay and sweeps), `SwarmSim.Render` (Raylib window),
+`SwarmSim.Cli` (display-free runs, replay, sweeps and visual reports), `SwarmSim.Render` (Raylib window),
 `SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
 `js-demos/` holds unrelated standalone browser demos. **Two engines coexist on purpose**: legacy
 Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer, and
 `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`). Both engines
-have headless experiments and BenchmarkDotNet entry points.
+have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/` and `Core/Aco/` are separate
+foundations on the same experiment spine (`SwarmSim.Cli/Engines.cs`, one registry entry per engine).
+They share metrics, RNG, manifests, sweeps and reports, not a simulation kernel: see `docs/VICSEK.md`.
+A new foundation gets its own `Core/<Name>/` and a registry entry, never a place inside `Core/Canonical/`.
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
 **Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
@@ -43,6 +46,16 @@ dotnet run --project SwarmSim.Cli -c Release --no-build -- --engine canonical --
 previously compiled assemblies, so after any source or test edit it can pass while the current
 sources fail to compile or behave differently. Rebuild first, or drop the flag.
 
+Fastest behaviour check, about 3 seconds plus any rebuild, with no display. Run it after any simulation
+change, then read the printed table; `--visual` on any run or `--manifest` replay adds a `filmstrip.png`
+you can open:
+
+```powershell
+dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json --out runs
+```
+
+Its bands are coarse sanity checks. The locked Vicsek and ACO tests and the goldens remain the evidence.
+
 Narrowest seam check — rebuilds, and errors instead of silently matching zero tests when a class is
 renamed or a filter goes stale:
 
@@ -52,7 +65,8 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQuali
 
 Useful seam filters include `SpatialIndexEquivalenceTests`, `UniformGridTests`, `WorldTests`,
 `DeterminismTests`, `GoldenTraceTests`, `CanonicalBoidsTests`, `SimulationRunnerTests`,
-`CanonicalSteeringBudgetTests`, and `ConfigTests`. Use `~SwarmSim.Tests.BoidsTests` to avoid also
+`CanonicalSteeringBudgetTests`, `ConfigTests`, `VicsekModelTests`, `AntColonyModelTests` and
+`GalleryTests`. Use `~SwarmSim.Tests.BoidsTests` to avoid also
 matching canonical tests. **Run `~RngTests` explicitly for RNG changes**: it includes legacy,
 PCG and named-stream tests; the `Determinism` category alone omits several bounds/sequence tests.
 `Category=Performance` is opt-in and Release-only.
@@ -102,6 +116,10 @@ here rather than referenced.
 ## Pitfalls
 
 - `TreatWarningsAsErrors` + `Nullable` are on in `Directory.Build.props`; one warning fails CI.
+- `SwarmSim.Tests` runs with concurrent GC off: a background GC adds up to 8 KB to
+  `GetAllocatedBytesForCurrentThread` on a thread that allocated nothing (`AllocationMeasurementTests`).
+  Exact zero-allocation numbers from any other process can show those phantom bytes.
+- xUnit's `Assert.Equal(float, float, 5f)` is a tolerance of 5, not 5 decimals. It hid a real mutant here.
 - A green suite proves nothing about throughput: `Category=Performance` gates machine-relative
   ratios only and its absolute numbers are reported-only. Never quote them as the target met.
 - Determinism is the product: named `RandomStreams` for new consumers (legacy retains `Rng`),

@@ -51,6 +51,8 @@ should target the canonical implementation.
 - ✅ Raylib-free experiments with native configurations, versioned manifests and exact CSV replay
 - ✅ Registered analysis channels, periodic centroids and opt-in exact nearest-neighbor statistics
 - ✅ Sequential seed/parameter sweeps with stable summary rows and replayable cell manifests
+- ✅ Vicsek particles and a scalar-field ant colony as separate foundations on that spine
+- ✅ Display-free filmstrips, run reports and a one-command behaviour gallery
 - ✅ Named deterministic random streams and bounded, injectable force-policy compositions
 - ✅ Public classic-Reynolds configuration with independent rule clamps and named enable controls
 - ✅ Four-model headless comparison with five data recipes, five fixed seeds and locked metric bands
@@ -65,8 +67,10 @@ should target the canonical implementation.
 
 - **Composition:** preserve the exact default traces while addressing the measured small-population
   cost of the new bounded policy API (#27). See [composition and its limits](docs/CANONICAL_COMPOSITION.md).
-- **Proof of generality:** finish behavioral parity qualification (#28), then a Vicsek consumer
-  (#29) and a minimal scalar-field/ACO consumer (#30). The [comparison harness](docs/BEHAVIORAL_PARITY.md)
+- **Proof of generality:** [Vicsek](docs/VICSEK.md) and a minimal [scalar-field ACO](docs/ACO.md) now run
+  through the shared experiment spine with no boids change. They share registry, metrics, RNG,
+  manifests and sweeps, not a simulation kernel. Behavioral parity qualification (#28) remains; its
+  [comparison harness](docs/BEHAVIORAL_PARITY.md)
   and [legacy retirement checklist](docs/LEGACY_RETIREMENT.md) are now implemented; the measured
   full 100-run calibration exceeds the 60-second goal.
 - **Renderer readiness:** qualify native input/human acceptance for the new
@@ -458,6 +462,15 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --no-build --filter 
 # Run the same gate with coverage (coverlet.collector is already referenced)
 dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Performance" --collect:"XPlat Code Coverage" -- RunConfiguration.TreatNoTestsAsError=true
 ```
+
+For the fastest check of every foundation, with no display, run:
+
+```bash
+dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json --out runs
+```
+
+It prints one pass or fail line per scenario and writes an `index.html` of filmstrips. Add `--visual` to any run, replay or
+sweep for the same pictures. See [visual reports and the gallery](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
 
 For quick native visual feedback, run:
 
