@@ -21,7 +21,7 @@ the HUD telemetry reports. Its status line is built by
 - **Tick N recorded: K inputs, no truncation** (or **simulation query truncated**) is the selected
   boid's `Instrumentation.NeighborCounts` and `QueryTruncated` value for completed tick N.
 - **Displayed: D links, cap C** is what the overlay's fixed 128-entry buffers could draw. When
-  the display cap is reached it adds **reached, links omitted**: with `MaxNeighbors` above 128 the
+  fewer links are drawn than the tick recorded it adds **reached, links omitted**: with `MaxNeighbors` above 128 the
   tick can record more inputs than are shown.
 - **waiting for first completed tick** appears before any tick has completed, and **subject not
   recorded** when the selected boid was spawned after the last tick.

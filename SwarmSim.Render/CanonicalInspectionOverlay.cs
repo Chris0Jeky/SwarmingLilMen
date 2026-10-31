@@ -77,26 +77,27 @@ internal static class CanonicalInspectionOverlay
     internal readonly record struct InspectionQuery(SpatialQueryResult Result, string Status);
 
     // Recorded tick facts (what the simulation used) and displayed facts (what fits the overlay's
-    // fixed buffers) are reported separately: a display cap below the simulation's cap can omit links.
+    // fixed buffers) are reported separately. Links are omitted only when fewer are drawn than the
+    // tick recorded: a truncated candidate query alone omits nothing the simulation used.
     internal static string FormatStatus(ulong tick, bool hasCompletedTick, bool subjectRecorded, int recordedInputs,
-        bool recordedTruncated, int displayedLinks, int displayCap, bool displayCapped)
+        bool recordedTruncated, int displayedLinks, int displayCap)
     {
         if (!hasCompletedTick) return "Inspection: waiting for first completed tick";
         if (!subjectRecorded) return $"Tick {tick}: subject not recorded";
         return $"Tick {tick} recorded: {recordedInputs} inputs, {(recordedTruncated ? "simulation query truncated" : "no truncation")}"
-            + $" | Displayed: {displayedLinks} links, cap {displayCap}{(displayCapped ? " reached, links omitted" : "")}"
+            + $" | Displayed: {displayedLinks} links, cap {displayCap}{(displayedLinks < recordedInputs ? " reached, links omitted" : "")}"
             + " | Gray links: no applied rule";
     }
 
     internal static InspectionQuery Inspect(CanonicalWorld world, int subjectIndex, int[] neighbors, float[] weights)
     {
         ulong tick = world.TickCount;
-        if (world.LastTickInputs.IsEmpty) return new(default, FormatStatus(tick, false, false, 0, false, 0, 0, false));
-        if ((uint)subjectIndex >= (uint)world.LastTickInputs.Length) return new(default, FormatStatus(tick, true, false, 0, false, 0, 0, false));
+        if (world.LastTickInputs.IsEmpty) return new(default, FormatStatus(tick, false, false, 0, false, 0, 0));
+        if ((uint)subjectIndex >= (uint)world.LastTickInputs.Length) return new(default, FormatStatus(tick, true, false, 0, false, 0, 0));
         int capacity = Program.ComputeOverlayQueryCapacity(Math.Min(neighbors.Length, weights.Length), world.EffectiveMaxNeighbors);
         SpatialQueryResult query = world.QueryLastTickVisibleNeighbors(subjectIndex, neighbors.AsSpan(0, capacity), weights.AsSpan(0, capacity));
         return new(query, FormatStatus(tick, true, true, world.Instrumentation.NeighborCounts[subjectIndex],
-            world.Instrumentation.QueryTruncated[subjectIndex], query.Count, capacity, query.IsTruncated));
+            world.Instrumentation.QueryTruncated[subjectIndex], query.Count, capacity));
     }
 
     /// <summary>Keeps the inspected boid across recreation (order is preserved), clamping if it no longer exists.</summary>
