@@ -15,13 +15,13 @@ internal static class MetricCatalog
         CreatePlan(engine, requestedMetrics, 0, null, new RuntimeCostMetricProbe()).IsDeterministic;
 
     internal static MetricPlan CreatePlan(string engine, string[] requestedMetrics, int capacity,
-        CanonicalWorld? canonical, RuntimeCostMetricProbe runtimeCosts)
+        IHeadlessSimulation? simulation, RuntimeCostMetricProbe runtimeCosts)
     {
         ArgumentNullException.ThrowIfNull(requestedMetrics);
         if (requestedMetrics.Length == 0)
             throw new ArgumentException("At least one metric name must be requested.", nameof(requestedMetrics));
         var registry = new MetricRegistry();
-        foreach (IMetricProbe probe in CreateProbes(engine, requestedMetrics, capacity, canonical, runtimeCosts))
+        foreach (IMetricProbe probe in CreateProbes(engine, requestedMetrics, capacity, simulation, runtimeCosts))
             registry.Register(probe);
         return registry.CreatePlan(requestedMetrics);
     }
@@ -44,10 +44,10 @@ internal static class MetricCatalog
     }
 
     private static IMetricProbe[] CreateProbes(string engine, string[] requestedMetrics, int capacity,
-        CanonicalWorld? canonical, RuntimeCostMetricProbe runtimeCosts)
+        IHeadlessSimulation? simulation, RuntimeCostMetricProbe runtimeCosts)
     {
-        if (engine is not ("legacy" or "canonical" or "vicsek"))
-            throw new ArgumentException("Metric engine must be legacy, canonical or vicsek.", nameof(engine));
+        EngineDefinition definition = EngineRegistry.Find(engine)
+            ?? throw new ArgumentException($"Metric engine must be {EngineRegistry.NameList}.", nameof(engine));
         var nearest = new ExactNearestNeighborProbe(0);
         // Metadata registration is cheap. Allocate the four capacity-sized exact-analysis
         // buffers only when at least one of that probe's channels is requested.
@@ -57,13 +57,7 @@ internal static class MetricCatalog
         bool includeCentroids = requestedMetrics.Length == 0 ||
             requestedMetrics.Contains("centroidX", StringComparer.Ordinal) ||
             requestedMetrics.Contains("centroidY", StringComparer.Ordinal);
-        IMetricProbe[] common = [new MotionMetricProbe(includeCentroids), nearest, runtimeCosts];
-        // Polarization already is the Vicsek order parameter; the kinematic probes need no change.
-        if (engine is "legacy" or "vicsek") return common;
-        IMetricProbe boids = canonical is null
-            ? new BoidsRuleMetricProbe(new RuleInstrumentation(1))
-            : new CompletedStepBoidsMetricProbe(canonical);
-        return [.. common, boids];
+        return [new MotionMetricProbe(includeCentroids), nearest, runtimeCosts, .. definition.ExtraProbes(simulation)];
     }
 }
 

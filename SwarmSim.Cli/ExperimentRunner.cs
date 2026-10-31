@@ -79,7 +79,7 @@ internal static class ExperimentRunner
                 RequestedMetrics = observer.Plan.Channels.ToArray(),
                 MetricContractVersion = MetricCatalog.ContractVersion,
                 MetricsDeterministic = observer.Plan.IsDeterministic,
-                SpawnModel = RunManifest.SpawnModelFor(request.Engine),
+                SpawnModel = request.Definition.SpawnModel,
                 KinematicHashVersion = 1,
                 FinalKinematicHash = stateHash,
                 MetricsSha256 = metricsHash,

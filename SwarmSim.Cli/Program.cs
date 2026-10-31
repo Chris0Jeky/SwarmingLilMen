@@ -13,11 +13,11 @@ public static class Program
             RunOptions options = RunOptions.Parse(args);
             if (options.Help)
             {
-                output.WriteLine("""
+                output.WriteLine($"""
                     SwarmSim.Cli — deterministic headless experiments
                     Usage: dotnet run --project SwarmSim.Cli -- [options]
 
-                      --engine legacy|canonical|vicsek
+                      --engine {EngineRegistry.NameChoices}
                                                  Engine and native config schema (default: canonical)
                       --scenario NAME            Shared boids scenario before file/seed overrides
                       --config FILE              Native engine JSON configuration
@@ -36,7 +36,7 @@ public static class Program
                     --visual adds filmstrip.png and report.html (self-contained, no GPU or display needed);
                     it never changes the simulation, metrics.csv or hashes. Valid with --manifest and --sweep.
                     Sweeps: summary.csv and replayable cell directories in a new sweep-<id> child.
-                    Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians).
+                    Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians); aco files use Deposit and Evaporation (Deposit 0 is the control).
                     Default metrics: population,meanSpeed,polarization.
                     Runtime cost metrics are nondeterministic and disable exact manifest replay.
                     Exit codes: 0 success, 1 run/config/replay/I/O failure, 2 invalid usage.

@@ -16,7 +16,7 @@ internal sealed class ExperimentMetrics
     {
         _simulation = simulation;
         Plan = MetricCatalog.CreatePlan(request.Engine, request.RequestedMetrics, simulation.MetricCapacity,
-            simulation.Canonical, _runtimeCosts);
+            simulation.Simulation, _runtimeCosts);
         _agents = new KinematicSample[simulation.MetricCapacity];
         _values = new double[Plan.ChannelCount];
         Sample(); // Validate initial finite state and the selected probes before output creation.

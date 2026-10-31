@@ -1,4 +1,5 @@
 using System.Text.Json;
+using SwarmSim.Core.Aco;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Vicsek;
 
@@ -93,6 +94,16 @@ public static class ConfigurationResolver
         IReadOnlyDictionary<string, JsonElement>? overrides = null,
         VicsekSettings? defaults = null) => VicsekSettings.FromJson(
             ResolveJson(defaults ?? new VicsekSettings(), null, filePath, overrides, canonical: false));
+
+    /// <summary>
+    /// Resolves ant colony settings as defaults, file, explicit overrides. Like Vicsek, this
+    /// foundation has no scenario layer.
+    /// </summary>
+    public static AntColonySettings ResolveAntColonySettings(
+        string? filePath = null,
+        IReadOnlyDictionary<string, JsonElement>? overrides = null,
+        AntColonySettings? defaults = null) => AntColonySettings.FromJson(
+            ResolveJson(defaults ?? new AntColonySettings(), null, filePath, overrides, canonical: false));
 
     private static string ResolveJson<T>(
         T defaults,

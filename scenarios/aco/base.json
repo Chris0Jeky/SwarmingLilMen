@@ -1,0 +1,20 @@
+{
+  "Evaporation": 0.01,
+  "FieldCadence": 1,
+  "Speed": 1,
+  "TurnNoise": 0.3,
+  "SensorAngle": 1,
+  "SensorDistance": 12,
+  "FieldColumns": 60,
+  "FieldRows": 60,
+  "NestX": 40,
+  "NestY": 60,
+  "NestRadius": 4,
+  "FoodX": 80,
+  "FoodY": 60,
+  "FoodRadius": 6,
+  "FoodAmount": 1000000,
+  "WorldWidth": 120,
+  "WorldHeight": 120,
+  "FixedDeltaTime": 1
+}

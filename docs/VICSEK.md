@@ -3,7 +3,8 @@
 `VicsekWorld` is the second foundation in the C# engine and the first honest test of the kernel
 claim in [epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10). It shares kinematics
 and neighborhood queries with boids and replaces all steering. The inventory below is the main
-result: what the existing seams carried, what had to widen and what was bypassed.
+result: what the existing seams carried, what had to widen and what was bypassed. It stays in this
+file, one inventory for both later foundations; the [ACO model and evidence](ACO.md) have their own.
 
 This is a **finite noise-response result, not a phase-transition measurement**. No system-size or
 convergence study has been run.
@@ -135,7 +136,7 @@ exact boids goldens still pass.
 | `SimulationKinematicHash` | New overload sharing one span helper | Version-1 bytes are unchanged |
 | `ConfigurationResolver` | `ResolveVicsekSettings` on the existing generic layering | The private `canonical` flag and the boids-only scenario table are not foundation-neutral |
 | `RunManifest` | Spawn model is per engine; Vicsek requires schema 2 | Replay had assumed a single spawn model |
-| `RunRequest`, `PreparedSimulation`, `RunOptions`, `MetricCatalog`, `SweepPlan` | One more branch in each | **Engine is a closed list spread across seven CLI files.** Two engines hid this; a fourth would pay for all of it again. |
+| `RunRequest`, `PreparedSimulation`, `RunOptions`, `MetricCatalog`, `SweepPlan` | One more branch in each, at the time | **Engine was a closed list spread across seven CLI files.** ACO replaced it; see below. |
 
 ### Bypassed
 
@@ -153,9 +154,64 @@ have the same position and velocity shape, so a type parameter would solve nothi
 carries an unused `Group` byte in this foundation. Agent-state generics stay deferred until a
 foundation has a genuinely different shape.
 
-The next candidate is a small simulation interface over `Step`, `Capture`, `KinematicHash`, extents
-and capacity to replace the seven-file branching. Three foundations will justify it; ACO (#30)
-should make that call from its own needs.
+## Seam inventory update: ACO
+
+ACO (#30) is the first foundation with a different agent shape and non-agent state. Boids and
+Vicsek behaviour did not change: `Canonical/`, legacy `World`, `Systems/` and `Vicsek/` have no
+edits, and the goldens and Vicsek tests pass unchanged.
+
+### What the registry replaced
+
+Four engines met the rule of three, so the branching was removed before ACO was added. One
+`EngineDefinition` per engine (name, spawn model, minimum manifest schema, scenario support,
+resolve, default settings JSON, extra probes, factory) and one `IHeadlessSimulation` adapter now
+live in `SwarmSim.Cli/Engines.cs`. `RunOptions`, `RunRequest`, `PreparedSimulation`, `MetricCatalog`,
+`RunManifest`, `SweepPlan` and `ExperimentRunner` consult the registry; settings pass through the
+spine as an opaque object. There is no plugin system, reflection or public Core API. Final hashes
+and `metrics.csv` hashes of all three existing engines were byte-identical before and after.
+
+With the registry, adding the engine outside `Core/Aco/` took one definition, one adapter of 18
+lines, one resolver method and one hash overload. `ExperimentRunner`, `ExperimentMetrics`,
+`SweepPlan`, `SweepRunner`, `SweepSummary`, `RunManifest`, `RunOptions` and the visual report needed
+no ACO edit at all.
+
+One wart remains: a `RunRequest` constructor taking the old legacy and canonical arguments exists
+for two existing tests, which were kept unchanged on purpose.
+
+### What the field forced
+
+| Finding | Detail |
+|---|---|
+| **No non-agent state existed anywhere** | `ScalarField` is new: one sealed class, not `IField`, no layers. |
+| **The kernel has no scheduler** | The agent and field phases are distinct inside `AntColonyWorld`. `IHeadlessSimulation.Step` hides them. Two field foundations would earn a shared phase; one does not. |
+| **The kinematic hash cannot see the field** | Version 1 covers motion only, by design. Field, load and food divergence reaches it only through later motion. The gap is recorded, tested and left unwidened; field bits have their own repeat test. |
+| **`MetricFrame` carries agents only** | World-state channels need a probe holding the world, as the boids instrumentation probe already did. Two probes now take that shape, so a world view in the frame is a candidate at the next one. |
+| **Probes need a metadata form** | Selection is validated before any world exists, so a probe must construct without one. `AntColonyMetricProbe` accepts null and refuses to sample. |
+| **The filmstrip sees kinematics only** | It works unchanged and draws ants well, but neither the field nor the nest and food. Pheromone visualization is a stated non-goal. |
+
+### Reused unchanged by ACO
+
+| Seam | How ACO uses it |
+|---|---|
+| `RandomStreams`, `Pcg32Rng` | One stream per ant, with draw counts conditional on state. The first real stress test of per-agent streams passed with no contract change. |
+| `MetricRegistry`, `MetricCsvWriter`, `ExperimentMetrics` | No change |
+| `MotionMetricProbe`, exact nearest-neighbor probe | Foundation-neutral through `KinematicSample` |
+| `ExperimentRunner`, `SweepRunner`, `SweepSummary`, `--visual` | No change; `Deposit` is an ordinary numeric axis |
+| `MathUtils.WrapPosition`, `MinimumImageDelta`, `Vec2` | Periodic box |
+
+### Bypassed by ACO
+
+| Seam | Why |
+|---|---|
+| `ISpatialIndex` | **Ants need no neighbor query at all.** They interact only through the field. The index stays typed on `Boid`; ACO supplies no reason to change that, and is no evidence for agent-state generics. |
+| `Boid` | Heading and load are the state; velocity is derived for analysis. |
+| `CanonicalWorld.Step` and force composition | As for Vicsek. |
+| `SimulationRunner` | Still typed on legacy `World`. |
+
+### What was not earned
+
+Agent-state generics, a scheduler abstraction, `IField`, field layers and diffusion all stay
+deferred. Each has exactly one consumer or none.
 
 ## Limits
 
