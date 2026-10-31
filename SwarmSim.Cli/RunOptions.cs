@@ -47,8 +47,8 @@ internal sealed class RunOptions
             {
                 case "--engine":
                     options.Engine = value.ToLowerInvariant();
-                    if (options.Engine is not ("legacy" or "canonical"))
-                        throw new UsageException("--engine must be legacy or canonical.");
+                    if (options.Engine is not ("legacy" or "canonical" or "vicsek"))
+                        throw new UsageException("--engine must be legacy, canonical or vicsek.");
                     break;
                 case "--config": options.ConfigPath = value; break;
                 case "--scenario":
@@ -74,6 +74,8 @@ internal sealed class RunOptions
             }
         }
 
+        if (options.Engine == "vicsek" && options.Scenario is not null)
+            throw new UsageException("--scenario names boids recipes; the vicsek engine takes --config.");
         if (options.SweepPath is not null && seen.Any(option =>
             option is not ("--sweep" or "--out" or "--visual" or "--help")))
             throw new UsageException("--sweep can be combined only with --out, --visual or --help; all run settings belong in the sweep file.");
