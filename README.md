@@ -469,7 +469,7 @@ For the fastest check of every foundation, with no display, run:
 dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json --out runs
 ```
 
-It prints a pass/fail table and writes one page of filmstrips. Add `--visual` to any run, replay or
+It prints one pass or fail line per scenario and writes an `index.html` of filmstrips. Add `--visual` to any run, replay or
 sweep for the same pictures. See [visual reports and the gallery](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
 
 For quick native visual feedback, run:

@@ -72,7 +72,7 @@ or errors. The historical counts below identify the specific additions that prod
   pheromone) in 1.8 s of run time on the recorded host, prints one PASS/FAIL line per entry, and
   publishes `index.html` plus `summary.json` over ordinary replayable run directories. Bands are
   coarse final-quarter-mean sanity checks set from seeds 1-10, not determinism or science gates;
-  the locked Vicsek and ACO tests remain the evidence. 43 `GalleryTests` (including the committed
+  the locked Vicsek and ACO tests remain the evidence. 44 `GalleryTests` (including the committed
   recipe in about 2 s on the recorded host); inverting a bound, widening the quarter window and reversing the failure sort
   each fail tests. Filmstrips seen by eye on one machine only. See
   [behaviour gallery](docs/HEADLESS_EXPERIMENTS.md#behaviour-gallery).

@@ -218,7 +218,7 @@ extent, so any foundation that implements `PreparedSimulation.Capture` gets it.
 `--gallery` answers "does every foundation still behave?" in a few seconds with no display:
 
 ```powershell
-dotnet run --project SwarmSim.Cli -c Release --no-build -- --gallery scenarios/gallery.json --out runs
+dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json --out runs
 ```
 
 The committed recipe [`scenarios/gallery.json`](../scenarios/gallery.json) runs six short entries

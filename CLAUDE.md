@@ -23,6 +23,7 @@ Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default rendere
 have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/` and `Core/Aco/` are separate
 foundations on the same experiment spine (`SwarmSim.Cli/Engines.cs`, one registry entry per engine).
 They share metrics, RNG, manifests, sweeps and reports, not a simulation kernel: see `docs/VICSEK.md`.
+A new foundation gets its own `Core/<Name>/` and a registry entry, never a place inside `Core/Canonical/`.
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
 **Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
@@ -45,11 +46,12 @@ dotnet run --project SwarmSim.Cli -c Release --no-build -- --engine canonical --
 previously compiled assemblies, so after any source or test edit it can pass while the current
 sources fail to compile or behave differently. Rebuild first, or drop the flag.
 
-Fastest behaviour check, about 3 seconds with no display. Run it after any simulation change, then
-read the printed table; `--visual` on any run or `--manifest` replay adds a `filmstrip.png` you can open:
+Fastest behaviour check, about 3 seconds plus any rebuild, with no display. Run it after any simulation
+change, then read the printed table; `--visual` on any run or `--manifest` replay adds a `filmstrip.png`
+you can open:
 
 ```powershell
-dotnet run --project SwarmSim.Cli -c Release --no-build -- --gallery scenarios/gallery.json --out runs
+dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json --out runs
 ```
 
 Its bands are coarse sanity checks. The locked Vicsek and ACO tests and the goldens remain the evidence.
