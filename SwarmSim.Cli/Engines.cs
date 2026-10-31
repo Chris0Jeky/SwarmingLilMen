@@ -74,7 +74,8 @@ internal sealed class EngineDefinition
         "vicsek", "vicsek-uniform-v1", minimumManifestSchema: 2, acceptsScenario: false,
         (_, file, overrides, defaults) => ConfigurationResolver.ResolveVicsekSettings(file, overrides, defaults),
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
-        request => new VicsekSimulation(request), _ => []);
+        request => request.AgentCount <= VicsekWorld.MaxAgents ? new VicsekSimulation(request)
+            : throw new ArgumentException($"--agents exceeds the Vicsek maximum of {VicsekWorld.MaxAgents}."), _ => []);
 
     internal static readonly EngineDefinition Aco = Native<AntColonySettings>(
         "aco", "aco-nest-v1", minimumManifestSchema: 2, acceptsScenario: false,

@@ -34,6 +34,16 @@ The noise interval is half-open because the generator's float adapter is. Headin
 platform trigonometry, so exact traces are promised only for repeats on the same platform and
 runtime. Vicsek has no committed golden trace.
 
+## What it looks like
+
+`--visual` renders any run. At low noise (η = 0.5) random headings become one coherent flock:
+
+![Low-noise filmstrip](verification/vicsek/low-noise.png)
+
+At high noise (η = 5) headings stay disordered:
+
+![High-noise filmstrip](verification/vicsek/high-noise.png)
+
 ## Run it
 
 ```powershell
@@ -97,6 +107,7 @@ Each change was applied to `VicsekWorld.cs`, tested, then restored.
 | Count self twice | 5 |
 | Read neighbors updated earlier in the tick | 3 |
 | Advance position with the new velocity | 1 |
+| Draw noise only for agents with neighbors | 1 |
 
 The last mutation first survived, because `Assert.Equal(float, float, 5f)` is a tolerance of five
 rather than five decimal places. The assertions now pass an integer precision.
@@ -115,7 +126,7 @@ exact boids goldens still pass.
 | `Boid`, `Vec2`, `MathUtils.WrapPosition` | Position, velocity and the periodic box |
 | `MotionMetricProbe` and exact nearest-neighbor probe | All channels work unchanged. `polarization` is the order parameter. |
 | `MetricRegistry`, `MetricCsvWriter`, `ExperimentMetrics` | No change |
-| `ExperimentRunner` staging, publish and replay verification | No logic change |
+| `ExperimentRunner` staging, publish and replay verification | Reads the per-engine spawn model; otherwise unchanged |
 | `SweepRunner`, `SweepSummary` | No change; `Noise` is an ordinary numeric axis |
 
 ### Widened

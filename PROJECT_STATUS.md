@@ -38,13 +38,8 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,234 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,246 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
-**One known instability:** existing zero-allocation tests read a single sample of the thread counter
-and fail intermittently on a loaded Windows desktop (3 of 20 full runs; 1 of 15 with every ACO and
-field test excluded), each time a different test among `CanonicalInspectionTests`, `Pcg32RngTests`,
-`LegacyCapacityGrowthTests` and `MetricsContractTests`. The ACO tests take the least of several
-samples instead and did not fail in those 20 runs. The older tests are unchanged.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
   `AntColonyWorld` runs a minimal foraging colony with its own ant shape, one retained named stream
@@ -63,11 +58,11 @@ samples instead and did not fail in those 20 runs. The older tests are unchanged
   [the seam inventory](docs/VICSEK.md#seam-inventory-update-aco).
 - **Vicsek foundation:** `VicsekWorld` runs the original synchronous model through the unchanged
   `ISpatialIndex`, named streams and `polarization` probe, with no change to `Canonical/` or legacy
-  code. Twenty-five analytical and CLI tests pin old-state reads, old-velocity positions, self
+  code. Twenty-seven analytical and CLI tests pin old-state reads, old-velocity positions, self
   counted once, radian noise, seams, the zero-resultant rule, untruncated neighborhoods, grid/naive
   equivalence, repeat/replay bytes and zero warm-tick allocation. Five locked seeds (N=100, density
   4) measure order 0.988 at η=0.5 and 0.126-0.136 at η=5, inside bands committed before those seeds
-  ran. Six source mutations fail. This is a finite noise-response result, not a phase-transition
+  ran. Seven source mutations fail. This is a finite noise-response result, not a phase-transition
   measurement. The seam inventory finds engine dispatch spread across seven CLI files and force
   composition unable to express heading replacement. See
   [the model, evidence and seam inventory](docs/VICSEK.md).
@@ -190,7 +185,8 @@ samples instead and did not fail in those 20 runs. The older tests are unchanged
   A 256-boid/1,000-warm-tick regression fell from 3,144,000 allocated bytes to zero, including a
   capture-every-tick variant. The old `CapturePerceptionSnapshot()` is an allocating compatibility
   adapter. The canonical renderer now explicitly reuses telemetry once per frame. Its overlay
-  labels the fresh current-position query separately from recorded tick truncation. Headless tests
+  status line reports the recorded tick's inputs and truncation separately from the displayed
+  links and 128-entry display cap. Headless tests
   cover HUD value parity and recreation; actual native Linux input and inspected screenshots are
   now recorded in [native verification](docs/NATIVE_UI_VERIFICATION.md). Human sign-off and other
   platforms' GUI behavior are not inferred from that evidence.

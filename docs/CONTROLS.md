@@ -68,7 +68,8 @@ Spawning respects available capacity. Mouse and Space messages report the actual
 ## Canonical Renderer Only
 
 - **O** – Toggle the selected-boid interaction overlay
-- **Tab** – Cycle the boid inspected by the interaction overlay
+- **Tab** – Cycle the boid inspected by the interaction overlay. Parameter and preset changes
+  keep the inspected boid when its index still exists (recreation preserves order).
 - **S / A / C** – Independently enable/disable the named separation / alignment / cohesion rules.
   Their ON/OFF state is always visible and survives parameter changes, presets and reset.
 - **8**, then **↑/↓** – Adjust FOV by 15 degrees; hold **Shift** for 1-degree steps.
@@ -83,7 +84,9 @@ and cohesion respectively. They are inputs to aggregate rules, **not per-neighbo
 Separation links exclude coincident/tiny-distance neighbors and the zero-influence radius boundary.
 Disabled, zero-result or budget-suppressed rules have no colored links; gray links show remaining
 visible neighbors. The selected-boid panel reports the three applied magnitudes and the tick number.
-The bounded query retains the simulation's neighbor cap and labels truncation explicitly.
+The status line reports the recorded tick's input count and truncation separately from the links
+displayed and the display cap. The overlay owns 128-entry buffers, so a custom `MaxNeighbors` above
+128 can record more inputs than are drawn; the line then says links were omitted.
 
 Rule switches use `SetPolicyEnabled`, not weight zero. Whisker avoidance, wander and velocity stages
 retain their own behavior: switching off the three named rules does not switch off those enhancements.
@@ -120,9 +123,10 @@ not maintain another list of preset names.
 `RendererControlsTests` covers all pressed-key bindings, both Shift keys, mouse controls,
 cross-engine exclusions, canonical FOV adjustment, adjustment/printing semantics,
 the actual legacy friction speed-model distinction, and bounded spawn counts. The CLI-help
-transcript is also checked against the README. These are headless checks; manual inspection of
-both overlays remains an acceptance step for
-[issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+transcript is also checked against the README. [Native verification](NATIVE_UI_VERIFICATION.md)
+records automated Linux UI checks of both overlays and controls, completing the synchronization
+tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39). Human sign-off,
+Windows/macOS GUI coverage and renderer FPS remain unverified.
 
 `CanonicalInspectionTests` covers named key-to-rule effects, independent classic contributions,
 switch persistence, last-tick query identity/caps, unchanged future trajectories, zero warm query

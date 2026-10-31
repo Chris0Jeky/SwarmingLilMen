@@ -115,15 +115,16 @@ public sealed class VicsekModelTests
     {
         VicsekSettings quiet = new() { Noise = 0.1f, Seed = 5u };
         VicsekSettings loud = new() { Noise = 0.2f, Seed = 5u };
-        Vec2[] positions = [new(1f, 1f), new(5f, 5f), new(8f, 2f)]; // Mutually out of range.
-        float[] headings = [0f, 0f, 0f];
+        // Two isolated agents and an interacting pair: a draw skipped for either kind shifts the rest.
+        Vec2[] positions = [new(1f, 1f), new(5f, 5f), new(5.5f, 5f), new(8f, 2f)];
+        float[] headings = [0f, 0f, 0f, 0f];
         var first = new VicsekWorld(quiet, positions, headings);
         var second = new VicsekWorld(loud, positions, headings);
         first.Step();
         second.Step();
 
         for (int i = 0; i < positions.Length; i++)
-            Assert.Equal(Heading(first.Agents[i]) * 2f, Heading(second.Agents[i]), 5);
+            AssertAngle(Heading(first.Agents[i]) * 2f, Heading(second.Agents[i]), 1e-5f);
     }
 
     [Fact]

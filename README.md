@@ -261,11 +261,9 @@ or a missing, empty or malformed option value (for example `-n abc`, `-n 0`, `--
 value. A usage error takes precedence over `--help`, `--version` and `--list-presets`. Agent counts
 accept surrounding whitespace and a leading `+` (`-n +5`).
 
-> **Known executable-help defect:**
->
-> - The copied F12 instruction applies only to the legacy renderer. Canonical mode uses **O** for
->   its interaction overlay and **Tab** to cycle the tracked boid; executable/runtime-help alignment
->   is tracked in [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39).
+Both renderer modes use the shared [control inventory](docs/CONTROLS.md#executable-inventory-and-verification)
+for input and help. [Native verification](docs/NATIVE_UI_VERIFICATION.md) records automated Linux UI
+checks; human sign-off, Windows/macOS GUI coverage and renderer FPS remain unverified.
 
 Example:
 ```bash

@@ -63,6 +63,23 @@ public sealed class VicsekCliTests
     }
 
     [Fact]
+    public void ImpossiblePopulationFailsAsARunErrorBeforeAllocating()
+    {
+        var result = SweepCliTests.Run("--engine", "vicsek", "--agents", "2000000000", "--ticks", "1");
+        Assert.Equal(1, result.Code);
+        Assert.Contains("--agents exceeds", result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void AnotherEnginesConfigurationIsRefused()
+    {
+        using var files = new SweepCliTests.SweepFiles();
+        var result = SweepCliTests.Run("--engine", "vicsek", "--config", files.Base, "--out", files.Output);
+        Assert.Equal(1, result.Code);
+        Assert.False(Directory.Exists(files.Output));
+    }
+
+    [Fact]
     public void BoidsRuleMetricsAreNotAdvertised()
     {
         var result = SweepCliTests.Run("--engine", "vicsek", "--list-metrics");
