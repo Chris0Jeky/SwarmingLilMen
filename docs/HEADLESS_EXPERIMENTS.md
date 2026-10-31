@@ -43,6 +43,7 @@ v1 sweep axes remain numeric scalar fields.
 | `--out DIRECTORY` | `runs` | Parent of a new run directory; existing runs are preserved |
 | `--manifest FILE` | None | Replays a completed manifest into a new run directory |
 | `--sweep FILE` | None | Sequential parameter sweep into a new sweep directory; combine only with `--out`, `--visual` or `--help` |
+| `--gallery FILE` | None | Runs a curated behaviour gallery with pass/fail bands; combine only with `--out` or `--help`; see [behaviour gallery](#behaviour-gallery) |
 | `--visual` | Off | Also write `filmstrip.png` and `report.html` per run (and `index.html` per sweep); see [visual reports](#visual-reports) |
 | `--help` | — | Prints usage |
 
@@ -211,6 +212,61 @@ never touches the simulation, so `metrics.csv`, the hashes and the RNG are uncha
 PNG bytes are repeatable on one machine. Pictures are written through the same staging directory,
 so a failed render publishes nothing. The renderer needs only positions, velocities and world
 extent, so any foundation that implements `PreparedSimulation.Capture` gets it.
+
+## Behaviour gallery
+
+`--gallery` answers "does every foundation still behave?" in a few seconds with no display:
+
+```powershell
+dotnet run --project SwarmSim.Cli -c Release --no-build -- --gallery scenarios/gallery.json --out runs
+```
+
+The committed recipe [`scenarios/gallery.json`](../scenarios/gallery.json) runs six short entries
+through the ordinary `ExperimentRunner` with pictures on: a tuned canonical flock
+(`scenarios/gallery/canonical-flock.json`), legacy `balanced`, Vicsek at low and high noise and
+the ant colony with and without pheromone. A recipe is `{"entries": [...]}`; each entry requires
+`name` (a lowercase slug), `engine`, `agents`, `ticks` (at least 1), `seed`, `metrics` and `expect`.
+`config` (a native file, relative to the recipe) and `settings` (inline fields applied over it) are
+optional. `expect` maps a metric you record to `min` and/or `max`, both inclusive, bounding the
+**mean of that metric over the final quarter of ticks**: the last `max(1, floor(T / 4))` ticks, empty
+(undefined) cells ignored, so a run too short for a quarter averages its final tick and a window with
+no defined cell is undefined, which fails every bound. Unknown or duplicate fields and names, unknown
+metrics, an expectation on a metric the entry does not record, and non-deterministic metrics are
+errors (exit 1) before any output is created.
+
+Output is a new `gallery-<id>/` child holding one ordinary replayable run directory per entry
+(`01-<name>/` and so on; `--manifest` replays each with verified hashes), `summary.json`
+(entry, engine, pass, run directory and every expectation with its bounds and measured value) and
+`index.html`: one self-contained card per entry with its filmstrip linking to that run's
+`report.html`, failures sorted to the top under a summary line, light and dark, phone width.
+Standard output starts with the gallery directory, then one line per entry and a total:
+
+```text
+PASS  vicsek-low-noise  polarization 0.988 (>= 0.8)    343 ms
+```
+
+Exit code `0` means every expectation holds, `1` means any band failed (everything is still
+published so the failure can be opened) or the recipe or a run failed (nothing is published), and
+`2` is a usage error. Only `--out` and `--help` combine with `--gallery`.
+
+The bands are **behavioural sanity checks, deliberately coarse** (each sits well outside the
+range measured over seeds 1-10, so they should hold on Windows and Linux) on one seed per entry. They are not determinism
+or science gates and do not replace the locked Vicsek and ACO tests, which stay the evidence for
+those models; the ACO on/control entries are absolute `aco.foodReturned` bands, not a comparison.
+A band that fails means look at the picture, not that a number was mis-tuned.
+
+| Entry (ticks) | Metric | Measured, seeds 1-10 | Band |
+| --- | --- | --- | --- |
+| `canonical-flock` (300, 150 agents) | `polarization` | 0.794-0.963 | min 0.6 |
+| `legacy-balanced` (300, 300 agents) | `meanSpeed` | 6.833-7.336 | 4 to 10.5 |
+| `vicsek-low-noise` (2000, 100 agents) | `polarization` | 0.987-0.989 | min 0.8 |
+| `vicsek-high-noise` (2000, 100 agents) | `polarization` | 0.121-0.147 | max 0.4 |
+| `aco-pheromone` (2000, 300 ants) | `aco.foodReturned` | 2026-2099 | min 1200 |
+| `aco-control` (2000, 300 ants) | `aco.foodReturned` | 399-451 | 150 to 800 |
+
+`foodReturned` is cumulative, so its final-quarter mean sits below the final count. The population
+entries pin the agent count exactly. The recipe seed is 7 for every entry; the measuring seeds were
+not chosen to pass.
 
 ## Replay
 
