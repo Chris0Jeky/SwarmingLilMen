@@ -57,7 +57,7 @@ internal sealed class GalleryPlan
     private static readonly string[] EntryFields = ["name", "engine", "config", "settings", "agents", "ticks", "seed", "metrics", "expect"];
     private static readonly string[] RequiredEntryFields = ["name", "engine", "agents", "ticks", "seed", "metrics", "expect"];
     private const string SeedField = "Seed";
-    private static readonly Regex Slug = new("^[a-z0-9]+(-[a-z0-9]+)*$", RegexOptions.CultureInvariant);
+    private static readonly Regex Slug = new(@"\A[a-z0-9]+(-[a-z0-9]+)*\z", RegexOptions.CultureInvariant);
 
     private GalleryPlan(GalleryEntry[] entries) => Entries = Array.AsReadOnly(entries);
 

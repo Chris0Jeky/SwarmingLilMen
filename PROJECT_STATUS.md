@@ -38,7 +38,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,293 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,294 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -72,7 +72,7 @@ or errors. The historical counts below identify the specific additions that prod
   publishes `index.html` plus `summary.json` over ordinary replayable run directories. Bands are
   coarse final-quarter-mean sanity checks set from seeds 1-10, not determinism or science gates;
   the locked Vicsek and ACO tests remain the evidence. 43 `GalleryTests` (including the committed
-  recipe under 5 s); inverting a bound, widening the quarter window and reversing the failure sort
+  recipe in about 2 s on the recorded host); inverting a bound, widening the quarter window and reversing the failure sort
   each fail tests. Filmstrips seen by eye on one machine only. See
   [behaviour gallery](docs/HEADLESS_EXPERIMENTS.md#behaviour-gallery).
 - **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
