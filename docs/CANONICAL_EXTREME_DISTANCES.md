@@ -92,7 +92,8 @@ directory. This is an explicit exceptional-scale correctness change, not a golde
 | Average neighbor distance | Recovers a representable mean when a local/world float sum overflows | Finite sums retain their established float rounding; this is not a correctly rounded arbitrary-precision average |
 | Partial-FOV filtering | Recovers a direction when a finite displacement's squared length overflows | Ordinary normalization and the established nearly-zero cutoff remain unchanged; see the follow-up below |
 | Shaped avoidance and both separation-rule APIs | Unchanged | Their direct squared-distance calculations still require their own bounded numeric review |
-| Cohesion and other generic vector operations | Unchanged | Normalization, magnitude clamping and extreme controls are outside this fix |
+| `Vec2.ClampMagnitude` | Recovers finite-component squared overflow with a double comparison/scale | Ordinary float arithmetic, nonfinite input behavior and resolver rejection remain unchanged; [separate clamp proof](CANONICAL_VECTOR_CLAMP.md) |
+| Cohesion and other generic vector operations | Unchanged | Generic normalization, squared underflow, finite-square scaling and extreme controls remain outside the bounded clamp correction |
 
 The original extreme-distance cases use full-circle FOV; the follow-up below adds partial-FOV cases.
 This evidence does not establish that
