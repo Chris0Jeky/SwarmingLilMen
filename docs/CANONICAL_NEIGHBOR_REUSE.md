@@ -69,6 +69,10 @@ dotnet run --project tools/CompositionCost/CompositionCost.csproj -c Release -- 
 dotnet run --project tools/CompositionCost/CompositionCost.csproj -c Release -- --filter '*AgentCount: 50000)' --warmupCount 3 --iterationCount 5 --launchCount 1 --invocationCount 64 --unrollFactor 1 --runtimes net8.0 --artifacts BenchmarkDotNet.Artifacts/reuse-50k
 ```
 
+Future comparisons can use the opt-in [evidence-bundle driver](COMPOSITION_EVIDENCE.md) to retain
+raw measurements and source/build identities around the unchanged harness. A complete receipt
+does not qualify performance or replace the limitations on these observations.
+
 The measured commands additionally selected that SDK executable with `--cli <dotnet-path>`.
 Every command selected exactly one case. Error below is half the 99.9% confidence interval.
 

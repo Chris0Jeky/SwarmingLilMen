@@ -356,6 +356,14 @@ identify the cause of the BDN reading. The nonzero observation is retained rathe
 away. These noisy cloud measurements do not establish a performance improvement or a universal
 zero-allocation promise.
 
+An opt-in [CompositionCost evidence collector](docs/COMPOSITION_EVIDENCE.md) now retains raw
+workload/allocation records, exact commands, selected SDK and child runtime/GC metadata, source
+content fingerprints, and hashes of the actual executed child build and bundle artifacts. Its
+35-test Python suite and a Linux single-invocation Dry capture pass. A complete receipt proves
+that the requested evidence was collected; it does not qualify performance or explain the earlier
+allocation sample. The raw byte/operation count is kept separately from BDN's corrected B/op.
+Future matched investigations for #20/#27 can use the same capture contract on both source revisions.
+
 The composition change uses a committed [controlled benchmark wrapper](tools/CompositionCost/Program.cs)
 around the same canonical benchmark. On the host/runtime above, matching 64-invocation runs
 measured the following complete-tick means (all rows measured zero allocated bytes):
