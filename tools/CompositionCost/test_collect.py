@@ -29,7 +29,7 @@ REPORT = {
         "Parameters": "AgentCount=1000", "FullName": "CompositionCostBenchmarks.Step(AgentCount: 1000)",
         "HardwareIntrinsics": "fixture", "Statistics": {"Mean": 15625},
         "Memory": {"Gen0Collections": 0, "Gen1Collections": 0, "Gen2Collections": 0,
-                   "TotalOperations": 64, "BytesAllocatedPerOperation": 5.25},
+                   "TotalOperations": 64, "BytesAllocatedPerOperation": 5},
         "Measurements": [
             {"IterationMode": "Workload", "IterationStage": "Actual", "LaunchIndex": 1,
              "IterationIndex": index, "Operations": 64, "Nanoseconds": 1000000}
@@ -54,8 +54,22 @@ WorkloadActual   5: 64 op, 1000000.00 ns, 15625.00 ns/op
 
 
 class CompletenessTests(unittest.TestCase):
-    def validate(self, report=None, console=CONSOLE, agents=(1000,)):
-        return collect.validate_results(REPORT if report is None else report, console, agents, False, 64)
+    def validate(self, report=None, console=CONSOLE, agents=(1000,), invocations=64):
+        return collect.validate_results(REPORT if report is None else report, console, agents, False, invocations)
+
+    def allocation_case(self, allocated, operations, per_operation):
+        report = copy.deepcopy(REPORT)
+        benchmark = report["Benchmarks"][0]
+        benchmark["DisplayInfo"] = DISPLAY.replace("InvocationCount=64", f"InvocationCount={operations}")
+        benchmark["Statistics"]["Mean"] = 1000000 / operations
+        benchmark["Memory"].update(TotalOperations=operations, BytesAllocatedPerOperation=per_operation)
+        for row in benchmark["Measurements"]:
+            row["Operations"] = operations
+        console = (CONSOLE.replace("InvocationCount=64", f"InvocationCount={operations}")
+                   .replace("64 op,", f"{operations} op,")
+                   .replace("15625.00 ns/op", f"{1000000 / operations:.2f} ns/op")
+                   .replace("// GC:  0 0 0 336 64", f"// GC:  0 0 0 {allocated} {operations}"))
+        return report, console
 
     def test_complete_nonzero_allocation_is_evidence_not_a_performance_failure(self):
         cases, errors = self.validate()
@@ -65,12 +79,71 @@ class CompletenessTests(unittest.TestCase):
         self.assertEqual("/fixture in progress/child", cases[0]["binary_directory"])
         self.assertEqual("Concurrent Workstation", cases[0]["gc"])
 
-    def test_raw_bytes_are_not_reconstructed_from_corrected_per_operation_value(self):
-        report = copy.deepcopy(REPORT)
-        report["Benchmarks"][0]["Memory"]["BytesAllocatedPerOperation"] = 0
-        cases, errors = self.validate(report)
+    def test_raw_bytes_are_not_reconstructed_from_rounded_per_operation_value(self):
+        cases, errors = self.validate()
         self.assertEqual([], errors)
         self.assertEqual(336, cases[0]["raw_gc"]["allocated_bytes"])
+        self.assertEqual(5, cases[0]["memory"]["BytesAllocatedPerOperation"])
+        self.assertNotEqual(336, 5 * cases[0]["memory"]["TotalOperations"])
+
+    def test_dotnet8_per_operation_allocation_must_match_raw_bytes(self):
+        for value in (0, 6, 5.25):
+            with self.subTest(value=value):
+                report = copy.deepcopy(REPORT)
+                report["Benchmarks"][0]["Memory"]["BytesAllocatedPerOperation"] = value
+                self.assertTrue(self.validate(report)[1])
+
+    def test_dotnet8_allocation_rounds_to_even_after_double_conversion(self):
+        # Expected values were checked through BDN 0.15.6 GcStats on .NET 8.
+        for allocated, operations, expected in (
+            (0, 64, 0), (31, 64, 0), (32, 64, 0), (33, 64, 1),
+            (96, 64, 2), (160, 64, 2), (288, 64, 4), (336, 64, 5), (352, 64, 6),
+            (9007199254740993, 3, 3002399751580330),
+            (9007199254740993, 64, 140737488355328),
+            (9223372036854775807, 3, 3074457345618258432),
+        ):
+            with self.subTest(allocated=allocated, operations=operations):
+                report, console = self.allocation_case(allocated, operations, expected)
+                cases, errors = self.validate(report, console, invocations=operations)
+                self.assertEqual([], errors)
+                self.assertEqual(allocated, cases[0]["raw_gc"]["allocated_bytes"])
+                self.assertEqual(expected, cases[0]["memory"]["BytesAllocatedPerOperation"])
+
+    def test_allocation_fields_require_exporter_integer_types(self):
+        for field, invalid_values in (
+            ("TotalOperations", (64.0, True, "64", None)),
+            ("Gen0Collections", (0.0, False, "0", None)),
+            ("Gen1Collections", (0.0, False, "0", None)),
+            ("Gen2Collections", (0.0, False, "0", None)),
+            ("BytesAllocatedPerOperation", (5.0, True, "5", None, float("nan"), float("inf"))),
+        ):
+            for value in invalid_values:
+                with self.subTest(field=field, value=value):
+                    report = copy.deepcopy(REPORT)
+                    report["Benchmarks"][0]["Memory"][field] = value
+                    self.assertTrue(self.validate(report)[1])
+
+    def test_matching_allocation_counts_must_also_match_requested_invocations(self):
+        report = copy.deepcopy(REPORT)
+        report["Benchmarks"][0]["Memory"]["TotalOperations"] = 63
+        console = CONSOLE.replace("// GC:  0 0 0 336 64", "// GC:  0 0 0 336 63")
+        self.assertTrue(self.validate(report, console)[1])
+
+    def test_raw_allocation_counts_outside_bdn_integer_ranges_are_incomplete(self):
+        with self.subTest(collections=2147483648):
+            report = copy.deepcopy(REPORT)
+            report["Benchmarks"][0]["Memory"]["Gen0Collections"] = 2147483648
+            console = CONSOLE.replace("// GC:  0 0 0 336 64", "// GC:  2147483648 0 0 336 64")
+            self.assertTrue(self.validate(report, console)[1])
+        for allocated, operations, per_operation in (
+            (9223372036854775808, 64, 144115188075855872),
+            (336, 9223372036854775808, 0),
+            (9223372036854775807, 1, -9223372036854775808),
+            (9223372036854775807, 1, 9223372036854775808),
+        ):
+            with self.subTest(allocated=allocated, operations=operations, per_operation=per_operation):
+                report, console = self.allocation_case(allocated, operations, per_operation)
+                self.assertTrue(self.validate(report, console, invocations=operations)[1])
 
     def test_empty_selection_is_incomplete(self):
         report = copy.deepcopy(REPORT)

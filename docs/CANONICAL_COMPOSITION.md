@@ -164,8 +164,10 @@ initializes that state, including when added after boids exist or when the setti
 The public local context currently has **no stable self identity or consumer-scoped RNG handle**.
 It supports stateless policies and world-owned policy state, but it does not yet offer arbitrary
 per-agent state/noise. External per-agent stochastic policies need the explicitly trusted legacy
-adapter or a future bounded identity/noise contract. Vicsek work must add that concrete seam and
-its update-order tests; exposing the private wander generator would break consumer independence.
+adapter or a future bounded identity/noise contract. The separate [Vicsek foundation](VICSEK.md)
+owns its identities, noise streams and update ordering; its implementation does not add those
+capabilities to `LocalPolicyContext`. Exposing the private wander generator would break consumer
+independence.
 
 ### Trusted legacy compatibility
 
@@ -283,3 +285,89 @@ fixed invocation count, before the tiny measured harness-overhead subtraction.
 Every case's MemoryDiagnoser GC record reported zero collections and zero allocated bytes in its
 measured allocation interval. Construction, policy registration, telemetry capture and rendering
 are outside that interval.
+
+### Original-baseline recheck (2026-11-02)
+
+**This repeated comparison did not establish recovery or a reliable regression magnitude.**
+It compared the original pre-composition
+[`c00ad1e9620e03447fd1139d03220fb77201f08a`](https://github.com/Chris0Jeky/SwarmingLilMen/commit/c00ad1e9620e03447fd1139d03220fb77201f08a)
+(A) with integrated
+[`e512f984b743b93455bd7bf7a0bf23dfaa7b30f4`](https://github.com/Chris0Jeky/SwarmingLilMen/commit/e512f984b743b93455bd7bf7a0bf23dfaa7b30f4)
+(B), including neighbor reuse. Two fresh launches per revision ran sequentially in **A1, B1,
+B2, A2** order, from 12:36:27 to 12:38:28 UTC. All launches used 1,000 agents, 1,024 fixed
+invocations, three warmups, five measurements, one launch per command, unroll one and Throughput.
+The seed, world dimensions, numeric settings, setup and complete `Step` workload were unchanged.
+
+The historical build used 55 files verified against the original commit's Git blobs: its core,
+benchmarks and three root build-setting files. The four `tools/CompositionCost` files came from
+e512f984 and were byte-identical between checkouts, giving 59 baseline inputs. The complete
+current checkout's 391 files matched e512f984. The benchmark scenario, benchmark project and
+all three root build-setting files were also byte-identical between revisions. Both Release
+builds succeeded without warnings or errors. The collector remained frozen at e512f984 for all
+four captures; the later allocation-contract correction was applied only after they finished.
+
+Each checkout ran this command with a fresh output directory for each launch:
+
+```sh
+python tools/CompositionCost/collect.py --dotnet /tmp/swarmsim-dotnet/dotnet --agents 1000 --invocations 1024 --out artifacts/composition/<run-name>
+```
+
+Both sides used SDK **8.0.427**, runtime **8.0.33**, BDN **0.15.6**, x64 RyuJIT and Concurrent
+Workstation GC on Ubuntu 24.04.3, on an Intel Xeon Platinum 8573C cloud host. BDN reported nine
+logical cores; the container had an eight-CPU quota. Raising process priority was denied in all
+four launches. Other task-owned tests and benchmarks were paused during this set, but the host
+was shared. This is a different machine and SDK/runtime from the 2026-10-29 measurements above;
+their absolute timings are not a matched comparison with this set.
+
+All four receipts passed completeness, kept identical before/after source identities, and
+retained matching artifact hashes. Both launches of a revision produced identical recorded
+binary hashes. The following values are milliseconds per full tick. BDN's error is the
+half-width of its 99.9% interval; the raw mean includes every measurement before overhead
+subtraction or outlier exclusion.
+
+| Launch | Revision | Raw mean, all five (ms) | BDN mean ± error (ms) | BDN retained |
+| --- | --- | ---: | ---: | ---: |
+| A1 | Original baseline | 0.698948 | 0.698946 ± 0.353707 | 5/5 |
+| B1 | Integrated current | 0.849508 | 0.849505 ± 1.092560 | 5/5 |
+| B2 | Integrated current | 0.565636 | 0.540450 ± 0.025241 | 4/5 |
+| A2 | Original baseline | 0.996079 | 0.714585 ± 1.207367 | 4/5 |
+
+| Launch | All five raw `WorkloadActual` averages (ms/tick) |
+| --- | --- |
+| A1 | 0.7381328, 0.6515059, 0.6204956, 0.6421780, 0.8424290 |
+| B1 | 0.9455473, 0.7677697, 0.6417438, 1.2956930, 0.5967847 |
+| B2 | 0.5442922, 0.5407203, 0.5350426, 0.6663710, 0.5417526 |
+| A2 | 0.6077085, 0.5932709, 0.6665854, 2.1220475, 0.9907833 |
+
+Using all samples, the first adjacent pair gives B1/A1 **+21.54%**, while the reverse-order
+pair gives B2/A2 **−43.21%**. The baseline launch mean changed by +42.51%; the current launch
+mean changed by −33.42%. BDN removed B2's 0.666371 ms and A2's 2.122048 ms observations from
+its summary, so using only its retained means conceals substantial variation. There are only
+two independent launches per revision; five samples from one evolving world are not five
+independent replications. These opposing deltas and broad variation leave
+[issue #27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27)'s original-baseline performance
+qualification open. The set was not expanded to 10k/50k on this host. The next comparison needs
+a more stable execution environment and repeated, order-balanced launches; it must retain the
+unchanged benchmark workload and every raw sample.
+
+All four separate allocation intervals reported `// GC: 0 0 0 0 1024`: zero raw managed bytes
+and zero collections over 1,024 operations. This 1k observation neither reproduces nor explains
+the historical **10k** record of 336 bytes over 64 operations in
+[issue #20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20). See the
+[allocation scope and rounding contract](COMPOSITION_EVIDENCE.md#completeness-and-failure-behavior)
+for why process-wide BDN counts and per-thread probes answer different questions.
+
+The source-manifest SHA-256 values were
+`bc2a7426581426f82c8f2cf2e82c1fdfc30d7bb557addcfd1f5e7e5bfe024e63` (A) and
+`fb8555fc9a5d9ab959f017a774255987eddc67dab9b2e8edf59c9ee64242983c` (B).
+The measured `SwarmSim.Core.dll` SHA-256 values were
+`8e8924a78e58182a781839fe27d6c3e3f12d943c76b5ac28327c5c4561f40d03` (A) and
+`0061ddc70f6d6097970e12f6492addc2ff6901cc3a31ad2cd23d4f3be822264e` (B).
+Generated outputs are not committed; these hashes identify the captured raw logs:
+
+| Log | SHA-256 of `console.log` |
+| --- | --- |
+| A1 | `02c2ad4c80cfe7bc46c1a5c2ec8afb5cf847ac5604cb7b485087f06a4c76ecb4` |
+| B1 | `22fa2aa5d734b60792f25df683d9a2eaa03c38614b5d35e6a488345db1df1e42` |
+| B2 | `a7a99ad661d98368354769b01579dbb0f8d7ca4892202fe17c034ea6deb65ac2` |
+| A2 | `ba39e02905f53b78a617c3f36b1024a488137af1e619a8c3a12b5c5954739c86` |

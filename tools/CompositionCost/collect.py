@@ -156,15 +156,23 @@ def validate_case(benchmark, sections, population, smoke, invocations):
     raw = re.fullmatch(r"(\d+)\s+(\d+)\s+(\d+)\s+(\d+)\s+(\d+)", raw_line)
     require(raw is not None, "Raw allocated bytes or operation count is unavailable.")
     gen0, gen1, gen2, allocated, operations = map(int, raw.groups())
+    require(max(gen0, gen1, gen2) <= 2**31 - 1 and allocated <= 2**63 - 1
+            and 0 < operations <= 2**63 - 1, "Raw allocation counts exceed BDN's integer ranges.")
     memory = benchmark["Memory"]
-    require(operations > 0 and memory["TotalOperations"] == operations,
-            "Allocation operation count is missing or inconsistent.")
-    require((memory["Gen0Collections"], memory["Gen1Collections"], memory["Gen2Collections"])
-            == (gen0, gen1, gen2), "Raw and JSON GC collections disagree.")
-    # BDN may correct allocation quanta in BytesAllocatedPerOperation. Never reconstruct raw bytes from it.
-    require(isinstance(memory["BytesAllocatedPerOperation"], (int, float))
-            and math.isfinite(memory["BytesAllocatedPerOperation"])
-            and memory["BytesAllocatedPerOperation"] >= 0, "JSON allocation data is missing.")
+    # This Step has one operation per invocation, including BDN's separate allocation interval.
+    require(type(memory["TotalOperations"]) is int and memory["TotalOperations"] == operations == invocations,
+            "Allocation operation count differs from the requested job or raw record.")
+    collections = (memory["Gen0Collections"], memory["Gen1Collections"], memory["Gen2Collections"])
+    require(all(type(value) is int for value in collections) and collections == (gen0, gen1, gen2),
+            "Raw and JSON GC collections disagree.")
+    per_operation = memory["BytesAllocatedPerOperation"]
+    require(type(per_operation) is int and 0 <= per_operation <= 2**63 - 1,
+            "JSON allocation data is not a nonnegative Int64.")
+    # BDN 0.15.6 applies no allocation-quantum exclusion to this forced .NET 8 job.
+    # Reproduce its double division and MidpointRounding.ToEven, including inputs above 2**53.
+    require(per_operation == round(float(allocated) / float(operations)),
+            "Raw and JSON allocation data disagree with BDN's .NET 8 rounding.")
+    # Keep the raw total: multiplying the rounded value by operations cannot recover it.
     return {
         "population": population, "display": display, "runtime": runtime, "gc": gc,
         "measurement_count": len(measurements), "memory": memory,

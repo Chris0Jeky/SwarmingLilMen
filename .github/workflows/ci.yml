@@ -50,6 +50,18 @@ jobs:
       - name: Test benchmark evidence collection
         run: python -m unittest discover -s tools/CompositionCost -p "test_*.py"
 
+      - name: Smoke benchmark evidence bundle
+        run: python tools/CompositionCost/collect.py --agents 1000 --smoke --out artifacts/composition/ci
+
+      - name: Retain benchmark smoke evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: composition-smoke-integration-${{ matrix.os }}
+          path: artifacts/composition/ci/
+          if-no-files-found: warn
+          retention-days: 7
+
       - name: Verify headless artifacts and manifest replay
         run: python .github/scripts/smoke_headless.py
 
@@ -114,6 +126,18 @@ jobs:
 
       - name: Test benchmark evidence collection
         run: python -m unittest discover -s tools/CompositionCost -p "test_*.py"
+
+      - name: Smoke benchmark evidence bundle
+        run: python tools/CompositionCost/collect.py --agents 1000 --smoke --out artifacts/composition/ci
+
+      - name: Retain benchmark smoke evidence
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: composition-smoke-exact-head-${{ matrix.os }}
+          path: artifacts/composition/ci/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Verify headless artifacts and manifest replay
         run: python .github/scripts/smoke_headless.py
