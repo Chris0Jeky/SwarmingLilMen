@@ -1,6 +1,6 @@
 # Representable canonical neighbor distances
 
-This change addresses the bounded-observation and nearest-neighbor part of
+This guide records the bounded-observation, nearest-neighbor and partial-FOV corrections for
 [issue #187](https://github.com/Chris0Jeky/SwarmingLilMen/issues/187). It corrects a real proximity
 error while retaining ordinary-scale float arithmetic. The wider numeric audit remains open.
 
@@ -90,19 +90,46 @@ directory. This is an explicit exceptional-scale correctness change, not a golde
 | Nearest-angle telemetry | Large selected displacements normalize with the recovered length | The existing nearly-zero cutoff still suppresses tiny direction angles |
 | `SeparationPriorityStage` | Receives the corrected nearest distance | Threshold/hold/ramp formulas and their separate extreme-value limits are unchanged |
 | Average neighbor distance | Sums the recovered per-neighbor values | Local/world float sums can still overflow even when each distance and the mathematical average are finite |
-| Partial-FOV filtering | Unchanged | Its earlier `Vec2.Normalized` call can still overflow and exclude large displacements |
+| Partial-FOV filtering | Recovers a direction when a finite displacement's squared length overflows | Ordinary normalization and the established nearly-zero cutoff remain unchanged; see the follow-up below |
 | Shaped avoidance and both separation-rule APIs | Unchanged | Their direct squared-distance calculations still require their own bounded numeric review |
 | Cohesion and other generic vector operations | Unchanged | Normalization, magnitude clamping and extreme controls are outside this fix |
 
-The verified extreme-distance cases use full-circle FOV. This evidence does not establish that
+The original extreme-distance cases use full-circle FOV; the follow-up below adds partial-FOV cases.
+This evidence does not establish that
 every accepted extreme configuration has correct perception or dynamics. The uncorrected consumers
 and aggregate-overflow cases remain explicitly tracked in #187. The prior
 [statistics-reuse measurements](CANONICAL_NEIGHBOR_REUSE.md) describe the preceding optimization,
 whose exceptional diagnostics were intentionally preserved until this separate correction.
 
+## Partial-FOV follow-up — 2026-11-02
+
+The earlier distance correction did not repair candidate filtering: `delta.Normalized` still
+divided large finite components by an overflowing float norm. The resulting zero direction was
+rejected even when the neighbor was in front of the observer and inside its sensing radius.
+
+The FOV filter now uses the existing recovered `NeighborDistance` only when the squared norm is
+non-finite. Finite-normal arithmetic still uses the original `Vec2.Normalized` expression. The
+earlier nearly-zero and full-circle branches, candidate ordering, cap-before-FOV semantics and
+ordinary weighting expression are unchanged. This does not change `Vec2` globally or qualify
+other normalization/steering consumers.
+
+Twenty-four analytical cases use a 3-4-5 displacement at ordinary scale and at `2^80`, both Grid
+and Naive indexes, and interior/periodic-seam layouts. Its 53.1301-degree forward bearing is
+outside a 100-degree FOV and inside a 120-degree FOV; its 126.8699-degree reverse bearing is also
+inside a 270-degree FOV. Tests pin those counts, the analytic 0.6 direction-cosine weight, the
+policy's actual observation, instrumentation, and last-tick inspection query. Two additional cases
+preserve the intentional omnidirectional nearly-zero cutoff even with a one-degree FOV.
+
+Against the prior implementation, the focused matrix produced **8 failures and 18 passes**:
+all eight intended large-distance visibility cases failed for the missing input. The correction
+does not broaden the accepted configuration domain, change existing fixtures, or make a throughput
+claim. Historical extreme-scale partial-FOV runs can change behavior and require their original
+binary for exact replay. Shaped avoidance, direct separation, generic vector operations and float
+aggregate overflow remain open in #187.
+
 ## Reproduce the checks
 
 ```sh
-dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter 'FullyQualifiedName~CanonicalExtremeDistanceTests|FullyQualifiedName~CanonicalNeighborTelemetryTests' -- RunConfiguration.TreatNoTestsAsError=true
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter 'FullyQualifiedName~CanonicalExtremeDistanceTests|FullyQualifiedName~CanonicalExtremeFovTests|FullyQualifiedName~CanonicalNeighborTelemetryTests' -- RunConfiguration.TreatNoTestsAsError=true
 dotnet test SwarmingLilMen.sln -c Release --filter 'Category!=Performance' -- RunConfiguration.TreatNoTestsAsError=true
 ```

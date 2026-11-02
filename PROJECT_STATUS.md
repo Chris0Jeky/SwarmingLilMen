@@ -41,7 +41,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,319 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,345 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -208,8 +208,12 @@ or errors. The historical counts below identify the specific additions that prod
   Ordinary float arithmetic remains unchanged. Analytical 3–4–5 cases cover four scales, both
   indexes, periodic seams and first-candidate ties; four regressions show distant neighbors no
   longer falsely activate separation priority. Ordinary traces and an actual pre-fix manifest
-  remain exact. Partial-FOV normalization, direct rule calculations and aggregate overflow still
-  need the wider numeric audit in #187. See the
+  remain exact. A separate 26-case partial-FOV matrix now covers large-scale norm overflow with
+  ordinary/large 3–4–5 geometry, both indexes, interior/seam layouts, three apertures and tiny-direction
+  cutoff controls. Eight cases fail before the exceptional-norm correction; queries, actual policy
+  observations, instrumentation and last-tick inspection pass after. Ordinary normalization, direction
+  cutoffs and exact goldens remain unchanged. Direct rule calculations, other vector consumers and
+  aggregate overflow still need the wider numeric audit in #187. See the
   [correction, compatibility scope and remaining consumers](docs/CANONICAL_EXTREME_DISTANCES.md).
 - **Canonical telemetry:** `Step` no longer allocates snapshots. Explicit caller-owned
   `CanonicalTelemetry` captures last-tick diagnostics and truncation without a spatial re-query.
