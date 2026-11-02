@@ -38,6 +38,53 @@ public sealed class RendererCombinedInputTests
         Assert.Equal(active.Count, Assert.IsType<SimSnapshot>(Get("_currSnapshot")).AgentCount);
     }
 
+    [Theory]
+    [InlineData(null)]
+    [InlineData(KeyboardKey.Up)]
+    [InlineData(KeyboardKey.F1)]
+    public void ShakePublishesChangedVelocitiesAndInvalidatesInterpolation(KeyboardKey? recreationKey)
+    {
+        using var saved = new RendererStateScope();
+        var config = new SimConfig { InitialCapacity = 4, MaxCapacity = 4 };
+        Invoke("ApplyBaseConfig", config);
+        var original = new World(config);
+        original.AddAgent(100f, 100f);
+        original.AddAgent(200f, 100f);
+        var runner = new SimulationRunner(original);
+        var before = runner.CaptureSnapshot();
+        Set("_world", original);
+        Set("_runner", runner);
+        Set("_prevSnapshot", before);
+        Set("_currSnapshot", before);
+        Set("_selectedParameter", 0);
+        Assert.Equal(0, runner.Advance(runner.FixedDeltaTime * 0.5));
+        Assert.True(runner.Accumulator > 0);
+
+        KeyboardKey[] keys = recreationKey is { } key ? [key, KeyboardKey.X] : [KeyboardKey.X];
+        var input = RenderProgram.Controls.Capture(RendererMode.Legacy, new PressedKeys(keys));
+        Invoke("HandleInput", original, input);
+
+        var active = Assert.IsType<World>(Get("_world"));
+        var activeRunner = Assert.IsType<SimulationRunner>(Get("_runner"));
+        var current = Assert.IsType<SimSnapshot>(Get("_currSnapshot"));
+        Assert.Same(active, activeRunner.World);
+        Assert.Equal(before.AgentCount, current.AgentCount);
+        for (int i = 0; i < active.Count; i++)
+        {
+            Assert.True(active.Vx[i] != before.VelocitiesX[i] || active.Vy[i] != before.VelocitiesY[i]);
+            Assert.Equal(active.Vx[i], current.VelocitiesX[i]);
+            Assert.Equal(active.Vy[i], current.VelocitiesY[i]);
+            Assert.Equal(before.PositionsX[i], current.PositionsX[i]);
+            Assert.Equal(before.PositionsY[i], current.PositionsY[i]);
+        }
+        Assert.Same(current, Get("_prevSnapshot"));
+        Assert.True(current.CaptureVersion > before.CaptureVersion);
+        Assert.Equal(1L, activeRunner.MutationVersion);
+        Assert.Equal(activeRunner.MutationVersion, current.MutationVersion);
+        Assert.Equal(0d, activeRunner.Accumulator);
+        Assert.Equal(before.TickCount, current.TickCount);
+    }
+
     private const BindingFlags Flags = BindingFlags.NonPublic | BindingFlags.Static;
     private static object? Get(string name) => typeof(RenderProgram).GetField(name, Flags)!.GetValue(null);
     private static void Set(string name, object? value) => typeof(RenderProgram).GetField(name, Flags)!.SetValue(null, value);
