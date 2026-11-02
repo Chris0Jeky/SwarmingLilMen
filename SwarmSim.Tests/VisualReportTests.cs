@@ -1,9 +1,12 @@
 using System.Globalization;
 using System.IO.Compression;
+using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 using System.Text.RegularExpressions;
 using SwarmSim.Cli;
 using SwarmSim.Cli.Visual;
+using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Metrics;
 using CliProgram = SwarmSim.Cli.Program;
 
@@ -12,7 +15,7 @@ namespace SwarmSim.Tests;
 public sealed class VisualReportTests
 {
     private static readonly string[] PlainFiles = ["log.txt", "manifest.json", "metrics.csv"];
-    private static readonly string[] VisualFiles = ["filmstrip.png", "log.txt", "manifest.json", "metrics.csv", "report.html"];
+    private static readonly string[] VisualFiles = ["filmstrip.png", "log.txt", "manifest.json", "metrics.csv", "report.html", "thumbnail.png"];
 
     // ---- PNG writer -------------------------------------------------------------------------
 
@@ -83,6 +86,13 @@ public sealed class VisualReportTests
         Assert.Equal(4 * 480 + 5 * 8, raster.Width);
         Assert.Equal(2 * 240 + 3 * 8, raster.Height);
     }
+
+    [Theory]
+    [InlineData(1f, float.MaxValue, 1440)]
+    [InlineData(float.Epsilon, float.MaxValue, 1440)]
+    [InlineData(float.MaxValue, float.Epsilon, 48)]
+    public void Panels_ClampExtremeFiniteAspectRatiosBeforeIntegerConversion(float width, float height, int expected) =>
+        Assert.Equal(expected, Filmstrip.PanelHeight(width, height));
 
     [Fact]
     public void AllEast_RendersExactlyOneRedAgentHue()
@@ -160,6 +170,7 @@ public sealed class VisualReportTests
         foreach (string field in new[] { "finalKinematicHash", "metricsSha256" })
             Assert.Equal(Manifest(plain).GetProperty(field).GetString(), Manifest(visual1).GetProperty(field).GetString());
         Assert.Equal(File.ReadAllBytes(Path.Combine(visual1, "filmstrip.png")), File.ReadAllBytes(Path.Combine(visual2, "filmstrip.png")));
+        Assert.Equal(File.ReadAllBytes(Path.Combine(visual1, "thumbnail.png")), File.ReadAllBytes(Path.Combine(visual2, "thumbnail.png")));
         Assert.Equal(File.ReadAllText(Path.Combine(visual1, "report.html")).Replace(Manifest(visual1).GetProperty("runId").GetString()!, "RUN"),
             File.ReadAllText(Path.Combine(visual2, "report.html")).Replace(Manifest(visual2).GetProperty("runId").GetString()!, "RUN"));
 
@@ -179,6 +190,17 @@ public sealed class VisualReportTests
 
         DecodedPng png = DecodedPng.Parse(File.ReadAllBytes(Path.Combine(run, "filmstrip.png")));
         Assert.Equal(panels, CountPanels(png, PanelHeightOf(run)));
+
+        DecodedPng thumbnail = DecodedPng.Parse(File.ReadAllBytes(Path.Combine(run, "thumbnail.png")));
+        int panelHeight = PanelHeightOf(run);
+        Assert.Equal((480, panelHeight), (thumbnail.Width, thumbnail.Height));
+        Assert.True(thumbnail.Rgba.Length * 8 < png.Rgba.Length);
+        // Independent crop coordinates: short runs end before the bottom-right panel.
+        int left = 8 + ((panels - 1) % 4) * 488;
+        int top = 8 + ((panels - 1) / 4) * (panelHeight + 8);
+        for (int y = 0; y < panelHeight; y++)
+            Assert.Equal(png.Rgba.AsSpan(((top + y) * png.Width + left) * 4, 480 * 4).ToArray(),
+                thumbnail.Rgba.AsSpan(y * 480 * 4, 480 * 4).ToArray());
     }
 
     [Fact]
@@ -229,6 +251,53 @@ public sealed class VisualReportTests
         Assert.DoesNotContain("NaN", html);
     }
 
+    [Fact]
+    public void Report_BoundsLongSparklinesAndPreservesEndpointsAndPeaks()
+    {
+        using var files = new TempDir();
+        string run = RunOk(["--engine", "canonical", "--ticks", "0", "--agents", "1", "--out", files.Out]);
+        RunManifest manifest = RunManifest.Read(Path.Combine(run, "manifest.json"));
+        var csv = new StringBuilder("tick,signal\n");
+        for (int tick = 0; tick <= 20000; tick++)
+        {
+            int value = tick switch { 0 => 10, 7331 => -100, 13337 => 100, 20000 => -10, _ => 0 };
+            csv.Append(CultureInfo.InvariantCulture, $"{tick},{value}\n");
+        }
+
+        string html = RunReport.Html(manifest, PngWriter.Encode(1, 1, new byte[4]), csv.ToString());
+        string[] points = Assert.Single(SparklineSegments(html));
+
+        Assert.InRange(points.Length, 4, 480);
+        Assert.Equal("3,25.5", points[0]);
+        Assert.Equal("237,30.5", points[^1]);
+        Assert.Contains("88.77,53", points); // brief trough at tick 7331
+        Assert.Contains("159.04,3", points); // brief peak at tick 13337
+        Assert.Contains("<span>first 10</span><span>last -10</span><span>min -100</span><span>max 100</span>", html);
+    }
+
+    [Fact]
+    public void Report_BoundsAllSegmentsWithoutBridgingUndefinedSamples()
+    {
+        using var files = new TempDir();
+        string run = RunOk(["--engine", "canonical", "--ticks", "0", "--agents", "1", "--out", files.Out]);
+        RunManifest manifest = RunManifest.Read(Path.Combine(run, "manifest.json"));
+        var csv = new StringBuilder("tick,signal\n");
+        for (int tick = 0; tick <= 4000; tick++)
+            csv.Append(CultureInfo.InvariantCulture, $"{tick},{(tick % 2 == 0 ? "5" : "")}\n");
+
+        string html = RunReport.Html(manifest, PngWriter.Encode(1, 1, new byte[4]), csv.ToString());
+        string[][] segments = SparklineSegments(html);
+
+        Assert.InRange(segments.Sum(segment => segment.Length), 4, 480);
+        Assert.All(segments, segment =>
+        {
+            Assert.Equal(2, segment.Length); // lone points remain visible, charged twice to the vertex budget
+            Assert.Equal(segment[0], segment[1]);
+        });
+        Assert.Equal("3,28", segments[0][0]);
+        Assert.Equal("237,28", segments[^1][^1]);
+    }
+
     [Theory]
     [InlineData("canonical")]
     [InlineData("legacy")]
@@ -254,6 +323,37 @@ public sealed class VisualReportTests
         string failOut = Path.Combine(files.Root, "fail");
         Assert.Equal(1, SweepCliTests.Run("--manifest", tamperedPath, "--visual", "--out", failOut).Code);
         Assert.Empty(Directory.GetFileSystemEntries(failOut));
+    }
+
+    [Theory]
+    [InlineData("filmstrip.png")]
+    [InlineData("thumbnail.png")]
+    [InlineData("report.html")]
+    public void RunReportWriteFailureRemovesTheAttemptAndPreservesPriorOutput(string blockedFile)
+    {
+        using var files = new TempDir();
+        string prior = Path.Combine(files.Out, "run-prior");
+        Directory.CreateDirectory(prior);
+        string sentinel = Path.Combine(prior, "keep.txt");
+        File.WriteAllText(sentinel, "prior run");
+        string? staging = null;
+        var request = new RunRequest("canonical", 1, 2, new CanonicalWorldSettings { InitialCapacity = 16 }, null)
+            { Visual = true };
+
+        UnauthorizedAccessException failure = Assert.Throws<UnauthorizedAccessException>(() =>
+            ExperimentRunner.Run(request, files.Out, (directory, frames, manifest) =>
+            {
+                staging = directory;
+                Assert.True(File.Exists(Path.Combine(directory, "manifest.json")));
+                Directory.CreateDirectory(Path.Combine(directory, blockedFile)); // a real, portable write failure, even as root
+                RunReport.Write(directory, frames, manifest);
+            }));
+
+        Assert.Contains("RunReport.Write", failure.StackTrace ?? "");
+        Assert.NotNull(staging);
+        Assert.False(Directory.Exists(staging));
+        Assert.Equal(new[] { prior }, Directory.GetFileSystemEntries(files.Out));
+        Assert.Equal("prior run", File.ReadAllText(sentinel));
     }
 
     [Theory]
@@ -318,7 +418,7 @@ public sealed class VisualReportTests
         {
             string id = $"cell-{i:D6}";
             Assert.Contains($"href=\"{id}/report.html\"", html);
-            Assert.Contains($"src=\"{id}/filmstrip.png\"", html);
+            Assert.Contains($"src=\"{id}/thumbnail.png\"", html);
             string[] columns = summary[i + 1].Split(',');
             string row = Regex.Match(html, $"<tr><td><a href=\"{id}/report.html\".*?</tr>").Value;
             Assert.Contains($"<td>{columns[5]}</td>", row); // SeparationWeight
@@ -357,10 +457,47 @@ public sealed class VisualReportTests
         Assert.True(File.Exists(Path.Combine(on, "index.html")));
     }
 
+    [Fact]
+    public void SweepReportWriteFailureRemovesCompletedCellsAndPreservesPriorOutput()
+    {
+        using var files = new SweepCliTests.SweepFiles();
+        SweepPlan plan = SweepPlan.Load(files.WriteSweep(new JsonObject
+        {
+            ["seeds"] = new JsonArray(7, 11), ["grid"] = new JsonObject()
+        }));
+        string prior = Path.Combine(files.Output, "sweep-prior");
+        Directory.CreateDirectory(prior);
+        string sentinel = Path.Combine(prior, "keep.txt");
+        File.WriteAllText(sentinel, "prior sweep");
+        int completed = 0;
+        string? staging = null;
+
+        UnauthorizedAccessException failure = Assert.Throws<UnauthorizedAccessException>(() =>
+            SweepRunner.Run(plan, files.Output, (request, work) =>
+            {
+                string run = ExperimentRunner.Run(request, work);
+                completed++;
+                staging = Path.GetDirectoryName(work)!;
+                Directory.CreateDirectory(Path.Combine(staging, "index.html"));
+                return run;
+            }, visual: true));
+
+        Assert.Equal(2, completed);
+        Assert.Contains("SweepReport.Write", failure.StackTrace ?? "");
+        Assert.NotNull(staging);
+        Assert.False(Directory.Exists(staging));
+        Assert.Equal(new[] { prior }, Directory.GetFileSystemEntries(files.Output));
+        Assert.Equal("prior sweep", File.ReadAllText(sentinel));
+    }
+
     // ---- helpers ----------------------------------------------------------------------------
 
     private static string[] RunArgs(string engine, string output) =>
         ["--engine", engine, "--scenario", "balanced", "--seed", "7", "--ticks", "12", "--agents", "24", "--out", output];
+
+    private static string[][] SparklineSegments(string html) =>
+        Regex.Matches(html, "<polyline points=\"([^\"]+)\"")
+            .Select(match => match.Groups[1].Value.Split(' ', StringSplitOptions.RemoveEmptyEntries)).ToArray();
 
     private static string RunOk(string[] args)
     {

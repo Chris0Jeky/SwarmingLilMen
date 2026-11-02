@@ -41,7 +41,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,300 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,317 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -81,16 +81,22 @@ or errors. The historical counts below identify the specific additions that prod
   pheromone) in 1.8 s of run time on the recorded host, prints one PASS/FAIL line per entry, and
   publishes `index.html` plus `summary.json` over ordinary replayable run directories. Bands are
   coarse final-quarter-mean sanity checks set from seeds 1-10, not determinism or science gates;
-  the locked Vicsek and ACO tests remain the evidence. 44 `GalleryTests` (including the committed
+  the locked Vicsek and ACO tests remain the evidence. 52 `GalleryTests` (including the committed
   recipe in about 2 s on the recorded host); inverting a bound, widening the quarter window and reversing the failure sort
   each fail tests. Filmstrips seen by eye on one machine only. See
   [behaviour gallery](docs/HEADLESS_EXPERIMENTS.md#behaviour-gallery).
 - **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
   agents) and a self-contained `report.html` to any run, replay or sweep cell, plus an `index.html`
   for sweeps, using only the standard library and no display. Tests prove it leaves `metrics.csv`
-  and hashes unchanged and decode the PNG independently (34 cases in `VisualReportTests`). The
-  picture is checked by eye only for one canonical and one legacy 400-agent run; no render-time or
-  large-population cost was measured. See [visual reports](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
+  and hashes unchanged and decode the PNG independently (43 cases in `VisualReportTests`). The
+  filmstrips were checked by eye for canonical and legacy 400-agent runs; final-panel thumbnails
+  were also inspected for canonical and high-noise Vicsek. No render-time or large-population cost
+  was measured. Each sparkline is capped at 480 vertices while retaining endpoint/bucket extrema
+  and original-data gaps; statistics still use every row. Final-panel `thumbnail.png` files reduce
+  sweep/gallery image payload, failed bands display round-trip values and bounds, extreme aspect
+  heights clamp before integer conversion, and five actual write failures prove staging cleanup
+  without disturbing earlier output. Long CSV parsing still scales with row count; no phone-browser
+  acceptance or large-sweep timing is claimed. See [visual reports](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
 - **Canonical inspection:** S/A/C switch the named separation/alignment/cohesion policies;
   key 8 adjusts FOV and switch state survives recreation/reset. The overlay now draws a gold
   FOV arc, rule-colored input links and the actual white resolved-force arrow, all using the last
