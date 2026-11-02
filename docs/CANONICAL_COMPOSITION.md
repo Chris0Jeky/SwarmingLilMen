@@ -209,6 +209,10 @@ enhanced physics including grid rebuild, with telemetry capture and rendering of
 agents in the unchanged 1920×1080 scenario. It does not measure full renderer FPS or classic-mode
 throughput. See [project status](../PROJECT_STATUS.md) for the current integrated measurements and limits.
 
+For future measurements, the opt-in [evidence-bundle driver](COMPOSITION_EVIDENCE.md) wraps this
+unchanged harness, retains raw results and build/source identities, and checks completeness.
+Its receipt does not assign a performance verdict or explain the historical allocation result.
+
 ### Measured composition cost (2026-10-29)
 
 The before source is [the reviewed compact-RNG commit](https://github.com/Chris0Jeky/SwarmingLilMen/commit/c00ad1e9620e03447fd1139d03220fb77201f08a).
