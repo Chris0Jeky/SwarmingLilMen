@@ -51,6 +51,14 @@ The recorded base integrated Release gate at `e512f984` passes **1,346 non-Perfo
 with no build warnings or errors. The evidence below identifies subsequent targeted additions;
 PR checks qualify each integrated revision before merge.
 
+- **Static-demo scanner admission:** visible function/key restrictions now span script blocks,
+  inline handlers and `javascript:` URLs within each artifact, with explicit parse-unit boundaries.
+  Visible reflection/prototype APIs are outside the admitted language. The 96 scanner tests pass,
+  including rejection before output writes; eight actual publication files remain byte-identical.
+  Arbitrary computed keys, coercions, returned/member values and cross-file bindings remain
+  unproved. [#164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164) stays open; the
+  [grammar limits](.hosting/README.md#scanner-grammar-limits-2026-11-02) retain artifact review and
+  the allowlist as the publication boundary.
 - **Finite neighbor-distance averages:** the local or world float sum can overflow while every
   distance and the mean remain finite. A double fallback now activates only after that overflow,
   retaining the original float prefix, ordinary accumulation order and division. Twenty analytical

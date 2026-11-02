@@ -507,6 +507,92 @@ class ScannerBypassTests(unittest.TestCase):
             with self.subTest(js=js):
                 self.assertEqual(self.scan(js), [])
 
+    def test_visible_reflection_globals_are_outside_the_admitted_language(self):
+        for source in (
+            # Complete constructor-acquisition examples are scanned as text, never executed.
+            "const key = ['con', 'structor'].join(''); const method = Reflect.get(() => {}, key); "
+            "method('return 1')();",
+            "const reflect = Reflect; reflect.get(holder, key)(source)();",
+            "const proxy = new Proxy(holder, handlers); proxy[key](source)();",
+            "const Factory = Proxy; const proxy = new Factory(holder, handlers);",
+            # These reserved names remain unsupported even when locally shadowed.
+            "const Reflect = data; Reflect.get(key);",
+            "class Proxy {} const item = new Proxy();",
+        ):
+            with self.subTest(source=source):
+                self.reject(source, "reflection")
+
+    def test_visible_prototype_and_descriptor_access_is_rejected(self):
+        for source in (
+            "const key = ['con', 'structor'].join(''); const proto = Object.getPrototypeOf(() => {}); "
+            "proto[key]('return 1')();",
+            "Object.setPrototypeOf(value, callable); value[key](source)();",
+            "const proto = Holder.prototype; const ctor = proto[key]; ctor[key](source)();",
+            "const key = ['con', 'structor'].join(''); const value = {}; value.__proto__ = () => {}; "
+            "value[key]('return 1')();",
+            "const descriptor = Object.getOwnPropertyDescriptor(holder, key); descriptor.value(source)();",
+            "const descriptors = Object.getOwnPropertyDescriptors(holder); descriptors[key].value(source)();",
+            "const names = Object.getOwnPropertyNames(holder); holder[names[index]](source)();",
+            "const keys = Object.getOwnPropertySymbols(holder); holder[keys[index]](source)();",
+            "Object.defineProperty(value, key, {value: callable}); value[key](source)();",
+            "Object.defineProperties(value, descriptors); value[key](source)();",
+            "value.__defineGetter__(key, callback); value[key](source)();",
+            "value.__defineSetter__(key, callback); value[key] = source;",
+            "const method = value.__lookupGetter__(key); method(source)();",
+            "const method = value.__lookupSetter__(key); method(source)();",
+            "const key = Symbol.toPrimitive; value[key] = callable;",
+            "const proto = Object?.getPrototypeOf(callable); proto[key](source)();",
+        ):
+            with self.subTest(source=source):
+                self.reject(source, "reflection")
+
+    def test_reflection_properties_cannot_be_acquired_by_literal_key_alias_or_binding(self):
+        properties = (
+            "Reflect", "Proxy", "prototype", "__proto__", "getPrototypeOf", "setPrototypeOf",
+            "getOwnPropertyDescriptor", "getOwnPropertyDescriptors", "getOwnPropertyNames", "getOwnPropertySymbols",
+            "defineProperty", "defineProperties", "__defineGetter__", "__defineSetter__",
+            "__lookupGetter__", "__lookupSetter__", "toPrimitive",
+        )
+        for name in properties:
+            for source in (
+                f"const method = holder['{name}']; method(source);",
+                f"const key = '{name}'; const alias = key; holder[alias](source);",
+                f"const {{{name}: method}} = holder; method(source);",
+            ):
+                with self.subTest(name=name, source=source):
+                    self.reject(source, "property")
+
+    def test_ordinary_data_names_numeric_conversion_and_inert_reflection_text_are_supported(self):
+        for source in (
+            "const prototype = 4; values[prototype] = 2; const getPrototypeOf = read; getPrototypeOf(data);",
+            "const text = 'Reflect Proxy prototype'; const names = ['getPrototypeOf', '__proto__'];",
+            "const pattern = /Reflect|Proxy|prototype|__proto__/; const text = `Object.setPrototypeOf(x,y)`;",
+            "// Reflect.get(holder,key)\n/* value.__proto__=fn */ work();",
+            "const hash = value.toString(16).padStart(8, '0'); const text = value['toString'](16);",
+            "Object.assign(settings, updates); for (const [key, value] of Object.entries(data)) values[key] = value;",
+            "const symbol = Symbol('ordinary'); const prototypeLabel = metadata['prototypeLabel'];",
+            "const formatters = {one: value => value}; formatters[name](42);",
+        ):
+            with self.subTest(source=source):
+                self.assertEqual(self.scan(source), [])
+
+    def test_reflection_rejections_preserve_existing_publication(self):
+        for extension in ("html", "js", "mjs"):
+            with self.subTest(extension=extension):
+                rel = f"js-demos/a/source.{extension}"
+                source = "const method = Reflect.get(holder, key); method(source)();"
+                body = PAGE.format(t="A", js=source) if extension == "html" else source
+                tmp, root = make_repo([rel], {rel: body})
+                self.addCleanup(tmp.cleanup)
+                out = root / "_site"
+                out.mkdir()
+                marker = out / "keep.txt"
+                marker.write_bytes(b"previous reviewed build")
+                errors = build_site.build(root, out)
+                self.assertTrue(any("reflection" in error for error in errors), errors)
+                self.assertEqual([p.name for p in out.iterdir()], ["keep.txt"])
+                self.assertEqual(marker.read_bytes(), b"previous reviewed build")
+
     def test_variable_keys_on_function_bindings_and_aliases_are_rejected(self):
         for js in (
             "const key = 'constructor', f = () => {}; f[key](source)();",
@@ -542,6 +628,85 @@ class ScannerBypassTests(unittest.TestCase):
         ):
             with self.subTest(js=js):
                 self.reject(js, "computed")
+
+    def test_function_aliases_are_restricted_across_script_blocks_and_handlers(self):
+        definitions = ("function callable() {}", "const callable = () => {};", "class callable {}")
+        uses = (
+            "<script>callable[key](source)();</script>",
+            '<button onclick="callable[key](source)()">run</button>',
+            '<a href="javascript:callable[key](source)()">run</a>',
+        )
+        for definition in definitions:
+            for use in uses:
+                with self.subTest(definition=definition, use=use):
+                    self.reject(f"<script>{definition}</script>" + use, "computed", kind="raw")
+
+    def test_key_aliases_are_restricted_across_executable_units(self):
+        for definition in (
+            "<script>const key = 'constructor';</script>",
+            '<button onclick="key = \'constructor\'">select</button>',
+            '<a href="javascript:key = \'constructor\'">select</a>',
+        ):
+            for use in (
+                "<script>value[key](source)();</script>",
+                "<script>const alias = key;</script><script>value[alias](source)();</script>",
+                '<button onclick="value[key](source)()">run</button>',
+            ):
+                with self.subTest(definition=definition, use=use):
+                    self.reject(definition + use, "computed", kind="raw")
+
+    def test_script_boundaries_end_aliases_before_a_new_expression(self):
+        for following in ("(0)", "[0]", "`ordinary`", "/ordinary/.test('text')"):
+            source = ("<script>const callable = () => {}; const alias = callable</script>"
+                      f"<script>{following}; alias[key](source)();</script>")
+            with self.subTest(following=following):
+                self.reject(source, "computed", kind="raw")
+        self.reject("<script>const callable = () => {};// comment ends with this script</script>"
+                    "<script>callable[key](source)();</script>", "computed", kind="raw")
+
+    def test_script_boundaries_cannot_complete_an_unclosed_lookup(self):
+        for opening, closing in (("value[index", "];"), ("value?.[index", "];"),
+                                 ("value[keys[index", "]];")):
+            with self.subTest(opening=opening):
+                self.reject(f"<script>{opening}</script><script>{closing}</script>",
+                            "unclosed bracket", kind="raw")
+
+    def test_artifact_name_restrictions_are_conservative_across_module_and_handler_scope(self):
+        self.reject('<script type="module">const callable = () => {};</script>'
+                    '<button onclick="const callable = data; callable[index]">read</button>',
+                    "computed", kind="raw")
+        self.reject("<script>const key = 'constructor';</script>"
+                    "<script>function read(key) { return values[key]; }</script>",
+                    "computed", kind="raw")
+
+    def test_data_indices_and_inert_text_remain_supported_across_units(self):
+        sources = (
+            "<script>const key = 'label'</script><script>['ordinary']; data[key] = values[index];</script>",
+            "<script>const formatters = {one: value => value};</script>"
+            "<script>formatters[name](42); const value = grid.cells[index];</script>",
+            '<script type="application/json">{"key":"constructor", "callable":"function"}</script>'
+            '<script>value[key]; callable[index];</script>',
+            "<script>const callable = () => {};</script>"
+            '<button onclick="const text = \'callable[key](source)()\'">show</button>',
+            '<div data-note="const key=\'constructor\';"></div><script>values[key];</script>',
+        )
+        for source in sources:
+            with self.subTest(source=source):
+                self.assertEqual(self.scan(source, kind="raw"), [])
+
+    def test_cross_unit_rejections_preserve_existing_publication(self):
+        rel = "js-demos/a/index.html"
+        source = "<script>const key = 'constructor';</script><script>value[key](source)();</script>"
+        tmp, root = make_repo([rel], {rel: source})
+        self.addCleanup(tmp.cleanup)
+        out = root / "_site"
+        out.mkdir()
+        marker = out / "keep.txt"
+        marker.write_bytes(b"previous reviewed build")
+        errors = build_site.build(root, out)
+        self.assertTrue(any("computed" in error for error in errors), errors)
+        self.assertEqual([p.name for p in out.iterdir()], ["keep.txt"])
+        self.assertEqual(marker.read_bytes(), b"previous reviewed build")
 
     def test_logical_assignments_propagate_function_key_and_alias_restrictions(self):
         for operator in ("||=", "??=", "&&="):
