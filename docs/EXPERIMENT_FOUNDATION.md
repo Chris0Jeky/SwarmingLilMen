@@ -3,8 +3,10 @@
 This guide covers the two boids implementations; [Vicsek](VICSEK.md) and [ACO](ACO.md) share the
 experiment spine and have their own guides. The legacy `World` is a
 structure-of-arrays pipeline whose spawn calls can grow storage up to `MaxCapacity`;
-`CanonicalWorld` retains fixed storage and is the target for new engine work. Neither is yet a
-general-purpose dynamics kernel. This guide describes the shared configuration and diagnostics
+`CanonicalWorld` retains fixed storage and is the target for new boids behavior. A different model
+with its own state and update rule is a separate foundation, with its own `Core/<Name>/` directory
+and a registry entry in `SwarmSim.Cli/Engines.cs`, as Vicsek and ACO demonstrate. Neither boids engine
+is a general-purpose dynamics kernel. This guide describes the shared configuration and diagnostics
 that experiments can rely on without a renderer.
 
 ## Resolve and record configuration

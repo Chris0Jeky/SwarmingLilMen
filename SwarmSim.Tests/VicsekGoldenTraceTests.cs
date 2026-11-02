@@ -28,7 +28,7 @@ public sealed class VicsekGoldenTraceTests
     public void CheckpointsMatchTheCommittedTrace()
     {
         var world = CreateWorld();
-        GoldenCheckpoint[]? expected = VicsekGoldenTraceFixtures.Trace;
+        GoldenCheckpoint[] expected = VicsekGoldenTraceFixtures.Trace;
         var actual = new List<GoldenCheckpoint>();
         foreach (int tick in CheckpointTicks)
         {
@@ -42,9 +42,8 @@ public sealed class VicsekGoldenTraceTests
             _output.WriteLine($"GOLDEN_STATE engine=vicsek tick={tick} bits={Hex(bits)}");
         }
 
-        // Always emit every checkpoint before failing, including on a platform whose reference
-        // is being recorded for review. There is no switch that accepts or writes new values.
-        Assert.NotNull(expected);
+        // Always emit every checkpoint before asserting, so the first difference does not hide
+        // its later magnitude. There is no switch that accepts or writes new reference values.
         Assert.Equal(CheckpointTicks, expected.Select(checkpoint => checkpoint.Tick));
         var failures = new List<string>();
         for (int i = 0; i < expected.Length; i++)
@@ -59,8 +58,7 @@ public sealed class VicsekGoldenTraceTests
     [Fact]
     public void IncreasingNoiseByOneUlpChangesTheGoldenTrace()
     {
-        GoldenCheckpoint[]? expected = VicsekGoldenTraceFixtures.Trace;
-        Assert.NotNull(expected);
+        GoldenCheckpoint[] expected = VicsekGoldenTraceFixtures.Trace;
         float changedNoise = float.BitIncrement(Noise);
         uint originalBits = BitConverter.SingleToUInt32Bits(Noise);
         uint changedBits = BitConverter.SingleToUInt32Bits(changedNoise);

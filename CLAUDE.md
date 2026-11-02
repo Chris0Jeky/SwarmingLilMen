@@ -23,12 +23,15 @@ Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default rendere
 have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/` and `Core/Aco/` are separate
 foundations on the same experiment spine (`SwarmSim.Cli/Engines.cs`, one registry entry per engine).
 They share metrics, RNG, manifests, sweeps and reports, not a simulation kernel: see `docs/VICSEK.md`.
-A new foundation gets its own `Core/<Name>/` and a registry entry, never a place inside `Core/Canonical/`.
+A foundation is a different model with its own state and update rule, such as Vicsek particles or
+ACO ants. It gets its own `Core/<Name>/` and a registry entry in `SwarmSim.Cli/Engines.cs`.
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
 **Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
-belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity, comparison, or
-removal. Neither engine is deleted without a recorded migration decision. Building a new feature on
+on boids agents belongs in `Core/Canonical/` unless the task explicitly concerns legacy parity,
+comparison, or removal. Distinct foundations use their own model directories as described above;
+they do not belong inside `Core/Canonical/`. Neither boids engine is deleted without a recorded
+migration decision. Building a new feature on
 the legacy default because it is what runs today is exactly the drift this split exists to prevent.
 
 ## Build, test, run
@@ -55,6 +58,8 @@ dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json
 ```
 
 Its bands are coarse sanity checks. The locked Vicsek and ACO tests and the goldens remain the evidence.
+The gallery command rebuilds the CLI and its references, **not `SwarmSim.Tests`**. After changing
+source or tests, build the solution again before using `dotnet test --no-build`, or omit that flag.
 
 Narrowest seam check — rebuilds, and errors instead of silently matching zero tests when a class is
 renamed or a filter goes stale:

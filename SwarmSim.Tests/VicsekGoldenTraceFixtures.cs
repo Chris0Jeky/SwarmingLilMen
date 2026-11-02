@@ -4,10 +4,10 @@ namespace SwarmSim.Tests;
 internal static class VicsekGoldenTraceFixtures
 {
     internal static string Provenance => OperatingSystem.IsWindows()
-        ? "Windows reference not recorded; capture the complete failing trace for review."
-        : "Ubuntu 24.04.3 LTS / X64 / .NET 8.0.33 / SDK 8.0.427 (recorded 2026-11-02)";
+        ? "Windows 10.0.26100 / X64 / .NET 8.0.33 / SDK 8.0.427 (CI 41384594469)"
+        : "Ubuntu 24.04.3 LTS / X64 / .NET 8.0.33 / SDK 8.0.427; confirmed Ubuntu 24.04.5 (CI 41384594469)";
 
-    internal static GoldenCheckpoint[]? Trace => OperatingSystem.IsWindows() ? Windows : Linux;
+    internal static GoldenCheckpoint[] Trace => OperatingSystem.IsWindows() ? Windows : Linux;
 
     internal static readonly GoldenCheckpoint[] Linux =
     {
@@ -67,5 +67,64 @@ internal static class VicsekGoldenTraceFixtures
             0x40D03AEFu, 0x4105B067u, 0xBDFB5362u, 0xBCC2C98Fu,
         }),
     };
-    internal static readonly GoldenCheckpoint[]? Windows = null;
+    // Captured independently by Windows exact-head and merge-ref jobs in CI 41384594469,
+    // head 76cdfde570821b9f9fa8532250ac600ac1d328bd. Both traces and all rehashed words agree.
+    internal static readonly GoldenCheckpoint[] Windows =
+    {
+        new(0, "A051D748A5B4400A8189FFA6B166818C449C516FB6F4C945083E3DB08863A7DF", new uint[]
+        {
+            0x3E800000u, 0x3E800000u, 0x3E000000u, 0x00000000u,
+            0x417C0000u, 0x413C0000u, 0x3E000000u, 0x00000000u,
+            0x40800000u, 0x40800000u, 0x3E000000u, 0x00000000u,
+            0x40B00000u, 0x40800000u, 0x3E000000u, 0x00000000u,
+            0x40E00000u, 0x40800000u, 0x3E000000u, 0x00000000u,
+            0x41000000u, 0x41100000u, 0x3E000000u, 0x00000000u,
+            0x41200000u, 0x41100000u, 0x3E000000u, 0x00000000u,
+            0x41500000u, 0x40C00000u, 0x3E000000u, 0x00000000u,
+        }),
+        new(1, "CC13187A323133897C2A8BF1E32A84F2FA4A98B0497A7591A60246D7AEB6B2B6", new uint[]
+        {
+            0x3EC00000u, 0x3E800000u, 0x3DEEC93Cu, 0xBD3893D3u,
+            0x417E0000u, 0x413C0000u, 0x3DF609A8u, 0xBD0D7116u,
+            0x40840000u, 0x40800000u, 0x3DF7D681u, 0xBD004166u,
+            0x40B40000u, 0x40800000u, 0x3DF23E66u, 0x3D2593CCu,
+            0x40E40000u, 0x40800000u, 0x3DFF919Cu, 0xBBEDA32Au,
+            0x41020000u, 0x41100000u, 0x3DF25DF6u, 0x3D24DAA3u,
+            0x41220000u, 0x41100000u, 0x3DF87498u, 0xBCF6C478u,
+            0x41520000u, 0x40C00000u, 0x3DF89135u, 0x3CF4F5C6u,
+        }),
+        new(16, "A94333FE67FD0C9680685488A631FA81DE5A88906E04796424A0FA18AADD9C68", new uint[]
+        {
+            0x400CE03Au, 0x3E6BCEA5u, 0x3DE1884Au, 0x3D723FBFu,
+            0x3FD57679u, 0x413B72E9u, 0x3DDBD1A8u, 0x3D833551u,
+            0x40BD6946u, 0x40796CF3u, 0x3DF55738u, 0x3D123456u,
+            0x40EDF482u, 0x408723B8u, 0x3DFC0C88u, 0x3CB33676u,
+            0x410DF212u, 0x408F8E4Du, 0x3DFE231Eu, 0x3C769D3Cu,
+            0x411BE3FDu, 0x411C9A9Bu, 0x3DE11C4Bu, 0x3D73D042u,
+            0x413AD6E5u, 0x411E6191u, 0x3DB0EFE0u, 0x3DB902FAu,
+            0x416A4C7Au, 0x40AFC332u, 0x3D94930Bu, 0xBDD0797Eu,
+        }),
+        new(64, "4035215044691CD0C568D3DD1A0A256636B720229D1D03144329D7EBB6C427FC", new uint[]
+        {
+            0x40E94AE3u, 0x3FB09A74u, 0x3C393B50u, 0x3DFEF366u,
+            0x40D222DAu, 0x3F7C5933u, 0x3D29AD69u, 0x3DF1888Eu,
+            0x4137683Du, 0x40B096D1u, 0x3DD573C8u, 0x3D8D5472u,
+            0x414FE003u, 0x40B845F1u, 0x3D16CB16u, 0x3DF4A534u,
+            0x416680B9u, 0x40B9931Du, 0x3D8C6912u, 0x3DD60EE6u,
+            0x4146A493u, 0x40073C16u, 0xBCD2939Au, 0x3DFA8754u,
+            0x415FBF83u, 0x401A06E2u, 0xBBCE200Bu, 0x3DFFACF6u,
+            0x4160F88Bu, 0x4079F700u, 0x3D25E301u, 0x3DF230DAu,
+        }),
+        new(256, "FBE335EE79579FD841CFABF23EB933A6E6E09689B1DCAEC19C0A406E897C863A", new uint[]
+        {
+            0x40BE24CEu, 0x40087D6Au, 0xBD607130u, 0x3DE6179Cu,
+            0x40A6F0D6u, 0x4005AB5Du, 0xBD89CEC7u, 0x3DD7BE32u,
+            0x40B0B922u, 0x3F2313A2u, 0xBD9E4C95u, 0x3DC9309Fu,
+            0x40F2E700u, 0x3F68F0F1u, 0xBD0E65F5u, 0x3DF5E655u,
+            0x411344D0u, 0x3F0D6476u, 0xBD6CED7Fu, 0x3DE2F0F4u,
+            0x40CEB785u, 0x40D4EDABu, 0xBDFF2192u, 0x3C289727u,
+            0x40E026E9u, 0x40DE781Eu, 0xBDFDBFD6u, 0xBC877C2Au,
+            0x40D03A83u, 0x4105B045u, 0xBDFB5354u, 0xBCC2CAAAu,
+        }),
+    };
 }

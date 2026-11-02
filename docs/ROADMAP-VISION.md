@@ -1,4 +1,5 @@
-> **Aspirational reference (2026-07-25): ~15% built.** The
+> **Aspirational reference, originally written 2026-07-25.** Current capabilities and evidence live
+> in [PROJECT_STATUS.md](../PROJECT_STATUS.md); the original percentage is not a current estimate. The
 > [epic #10 checklist](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) is the executable plan
 > and source of sequencing authority; this document is not the plan of record.
 
@@ -42,15 +43,21 @@ not queued implementation work.
 
 ### Deferral boundary
 
-Every primitive below remains speculative until the shared kernel has carried boids, Vicsek, and
-ACO without foundation-specific kernel edits beyond #30's declared generic field phase
+The Vicsek and ACO vertical proofs are implemented
 ([#29](https://github.com/Chris0Jeky/SwarmingLilMen/issues/29) and
-[#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)); the independent browser demos do not
-satisfy that gate. The global proof does not replace each primitive's direct prerequisite:
+[#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)). They demonstrated reuse of the
+experiment spine: registry, metrics, RNG, manifests, sweeps and reports. They did **not** establish
+a shared simulation kernel or scheduler. Each world still owns its update phases; ACO owns its
+scalar-field phase, and the boids force pipeline cannot express Vicsek heading replacement.
+See [the seam inventory](VICSEK.md#seam-inventory-update-aco).
 
-In this table, #27's bounded contract means per-agent observations and tagged policy intents. Its
-kernel resolver arbitrates only steering-policy forces; institution, market, and payoff resolvers
-remain module-owned.
+The primitives below remain speculative. Neither the completed experiment-spine proofs nor the
+independent browser demos satisfy a general-kernel prerequisite. Each proposed primitive still
+needs a concrete consumer and the direct prerequisites below; this vision does not schedule it.
+
+In this table, #27's implemented bounded contract means boids observations and tagged force intents.
+Its resolver arbitrates steering-policy forces. Message, institution, market and payoff intents
+need their own contracts; the current force API does not already provide those semantics.
 
 Every IPC endpoint, including metrics/events, notebook tooling, and learner bridges, must bind to
 loopback and authenticate peers by default. Remote exposure requires a separate threat model and
@@ -58,12 +65,12 @@ explicit design decision.
 
 | Deferred primitive | Kernel prerequisite before implementation |
 | --- | --- |
-| Resources | #30 adds the generic kernel field seam. Each resource-owning module owns its field state and deterministic update cadence through stable space and Observation/Intent seams; the ACO module's pheromone state is the proof case. No resource-specific kernel branch. |
+| Resources | #30 delivered scalar fields and an ACO-owned pheromone update phase, not a generic kernel field phase. A second concrete field consumer must establish which storage, phase ordering and observation contracts can be shared before a general resource seam is introduced. |
 | Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
-| Institutions | Module-owned durable state and a versioned event contract; institutional intents use #27's bounded contract, while the module owns deterministic arbitration. No institution-specific kernel branch. |
-| Markets | Resource/inventory ownership, order intents using #27's bounded contract, a module-owned deterministic market resolver, and metrics registered through #24's probe contract; no market-specific kernel branch. |
+| Institutions | Module-owned durable state, a versioned event contract and a separately designed institutional-intent contract; the module owns deterministic arbitration. The current boids force contract does not supply these semantics. |
+| Markets | Resource/inventory ownership, a separately designed order-intent contract, a module-owned deterministic market resolver, and metrics registered through #24's probe contract. The current boids force contract does not supply order semantics. |
 | Networks | The query-contract discipline established by #18, widened to a pluggable graph topology/edge store only when a real post-#30 consumer proves the need, without kernel conditionals. |
-| N-IPD | Deterministic scheduling/RNG, observations/intents using #27's bounded contract, a module-owned deterministic payoff resolver, and cooperation/payoff metrics registered through #24's probe contract; pairwise/neighborhood variants remain module configuration. |
+| N-IPD | Deterministic scheduling/RNG, a separately designed action/observation contract, a module-owned deterministic payoff resolver, and cooperation/payoff metrics registered through #24's probe contract; pairwise/neighborhood variants remain module configuration. The boids force contract is not a payoff/action protocol. |
 | IPC learners | The Raylib-free runner (#23), versioned reset/episode/reward and Observation/Intent protocols, bounded DTOs, backpressure, replay, and authenticated loopback-only transport for every learner connection; untrusted execution additionally requires #44's separate-process, no-ambient-authority, resource-limit, threat-model, and adversarial-test gates. |
 | Policy distillation | The Observation/Intent contract from #27, an explicitly designed versioned `(observation, intent, reward, next-observation)` trace schema and capture path, and round-trip validation through the experiment spine (#23-#24). The trace work remains unscheduled; section 10 is blocked on these contracts, not on distillation algorithms. |
 
