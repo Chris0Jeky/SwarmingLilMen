@@ -40,19 +40,24 @@ source-bound receipt. Normal CI keeps the small analytical/real-engine suite; th
 runs on explicit dispatch or changes to its orchestration, `SwarmSim.Parity/`, or the shared
 minimum-image helper. Operational timing now records
 actual primary/repeat/naive counts and separate phase durations, so 250-run verification cost is
-not labeled as a 100-run primary measurement. The initial CI primary intervals sum to roughly
-360 / 346 seconds on Ubuntu / Windows; the under-60-second target remains open. The guide keeps
-these workload and timing scopes explicit.
+not labeled as a 100-run primary measurement. After the bounded runtime changes, the complete
+normal primary intervals were 258.550 / 171.189 seconds on separate Ubuntu / Windows CI hosts;
+the under-60-second target remains open. These host observations are not a controlled performance
+comparison. The [runtime evidence](docs/PARITY_RUNTIME.md#full-integrated-matrix-timings) keeps
+the workload, timing and comparison scopes explicit.
 See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 [legacy retirement criteria](docs/LEGACY_RETIREMENT.md). Legacy remains supported.
 
 ## Verified live state
 
-The current integrated local Release gate passes **1,532 non-Performance tests**, with zero
-failures/skips and no build warnings or errors. The scanner, benchmark collector and scientific
-wrapper separately pass **96**, **40** and **14** Python tests. PR checks qualify the exact
-reviewed revision and generated merge result on Ubuntu/Windows before merge; the historical
-counts below identify the specific additions that produced this state.
+The integrated Release gate passes **1,532 non-Performance tests**, with zero failures/skips
+locally and in all four Ubuntu/Windows exact-head/generated-merge jobs in
+[CI run 41449137035](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449137035).
+The local build reports no warnings or errors. The scanner, benchmark collector and scientific
+wrapper separately pass **96**, **40** and **14** Python tests. All four complete normal/witness
+jobs passed in [scientific run 41449136980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449136980)
+at the same reviewed head, with the actual merged tree verified equal to the tested tree.
+The historical counts below identify the specific additions that produced this state.
 
 - **Profile-guided parity runtime:** strict guards skip identity remainder operations in the
   spatial minimum-image helper and geometry probe, while 64-agent hash batches retain the exact

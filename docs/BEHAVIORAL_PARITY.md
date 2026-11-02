@@ -341,3 +341,14 @@ subtracts before periodic remainder; their calculations remain separate. Reusing
 dropping per-tick metrics or reducing repeats would change the scientific contract. The dedicated
 scientific workflow now also runs for changes under `SwarmSim.Parity/` and to `MathUtils.cs`.
 Issue #28 stays open for runtime work, and the other legacy retirement requirements remain open.
+
+The integrated optimization passed all four full scientific jobs at
+`8dd2a734b27767b6e529ae2e323993dcfc16d7d5` in
+[run 41449136980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449136980).
+Each normal job completed 100 primary, 100 repeat and 50 naive-index runs, with all nine envelopes
+passing; both 100-run alignment-off jobs produced the required S4/S5 polarization rejections.
+Normal primary intervals were 258.550 / 171.189 seconds on Ubuntu / Windows, and complete normal
+matrix intervals were 733.770 / 497.876 seconds. These are separate CI-host observations, not a
+controlled before/after comparison. The under-60-second target remains unmet. The
+[runtime evidence](PARITY_RUNTIME.md#full-integrated-matrix-timings) retains phase timings, artifact
+digests and independent checks of the 100 CSV hashes and 75 unchanged witness rows on each OS.
