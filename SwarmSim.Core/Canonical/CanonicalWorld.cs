@@ -616,7 +616,10 @@ public sealed class CanonicalWorld
                 continue;
             }
 
-            Vec2 direction = delta.Normalized;
+            // A finite displacement can have an overflowing squared float length. Keep the
+            // ordinary normalization (and its cutoff) exact; widen only that exceptional norm.
+            Vec2 direction = float.IsFinite(delta.LengthSquared)
+                ? delta.Normalized : delta / NeighborDistance(delta);
             if (!MathUtils.IsWithinFieldOfView(forward.X, forward.Y, direction.X, direction.Y, fieldOfViewDegrees))
                 continue;
 
