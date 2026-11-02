@@ -1,6 +1,6 @@
 # SwarmingLilMen — verified project state
 
-**Updated: 2026-10-30.** This file describes current capabilities and the evidence behind them.
+**Updated: 2026-11-02.** This file describes current capabilities and the evidence behind them.
 [The earlier tracker](docs/archive/PROJECT_STATUS_BEFORE_2026-10-29.md) preserves historical logs,
 measurements and superseded plans. [Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10)
 is the roadmap and ordering authority; historical phase checklists are not a second work queue.
@@ -10,7 +10,9 @@ is the roadmap and ordering authority; historical phase checklists are not a sec
 SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Besides Vicsek and
 ACO foundations, two boids engines
 coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time growth and the default renderer;
-`CanonicalWorld` is the target for new simulation work. Named deterministic RNG streams now support
+`CanonicalWorld` is the target for new boids behavior. A different model with its own state and
+update rule is a separate foundation, in its own `Core/<Name>/` directory with an entry in
+`SwarmSim.Cli/Engines.cs`. Named deterministic RNG streams now support
 independent stochastic consumers. Bounded named force policies, two resolvers and explicit velocity
 stages now make steering composition real. Synchronous Vicsek particles now run headless through
 the shared neighborhood, RNG, metric, manifest and sweep seams with no boids change. A minimal ant

@@ -166,6 +166,9 @@ SwarmingLilMen.sln
 │   ├── SimulationRunner.cs - Fixed-step advance; publishes a snapshot after each tick
 │   ├── SimSnapshot.cs      - Immutable per-tick copy for rendering or analytics
 │   ├── Canonical/          - Reynolds-style per-boid successor engine (--canonical)
+│   ├── Vicsek/             - Synchronous heading-update particle foundation
+│   ├── Aco/                - Ant-colony foundation with pheromone fields
+│   ├── ScalarField.cs      - Scalar field storage and deterministic updates
 │   ├── Spatial/            - Legacy uniform grid for neighbor queries
 │   ├── Systems/            - Stateless per-tick systems over the legacy World
 │   ├── Diagnostics/        - Ordered kinematic hash of agent positions and velocities
@@ -178,7 +181,10 @@ SwarmingLilMen.sln
 └── SwarmSim.Benchmarks/    - Benchmarks (references Core)
 ```
 
-New Phase 3+ behavior belongs in `Core/Canonical/`, the Reynolds-style successor engine. The legacy
+New Phase 3+ behavior on boids agents belongs in `Core/Canonical/`, the Reynolds-style successor engine. A
+different model with its own state and update rule is a separate foundation: place it in
+`Core/<Name>/` and register it in `SwarmSim.Cli/Engines.cs`, following Vicsek and ACO. Foundations
+share the experiment spine; they do not currently share a simulation kernel or scheduler. The legacy
 Structure-of-Arrays `World.cs` plus `Systems/` still drives the default renderer and the legacy
 tick/grid benchmark suites, and receives work only when a task concerns legacy parity, comparison,
 or removal. Canonical has a dedicated full-step benchmark suite and is the default headless CLI
