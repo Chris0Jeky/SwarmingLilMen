@@ -33,15 +33,21 @@ agrees exactly with all 100 CSV hashes, 78,800 tick rows, 1,600 window means and
 hashes. The reconciled source then passed the complete 250-run same-build verification: 100
 primary runs, 100 repeats and 50 canonical Naive-index runs. A separate 100-run alignment-off
 matrix fails the S4/S5 polarization bands while all 75 unmodified-model traces and CSVs remain
-exact. These full scientific checks were run on the recorded Linux host; ordinary Ubuntu/Windows
-CI covers the small analytical/real-engine tests and the actual committed baseline, not the full
-matrices. The guide keeps that distinction and records source/runtime identities.
+exact. The dedicated Scientific parity workflow has now passed the complete normal and
+alignment-off matrices on both Ubuntu and Windows at a recorded exact head, with all locked
+bands and baseline bytes unchanged. Each job retains the matrix, runtime/binary provenance and a
+source-bound receipt. Normal CI keeps the small analytical/real-engine suite; the expensive gate
+runs on explicit dispatch or changes to its own orchestration. Operational timing now records
+actual primary/repeat/naive counts and separate phase durations, so 250-run verification cost is
+not labeled as a 100-run primary measurement. The initial CI primary intervals sum to roughly
+360 / 346 seconds on Ubuntu / Windows; the under-60-second target remains open. The guide keeps
+these workload and timing scopes explicit.
 See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 [legacy retirement criteria](docs/LEGACY_RETIREMENT.md). Legacy remains supported.
 
 ## Verified live state
 
-The current integrated Release gate passes **1,345 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,346 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -73,8 +79,9 @@ or errors. The historical counts below identify the specific additions that prod
   rejection, spawn-model mismatch, shared-name configuration overlays and an eight-agent exact
   trajectory at ticks 0/1/16/64/256. Linux and Windows references were captured independently on
   .NET 8.0.33/X64 and every component word was rehashed. The first platform difference is one ULP
-  at tick 1; separate exact references preserve that measured distinction. A one-ULP noise mutation
-  fails the ordinary Linux golden assertion; existing boids/legacy fixtures are unchanged. See
+  at tick 1; separate exact references preserve that measured distinction. The one-ULP noise
+  witness diverges at tick 1 on both platforms, and a separate source mutation fails the ordinary
+  Linux golden assertion; existing boids/legacy fixtures are unchanged. See
   [the scenario, reference provenance and mutation evidence](docs/VICSEK.md#exact-trajectory-regression).
 - **Behaviour gallery:** `SwarmSim.Cli --gallery scenarios/gallery.json` runs six short entries
   (tuned canonical flock, legacy balanced, Vicsek low and high noise, ACO with and without
@@ -399,7 +406,9 @@ speedup or machine-independent performance bound.
 4. Address the measured composition cost (#27), preserving the exact default trajectories and
    bounded observations. The new force-only API still needs a concrete consumer to earn public
    per-agent identity/noise and heading/velocity update seams.
-5. Complete qualification and runtime work for the implemented behavioral parity harness (#28).
+5. Reduce the primary-matrix runtime for the behavioral parity harness (#28), preserving every
+   fixed recipe, seed, per-tick metric and exact comparison. Full Ubuntu/Windows scientific
+   qualification now passes through the explicit workflow; the under-60-second target is unmet.
    Vicsek and ACO are complete on the shared spine. The honest next generality question is a real
    scheduler and a hash that sees field state; a third foundation's phases still live inside its
    own world. Named rule-control visuals (#40) now consume the settled composition API; native-input and

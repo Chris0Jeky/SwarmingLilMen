@@ -84,33 +84,59 @@ public static class ParityCommand
             File.WriteAllText(Path.Combine(directory, "experiment.json"), JsonSerializer.Serialize(metadata, Json) + "\n");
             var results = new List<ParityRunResult>();
             var exactErrors = new List<string>();
+            int primaryRuns = 0, repeatRuns = 0, naiveIndexRuns = 0;
+            long primaryTicks = 0, repeatTicks = 0, naiveIndexTicks = 0;
             var clock = Stopwatch.StartNew();
             foreach (ScenarioRecipe recipe in recipes)
                 foreach (uint seed in seeds)
                     foreach (string model in models)
                     {
-                        double start = clock.Elapsed.TotalSeconds;
+                        long start = clock.ElapsedTicks;
                         bool mutate = alignmentDisabled && model == "classic";
                         ParityRunResult result = ParityRunner.Run(recipe, seed, model,
                             Path.Combine(directory, recipe.Id, seed.ToString(CultureInfo.InvariantCulture), model), alignmentDisabled: mutate);
+                        long elapsed = clock.ElapsedTicks - start;
+                        primaryTicks += elapsed;
+                        primaryRuns++;
                         results.Add(result);
-                        output.WriteLine(FormattableString.Invariant($"{recipe.Id} seed={seed} model={model} seconds={clock.Elapsed.TotalSeconds - start:F3}"));
+                        output.WriteLine(FormattableString.Invariant($"{recipe.Id} seed={seed} model={model} seconds={(double)elapsed / Stopwatch.Frequency:F3}"));
                         output.Flush();
                         if (command == "verify" && !alignmentDisabled)
                         {
+                            start = clock.ElapsedTicks;
                             ParityRunResult repeat = ParityRunner.Run(recipe, seed, model);
+                            repeatTicks += clock.ElapsedTicks - start;
+                            repeatRuns++;
                             if (!ExactSame(result, repeat)) exactErrors.Add($"Repeat mismatch: {recipe.Id}/{seed}/{model}.");
                             if (model is "classic" or "enhanced")
                             {
+                                start = clock.ElapsedTicks;
                                 ParityRunResult naive = ParityRunner.Run(recipe, seed, model, naiveIndex: true);
+                                naiveIndexTicks += clock.ElapsedTicks - start;
+                                naiveIndexRuns++;
                                 if (!ExactSame(result, naive)) exactErrors.Add($"Spatial-index mismatch: {recipe.Id}/{seed}/{model}.");
                             }
                         }
                     }
+            clock.Stop();
+            // Operational measurements remain outside deterministic result, metric and baseline data.
+            // Component timers include completed runner calls and their artifact writes, if requested.
+            var timing = new
+            {
+                Version = 1,
+                PrimaryRuns = primaryRuns, PrimarySeconds = (double)primaryTicks / Stopwatch.Frequency,
+                RepeatRuns = repeatRuns, RepeatSeconds = (double)repeatTicks / Stopwatch.Frequency,
+                NaiveIndexRuns = naiveIndexRuns, NaiveIndexSeconds = (double)naiveIndexTicks / Stopwatch.Frequency,
+                MatrixSeconds = clock.Elapsed.TotalSeconds,
+                MatrixScope = "Includes primary, repeat and naive-index runs, exact repeat/index checks and per-run console output; " +
+                    "excludes command input validation, baseline loading, experiment metadata, summary/timing/log writes, " +
+                    "baseline calibration/comparison and final diagnostics."
+            };
             File.WriteAllText(Path.Combine(directory, "summary.json"), JsonSerializer.Serialize(results, Json) + "\n");
-            string timing = FormattableString.Invariant($"Completed {results.Count} primary runs in {clock.Elapsed.TotalSeconds:F3}s.");
-            output.WriteLine(timing);
-            File.WriteAllText(Path.Combine(directory, "log.txt"), timing + "\n");
+            File.WriteAllText(Path.Combine(directory, "timing.json"), JsonSerializer.Serialize(timing, Json) + "\n");
+            string timingMessage = FormattableString.Invariant($"Completed primary={primaryRuns} ({timing.PrimarySeconds:F3}s), repeat={repeatRuns} ({timing.RepeatSeconds:F3}s), naive-index={naiveIndexRuns} ({timing.NaiveIndexSeconds:F3}s). Matrix elapsed={timing.MatrixSeconds:F3}s including verification work when requested.");
+            output.WriteLine(timingMessage);
+            File.WriteAllText(Path.Combine(directory, "log.txt"), timingMessage + "\n");
             if (command == "record")
             {
                 ParityBaseline candidate = ParityBaseline.Create(recipes, results.ToArray());

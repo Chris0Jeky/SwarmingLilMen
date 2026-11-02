@@ -139,9 +139,11 @@ on Windows. The measured differences are diagnostics, never acceptance tolerance
 | 256 | 0.000055789947509765625 | 574 |
 
 The one-ULP witness raises `Noise` from bits `3F400000` to `3F400001`, keeps the initial state
-identical and requires a later checkpoint to differ. On Linux the first difference is tick 1.
-Applying the same one-ULP change inside `VicsekWorld.Step` also makes the ordinary golden assertion
-fail at tick 1. Thus two new runs changing together cannot hide that implementation drift.
+identical and requires a later checkpoint to differ. The first difference is tick 1 on both Linux
+and Windows, as verified by the final exact-head jobs at `2cfe2eb83a7a29b66d515f86615b66f4a7f8927a`
+in [CI run 41385052749](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41385052749).
+Applying the same one-ULP change inside `VicsekWorld.Step` also makes the ordinary Linux golden
+assertion fail at tick 1. Thus two new runs changing together cannot hide that implementation drift.
 
 These tests run in the normal non-performance suite and in CI's `GoldenTraceTests` filter. Their
 detailed output includes the actual runtime, every checkpoint's hash and component words, and
