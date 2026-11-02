@@ -74,16 +74,35 @@ this one benchmark. A complete bundle requires:
   each requested population, with the fixed requested job characteristics.
 - A successful child exit and actual workload records for every requested measurement
   iteration, with unique indices, the requested operation count, and matching JSON/log values.
-- A raw allocation record containing GC collection counts, total allocated bytes and a positive
-  operation count, consistent with the JSON memory record. Missing or unknown (`?`) raw bytes
-  are incomplete. Nonzero allocation is accepted as evidence.
+- A raw allocation record containing GC collection counts, total allocated bytes and the
+  requested invocation count, consistent with the JSON memory record and .NET 8 rounding.
+  Counts must fit BDN's integer types; missing or unknown (`?`) raw bytes are incomplete.
+  Nonzero allocation is accepted as evidence.
 - SDK and child runtime/GC metadata, the actual retained child build, and source content that
   matches before and after collection.
 
-BDN's JSON `BytesAllocatedPerOperation` can include allocation-quantum correction. The receipt
-therefore keeps raw allocated bytes and operations separately; it does not reconstruct raw bytes
-from a rounded or corrected per-operation value. Raw samples and warnings remain available even
-if BDN excludes a sample from its summary.
+For this pinned **BDN 0.15.6 / .NET 8** job, `BytesAllocatedPerOperation` is an integer. BDN
+converts total bytes and operations to doubles, divides them, and rounds to the nearest integer
+with ties to even. Its older-runtime allocation-quantum exclusion does **not** apply to .NET 8.
+The collector checks that exact relationship, including double conversion for large integers.
+For example, raw `336 / 64` exports `5`, while raw `32 / 64` legitimately exports `0`.
+Multiplying the rounded `5` by 64 would recover only 320 bytes, so the receipt retains the
+original 336 bytes separately. A JSON value of `0` or `5.25` alongside raw `336 / 64` is
+inconsistent evidence for this job. These rules come from the pinned
+[`GcStats`](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.6/src/BenchmarkDotNet/Engines/GcStats.cs)
+and [`JsonExporterBase`](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.6/src/BenchmarkDotNet/Exporters/Json/JsonExporterBase.cs),
+and are not a claim about every BDN version or runtime.
+
+The .NET 8 allocation counter is **process-wide**: BDN calls
+`GC.GetTotalAllocatedBytes(precise: true)`. The
+[`Engine`](https://github.com/dotnet/BenchmarkDotNet/blob/v0.15.6/src/BenchmarkDotNet/Engines/Engine.cs)
+collects those bytes in a separate workload interval after timing, with
+`invocations * operationsPerInvoke` operations. This benchmark has one operation per invocation,
+so that interval must contain the requested invocation count; it is not the sum of the five
+timing iterations. Tests using `GC.GetAllocatedBytesForCurrentThread()` observe a different
+scope and cannot by themselves explain a process-wide allocation record. Neither counter
+identifies the allocating method. Raw samples and warnings remain available even if BDN
+excludes a timing sample from its summary.
 
 Exit code **0** means `evidence_complete: true`. The receipt always says
 `performance_verdict: "not_evaluated"`. Exit code **1** means incomplete evidence; logs and an
@@ -91,11 +110,18 @@ incomplete receipt remain for diagnosis. Empty selections, missing/duplicate/fai
 missing raw records or binaries, and changed source all fail completeness. Invalid arguments
 or an existing output path return **2**; an existing output directory is left untouched.
 
-The quick fixture tests run in both normal and exact-head CI, without running benchmarks:
+The quick fixture tests run in both normal and exact-head CI:
 
 ```sh
 python -m unittest discover -s tools/CompositionCost -p "test_*.py"
 ```
+
+Both CI jobs also run the real `--agents 1000 --smoke` collector on Ubuntu and Windows. This
+checks SDK selection, the generated child, native path handling, JSON/raw-log agreement and
+bundle completeness. Each job retains `artifacts/composition/ci/` for seven days under a
+`composition-smoke-integration-*` or `composition-smoke-exact-head-*` artifact name, including
+failure logs when available. These cold-start artifacts supply plumbing evidence only; CI does
+not apply a timing or allocation threshold or claim performance qualification.
 
 ## Continuing limits
 

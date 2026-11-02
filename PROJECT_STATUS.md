@@ -51,6 +51,17 @@ The recorded base integrated Release gate at `e512f984` passes **1,346 non-Perfo
 with no build warnings or errors. The evidence below identifies subsequent targeted additions;
 PR checks qualify each integrated revision before merge.
 
+- **Benchmark evidence consistency:** the collector now checks BDN 0.15.6/.NET 8 integer
+  allocation output against raw process-wide bytes, including double conversion and ties-to-even
+  rounding. Raw 336 bytes / 64 operations must export 5 B/op, while the original raw total stays
+  in the receipt. Forty Python tests pass after 17 failing subcases before the correction; CI now
+  runs and retains the actual smoke bundle on Ubuntu/Windows at integration and exact head.
+  A matched 1k comparison against the original pre-composition baseline produced reversing pair
+  deltas and substantial launch drift, so it does not establish recovery or a regression magnitude.
+  [#20](https://github.com/Chris0Jeky/SwarmingLilMen/issues/20) and
+  [#27](https://github.com/Chris0Jeky/SwarmingLilMen/issues/27) remain open; see
+  [the collector contract](docs/COMPOSITION_EVIDENCE.md) and
+  [the full matched observations](docs/CANONICAL_COMPOSITION.md).
 - **Immediate renderer shake feedback:** legacy X/shake now refreshes both interpolation
   snapshots and notifies the simulation runner after changing velocities. Three real-input-path
   regressions cover shake alone and same-frame parameter/preset recreation; they fail on stale
