@@ -328,10 +328,16 @@ these are cost hypotheses to profile, not measured CPU attribution. The primary 
 10,604,617,600 pair-distance evaluations across the two metric probes, calculated from the committed
 populations, ticks, seeds and models.
 
-The next bounded experiment is an unchanged S4 / seed 7 / classic Release run with an external CPU
-sampling profile and an unprofiled same-binary control. Compare the deterministic summaries and
-per-run artifacts exactly, and report profiler overhead separately. Nearest-neighbor analysis
-normalizes coordinates before subtraction while the geometry probe subtracts before periodic
-remainder; fusing these calculations cannot be assumed bit-identical. Reusing steering neighbors,
-dropping per-tick metrics or reducing repeats would change the scientific contract. Issue #28 stays
-open for runtime work, and the other legacy retirement requirements remain open.
+The subsequent [runtime investigation](PARITY_RUNTIME.md) ran that unchanged S4 / seed 7 / classic
+workload with a managed sampled-thread-time profile and bracketed same-binary controls. It identified
+the spatial query, geometry probe and per-agent hash updates as bounded optimization targets. Strict
+guards now skip identity remainders, and fixed-size hash batches retain the exact byte stream. An
+unprofiled A–B–B–A comparison observed 42.286 / 34.042-second baseline primary intervals and
+19.857 / 20.314-second optimized intervals, with every scientific file byte-identical. These are
+one-case observations on a variable shared host, not a qualification of the complete matrix target.
+
+Nearest-neighbor analysis still normalizes coordinates before subtraction while the geometry probe
+subtracts before periodic remainder; their calculations remain separate. Reusing steering neighbors,
+dropping per-tick metrics or reducing repeats would change the scientific contract. The dedicated
+scientific workflow now also runs for changes under `SwarmSim.Parity/` and to `MathUtils.cs`.
+Issue #28 stays open for runtime work, and the other legacy retirement requirements remain open.

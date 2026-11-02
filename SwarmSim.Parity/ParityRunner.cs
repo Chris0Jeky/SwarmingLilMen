@@ -111,12 +111,21 @@ public static class ParityRunner
 
     private static void AppendState(IncrementalHash hash, KinematicSample[] state)
     {
-        Span<byte> encoded = stackalloc byte[16];
-        foreach (KinematicSample a in state)
+        // Preserve the exact little-endian agent stream, but cross the hash provider boundary
+        // once per bounded batch instead of once per agent. Scratch size is independent of N.
+        const int batchSize = 64;
+        Span<byte> encoded = stackalloc byte[batchSize * 16];
+        for (int start = 0; start < state.Length; start += batchSize)
         {
-            BinaryPrimitives.WriteSingleLittleEndian(encoded, a.X); BinaryPrimitives.WriteSingleLittleEndian(encoded[4..], a.Y);
-            BinaryPrimitives.WriteSingleLittleEndian(encoded[8..], a.Vx); BinaryPrimitives.WriteSingleLittleEndian(encoded[12..], a.Vy);
-            hash.AppendData(encoded);
+            int count = Math.Min(batchSize, state.Length - start);
+            for (int i = 0; i < count; i++)
+            {
+                KinematicSample a = state[start + i];
+                Span<byte> agent = encoded.Slice(i * 16, 16);
+                BinaryPrimitives.WriteSingleLittleEndian(agent, a.X); BinaryPrimitives.WriteSingleLittleEndian(agent[4..], a.Y);
+                BinaryPrimitives.WriteSingleLittleEndian(agent[8..], a.Vx); BinaryPrimitives.WriteSingleLittleEndian(agent[12..], a.Vy);
+            }
+            hash.AppendData(encoded[..(count * 16)]);
         }
     }
 }

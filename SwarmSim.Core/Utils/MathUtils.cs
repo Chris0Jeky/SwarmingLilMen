@@ -224,7 +224,9 @@ public static class MathUtils
     /// <returns>The equivalent displacement in the interval [-extent/2, extent/2].</returns>
     internal static float MinimumImageDelta(float delta, float extent)
     {
-        float wrapped = delta % extent;
+        // A remainder inside one extent is the original float, including signed zero.
+        // Keep the remainder for exact wrap multiples, out-of-range and nonfinite inputs.
+        float wrapped = MathF.Abs(delta) < extent ? delta : delta % extent;
         float halfExtent = extent * 0.5f;
         if (wrapped > halfExtent)
             return wrapped - extent;

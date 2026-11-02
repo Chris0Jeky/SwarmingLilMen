@@ -48,4 +48,29 @@ public sealed class ParityMetricTests
         Assert.Throws<InvalidOperationException>(() => probe.Sample(
             new MetricFrame(new[] { new KinematicSample(1,1,1,0) }, MetricDomain.Toroidal(10,10)), values));
     }
+
+    [Theory]
+    [InlineData(-126, false)]
+    [InlineData(-126, true)]
+    [InlineData(0, false)]
+    [InlineData(0, true)]
+    [InlineData(120, false)]
+    [InlineData(120, true)]
+    public void GeometricCountsRetainInclusiveEdgesAcrossScalesAndWraps(int exponent, bool outside)
+    {
+        float unit = MathF.ScaleB(1f, exponent);
+        // Modulo an eight-unit axis these are (0,0), (1,0), (4,0).
+        // Their three distances are exactly 1, 3 and 4 units in either representation.
+        KinematicSample[] agents = outside
+            ? [new(-16 * unit, 16 * unit, 1, 0), new(9 * unit, -8 * unit, 1, 0), new(28 * unit, 0, 1, 0)]
+            : [new(0, 0, 1, 0), new(unit, 0, 1, 0), new(4 * unit, 0, 1, 0)];
+        var probe = new ParityGeometryProbe(agents.Length, 3 * unit, 1);
+        probe.SetPrevious(agents);
+        double[] output = new double[probe.Channels.Count];
+        probe.Sample(new MetricFrame(agents, MetricDomain.Toroidal(8 * unit, 8 * unit)), output);
+        Assert.Equal(4d / 3, output[5]);
+        Assert.Equal(1d, output[6]);
+        Assert.Equal(1.9d, output[7]);
+        Assert.Equal(exponent < 0 ? 3d : exponent == 0 ? 1d : 0d, output[8]);
+    }
 }

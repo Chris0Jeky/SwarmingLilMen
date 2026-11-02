@@ -1,4 +1,6 @@
 using SwarmSim.Parity;
+using SwarmSim.Core.Metrics;
+using System.Security.Cryptography;
 
 namespace SwarmSim.Tests;
 
@@ -45,5 +47,52 @@ public sealed class ParityRunnerTests
         Assert.Equal(normal.InitialHash, disabled.InitialHash);
         Assert.NotEqual(normal.FinalHash, disabled.FinalHash);
         Assert.NotEqual(normal.CsvHash, disabled.CsvHash);
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(63)]
+    [InlineData(64)]
+    [InlineData(65)]
+    [InlineData(129)]
+    public void StateIdentitiesHashTheCompleteLittleEndianAgentAndTickStream(int count)
+    {
+        var recipe = new ScenarioRecipe { Id = "HASH_CONTRACT", Layout = "uniform", Count = count, Ticks = 3 };
+        KinematicSample[] requested = recipe.Generate(7);
+        var reference = new ReynoldsReference(recipe, requested);
+        KinematicSample[] initial = reference.Agents.ToArray();
+        using var trace = new MemoryStream();
+        using var writer = new BinaryWriter(trace);
+        WriteSnapshot(writer, initial);
+        for (int tick = 0; tick < recipe.Ticks; tick++)
+        {
+            reference.Step();
+            WriteSnapshot(writer, reference.Agents);
+        }
+        ParityRunResult result = ParityRunner.Run(recipe, 7, "reference");
+        var identities = ParityRunner.InitialIdentities(recipe, 7, "reference");
+        Assert.Equal(SnapshotHash(requested), result.RequestedInitialHash);
+        Assert.Equal(SnapshotHash(initial), result.InitialHash);
+        Assert.Equal(SnapshotHash(reference.Agents), result.FinalHash);
+        Assert.Equal(Convert.ToHexString(SHA256.HashData(trace.ToArray())), result.StateTraceHash);
+        Assert.Equal((result.RequestedInitialHash, result.InitialHash), identities);
+    }
+
+    private static string SnapshotHash(ReadOnlySpan<KinematicSample> agents)
+    {
+        using var bytes = new MemoryStream();
+        using var writer = new BinaryWriter(bytes);
+        WriteSnapshot(writer, agents);
+        return Convert.ToHexString(SHA256.HashData(bytes.ToArray()));
+    }
+
+    private static void WriteSnapshot(BinaryWriter writer, ReadOnlySpan<KinematicSample> agents)
+    {
+        // BinaryWriter writes individual float words little-endian. One-shot hashing of this
+        // independent encoding checks component order, partial batches and tick boundaries.
+        foreach (KinematicSample a in agents)
+        {
+            writer.Write(a.X); writer.Write(a.Y); writer.Write(a.Vx); writer.Write(a.Vy);
+        }
     }
 }
