@@ -1385,9 +1385,8 @@ internal static class Program
             if (parametersChanged)
             {
                 settings = BuildCanonicalWorldSettings();
-                canonicalWorld = RecreateCanonicalWorld(canonicalWorld, settings);
+                canonicalWorld = RecreateCanonicalWorld(canonicalWorld, settings, ref _overlaySubjectIndex);
                 SelectCanonicalTracked(canonicalWorld, _canonicalTrackedAgents);
-                _overlaySubjectIndex = CanonicalInspectionOverlay.KeepSubject(_overlaySubjectIndex, canonicalWorld.Count);
                 accumulator = 0f;
             }
 
@@ -1595,7 +1594,8 @@ internal static class Program
         return world;
     }
 
-    internal static CanonicalWorld RecreateCanonicalWorld(CanonicalWorld oldWorld, CanonicalWorldSettings settings)
+    /// <summary>Recreates parameter-dependent state while retaining the inspected boid when it still exists.</summary>
+    internal static CanonicalWorld RecreateCanonicalWorld(CanonicalWorld oldWorld, CanonicalWorldSettings settings, ref int subjectIndex)
     {
         var snapshots = new List<(Vec2 position, Vec2 velocity)>(oldWorld.Count);
         foreach (var boid in oldWorld.Boids)
@@ -1613,6 +1613,7 @@ internal static class Program
             }
         }
 
+        subjectIndex = CanonicalInspectionOverlay.KeepSubject(subjectIndex, newWorld.Count);
         return newWorld;
     }
 
