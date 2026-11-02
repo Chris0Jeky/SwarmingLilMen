@@ -28,6 +28,7 @@ public sealed class CanonicalWorld
     private readonly float[] _wanderAngles;
     private ulong _tickCount;
     private float _neighborDistanceSum;
+    private double _wideNeighborDistanceSum;
     private int _neighborDistanceSamples;
     private bool _separationPriorityTriggered;
     private float _minNeighborDistance = float.MaxValue;
@@ -417,7 +418,10 @@ public sealed class CanonicalWorld
                 {
                     minDistForAgent = minDistance;
                     nearestDelta = delta;
+                    float previousDistanceSum = _neighborDistanceSum;
                     _neighborDistanceSum += distanceSum;
+                    if (!float.IsFinite(_neighborDistanceSum))
+                        AccumulateWideNeighborDistanceSum(previousDistanceSum, distanceSum, filtered);
                     _neighborDistanceSamples += filtered;
                     _minNeighborDistance = MathF.Min(_minNeighborDistance, minDistForAgent);
                     _maxNeighborDistance = MathF.Max(_maxNeighborDistance, maxDistance);
@@ -558,6 +562,29 @@ public sealed class CanonicalWorld
 
         return (sum, minDist == float.MaxValue ? 0f : minDist, maxDist, nearestDelta);
     }
+
+    private void AccumulateWideNeighborDistanceSum(float previous, float localSum, int count)
+    {
+        // The finite prefix retains the established local-then-world float rounding. Once
+        // a total overflows, continue in double; resetting the float total at the next tick
+        // also resets this exceptional mode without changing ordinary accumulation.
+        if (float.IsFinite(previous)) _wideNeighborDistanceSum = previous;
+        if (float.IsFinite(localSum))
+        {
+            _wideNeighborDistanceSum += localSum;
+            return;
+        }
+
+        // Individual distances can be representable even when their local sum is not.
+        // Recover that one sum from the borrowed view already built for the current observer.
+        for (int i = 0; i < count; i++)
+            _wideNeighborDistanceSum += _neighborViewScratch[i].Distance;
+    }
+
+    private float AverageNeighborDistance => _neighborDistanceSamples <= 0 ? 0f
+        : float.IsFinite(_neighborDistanceSum)
+            ? _neighborDistanceSum / _neighborDistanceSamples
+            : (float)(_wideNeighborDistanceSum / _neighborDistanceSamples);
 
     private static float NeighborDistance(Vec2 delta)
     {
@@ -721,7 +748,7 @@ public sealed class CanonicalWorld
         destination.Capture(
             _tickCount,
             _instrumentation,
-            _neighborDistanceSamples > 0 ? _neighborDistanceSum / _neighborDistanceSamples : 0f,
+            AverageNeighborDistance,
             _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f,
             _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f,
             _separationPriorityTriggered,
@@ -752,7 +779,7 @@ public sealed class CanonicalWorld
             _tickCount,
             _lastTickAgentCount,
             neighborStats.Avg,
-            _neighborDistanceSamples > 0 ? _neighborDistanceSum / _neighborDistanceSamples : 0f,
+            AverageNeighborDistance,
             _neighborDistanceSamples > 0 ? _minNeighborDistance : 0f,
             _neighborDistanceSamples > 0 ? _maxNeighborDistance : 0f,
             _instrumentation.AverageNeighborWeight,
