@@ -90,10 +90,17 @@ public sealed class ShapedAvoidanceStage : ICanonicalVelocityStage
         Vec2 nearestDelta = context.NearestDelta;
         if (!nearestDelta.IsNearlyZero())
         {
-            float nearestDist = MathF.Sqrt(nearestDelta.LengthSquared);
+            float nearestSquared = nearestDelta.LengthSquared;
+            bool overflowedNorm = !float.IsFinite(nearestSquared)
+                && float.IsFinite(nearestDelta.X) && float.IsFinite(nearestDelta.Y);
+            // Keep ordinary distance/normalization arithmetic. A finite displacement can
+            // have an overflowing squared norm and still lie inside the gradual radius.
+            float nearestDist = overflowedNorm
+                ? (float)Math.Sqrt((double)nearestDelta.X * nearestDelta.X + (double)nearestDelta.Y * nearestDelta.Y)
+                : MathF.Sqrt(nearestSquared);
             if (nearestDist < _gradualRadius)
             {
-                Vec2 awayDir = (-nearestDelta).Normalized;
+                Vec2 awayDir = overflowedNorm ? -nearestDelta / nearestDist : (-nearestDelta).Normalized;
                 Vec2 forward = context.Self.Forward;
                 Vec2 right = new Vec2(forward.Y, -forward.X);
                 float lateralComponent = Vec2.Dot(awayDir, right);

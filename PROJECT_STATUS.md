@@ -59,6 +59,13 @@ PR checks qualify each integrated revision before merge.
   unproved. [#164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164) stays open; the
   [grammar limits](.hosting/README.md#scanner-grammar-limits-2026-11-02) retain artifact review and
   the allowlist as the publication boundary.
+- **Shaped avoidance at large finite distances:** an in-range neighbor no longer disappears
+  from the avoidance blend when its squared float norm overflows. The exceptional path recovers
+  both distance and away direction; ordinary arithmetic, tiny-distance cutoffs and the exclusive
+  gradual-radius edge remain unchanged. All 37 direct-stage and real-world Grid/Naive seam/interior
+  cases pass after 15 failed before. The three numeric follow-ups together pass 1,441 ordinary
+  tests and all six gallery entries on the recorded local build. See
+  [the shaped-avoidance scope](docs/CANONICAL_SHAPED_AVOIDANCE.md).
 - **Finite-vector magnitude clamps:** `Vec2.ClampMagnitude` now recovers the direction and cap
   when finite components overflow their squared float norm. Its ordinary rounding and nonfinite
   input behavior are unchanged, and both steering resolvers still reject nonfinite weighted
