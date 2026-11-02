@@ -41,7 +41,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,317 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,319 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -103,11 +103,15 @@ or errors. The historical counts below identify the specific additions that prod
   completed tick's inputs. The existing double buffer supplies positions; force instrumentation
   adds 8 bytes per capacity slot and retains its squared-magnitude API. Headless tests cover
   independent rule effects, caps, timing, geometry and zero warm query allocation; exact goldens
-  remain unchanged. The reusable `tools/RendererProbe` passes 112 native event-playback and pixel
-  checks in eight captures, with an HTML gallery and JSON/build-hash report. Removing the force-arrow
-  draw call causes seven expected failures. Linux CI runs it under Mesa/Xvfb for integration and
-  exact-head builds and retains feedback artifacts; Windows local GPU execution is also verified.
-  Windows OS-input injection and direct framebuffer/DPI export did not qualify, so OS input and human visual
+  remain unchanged. Tick status, zero-input pipelines, late-spawn membership and selected-agent
+  persistence through the real recreation path have direct regressions. The reusable
+  `tools/RendererProbe` passes 107 native behavior checks and 18 separate artifact checks in nine
+  captures, including a seam scene, with an HTML gallery and JSON/build-hash report. It checks
+  missing, extra, shortened and overlong geometry with explicit raster/occlusion tolerances;
+  deleting the force shaft or halving primary links fails while unmodified images stay byte-identical.
+  Linux CI runs it under Mesa/Xvfb for integration and exact-head builds and retains feedback
+  artifacts; the earlier Windows local GPU execution remains separate evidence. Windows OS-input
+  injection and direct framebuffer/DPI export did not qualify, so OS input and human visual
   acceptance remain open in #40. See [inspection semantics and evidence](docs/CANONICAL_INSPECTION.md).
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
@@ -178,11 +182,13 @@ or errors. The historical counts below identify the specific additions that prod
   [configuration cookbook](docs/CONFIGURATION_COOKBOOK.md) and
   [parameter guide](docs/PARAMETER_GUIDE.md).
 - **Renderer controls and native acceptance:** one engine-scoped inventory now drives both input
-  paths, H panels, HUD/footer labels, printed parameters and console help. Canonical accepts 1–7;
+  paths, H panels, HUD/footer labels, printed parameters and console help. Canonical accepts 1–8
+  (FOV is on 8);
   legacy accepts 1–8 and labels friction active only with Damped. Sense-circle help states the
   existing below-100-agent limit. Parameter/preset recreation now directs later same-frame actions
   to the active world: native F1+Space and Up+Space trials changed from a false 100-spawn report
-  with 64 exported agents to 164 exported agents. The integrated Release suite passes 976 tests.
+  with 64 exported agents to 164 exported agents. At that #182 revision, the integrated Release
+  suite passed 976 tests.
   Seven real native X11 launches verified both complete H panels, all five presets, sparse
   preset/file startup, both friction modes, O/Tab, pending/completed/reset telemetry, F12 and
   spawn/reset/export. Direct captures and exact source/binary hashes are committed in the

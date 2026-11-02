@@ -26,14 +26,23 @@ The panel reports the tick, three applied magnitudes and resolved-force magnitud
 keeps two things apart: what the tick **recorded** (input count and whether the simulation's own
 query truncated) and what is **displayed** (links drawn, the cap, and whether links were omitted).
 The overlay's reusable buffers hold 128 entries, so the display cap is the smaller of 128 and the
-simulation's `MaxNeighbors`. With the default settings they coincide; with, say, `MaxNeighbors=256`
+simulation's `EffectiveMaxNeighbors` (`MaxNeighbors` clamped to a minimum of four). With the default
+settings the display and simulation caps coincide; with, say, `MaxNeighbors=256`
 and 140 boids in range the line reads `Tick 1 recorded: 139 inputs, no truncation | Displayed: 128
 links, cap 128 reached, links omitted`. A capped display does not show every contributing input. The
-query uses the simulation's pre-FOV cap and built-in spatial ordering. Before the first completed
+query uses the simulation's pre-FOV candidate cap and built-in spatial ordering: fewer visible links
+can remain after FOV filtering. A truncated simulation query does not itself imply omitted display
+links; the notice appears only when fewer links are drawn than the tick recorded. Before the first completed
 tick the line reads `waiting for first completed tick`; a subject spawned after the last tick reads
 `subject not recorded`. Enhanced separation can reserve the budget and suppress alignment/cohesion
 while their switches remain ON.
 Whisker/wander policies and velocity stages remain independently active.
+
+A completed tick with zero agents reports `subject not recorded`, including for a boid added
+after that tick. Tick zero alone means the first tick is still pending. If the tick recorded zero
+inputs, the overlay draws zero links instead of querying hypothetical neighbors. An injected empty
+pipeline can produce that state even with nearby boids; the interactive renderer always constructs
+the Enhanced pipeline, and S/A/C switches disable emission without removing neighbor observation.
 
 ### Not shown
 
@@ -43,7 +52,8 @@ whisker-hit markers (and the "whisker hits" count), the green mean-heading line,
 at 360 degrees). They went with the old draw routine when it was replaced in one commit, in favor
 of explaining one tick's rule inputs and resolved force; the gray whisker circle now shows
 geometry only, without claiming an avoidance force. No documented control depended on them (**O**
-and **Tab** are unchanged). They were not restored; issue #194 tracks whether to bring any back.
+and **Tab** are unchanged). They remain omitted; the current inspection contract is the geometry,
+recorded rule inputs and resolved force described above.
 
 ## Data and cost
 
@@ -74,6 +84,12 @@ The follow-up for #193/#194 added tests for the exact status strings, a dense 14
 dropping its switch copy fails) and inspected-boid persistence; the non-Performance suite then
 passed 1,156 tests.
 
+The remaining #194 regressions cover an empty completed tick, an injected empty pipeline, actual
+late spawns above the 128-link display cap, and subject preservation/clamping inside the production
+recreation operation. Disabling S/A/C through the renderer still records and displays the observed
+neighbors with gray links. Exhaustive engine-specific key mapping remains covered by
+`RendererControlsTests`; the redundant legacy-policy test was removed.
+
 Eight **1920 × 1080 native Raylib render-target images** were inspected on Windows x64, .NET 8,
 Raylib 5.5 and Intel Arc OpenGL 3.3, using the production overlay/help methods. The explicit six-boid
 scene has seed 7, target speed 10, MaxForce 20, sense radius 240, separation radius 60, Enhanced
@@ -98,6 +114,24 @@ showed a DPI-size mismatch; the explicit render target avoids presenting that as
 capture. Physical keyboard input, full-window DPI behavior, Linux/macOS interactive desktop behavior and
 human acceptance remain unverified. **Issue #40 and milestone 7 remain partial.**
 
+### 2026-11-02 follow-up verification
+
+The isolated renderer follow-up based on `bbe3873` passed 53 focused checks (inspection, controls,
+telemetry and exact goldens) and all 1,297 non-Performance tests on Ubuntu 24.04.3 x64, .NET 8.0.33.
+The nine-case probe passed **107 behavior checks and 18 separate artifact checks** with Mesa
+software rendering under Xvfb. The wrapped-seam and small-force (`cohesion-off`) captures were
+inspected: both seam halves are drawn without long links across the viewport, and the small white
+arrow remains visible over the gold marker.
+
+Three isolated visual mutations exited 1 as expected: doubling the arrow length failed all eight
+scene force checks; adding an extra alignment segment failed the six affected scene checks; and
+using direct instead of minimum-image link displacement failed the two colored-link checks in
+the seam scene. Independent review then identified two presence gaps: an arrowhead without its
+shaft and half-length primary links passed the first predicates. The strengthened predicates
+reject both deletions in all eight non-help scenes; all nine unmodified PNGs remain byte-identical.
+The production source was unchanged by these mutation runs. These remain
+render-target/event-playback checks within the acceptance limits above.
+
 ## Fast visual feedback
 
 From the repository root:
@@ -113,16 +147,23 @@ Open the gallery for full-size PNGs and named failures; `report.json` includes t
 forces/input counts, runtime, assembly versions and SHA-256 build hashes. Assembly versions
 identify the build's Git revision but do not assert that its source checkout was clean.
 
-The eight cases run **112 assertions**: native S/A/C playback changes applied contributions;
+The nine cases check native S/A/C playback changes applied contributions;
 8/arrows/Shift reach the production FOV configuration; O/Tab/H/R map to their actions; pixel
-probes check front/top/rear arc coverage, colored links outside the legend, actual force tips,
-help-panel drawing and image dimensions. It uses the production overlay and help functions,
+probes check front/top/rear arc coverage, every expected colored link segment, absence of extra
+colored segments, the force arrow's shaft, direction and endpoint, and help-panel drawing. Link
+presence requires every unoccluded interior sample, spaced at most eight pixels apart; explicit
+marker, heading, whisker-circle and force-arrow masks allow foreground occlusion. Force-shaft
+samples use a one-pixel neighborhood, separately from the wider endpoint raster tolerance. The wrapped
+scene requires both clipped halves of each seam link and rejects long lines across the open middle.
+The report and gallery count these behavioral checks separately from PNG export and image-dimension
+checks. The earlier eight-case total of 112 included 16 of those artifact checks.
+It uses the production overlay and help functions,
 with a small deterministic scene presentation. It does not drive the interactive main loop.
 Render targets avoid OS scaling and screenshot focus dependencies; exact whole-image hashes
 are not a cross-GPU acceptance criterion. The raylib 5.5 event IDs come from
 [its native playback implementation](https://github.com/raysan5/raylib/blob/5.5/src/rcore.c).
 
-On the recorded Windows host the checks/captures took **1.64 seconds**, excluding build/startup.
+On the recorded Windows host the original eight-case probe took **1.64 seconds**, excluding build/startup.
 Removing the production force-arrow draw call made all seven non-help cases fail and the
 process exit 1; restoring it passes. This mutation demonstrates a missing visual is detected.
 
