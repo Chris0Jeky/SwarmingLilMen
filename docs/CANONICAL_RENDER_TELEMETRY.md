@@ -21,10 +21,16 @@ the HUD telemetry reports. Its status line is built by
 - **Tick N recorded: K inputs, no truncation** (or **simulation query truncated**) is the selected
   boid's `Instrumentation.NeighborCounts` and `QueryTruncated` value for completed tick N.
 - **Displayed: D links, cap C** is what the overlay's fixed 128-entry buffers could draw. When
-  fewer links are drawn than the tick recorded it adds **reached, links omitted**: with `MaxNeighbors` above 128 the
-  tick can record more inputs than are shown.
+  fewer links are drawn than the tick recorded it adds **reached, links omitted**. C is the smaller
+  of 128 and `EffectiveMaxNeighbors` (`MaxNeighbors` clamped to at least four); it bounds candidates
+  before FOV filtering. With an effective cap above 128, the tick can record more inputs than are
+  shown. A truncated simulation query by itself does not add the omitted-links notice.
 - **waiting for first completed tick** appears before any tick has completed, and **subject not
-  recorded** when the selected boid was spawned after the last tick.
+  recorded** when the selected boid was spawned after the last tick, including an empty completed tick.
+
+Zero recorded inputs means zero displayed links. An injected empty pipeline skips observation,
+so nearby boids must not be presented as recorded inputs. The renderer's configuration bridge
+always constructs Enhanced; disabling S/A/C does not remove its neighbor observation.
 
 The overlay requeries the spatial index through `QueryLastTickVisibleNeighbors` only while it is
 shown; capturing telemetry does not query or rebuild the index.
@@ -46,9 +52,10 @@ capture, existing HUD value parity, and reset and capacity changes. The overlay'
 the 140-boid `MaxNeighbors=256` display-cap case and reset persistence are pinned in
 `CanonicalInspectionTests`. None of this proves visual parity or rendered frame rate.
 
-The manual acceptance check remains outstanding. This change was developed without an
-interactive display or virtual framebuffer. On a machine with the Raylib native dependencies
-and an interactive graphics session, run:
+The manual acceptance check remains outstanding. The repeatable native render-target and
+event-playback checks are described in [canonical inspection](CANONICAL_INSPECTION.md); they do not
+establish physical keyboard/focus behavior, full-window DPI or human acceptance. On a machine with
+the Raylib native dependencies and an interactive graphics session, run:
 
 ```bash
 dotnet run --project SwarmSim.Render -c Release -- --canonical

@@ -41,7 +41,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,300 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,345 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -81,27 +81,37 @@ or errors. The historical counts below identify the specific additions that prod
   pheromone) in 1.8 s of run time on the recorded host, prints one PASS/FAIL line per entry, and
   publishes `index.html` plus `summary.json` over ordinary replayable run directories. Bands are
   coarse final-quarter-mean sanity checks set from seeds 1-10, not determinism or science gates;
-  the locked Vicsek and ACO tests remain the evidence. 44 `GalleryTests` (including the committed
+  the locked Vicsek and ACO tests remain the evidence. 52 `GalleryTests` (including the committed
   recipe in about 2 s on the recorded host); inverting a bound, widening the quarter window and reversing the failure sort
   each fail tests. Filmstrips seen by eye on one machine only. See
   [behaviour gallery](docs/HEADLESS_EXPERIMENTS.md#behaviour-gallery).
 - **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
   agents) and a self-contained `report.html` to any run, replay or sweep cell, plus an `index.html`
   for sweeps, using only the standard library and no display. Tests prove it leaves `metrics.csv`
-  and hashes unchanged and decode the PNG independently (34 cases in `VisualReportTests`). The
-  picture is checked by eye only for one canonical and one legacy 400-agent run; no render-time or
-  large-population cost was measured. See [visual reports](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
+  and hashes unchanged and decode the PNG independently (43 cases in `VisualReportTests`). The
+  filmstrips were checked by eye for canonical and legacy 400-agent runs; final-panel thumbnails
+  were also inspected for canonical and high-noise Vicsek. No render-time or large-population cost
+  was measured. Each sparkline is capped at 480 vertices while retaining endpoint/bucket extrema
+  and original-data gaps; statistics still use every row. Final-panel `thumbnail.png` files reduce
+  sweep/gallery image payload, failed bands display round-trip values and bounds, extreme aspect
+  heights clamp before integer conversion, and five actual write failures prove staging cleanup
+  without disturbing earlier output. Long CSV parsing still scales with row count; no phone-browser
+  acceptance or large-sweep timing is claimed. See [visual reports](docs/HEADLESS_EXPERIMENTS.md#visual-reports).
 - **Canonical inspection:** S/A/C switch the named separation/alignment/cohesion policies;
   key 8 adjusts FOV and switch state survives recreation/reset. The overlay now draws a gold
   FOV arc, rule-colored input links and the actual white resolved-force arrow, all using the last
   completed tick's inputs. The existing double buffer supplies positions; force instrumentation
   adds 8 bytes per capacity slot and retains its squared-magnitude API. Headless tests cover
   independent rule effects, caps, timing, geometry and zero warm query allocation; exact goldens
-  remain unchanged. The reusable `tools/RendererProbe` passes 112 native event-playback and pixel
-  checks in eight captures, with an HTML gallery and JSON/build-hash report. Removing the force-arrow
-  draw call causes seven expected failures. Linux CI runs it under Mesa/Xvfb for integration and
-  exact-head builds and retains feedback artifacts; Windows local GPU execution is also verified.
-  Windows OS-input injection and direct framebuffer/DPI export did not qualify, so OS input and human visual
+  remain unchanged. Tick status, zero-input pipelines, late-spawn membership and selected-agent
+  persistence through the real recreation path have direct regressions. The reusable
+  `tools/RendererProbe` passes 107 native behavior checks and 18 separate artifact checks in nine
+  captures, including a seam scene, with an HTML gallery and JSON/build-hash report. It checks
+  missing, extra, shortened and overlong geometry with explicit raster/occlusion tolerances;
+  deleting the force shaft or halving primary links fails while unmodified images stay byte-identical.
+  Linux CI runs it under Mesa/Xvfb for integration and exact-head builds and retains feedback
+  artifacts; the earlier Windows local GPU execution remains separate evidence. Windows OS-input
+  injection and direct framebuffer/DPI export did not qualify, so OS input and human visual
   acceptance remain open in #40. See [inspection semantics and evidence](docs/CANONICAL_INSPECTION.md).
 
 - **Named random streams:** `RandomStreams` derives PCG32 state from a specified seed/name/optional
@@ -172,11 +182,13 @@ or errors. The historical counts below identify the specific additions that prod
   [configuration cookbook](docs/CONFIGURATION_COOKBOOK.md) and
   [parameter guide](docs/PARAMETER_GUIDE.md).
 - **Renderer controls and native acceptance:** one engine-scoped inventory now drives both input
-  paths, H panels, HUD/footer labels, printed parameters and console help. Canonical accepts 1–7;
+  paths, H panels, HUD/footer labels, printed parameters and console help. Canonical accepts 1–8
+  (FOV is on 8);
   legacy accepts 1–8 and labels friction active only with Damped. Sense-circle help states the
   existing below-100-agent limit. Parameter/preset recreation now directs later same-frame actions
   to the active world: native F1+Space and Up+Space trials changed from a false 100-spawn report
-  with 64 exported agents to 164 exported agents. The integrated Release suite passes 976 tests.
+  with 64 exported agents to 164 exported agents. At that #182 revision, the integrated Release
+  suite passed 976 tests.
   Seven real native X11 launches verified both complete H panels, all five presets, sparse
   preset/file startup, both friction modes, O/Tab, pending/completed/reset telemetry, F12 and
   spawn/reset/export. Direct captures and exact source/binary hashes are committed in the
@@ -196,8 +208,12 @@ or errors. The historical counts below identify the specific additions that prod
   Ordinary float arithmetic remains unchanged. Analytical 3–4–5 cases cover four scales, both
   indexes, periodic seams and first-candidate ties; four regressions show distant neighbors no
   longer falsely activate separation priority. Ordinary traces and an actual pre-fix manifest
-  remain exact. Partial-FOV normalization, direct rule calculations and aggregate overflow still
-  need the wider numeric audit in #187. See the
+  remain exact. A separate 26-case partial-FOV matrix now covers large-scale norm overflow with
+  ordinary/large 3–4–5 geometry, both indexes, interior/seam layouts, three apertures and tiny-direction
+  cutoff controls. Eight cases fail before the exceptional-norm correction; queries, actual policy
+  observations, instrumentation and last-tick inspection pass after. Ordinary normalization, direction
+  cutoffs and exact goldens remain unchanged. Direct rule calculations, other vector consumers and
+  aggregate overflow still need the wider numeric audit in #187. See the
   [correction, compatibility scope and remaining consumers](docs/CANONICAL_EXTREME_DISTANCES.md).
 - **Canonical telemetry:** `Step` no longer allocates snapshots. Explicit caller-owned
   `CanonicalTelemetry` captures last-tick diagnostics and truncation without a spatial re-query.

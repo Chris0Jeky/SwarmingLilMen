@@ -38,7 +38,7 @@ public sealed class GalleryTests
         Assert.Matches(@"^2/2 passed in \d+ ms$", lines[3]);
         Assert.Equal(4, lines.Length);
         foreach (string entry in new[] { "01-alpha", "02-beta" })
-            foreach (string file in new[] { "manifest.json", "metrics.csv", "log.txt", "filmstrip.png", "report.html" })
+            foreach (string file in new[] { "manifest.json", "metrics.csv", "log.txt", "filmstrip.png", "report.html", "thumbnail.png" })
                 Assert.True(File.Exists(Path.Combine(gallery, entry, file)), entry + "/" + file);
         Assert.Equal(new[] { "01-alpha", "02-beta", "index.html", "summary.json" },
             Directory.GetFileSystemEntries(gallery).Select(Path.GetFileName).Order(StringComparer.Ordinal));
@@ -84,6 +84,55 @@ public sealed class GalleryTests
         Assert.Equal(JsonValueKind.Null, failed.GetProperty("max").ValueKind);
         Assert.Equal(12, failed.GetProperty("measured").GetDouble());
         Assert.False(failed.GetProperty("passed").GetBoolean());
+    }
+
+    [Fact]
+    public void FailedBoundPrecisionAgreesAcrossConsolePageAndSummary()
+    {
+        using var files = new GalleryFiles();
+        var result = SweepCliTests.Run("--gallery",
+            files.Write(Recipe(Entry("near-bound", """{ "population": { "max": 11.9999999 } }"""))), "--out", files.Output);
+
+        Assert.Equal(1, result.Code);
+        Assert.Equal("", result.Error);
+        Assert.Contains("population 12 (<= 11.9999999)", result.Output);
+        string gallery = result.Output.Split('\n')[0].Trim();
+        Assert.Contains("population 12 (&lt;= 11.9999999)", File.ReadAllText(Path.Combine(gallery, "index.html")));
+        using JsonDocument summary = JsonDocument.Parse(File.ReadAllText(Path.Combine(gallery, "summary.json")));
+        JsonElement expectation = summary.RootElement.GetProperty("entries")[0].GetProperty("expectations")[0];
+        Assert.Equal(12, expectation.GetProperty("measured").GetDouble());
+        Assert.Equal(11.9999999, expectation.GetProperty("max").GetDouble());
+        Assert.False(expectation.GetProperty("passed").GetBoolean());
+    }
+
+    [Fact]
+    public void GalleryReportWriteFailureRemovesCompletedEntriesAndPreservesPriorOutput()
+    {
+        using var files = new GalleryFiles();
+        GalleryPlan plan = GalleryPlan.Load(files.Write(Recipe(Entry("alpha"), Entry("beta"))));
+        string prior = Path.Combine(files.Output, "gallery-prior");
+        Directory.CreateDirectory(prior);
+        string sentinel = Path.Combine(prior, "keep.txt");
+        File.WriteAllText(sentinel, "prior gallery");
+        int completed = 0;
+        string? staging = null;
+
+        UnauthorizedAccessException failure = Assert.Throws<UnauthorizedAccessException>(() =>
+            Gallery.Run(plan, files.Output, (request, work) =>
+            {
+                string run = ExperimentRunner.Run(request, work);
+                completed++;
+                staging = Path.GetDirectoryName(work)!;
+                Directory.CreateDirectory(Path.Combine(staging, "index.html"));
+                return run;
+            }));
+
+        Assert.Equal(2, completed);
+        Assert.Contains("GalleryReport.Write", failure.StackTrace ?? "");
+        Assert.NotNull(staging);
+        Assert.False(Directory.Exists(staging));
+        Assert.Equal(new[] { prior }, Directory.GetFileSystemEntries(files.Output));
+        Assert.Equal("prior gallery", File.ReadAllText(sentinel));
     }
 
     [Fact]
@@ -142,6 +191,21 @@ public sealed class GalleryTests
         Assert.True(new GalleryExpectation("m", 1, 2).Holds(2));
         Assert.False(new GalleryExpectation("m", 1, 2).Holds(2.0000001));
         Assert.False(new GalleryExpectation("m", 1, 2).Holds(0.9999999));
+    }
+
+    [Theory]
+    [InlineData(12.0004, null, 12.0, "population 12.0004 (<= 12)")]
+    [InlineData(12.0, 12.0000001, null, "population 12 (>= 12.0000001)")]
+    [InlineData(12.0, 12.0000001, 12.0000002, "population 12 (12.0000001..12.0000002)")]
+    [InlineData(0.9999999999999999, 1.0, null, "population 0.9999999999999999 (>= 1)")]
+    [InlineData(1.0000000000000002, null, 1.0, "population 1.0000000000000002 (<= 1)")]
+    [InlineData(double.NaN, 0.0, null, "population undefined (>= 0)")]
+    public void FailedExpectationTextShowsTheExactMeasurementAndBounds(double measured, double? min, double? max, string expected)
+    {
+        var result = new ExpectationResult(new GalleryExpectation("population", min, max), measured);
+
+        Assert.False(result.Passed);
+        Assert.Equal(expected, result.Text);
     }
 
     // ---- refusals before any output ---------------------------------------------------------
@@ -232,6 +296,7 @@ public sealed class GalleryTests
         Assert.DoesNotContain("\r", html);
         Assert.Contains("prefers-color-scheme:dark", html);
         Assert.Contains("name=\"viewport\"", html);
+        Assert.Equal(2, Regex.Count(html, "src=\"[^\"]+/thumbnail.png\""));
         string[] links = Regex.Matches(html, "(?:href|src)=\"([^\"]+)\"").Select(match => match.Groups[1].Value).ToArray();
         Assert.Equal(6, links.Length); // per card: picture link, picture, title link
         foreach (string link in links)

@@ -44,7 +44,8 @@ public sealed class CanonicalInspectionTests
         var world = Cluster();
         world.SetPolicyEnabled(CanonicalPolicyIds.Separation, false);
         world.SetPolicyEnabled(CanonicalPolicyIds.Cohesion, false);
-        var recreated = RenderProgram.RecreateCanonicalWorld(world, world.Settings);
+        int subject = 1;
+        var recreated = RenderProgram.RecreateCanonicalWorld(world, world.Settings, ref subject);
         var reset = RenderProgram.ResetCanonicalWorld(world, world.Settings, 3);
         foreach (var replacement in new[] { recreated, reset })
         {
@@ -88,10 +89,10 @@ public sealed class CanonicalInspectionTests
     [Fact]
     public void DenseSceneAboveTheDisplayBufferReportsAllRecordedInputsButOnlyTheDisplayedLinks()
     {
-        var settings = new CanonicalWorldSettings { InitialCapacity = 140, WorldWidth = 1920, WorldHeight = 1080,
+        var settings = new CanonicalWorldSettings { InitialCapacity = 141, WorldWidth = 1920, WorldHeight = 1080,
             SenseRadius = 200, FieldOfView = 360, MaxNeighbors = 256 };
         var world = new CanonicalWorld(settings, new GridSpatialIndex(200, 1920, 1080));
-        for (int i = 0; i < 140; i++) world.TryAddBoid(new Vec2(900 + i * 0.1f, 500), new Vec2(1, 0));
+        for (int i = 0; i < 140; i++) Assert.True(world.TryAddBoid(new Vec2(900 + i * 0.1f, 500), new Vec2(1, 0)));
         var neighbors = new int[128];
         var weights = new float[128];
         Assert.Equal(256, world.EffectiveMaxNeighbors);
@@ -105,9 +106,45 @@ public sealed class CanonicalInspectionTests
         Assert.True(inspection.Result.IsTruncated);
         Assert.Equal("Tick 1 recorded: 139 inputs, no truncation | Displayed: 128 links, cap 128 reached, links omitted | Gray links: no applied rule",
             inspection.Status);
-        world.TryAddBoid(new Vec2(100, 100), new Vec2(1, 0));
+        Assert.True(world.TryAddBoid(new Vec2(100, 100), new Vec2(1, 0)));
+        Assert.Equal(141, world.Count);
+        Assert.Equal(140, world.LastTickInputs.Length);
         Assert.Equal("Tick 1 recorded: 139 inputs, no truncation | Displayed: 128 links, cap 128 reached, links omitted | Gray links: no applied rule",
             CanonicalInspectionOverlay.Inspect(world, 0, neighbors, weights).Status);
+        Assert.Equal("Tick 1: subject not recorded", CanonicalInspectionOverlay.Inspect(world, 140, neighbors, weights).Status);
+    }
+
+    [Fact]
+    public void CompletedEmptyTickDoesNotWaitForTheFirstTick()
+    {
+        var settings = new CanonicalWorldSettings { InitialCapacity = 1 };
+        var world = RenderProgram.CreateCanonicalWorld(settings, 0);
+        world.Step(settings.FixedDeltaTime);
+
+        Assert.Equal(1UL, world.TickCount);
+        Assert.Equal("Tick 1: subject not recorded", CanonicalInspectionOverlay.Inspect(world, 0, new int[16], new float[16]).Status);
+        Assert.True(world.TryAddBoid(new Vec2(100, 100), new Vec2(1, 0)));
+        Assert.Equal("Tick 1: subject not recorded", CanonicalInspectionOverlay.Inspect(world, 0, new int[16], new float[16]).Status);
+    }
+
+    [Fact]
+    public void EmptyPipelineDoesNotDisplayNeighborsTheTickNeverObserved()
+    {
+        var settings = new CanonicalWorldSettings { InitialCapacity = 2, FieldOfView = 360 };
+        var world = new CanonicalWorld(settings, new GridSpatialIndex(10, 1920, 1080), CanonicalPipeline.Empty());
+        Assert.True(world.TryAddBoid(new Vec2(100, 100), new Vec2(1, 0)));
+        Assert.True(world.TryAddBoid(new Vec2(105, 100), new Vec2(1, 0)));
+        world.Step(settings.FixedDeltaTime);
+        var neighbors = new int[16];
+        var weights = new float[16];
+        Assert.Equal(0, world.Instrumentation.NeighborCounts[0]);
+        Assert.Equal(1, world.QueryLastTickVisibleNeighbors(0, neighbors, weights).Count);
+
+        var inspection = CanonicalInspectionOverlay.Inspect(world, 0, neighbors, weights);
+
+        Assert.Equal(0, inspection.Result.Count);
+        Assert.Equal("Tick 1 recorded: 0 inputs, no truncation | Displayed: 0 links, cap 16 | Gray links: no applied rule",
+            inspection.Status);
     }
 
     [Fact]
@@ -115,27 +152,49 @@ public sealed class CanonicalInspectionTests
     {
         var world = Cluster();
         world.Step(0.1f);
-        world.TryAddBoid(new Vec2(900, 900), new Vec2(1, 0));
+        Assert.True(world.TryAddBoid(new Vec2(900, 900), new Vec2(1, 0)));
         Assert.Equal("Tick 1: subject not recorded", CanonicalInspectionOverlay.Inspect(world, 2, new int[16], new float[16]).Status);
     }
 
     [Theory]
-    [InlineData(0, 5, 0)]
-    [InlineData(3, 5, 3)]
-    [InlineData(4, 5, 4)]
-    [InlineData(9, 5, 4)]
-    [InlineData(2, 0, 0)]
-    [InlineData(-1, 5, 0)]
-    public void ParameterRecreationKeepsTheInspectedBoidWhenItStillExists(int subject, int count, int expected)
-        => Assert.Equal(expected, CanonicalInspectionOverlay.KeepSubject(subject, count));
+    [InlineData(0, 5, 5, 0)]
+    [InlineData(3, 5, 5, 3)]
+    [InlineData(4, 5, 5, 4)]
+    [InlineData(4, 5, 3, 2)]
+    [InlineData(2, 0, 5, 0)]
+    [InlineData(-1, 5, 5, 0)]
+    public void ParameterRecreationKeepsOrClampsTheInspectedBoid(int subject, int count, int newCapacity, int expected)
+    {
+        var world = RenderProgram.CreateCanonicalWorld(new CanonicalWorldSettings { InitialCapacity = Math.Max(1, count) }, count);
+
+        var recreated = RenderProgram.RecreateCanonicalWorld(world, new CanonicalWorldSettings { InitialCapacity = newCapacity }, ref subject);
+
+        Assert.Equal(expected, subject);
+        Assert.Equal(Math.Min(count, newCapacity), recreated.Count);
+        if (recreated.Count > 0) Assert.Equal(world.Boids[expected], recreated.Boids[subject]);
+    }
 
     [Fact]
-    public void LegacyKeysDoNotToggleCanonicalPolicies()
+    public void DisabledRendererRulesStillDisplayTheNeighborsThatWereObserved()
     {
-        var world = Cluster();
+        var settings = RenderProgram.BuildCanonicalWorldSettings(new SwarmSim.Core.SimConfig
+            { FieldOfView = 360, SenseRadius = 10, WhiskerWeight = 0, WanderStrength = 0 }, 2);
+        var world = RenderProgram.CreateCanonicalWorld(settings, 0);
+        Assert.True(world.TryAddBoid(new Vec2(100, 100), new Vec2(1, 0)));
+        Assert.True(world.TryAddBoid(new Vec2(105, 100), new Vec2(1, 0)));
         foreach (var key in new[] { KeyboardKey.S, KeyboardKey.A, KeyboardKey.C })
-            CanonicalInspectionOverlay.ApplyRuleSwitches(RenderProgram.Controls.Capture(RendererMode.Legacy, new KeyInput(key)), world);
-        Assert.All(world.Policies, rule => Assert.True(world.IsPolicyEnabled(rule.Id)));
+            CanonicalInspectionOverlay.ApplyRuleSwitches(RenderProgram.Controls.Capture(RendererMode.Canonical, new KeyInput(key)), world);
+        world.Step(settings.FixedDeltaTime);
+
+        var inspection = CanonicalInspectionOverlay.Inspect(world, 0, new int[128], new float[128]);
+
+        Assert.Equal(1, world.Instrumentation.NeighborCounts[0]);
+        Assert.Equal(1, inspection.Result.Count);
+        Assert.True(world.TryGetMetrics(0, out var metrics));
+        Assert.Equal(0f, metrics.SeparationMagnitude);
+        Assert.Equal(0f, metrics.AlignmentMagnitude);
+        Assert.Equal(0f, metrics.CohesionMagnitude);
+        Assert.Equal(ContributionLinks.None, CanonicalInspectionOverlay.ClassifyLinks(new Vec2(-5, 0), 1f, settings.SeparationRadius, metrics));
     }
 
     [Fact]

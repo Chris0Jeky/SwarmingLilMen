@@ -15,13 +15,15 @@ internal sealed record GalleryExpectation(string Metric, double? Min, double? Ma
     internal bool Holds(double measured) =>
         !double.IsNaN(measured) && (Min is null || measured >= Min) && (Max is null || measured <= Max);
 
-    internal string Bound => (Min, Max) switch
+    internal string Bound(bool exact) => (Min, Max) switch
     {
-        ({ } low, { } high) => $"{RunReport.Fmt(low)}..{RunReport.Fmt(high)}",
-        ({ } low, null) => $">= {RunReport.Fmt(low)}",
-        (null, { } high) => $"<= {RunReport.Fmt(high)}",
+        ({ } low, { } high) => $"{Format(low, exact)}..{Format(high, exact)}",
+        ({ } low, null) => $">= {Format(low, exact)}",
+        (null, { } high) => $"<= {Format(high, exact)}",
         _ => throw new InvalidOperationException("An expectation needs a bound.")
     };
+
+    private static string Format(double value, bool exact) => exact ? Gallery.Num(value, exact: true) : RunReport.Fmt(value);
 }
 
 internal sealed record GalleryEntry(int Index, string Name, RunRequest Request, IReadOnlyList<GalleryExpectation> Expectations)
@@ -35,7 +37,7 @@ internal sealed record ExpectationResult(GalleryExpectation Expectation, double 
     internal bool Passed => Expectation.Holds(Measured);
 
     /// <summary>"polarization 0.987 (>= 0.9)" - the same text on the console and in the page.</summary>
-    internal string Text => $"{Expectation.Metric} {Gallery.Num(Measured)} ({Expectation.Bound})";
+    internal string Text => $"{Expectation.Metric} {Gallery.Num(Measured, exact: !Passed)} ({Expectation.Bound(exact: !Passed)})";
 }
 
 internal sealed record EntryResult(GalleryEntry Entry, IReadOnlyList<ExpectationResult> Expectations, long ElapsedMilliseconds)
@@ -175,8 +177,10 @@ internal static class Gallery
     internal static GalleryResult Run(string galleryFile, string outputDirectory) =>
         Run(GalleryPlan.Load(galleryFile), outputDirectory);
 
-    internal static GalleryResult Run(GalleryPlan plan, string outputDirectory)
+    internal static GalleryResult Run(GalleryPlan plan, string outputDirectory,
+        Func<RunRequest, string, string>? executeEntry = null)
     {
+        Func<RunRequest, string, string> runEntry = executeEntry ?? ExperimentRunner.Run;
         string parent = Path.GetFullPath(outputDirectory);
         string galleryId = "gallery-" + Guid.NewGuid().ToString("N");
         string staging = Path.Combine(parent, "." + galleryId + ".tmp");
@@ -192,7 +196,7 @@ internal static class Gallery
             foreach (GalleryEntry entry in plan.Entries)
             {
                 var elapsed = Stopwatch.StartNew();
-                string completed = ExperimentRunner.Run(entry.Request, work);
+                string completed = runEntry(entry.Request, work);
                 elapsed.Stop();
                 string entryPath = Path.Combine(staging, entry.Directory);
                 Directory.Move(completed, entryPath);
@@ -242,8 +246,9 @@ internal static class Gallery
         return count == 0 ? double.NaN : sum / count;
     }
 
-    /// <summary>Console-and-page number: three decimals under 1000 are plenty for a coarse band.</summary>
-    internal static string Num(double value) => double.IsNaN(value) ? "undefined"
+    /// <summary>Keep passing summaries compact; failed bands need round-trip precision to explain the comparison.</summary>
+    internal static string Num(double value, bool exact = false) => double.IsNaN(value) ? "undefined"
+        : exact ? value.ToString("R", CultureInfo.InvariantCulture)
         : Math.Abs(value) >= 1 ? value.ToString("0.###", CultureInfo.InvariantCulture) : value.ToString("G3", CultureInfo.InvariantCulture);
 
     private static List<string> Table(IReadOnlyList<EntryResult> results)
