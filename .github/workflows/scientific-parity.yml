@@ -8,7 +8,8 @@ on:
       - '.github/workflows/scientific-parity.yml'
       - '.github/scripts/scientific_parity.py'
       - '.github/scripts/test_scientific_parity.py'
-      - 'SwarmSim.Parity/ParityCommand.cs'
+      - 'SwarmSim.Parity/**'
+      - 'SwarmSim.Core/Utils/MathUtils.cs'
 
 permissions:
   contents: read

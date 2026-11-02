@@ -115,7 +115,9 @@ public sealed class ParityGeometryProbe : IMetricProbe
     {
         double value = Math.Abs(to - from);
         if (extent == 0) return value;
-        value %= extent;
+        // Wrapped samples usually differ by less than one extent; remainder is an identity
+        // there. Keep the original arithmetic for exact multiples and out-of-domain samples.
+        if (value >= extent) value %= extent;
         return Math.Min(value, extent - value);
     }
 

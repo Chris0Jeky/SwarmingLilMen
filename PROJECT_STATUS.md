@@ -37,7 +37,8 @@ exact. The dedicated Scientific parity workflow has now passed the complete norm
 alignment-off matrices on both Ubuntu and Windows at a recorded exact head, with all locked
 bands and baseline bytes unchanged. Each job retains the matrix, runtime/binary provenance and a
 source-bound receipt. Normal CI keeps the small analytical/real-engine suite; the expensive gate
-runs on explicit dispatch or changes to its own orchestration. Operational timing now records
+runs on explicit dispatch or changes to its orchestration, `SwarmSim.Parity/`, or the shared
+minimum-image helper. Operational timing now records
 actual primary/repeat/naive counts and separate phase durations, so 250-run verification cost is
 not labeled as a 100-run primary measurement. The initial CI primary intervals sum to roughly
 360 / 346 seconds on Ubuntu / Windows; the under-60-second target remains open. The guide keeps
@@ -47,10 +48,20 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The recorded base integrated Release gate at `e512f984` passes **1,346 non-Performance tests**
-with no build warnings or errors. The evidence below identifies subsequent targeted additions;
-PR checks qualify each integrated revision before merge.
+The current integrated local Release gate passes **1,532 non-Performance tests**, with zero
+failures/skips and no build warnings or errors. The scanner, benchmark collector and scientific
+wrapper separately pass **96**, **40** and **14** Python tests. PR checks qualify the exact
+reviewed revision and generated merge result on Ubuntu/Windows before merge; the historical
+counts below identify the specific additions that produced this state.
 
+- **Profile-guided parity runtime:** strict guards skip identity remainder operations in the
+  spatial minimum-image helper and geometry probe, while 64-agent hash batches retain the exact
+  serialized byte stream. An unchanged S4/seed7/classic A–B–B–A experiment observed baseline
+  primary intervals of 42.286/34.042 s and optimized intervals of 19.857/20.314 s. All five
+  scientific files match byte for byte. This isolated case supports the bounded optimization;
+  it does not qualify the complete 100-run under-60-second target. The two exact all-pairs metric
+  scans, full recipes/seeds/cadence and locked bands are unchanged. See the
+  [profile, controls, raw observations and identities](docs/PARITY_RUNTIME.md).
 - **Benchmark evidence consistency:** the collector now checks BDN 0.15.6/.NET 8 integer
   allocation output against raw process-wide bytes, including double conversion and ties-to-even
   rounding. Raw 336 bytes / 64 operations must export 5 B/op, while the original raw total stays
@@ -273,8 +284,9 @@ PR checks qualify each integrated revision before merge.
   ordinary/large 3–4–5 geometry, both indexes, interior/seam layouts, three apertures and tiny-direction
   cutoff controls. Eight cases fail before the exceptional-norm correction; queries, actual policy
   observations, instrumentation and last-tick inspection pass after. Ordinary normalization, direction
-  cutoffs and exact goldens remain unchanged. Direct rule calculations, other vector consumers and
-  aggregate overflow still need the wider numeric audit in #187. See the
+  cutoffs and exact goldens remain unchanged. The later bounded average, clamp, shaping and normalization corrections are listed above.
+  Direct rule calculations, derived extreme controls and aggregate sample-count limits still
+  need the wider numeric audit in #187. See the
   [correction, compatibility scope and remaining consumers](docs/CANONICAL_EXTREME_DISTANCES.md).
 - **Canonical telemetry:** `Step` no longer allocates snapshots. Explicit caller-owned
   `CanonicalTelemetry` captures last-tick diagnostics and truncation without a spatial re-query.
@@ -413,10 +425,13 @@ zero-allocation promise.
 An opt-in [CompositionCost evidence collector](docs/COMPOSITION_EVIDENCE.md) now retains raw
 workload/allocation records, exact commands, selected SDK and child runtime/GC metadata, source
 content fingerprints, and hashes of the actual executed child build and bundle artifacts. Its
-35-test Python suite and a Linux single-invocation Dry capture pass. A complete receipt proves
-that the requested evidence was collected; it does not qualify performance or explain the earlier
-allocation sample. The raw byte/operation count is kept separately from BDN's corrected B/op.
-Future matched investigations for #20/#27 can use the same capture contract on both source revisions.
+40-test Python suite and real frozen Linux captures pass; integration/exact-head CI now exercises
+the actual smoke on Ubuntu and Windows. The collector checks raw bytes against BDN 0.15.6/.NET 8
+integer B/op rounding and records its process-wide scope. A complete receipt proves that the
+requested evidence was collected; it does not qualify performance or explain the earlier allocation
+sample. Raw bytes and operations remain separate from rounded B/op. The original-baseline recheck
+retains all 20 raw 1k measurements, observes reversing pair deltas and leaves #20/#27 open; see
+[the matched results and their limits](docs/CANONICAL_COMPOSITION.md#original-baseline-recheck-2026-11-02).
 
 The composition change uses a committed [controlled benchmark wrapper](tools/CompositionCost/Program.cs)
 around the same canonical benchmark. On the host/runtime above, matching 64-invocation runs
