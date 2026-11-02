@@ -44,13 +44,15 @@ simulation.
 | `Buffer._Memmove` | 11.00% |
 | `CanonicalWorld.StepCore` | 9.06% |
 | `CanonicalWorld.BuildLocalNeighbors` | 8.65% |
-| Native `EvpDigestUpdate` hash update | 7.22% |
+| `Cryptography!Interop+Crypto.EvpDigestUpdate` (hash-provider interop) | 7.22% |
 
 ## Bounded implementation changes
 
 1. `MathUtils.MinimumImageDelta` bypasses `%` only when `abs(delta) < extent`. Remainder is
-   exactly the original float there, including signed zero. Exact multiples, out-of-range values,
-   nonfinite operands and invalid extents retain the preceding remainder path and folding order.
+   exactly the original float there, including signed zero. Exact multiples, out-of-range deltas,
+   nonfinite deltas, and NaN/nonpositive extents retain the preceding remainder path and folding
+   order. Finite deltas with a positive infinite extent take the identity path and preserve their
+   previous results.
 2. `ParityGeometryProbe.Distance` similarly bypasses remainder for a nonnegative difference
    smaller than the validated extent. Finite input positions and finite circular centers make
    that condition safe. Euclidean distance and the inclusive neighbor/collision tests are unchanged.
@@ -104,11 +106,52 @@ compatibility cases pass on the original arithmetic too; the pre-change evidence
 performance work is the measured runtime/profile, not an invented functional failure.
 
 The Scientific parity workflow now also triggers on the whole `SwarmSim.Parity` directory and
-`MathUtils.cs`, in addition to its own orchestration files. Before merge, the integrated head must
-pass ordinary Ubuntu/Windows exact-head and merge-result jobs, plus full normal and alignment-off
-scientific jobs on both platforms. Normal receipts must prove 100 primary + 100 repeat + 50
-naive-index runs; witness receipts must prove 100 primary runs and the required S4/S5 polarization
-rejections. PR and issue records retain the resulting exact-head CI links and operational timings.
+`MathUtils.cs`, in addition to its own orchestration files. The integrated reviewed head
+`8dd2a734b27767b6e529ae2e323993dcfc16d7d5` passed all four ordinary Ubuntu/Windows exact-head and
+merge-result jobs in [CI run 41449137035](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449137035):
+1,532 ordinary C# tests each, deterministic references, 40 collector tests, actual benchmark
+evidence smoke, manifest replay, the behavior gallery and the Linux native renderer probes.
+
+All four full jobs passed in
+[scientific run 41449136980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449136980)
+at that same head. Each normal receipt proves 100 primary + 100 repeat + 50 naive-index runs,
+with current-build exact checks and all nine locked metric envelopes passing. Each separate
+alignment-off receipt proves 100 primary runs and the required S4/S5 polarization rejections.
+The locked baseline was unchanged. The actual merge of [PR #221](https://github.com/Chris0Jeky/SwarmingLilMen/pull/221),
+`c1cfdb8bca6ac994a978dfec7740decedaac439d`, has the same tree as the reviewed head and tested
+integration: `9c260f630ec3acdf56e7abd0ea6156a92eb5dc34`.
+
+### Full integrated matrix timings
+
+These receipts measure separate CI hosts and launches. They do not constitute a controlled
+platform comparison or a controlled before/after experiment. The isolated matched experiment
+above remains the evidence for advancing the optimization.
+
+| Platform | Primary, 100 (s) | Repeat, 100 (s) | Naive-index, 50 (s) | Normal matrix (s) |
+| --- | ---: | ---: | ---: | ---: |
+| Ubuntu | 258.550 | 258.405 | 216.811 | 733.770 |
+| Windows | 171.189 | 171.185 | 155.497 | 497.876 |
+
+The separate 100-run alignment-off primary intervals were 239.725 s on Ubuntu and 243.242 s on
+Windows; their matrix intervals were 239.728 / 243.247 s. The matrix clock includes the completed
+runs and exact verification work but excludes build/startup, baseline comparison and final
+summary/metadata writes, as specified by timing version 1. The wrapper's broader command
+interval is recorded separately in each receipt. Both normal primary observations remain above
+the 60-second target, so #28 stays open.
+
+All four downloaded CI archives match their advertised SHA-256 digests. An independent artifact
+audit checked each normal matrix's 100 CSV hashes and 78,800 tick rows. The 75 unmodified-model
+summary rows (including all state/CSV identities and window values) match exactly between normal
+and alignment-off jobs on each platform. This does not assert cross-platform bit identity.
+Baseline receipt hashes differ only because the Windows checkout uses CRLF and Ubuntu uses LF;
+each matches the unchanged committed baseline with its checkout line endings.
+
+| Platform / mode | Artifact ID | ZIP SHA-256 |
+| --- | --- | --- |
+| Ubuntu normal | `13143493802` | `4df86e9b88fbba6491a55d90b1256a6337e76f0536b0a009ba0d11f40ada8a00` |
+| Windows normal | `13144278243` | `af087ecb1103c7234015e386e21fabe133c95f7a98941b1dfc009aefa0adb261` |
+| Ubuntu alignment-off | `13144641592` | `25e504a5655aef8dbb02752a8689f5c01ef2f279c31f230bcd952c0934d88517` |
+| Windows alignment-off | `13144660467` | `c66d2a17da57cda81cf3f7fcb3f6697c665bcb2ea669bae4a49bc77ad179d4b0` |
 
 ## Evidence identities
 
