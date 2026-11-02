@@ -1,6 +1,7 @@
 """Fail-closed checks for the expensive scientific matrix's CI wrapper."""
 import unittest
 
+import scientific_parity
 from scientific_parity import validate_result
 
 
@@ -54,6 +55,76 @@ class ScientificParityTests(unittest.TestCase):
     def test_baseline_bytes_cannot_change_during_verification(self):
         with self.assertRaises(ValueError):
             self.check(after="changed")
+
+
+class ScientificTimingTests(unittest.TestCase):
+    @staticmethod
+    def timing(mode="verify"):
+        normal = mode == "verify"
+        return {
+            "Version": 1,
+            "PrimaryRuns": 100, "RepeatRuns": 100 if normal else 0,
+            "NaiveIndexRuns": 50 if normal else 0,
+            "PrimarySeconds": 12.0, "RepeatSeconds": 9.0 if normal else 0.0,
+            "NaiveIndexSeconds": 20.0 if normal else 0.0,
+            "MatrixSeconds": 42.5 if normal else 13.0,
+            "MatrixScope": "Run loops and exact checks; excludes metadata and final comparison.",
+        }
+
+    def test_complete_workloads_keep_primary_and_verification_costs_distinct(self):
+        for mode in ("verify", "alignment-off"):
+            with self.subTest(mode=mode):
+                scientific_parity.validate_timing(mode, self.timing(mode))
+
+    def test_missing_timing_and_fields_are_rejected(self):
+        invalid = [None, [], {}]
+        for key in self.timing():
+            candidate = self.timing()
+            del candidate[key]
+            invalid.append(candidate)
+        for candidate in invalid:
+            with self.subTest(candidate=candidate), self.assertRaises(ValueError):
+                scientific_parity.validate_timing("verify", candidate)
+
+    def test_unknown_version_or_undefined_scope_is_rejected(self):
+        for key, values in (("Version", (0, 2, True, 1.0, "1")),
+                            ("MatrixScope", (None, 0, "", "   "))):
+            for value in values:
+                candidate = self.timing()
+                candidate[key] = value
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    scientific_parity.validate_timing("verify", candidate)
+
+    def test_counts_require_all_and_only_the_prescribed_completed_runs(self):
+        for mode in ("verify", "alignment-off"):
+            for key in ("PrimaryRuns", "RepeatRuns", "NaiveIndexRuns"):
+                expected = self.timing(mode)[key]
+                for value in (expected - 1, expected + 1, True, float(expected), str(expected)):
+                    candidate = self.timing(mode)
+                    candidate[key] = value
+                    with self.subTest(mode=mode, key=key, value=value), self.assertRaises(ValueError):
+                        scientific_parity.validate_timing(mode, candidate)
+
+    def test_durations_must_be_finite_nonnegative_numbers(self):
+        for key in ("PrimarySeconds", "RepeatSeconds", "NaiveIndexSeconds", "MatrixSeconds"):
+            for value in (-0.001, float("nan"), float("inf"), -float("inf"), True, "12", None):
+                candidate = self.timing()
+                candidate[key] = value
+                with self.subTest(key=key, value=value), self.assertRaises(ValueError):
+                    scientific_parity.validate_timing("verify", candidate)
+
+    def test_witness_cannot_claim_time_for_omitted_verification_runs(self):
+        for key in ("RepeatSeconds", "NaiveIndexSeconds"):
+            candidate = self.timing("alignment-off")
+            candidate[key] = 0.01
+            with self.subTest(key=key), self.assertRaises(ValueError):
+                scientific_parity.validate_timing("alignment-off", candidate)
+
+    def test_phase_cost_cannot_exceed_the_matrix_interval(self):
+        candidate = self.timing()
+        candidate["MatrixSeconds"] = 40.0
+        with self.assertRaises(ValueError):
+            scientific_parity.validate_timing("verify", candidate)
 
 
 if __name__ == "__main__":

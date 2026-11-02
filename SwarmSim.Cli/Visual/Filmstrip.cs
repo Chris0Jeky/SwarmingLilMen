@@ -73,7 +73,7 @@ internal static class Filmstrip
     internal static int PanelHeight(float worldWidth, float worldHeight)
     {
         double ratio = IsUsable(worldWidth) && IsUsable(worldHeight) ? (double)worldHeight / worldWidth : 1d;
-        return Math.Clamp((int)Math.Round(PanelWidth * ratio), 48, 1440);
+        return (int)Math.Clamp(Math.Round(PanelWidth * ratio), 48d, 1440d);
     }
 
     internal static Raster Render(IReadOnlyList<int> ticks, IReadOnlyList<KinematicSample[]> frames, float worldWidth, float worldHeight)
@@ -92,6 +92,20 @@ internal static class Filmstrip
                 PanelWidth, panelHeight, frames[index], worldWidth, worldHeight, ticks[index]);
         }
         return new Raster(width, height, rgba);
+    }
+
+    /// <summary>Copy the last occupied panel, including its tick label, without decoding PNG or drawing agents again.</summary>
+    internal static Raster CropFinalPanel(Raster filmstrip, int frameCount)
+    {
+        int panelHeight = (filmstrip.Height - (Rows + 1) * Gap) / Rows;
+        int index = frameCount - 1;
+        int left = Gap + index % Columns * (PanelWidth + Gap);
+        int top = Gap + index / Columns * (panelHeight + Gap);
+        var rgba = new byte[PanelWidth * panelHeight * 4];
+        for (int y = 0; y < panelHeight; y++)
+            filmstrip.Rgba.AsSpan(((top + y) * filmstrip.Width + left) * 4, PanelWidth * 4)
+                .CopyTo(rgba.AsSpan(y * PanelWidth * 4));
+        return new Raster(PanelWidth, panelHeight, rgba);
     }
 
     internal static void DrawPanel(byte[] rgba, int stride, int left, int top, int panelWidth, int panelHeight,

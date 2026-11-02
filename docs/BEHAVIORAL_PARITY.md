@@ -137,8 +137,14 @@ is a separate evidence workflow; it never substitutes that candidate for the rev
 Each model run writes `metrics.csv`, the exact requested `requested-initial.csv`, the actual
 post-ingest `initial.csv`, and resolved `configuration.json`. The experiment root contains
 `experiment.json` (recipes, contracts, platform/runtime/architecture and binary hashes),
-`summary.json` (state/CSV identities and final-window means with finite counts), and an operational
-`log.txt`. Initial, final and every-tick state identities hash little-endian float32
+`summary.json` (state/CSV identities and final-window means with finite counts), an operational
+`timing.json`, and `log.txt`. Timing version 1 separates completed primary, repeat and naive-index
+run counts and their elapsed seconds. The matrix clock includes those runs, exact repeat/index
+checks and per-run console output; it excludes command input validation, baseline loading,
+experiment metadata, final summary/timing/log writes and baseline calibration/comparison. Component
+timers surround completed runner calls, including artifact writes when requested. The wrapper's
+elapsed time covers its broader command execution and validation. These are operational scopes,
+not additions to the deterministic metric schema. Initial, final and every-tick state identities hash little-endian float32
 `x,y,vx,vy` in stable insertion order. Initial states may differ from their requested input due to
 normalization; the two identities and files make that visible.
 
@@ -166,7 +172,8 @@ under-60-second target on the measured host. It is not part of every routine pul
 
 Run **Scientific parity** from the Actions tab with `workflow_dispatch` when an engine, metric,
 scenario or parity contract change needs complete qualification. Pull requests changing that
-workflow or its Python wrapper also run it automatically, so changes to the gate prove themselves.
+workflow, its Python wrapper, or the command's gate/timing orchestration also run it automatically,
+so changes to the gate prove themselves.
 The path filter deliberately does not make the expensive matrix run on every engine or docs PR.
 
 Four independent jobs cover Ubuntu/Windows and normal/alignment-off verification. Each checks out
@@ -178,7 +185,10 @@ invalid input (exit 2), an ineffective/distance-only witness (exit 3), or a part
 scenario/seed/model matrix fail the job. The locked baseline's SHA-256 must remain unchanged.
 
 Each job retains the full matrix, console output, runtime and binary provenance, plus a
-`receipt.json` with the checked source SHA, baseline hash, elapsed time, exit code and verdict.
+`receipt.json` with the checked source SHA, baseline hash, elapsed time, exit code, verdict and
+validated phase timings. The wrapper checks the actual completed counts (100/100/50 for normal
+verification; 100/0/0 for the witness) and rejects missing, nonfinite, negative or inconsistent
+timing records. Phase sums cannot exceed their containing matrix interval beyond rounding noise.
 Artifacts are retained for 14 days. The job timeout is 45 minutes; this is an execution allowance,
 not a relaxed performance acceptance threshold. Run the same wrapper after a Release build from
 a Git checkout with:
@@ -267,12 +277,61 @@ trajectories remained unchanged. The baseline bytes and bands were not changed f
 
 Normal verification took 856.440 seconds for its 250 runs; the separate mutation matrix took
 236.910 seconds for 100 runs. These elapsed values include overlapping execution and are retained
-as operational evidence, not a matched performance comparison. These full scientific gates have
-been demonstrated on the recorded Ubuntu/.NET/X64 host. Ordinary cross-platform CI covers the
-small regression suite; no complete Windows scientific matrix is asserted here.
+as operational evidence, not a matched performance comparison. At this 2026-10-29 revision, the
+full scientific gates had been demonstrated on the recorded Ubuntu/.NET/X64 host. Ordinary
+cross-platform CI covered the small regression suite; full Windows qualification is recorded in
+the 2026-11-02 follow-up below.
 
 **Remaining gate:** the 60-second target is still unmet at this revision. Issue #28 remains open
 for that measured cost, and full scientific verification remains an explicit command or dedicated
 Actions workflow. The passed
 bounded behavioral comparison does not establish the other legacy retirement criteria.
 
+
+## Cross-platform scientific qualification — 2026-11-02
+
+All four full scientific jobs passed at `9dfe5319dcef48b000eefb72934508932b5fbe3e` in
+[Actions run 41384869576](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41384869576).
+Each Ubuntu/Windows normal job completed 100 primary runs, 100 exact repeats and 50 canonical
+naive-index comparisons, with all nine locked envelopes passing. Each separate alignment-off job
+completed 100 primary runs and returned the required comparison rejection with polarization
+failures. The wrapper verified complete scenario/seed/model identities and unchanged baseline bytes;
+no seeds, recipes, calibration rows or metric bands were changed. Within-platform exactness remains
+the contract: this is not cross-OS bit identity.
+
+| Recorded workload | Ubuntu (seconds) | Windows (seconds) | Scope |
+| --- | ---: | ---: | --- |
+| Normal primary work | 360.269 | 346.421 | Sum of 100 rounded per-primary log intervals |
+| Normal verification | 1059.943 | 1040.620 | 250 runs, interleaved exact checks and final summary write |
+| Alignment-off witness | 318.325 | 344.325 | Separate 100-run mutated matrix |
+
+These are observed CI timings, excluding build/startup and the later envelope comparison; they
+are not a controlled host comparison or an independent 100-run normal benchmark. At this initial
+revision the final normal log said “100 primary runs” while its stopwatch included all 250
+executions. The primary sums above use the individual three-decimal log intervals, not that final
+stopwatch. The separate version-1 timing record now removes this reporting ambiguity. It does not
+make the under-60-second target pass.
+
+The required polarization failures remained decisive on both platforms:
+
+| Scenario | Ubuntu absolute difference | Windows absolute difference | Locked band |
+| --- | ---: | ---: | ---: |
+| S4 uniform | 0.937859819 | 0.927651284 | 0.039880 |
+| S5 clump | 0.623095388 | 0.621027708 | 0.047183 |
+
+### Remaining runtime investigation
+
+S4 accounted for 310.294 of the 360.269 logged Ubuntu primary seconds and 296.317 of the 346.421
+Windows seconds. S5 accounted for another 48.431 / 48.687 seconds. Source inspection identifies
+two independent exact all-pairs metric scans on each tick, as well as model-specific steering work;
+these are cost hypotheses to profile, not measured CPU attribution. The primary matrix requires
+10,604,617,600 pair-distance evaluations across the two metric probes, calculated from the committed
+populations, ticks, seeds and models.
+
+The next bounded experiment is an unchanged S4 / seed 7 / classic Release run with an external CPU
+sampling profile and an unprofiled same-binary control. Compare the deterministic summaries and
+per-run artifacts exactly, and report profiler overhead separately. Nearest-neighbor analysis
+normalizes coordinates before subtraction while the geometry probe subtracts before periodic
+remainder; fusing these calculations cannot be assumed bit-identical. Reusing steering neighbors,
+dropping per-tick metrics or reducing repeats would change the scientific contract. Issue #28 stays
+open for runtime work, and the other legacy retirement requirements remain open.

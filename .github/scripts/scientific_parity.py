@@ -3,6 +3,7 @@ import argparse
 from collections import Counter
 import hashlib
 import json
+import math
 from pathlib import Path
 import subprocess
 import sys
@@ -21,6 +22,39 @@ def validate_result(mode, code, console, actual_rows, expected_rows, before, aft
         return Counter((row["Scenario"], row["Seed"], row["Model"]) for row in rows)
     if identities(actual_rows) != identities(expected_rows):
         raise ValueError("The result does not contain the complete locked scenario/seed/model matrix.")
+
+
+def validate_timing(mode, timing):
+    counts = ("PrimaryRuns", "RepeatRuns", "NaiveIndexRuns")
+    durations = ("PrimarySeconds", "RepeatSeconds", "NaiveIndexSeconds")
+    required = ("Version", "MatrixScope", "MatrixSeconds") + counts + durations
+    if not isinstance(timing, dict) or any(key not in timing for key in required):
+        raise ValueError("The matrix timing record is missing required fields.")
+    if type(timing["Version"]) is not int or timing["Version"] != 1:
+        raise ValueError("Unsupported matrix timing record version.")
+    if not isinstance(timing["MatrixScope"], str) or not timing["MatrixScope"].strip():
+        raise ValueError("The matrix timing record must define its measured scope.")
+    expected = {"verify": (100, 100, 50), "alignment-off": (100, 0, 0)}.get(mode)
+    if expected is None:
+        raise ValueError("Unknown scientific verification mode.")
+    for key, count in zip(counts, expected):
+        if type(timing[key]) is not int or timing[key] != count:
+            raise ValueError(f"{key} must record exactly {count} completed runs.")
+    for key in durations + ("MatrixSeconds",):
+        value = timing[key]
+        try:
+            finite = math.isfinite(value)
+        except (TypeError, OverflowError):
+            finite = False
+        if type(value) not in (int, float) or not finite or value < 0:
+            raise ValueError(f"{key} must be a finite nonnegative duration.")
+    for count, key in zip(expected, durations):
+        if count == 0 and timing[key] != 0:
+            raise ValueError(f"{key} records time for a phase that did not run.")
+    # The disjoint Run calls are inside the matrix clock. Allow only rounding noise.
+    tolerance = max(1e-6, timing["MatrixSeconds"] * 1e-9)
+    if sum(timing[key] for key in durations) > timing["MatrixSeconds"] + tolerance:
+        raise ValueError("Phase durations exceed the containing matrix interval.")
 
 
 def main():
@@ -58,8 +92,12 @@ def main():
         after = hashlib.sha256(args.baseline.read_bytes()).hexdigest()
         rows = json.loads((run_directory / "summary.json").read_text(encoding="utf-8"))
         validate_result(args.mode, code, "".join(lines), rows, expected_rows, before, after)
+        timing = json.loads((run_directory / "timing.json").read_text(encoding="utf-8"))
+        validate_timing(args.mode, timing)
+        receipt["timing"] = timing
         receipt["primaryRuns"] = len(rows)
         receipt["passed"] = True
+        print("Scientific timing: " + json.dumps(timing, sort_keys=True))
         print(f"Scientific {args.mode} gate passed for {len(rows)} primary runs.")
         return 0
     except (OSError, ValueError, KeyError, TypeError, subprocess.SubprocessError) as error:

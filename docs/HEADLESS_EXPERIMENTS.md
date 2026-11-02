@@ -44,7 +44,7 @@ v1 sweep axes remain numeric scalar fields.
 | `--manifest FILE` | None | Replays a completed manifest into a new run directory |
 | `--sweep FILE` | None | Sequential parameter sweep into a new sweep directory; combine only with `--out`, `--visual` or `--help` |
 | `--gallery FILE` | None | Runs a curated behaviour gallery with pass/fail bands; combine only with `--out` or `--help`; see [behaviour gallery](#behaviour-gallery) |
-| `--visual` | Off | Also write `filmstrip.png` and `report.html` per run (and `index.html` per sweep); see [visual reports](#visual-reports) |
+| `--visual` | Off | Also write `filmstrip.png`, `thumbnail.png` and `report.html` per run (and `index.html` per sweep); see [visual reports](#visual-reports) |
 | `--help` | — | Prints usage |
 
 Duplicate options, unknown options, malformed numeric values, and unexpected positional arguments
@@ -198,14 +198,21 @@ A visual run directory holds the usual three files plus:
   wide. An agent is a short line along its heading, coloured by heading angle on a hue wheel (east
   is red): an ordered flock is one colour, disorder is a rainbow; stationary agents are grey dots.
   Line length follows the panel size, not world units. The tick number is drawn in each corner.
+- **`thumbnail.png`** — the last occupied panel cropped directly from the filmstrip, including
+  its tick label. It keeps the panel's 480 px width and uses less than one eighth of the full
+  filmstrip's decoded pixels. Sweep and gallery indexes load this image lazily, keeping the final
+  swarm visible at phone width without loading all eight panels for every entry.
 - **`report.html`** — one self-contained page (no external URLs or scripts, light/dark, phone-width):
   engine, seed, ticks, agents, final kinematic hash, git commit, the filmstrip inline, and one
-  sparkline per `metrics.csv` column with first/last/min/max. Undefined (empty) cells are skipped,
-  leaving a gap rather than a zero.
+  sparkline per `metrics.csv` column with first/last/min/max computed from every defined row.
+  Each sparkline emits at most 480 vertices in total, including the repeated vertices used to
+  draw isolated dots. Long series retain their first and last defined samples plus the minimum
+  and maximum in each time-ordered bucket. Undefined (empty) cells leave gaps; sampling never
+  connects across one. Very fragmented series can omit short defined islands to keep that budget.
 
-A visual sweep gives every cell those two files and adds `index.html` at the sweep root: one row
-per cell with its parameter values, terminal metric values and a thumbnail linking to that cell's
-`report.html` by relative path. Without `--visual` the output files are exactly as before.
+A visual sweep gives every cell those three files and adds `index.html` at the sweep root: one row
+per cell with its parameter values, terminal metric values and a final-tick thumbnail linking to
+that cell's `report.html` by relative path. Without `--visual` the output files are exactly as before.
 
 Rendering reads the metric sampler's capture buffer only, copies just the 8 chosen frames, and
 never touches the simulation, so `metrics.csv`, the hashes and the RNG are unchanged.
@@ -237,13 +244,18 @@ errors (exit 1) before any output is created.
 Output is a new `gallery-<id>/` child holding one ordinary replayable run directory per entry
 (`01-<name>/` and so on; `--manifest` replays each with verified hashes), `summary.json`
 (entry, engine, pass, run directory and every expectation with its bounds and measured value) and
-`index.html`: one self-contained card per entry with its filmstrip linking to that run's
+`index.html`: one self-contained card per entry with its final-tick thumbnail linking to that run's
 `report.html`, failures sorted to the top under a summary line, light and dark, phone width.
 Standard output starts with the gallery directory, then one line per entry and a total:
 
 ```text
 PASS  vicsek-low-noise  polarization 0.988 (>= 0.8)    343 ms
 ```
+
+Passing measurements stay compact. Failed expectations show the measurement and bounds with
+round-trip numeric precision in both the console and the page, so rounding cannot turn a real
+failure into an apparent equality such as `population 12 (<= 12)`. `summary.json` retains the
+underlying numeric values independently of display formatting.
 
 Exit code `0` means every expectation holds, `1` means any band failed (everything is still
 published so the failure can be opened) or the recipe or a run failed (nothing is published), and

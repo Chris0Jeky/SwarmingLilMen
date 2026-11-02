@@ -12,7 +12,9 @@ internal static class ExperimentRunner
 {
     internal static string Run(RunOptions options) => Run(RunRequest.Resolve(options) with { Visual = options.Visual }, options.OutputDirectory);
 
-    internal static string Run(RunRequest request, string outputDirectory)
+    internal static string Run(RunRequest request, string outputDirectory) => Run(request, outputDirectory, RunReport.Write);
+
+    internal static string Run(RunRequest request, string outputDirectory, Action<string, FrameRecorder, RunManifest> writeReport)
     {
         bool deterministic = MetricCatalog.ValidateSelection(request.Engine, request.RequestedMetrics);
         if (request.Replay is not null && !deterministic)
@@ -103,7 +105,7 @@ internal static class ExperimentRunner
             }
 
             if (frames is not null)
-                RunReport.Write(staging, frames, manifest);
+                writeReport(staging, frames, manifest);
 
             Directory.Move(staging, destination); // Same-parent publish; fails if destination exists.
             return destination;

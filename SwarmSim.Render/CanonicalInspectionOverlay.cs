@@ -92,11 +92,15 @@ internal static class CanonicalInspectionOverlay
     internal static InspectionQuery Inspect(CanonicalWorld world, int subjectIndex, int[] neighbors, float[] weights)
     {
         ulong tick = world.TickCount;
-        if (world.LastTickInputs.IsEmpty) return new(default, FormatStatus(tick, false, false, 0, false, 0, 0));
+        if (tick == 0) return new(default, FormatStatus(tick, false, false, 0, false, 0, 0));
         if ((uint)subjectIndex >= (uint)world.LastTickInputs.Length) return new(default, FormatStatus(tick, true, false, 0, false, 0, 0));
         int capacity = Program.ComputeOverlayQueryCapacity(Math.Min(neighbors.Length, weights.Length), world.EffectiveMaxNeighbors);
-        SpatialQueryResult query = world.QueryLastTickVisibleNeighbors(subjectIndex, neighbors.AsSpan(0, capacity), weights.AsSpan(0, capacity));
-        return new(query, FormatStatus(tick, true, true, world.Instrumentation.NeighborCounts[subjectIndex],
+        int recordedInputs = world.Instrumentation.NeighborCounts[subjectIndex];
+        // An empty injected pipeline skips observation even if geometry has nearby boids.
+        // A requery must not draw hypothetical inputs when the tick recorded none.
+        SpatialQueryResult query = recordedInputs == 0 ? default
+            : world.QueryLastTickVisibleNeighbors(subjectIndex, neighbors.AsSpan(0, capacity), weights.AsSpan(0, capacity));
+        return new(query, FormatStatus(tick, true, true, recordedInputs,
             world.Instrumentation.QueryTruncated[subjectIndex], query.Count, capacity));
     }
 
