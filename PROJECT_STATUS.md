@@ -41,7 +41,7 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,295 non-Performance tests** with no build warnings
+The current integrated Release gate passes **1,300 non-Performance tests** with no build warnings
 or errors. The historical counts below identify the specific additions that produced them.
 
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
@@ -69,6 +69,13 @@ or errors. The historical counts below identify the specific additions that prod
   measurement. The seam inventory finds engine dispatch spread across seven CLI files and force
   composition unable to express heading replacement. See
   [the model, evidence and seam inventory](docs/VICSEK.md).
+- **Vicsek exact traces and manifest guards:** five new regressions directly exercise schema-1
+  rejection, spawn-model mismatch, shared-name configuration overlays and an eight-agent exact
+  trajectory at ticks 0/1/16/64/256. Linux and Windows references were captured independently on
+  .NET 8.0.33/X64 and every component word was rehashed. The first platform difference is one ULP
+  at tick 1; separate exact references preserve that measured distinction. A one-ULP noise mutation
+  fails the ordinary Linux golden assertion; existing boids/legacy fixtures are unchanged. See
+  [the scenario, reference provenance and mutation evidence](docs/VICSEK.md#exact-trajectory-regression).
 - **Behaviour gallery:** `SwarmSim.Cli --gallery scenarios/gallery.json` runs six short entries
   (tuned canonical flock, legacy balanced, Vicsek low and high noise, ACO with and without
   pheromone) in 1.8 s of run time on the recorded host, prints one PASS/FAIL line per entry, and
