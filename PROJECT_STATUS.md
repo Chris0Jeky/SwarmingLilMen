@@ -47,9 +47,18 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The current integrated Release gate passes **1,346 non-Performance tests** with no build warnings
-or errors. The historical counts below identify the specific additions that produced them.
+The recorded base integrated Release gate at `e512f984` passes **1,346 non-Performance tests**
+with no build warnings or errors. The evidence below identifies subsequent targeted additions;
+PR checks qualify each integrated revision before merge.
 
+- **Finite neighbor-distance averages:** the local or world float sum can overflow while every
+  distance and the mean remain finite. A double fallback now activates only after that overflow,
+  retaining the original float prefix, ordinary accumulation order and division. Twenty analytical
+  cases cover local/global overflow, both indexes and both capture APIs, tick reset and an exact
+  ordinary-rounding witness; all pass after eight failed before the correction. No hot-path
+  allocation or extra ordinary per-neighbor work was added. Other extreme-scale consumers remain
+  in [#187](https://github.com/Chris0Jeky/SwarmingLilMen/issues/187); see
+  [the distance scope and evidence](docs/CANONICAL_EXTREME_DISTANCES.md#distance-average-follow-up--2026-11-02).
 - **ACO foundation and scalar field:** `ScalarField` is the first non-agent state, and
   `AntColonyWorld` runs a minimal foraging colony with its own ant shape, one retained named stream
   per ant, and distinct agent and field phases: the agent phase reads field(t) and buffers deposits,

@@ -1,6 +1,6 @@
 # Representable canonical neighbor distances
 
-This guide records the bounded-observation, nearest-neighbor and partial-FOV corrections for
+This guide records the bounded-observation, nearest-neighbor, partial-FOV and distance-average corrections for
 [issue #187](https://github.com/Chris0Jeky/SwarmingLilMen/issues/187). It corrects a real proximity
 error while retaining ordinary-scale float arithmetic. The wider numeric audit remains open.
 
@@ -89,7 +89,7 @@ directory. This is an explicit exceptional-scale correctness change, not a golde
 | Nearest distance/minimum/maximum telemetry | Uses recovered distances with the existing order and tie rule | No-neighbor sentinels remain unchanged |
 | Nearest-angle telemetry | Large selected displacements normalize with the recovered length | The existing nearly-zero cutoff still suppresses tiny direction angles |
 | `SeparationPriorityStage` | Receives the corrected nearest distance | Threshold/hold/ramp formulas and their separate extreme-value limits are unchanged |
-| Average neighbor distance | Sums the recovered per-neighbor values | Local/world float sums can still overflow even when each distance and the mathematical average are finite |
+| Average neighbor distance | Recovers a representable mean when a local/world float sum overflows | Finite sums retain their established float rounding; this is not a correctly rounded arbitrary-precision average |
 | Partial-FOV filtering | Recovers a direction when a finite displacement's squared length overflows | Ordinary normalization and the established nearly-zero cutoff remain unchanged; see the follow-up below |
 | Shaped avoidance and both separation-rule APIs | Unchanged | Their direct squared-distance calculations still require their own bounded numeric review |
 | Cohesion and other generic vector operations | Unchanged | Normalization, magnitude clamping and extreme controls are outside this fix |
@@ -97,7 +97,7 @@ directory. This is an explicit exceptional-scale correctness change, not a golde
 The original extreme-distance cases use full-circle FOV; the follow-up below adds partial-FOV cases.
 This evidence does not establish that
 every accepted extreme configuration has correct perception or dynamics. The uncorrected consumers
-and aggregate-overflow cases remain explicitly tracked in #187. The prior
+remain explicitly tracked in #187. The prior
 [statistics-reuse measurements](CANONICAL_NEIGHBOR_REUSE.md) describe the preceding optimization,
 whose exceptional diagnostics were intentionally preserved until this separate correction.
 
@@ -124,12 +124,44 @@ Against the prior implementation, the focused matrix produced **8 failures and 1
 all eight intended large-distance visibility cases failed for the missing input. The correction
 does not broaden the accepted configuration domain, change existing fixtures, or make a throughput
 claim. Historical extreme-scale partial-FOV runs can change behavior and require their original
-binary for exact replay. Shaped avoidance, direct separation, generic vector operations and float
-aggregate overflow remain open in #187.
+binary for exact replay. Shaped avoidance, direct separation and generic vector operations remain
+open in #187; the aggregate-overflow follow-up is described below.
+
+## Distance-average follow-up — 2026-11-02
+
+Recovering each neighbor distance did not prevent their sum from overflowing. With one agent at
+zero and the other `n - 1` agents at distance `d`, the all-visible directed sample set contains
+`2 * (n - 1)` nonzero distances among `n * (n - 1)` samples. Its mean is therefore `2 * d / n`.
+For `d = 2^126`, the distances and mean are finite, but the world total overflows with three
+agents. With five agents, the first observer's local sum also overflows. Both capture APIs
+previously reported infinity.
+
+Ordinary local sums, world sums and final division still use the original float arithmetic in
+the original order. Only a nonfinite world total activates a double accumulator, starting with
+the existing finite float prefix. Finite local sums then contribute their already-rounded float
+values. If the current observer's local sum is itself nonfinite, its existing borrowed neighbor
+view is rescanned in double. This exceptional recovery introduces no allocation and no additional
+per-neighbor work for ordinary sums. Resetting the float total each tick also resets which
+accumulation path is selected.
+
+The sixteen analytical overflow/control cases cover three and five agents, ordinary and extreme
+scales, both indexes and both telemetry APIs. They advance through separated, coincident and
+separated inputs on consecutive ticks, independently checking the expected means, extrema and
+neighbor counts. Four additional cases pin the ordinary two-level float rounding for x positions
+`0`, `1`, `2` and `16777220`: the established mean is exactly `8388611f`; accumulating all samples
+in double would instead produce `8388610f`.
+
+Before the correction, these twenty cases produced **8 failures and 12 passes**. All eight
+extreme-scale means were infinite; every ordinary control already passed. With the correction,
+all **20 cases pass** in a fresh local Release build. The correction does not
+alter sensing, policy inputs or kinematic integration. Extreme runs whose sum overflowed can have
+different telemetry and CSV hashes, so exact historical replay still requires the original binary.
+No golden fixtures, numeric tolerances or throughput claims change. Other vector, shaping and
+direct-separation consumers remain in #187.
 
 ## Reproduce the checks
 
 ```sh
-dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter 'FullyQualifiedName~CanonicalExtremeDistanceTests|FullyQualifiedName~CanonicalExtremeFovTests|FullyQualifiedName~CanonicalNeighborTelemetryTests' -- RunConfiguration.TreatNoTestsAsError=true
+dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter 'FullyQualifiedName~CanonicalExtremeDistanceTests|FullyQualifiedName~CanonicalExtremeFovTests|FullyQualifiedName~CanonicalDistanceAggregateTests|FullyQualifiedName~CanonicalNeighborTelemetryTests' -- RunConfiguration.TreatNoTestsAsError=true
 dotnet test SwarmingLilMen.sln -c Release --filter 'Category!=Performance' -- RunConfiguration.TreatNoTestsAsError=true
 ```
