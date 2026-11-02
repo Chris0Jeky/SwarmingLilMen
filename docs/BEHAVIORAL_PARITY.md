@@ -158,10 +158,38 @@ rejection. A distance-only rejection never counts as the required alignment witn
 
 The ordinary solution CI builds this project and runs the small analytical, real-engine,
 repeat/index, input and comparator regressions, including validation of the actual checked-in
-calibration against all five recipes. Full scientific verification is an explicit
-command because the per-tick quadratic analysis and dense all-neighbor workloads exceed the
-original under-60-second target on the measured host. This is partial issue #28; no expensive
-full-matrix workload is silently added to every pull request.
+calibration against all five recipes. Full scientific verification is a separate, explicit gate
+because the per-tick quadratic analysis and dense all-neighbor workloads exceed the original
+under-60-second target on the measured host. It is not part of every routine pull request.
+
+### Full scientific Actions workflow
+
+Run **Scientific parity** from the Actions tab with `workflow_dispatch` when an engine, metric,
+scenario or parity contract change needs complete qualification. Pull requests changing that
+workflow or its Python wrapper also run it automatically, so changes to the gate prove themselves.
+The path filter deliberately does not make the expensive matrix run on every engine or docs PR.
+
+Four independent jobs cover Ubuntu/Windows and normal/alignment-off verification. Each checks out
+the exact PR head (or the selected dispatch revision), records its Git SHA and builds the harness.
+Normal mode executes 100 primary runs, 100 repeats and 50 canonical naive-index comparisons;
+alignment-off executes its separate 100-run witness. A witness passes the CI wrapper only when
+the harness returns comparison exit 1 **and** identifies a polarization rejection. Crashes,
+invalid input (exit 2), an ineffective/distance-only witness (exit 3), or a partial/duplicated
+scenario/seed/model matrix fail the job. The locked baseline's SHA-256 must remain unchanged.
+
+Each job retains the full matrix, console output, runtime and binary provenance, plus a
+`receipt.json` with the checked source SHA, baseline hash, elapsed time, exit code and verdict.
+Artifacts are retained for 14 days. The job timeout is 45 minutes; this is an execution allowance,
+not a relaxed performance acceptance threshold. Run the same wrapper after a Release build from
+a Git checkout with:
+
+```powershell
+python .github/scripts/scientific_parity.py --mode verify --out artifacts/parity-verify
+python .github/scripts/scientific_parity.py --mode alignment-off --out artifacts/parity-alignment-off
+```
+
+Use new output directories for each run. The wrapper never records a new calibration or changes
+seeds, recipes or bands. The original under-60-second requirement remains an open part of #28.
 
 ## Recorded calibration and verification — 2026-10-29
 
@@ -244,6 +272,7 @@ been demonstrated on the recorded Ubuntu/.NET/X64 host. Ordinary cross-platform 
 small regression suite; no complete Windows scientific matrix is asserted here.
 
 **Remaining gate:** the 60-second target is still unmet at this revision. Issue #28 remains open
-for that measured cost, and full scientific verification remains an explicit command. The passed
+for that measured cost, and full scientific verification remains an explicit command or dedicated
+Actions workflow. The passed
 bounded behavioral comparison does not establish the other legacy retirement criteria.
 
