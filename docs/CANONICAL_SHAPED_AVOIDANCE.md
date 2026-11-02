@@ -51,8 +51,9 @@ historical replay requires their original binary and matching runtime. This is a
 correction with no throughput or renderer performance claim.
 
 The wider numeric audit remains open. In particular, overflow in derived radius products or other
-control formulas, direct separation-rule calculations and generic normalization still require
-separate bounded review. This correction covers a representable nearest distance and representable
+control formulas and direct separation-rule calculations still require separate bounded review.
+The later [vector normalization correction](CANONICAL_VECTOR_NORMALIZATION.md) has its own
+finite-overflow scope and preserves the existing near-zero policies. This correction covers a representable nearest distance and representable
 derived radii; it does not establish correctness for every extreme accepted configuration.
 
 ## Reproduce the checks

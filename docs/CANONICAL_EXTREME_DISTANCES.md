@@ -94,7 +94,8 @@ directory. This is an explicit exceptional-scale correctness change, not a golde
 | Shaped avoidance | Recovers a representable norm and away direction after finite-component squared overflow | Ordinary formulas/cutoffs are unchanged; derived-radius/control overflow remains outside [the separate shaping proof](CANONICAL_SHAPED_AVOIDANCE.md) |
 | Both separation-rule APIs | Unchanged | Their direct squared-distance calculations still require their own bounded numeric review |
 | `Vec2.ClampMagnitude` | Recovers finite-component squared overflow with a double comparison/scale | Ordinary float arithmetic, nonfinite input behavior and resolver rejection remain unchanged; [separate clamp proof](CANONICAL_VECTOR_CLAMP.md) |
-| Cohesion and other generic vector operations | Unchanged | Generic normalization, squared underflow, finite-square scaling and extreme controls remain outside the bounded clamp correction |
+| `Vec2.Normalized` / `Vec2.WithLength` | Retain finite-component directions after squared overflow, including public world ingestion | Ordinary rounding, distinct near-zero cutoffs and nonfinite contracts are preserved; [separate normalization proof](CANONICAL_VECTOR_NORMALIZATION.md) |
+| Cohesion and other control arithmetic | Not qualified by the vector fixes | Aggregate/control overflow, direct separation, finite-square scaling and near-zero/underflow policy still need their own proof |
 
 The original extreme-distance cases use full-circle FOV; the follow-up below adds partial-FOV cases.
 This evidence does not establish that
@@ -128,7 +129,8 @@ does not broaden the accepted configuration domain, change existing fixtures, or
 claim. Historical extreme-scale partial-FOV runs can change behavior and require their original
 binary for exact replay. The aggregate-overflow follow-up is described below; subsequent
 [clamp](CANONICAL_VECTOR_CLAMP.md) and [shaping](CANONICAL_SHAPED_AVOIDANCE.md) corrections have
-separate scopes. Direct separation and generic normalization remain open in #187.
+separate scopes, as does the later [normalization correction](CANONICAL_VECTOR_NORMALIZATION.md).
+Direct separation and other extreme control/aggregate limits remain open in #187.
 
 ## Distance-average follow-up — 2026-11-02
 
