@@ -59,6 +59,12 @@ PR checks qualify each integrated revision before merge.
   unproved. [#164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164) stays open; the
   [grammar limits](.hosting/README.md#scanner-grammar-limits-2026-11-02) retain artifact review and
   the allowlist as the publication boundary.
+- **Finite-vector magnitude clamps:** `Vec2.ClampMagnitude` now recovers the direction and cap
+  when finite components overflow their squared float norm. Its ordinary rounding and nonfinite
+  input behavior are unchanged, and both steering resolvers still reject nonfinite weighted
+  squared magnitudes before clamping. All 38 analytical/compatibility cases pass after 14 failed
+  before the fix, including signed zero and the smallest positive float. See
+  [the bounded clamp contract](docs/CANONICAL_VECTOR_CLAMP.md).
 - **Finite neighbor-distance averages:** the local or world float sum can overflow while every
   distance and the mean remain finite. A double fallback now activates only after that overflow,
   retaining the original float prefix, ordinary accumulation order and division. Twenty analytical

@@ -39,6 +39,19 @@ public readonly struct Vec2
         float sqr = LengthSquared;
         float maxSqr = maxLength * maxLength;
 
+        if (!float.IsFinite(sqr) && float.IsFinite(X) && float.IsFinite(Y) && float.IsFinite(maxLength))
+        {
+            // Finite components can overflow both squared floats, making their comparison
+            // inconclusive. Keep the exceptional scale in double, including for tiny caps.
+            double wideSqr = (double)X * X + (double)Y * Y;
+            double wideMaxSqr = (double)maxLength * maxLength;
+            if (wideSqr <= wideMaxSqr)
+                return this;
+
+            double wideScale = maxLength / Math.Sqrt(wideSqr);
+            return new Vec2((float)(X * wideScale), (float)(Y * wideScale));
+        }
+
         if (sqr <= maxSqr)
             return this;
 
