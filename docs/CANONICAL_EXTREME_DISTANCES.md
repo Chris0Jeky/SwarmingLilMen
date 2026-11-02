@@ -89,9 +89,10 @@ directory. This is an explicit exceptional-scale correctness change, not a golde
 | Nearest distance/minimum/maximum telemetry | Uses recovered distances with the existing order and tie rule | No-neighbor sentinels remain unchanged |
 | Nearest-angle telemetry | Large selected displacements normalize with the recovered length | The existing nearly-zero cutoff still suppresses tiny direction angles |
 | `SeparationPriorityStage` | Receives the corrected nearest distance | Threshold/hold/ramp formulas and their separate extreme-value limits are unchanged |
-| Average neighbor distance | Recovers a representable mean when a local/world float sum overflows | Finite sums retain their established float rounding; this is not a correctly rounded arbitrary-precision average |
+| Average neighbor distance | Recovers a representable mean when a local/world float sum overflows | Finite sums retain their established float rounding; sample-count integer overflow remains uncorrected and this is not a correctly rounded arbitrary-precision average |
 | Partial-FOV filtering | Recovers a direction when a finite displacement's squared length overflows | Ordinary normalization and the established nearly-zero cutoff remain unchanged; see the follow-up below |
-| Shaped avoidance and both separation-rule APIs | Unchanged | Their direct squared-distance calculations still require their own bounded numeric review |
+| Shaped avoidance | Recovers a representable norm and away direction after finite-component squared overflow | Ordinary formulas/cutoffs are unchanged; derived-radius/control overflow remains outside [the separate shaping proof](CANONICAL_SHAPED_AVOIDANCE.md) |
+| Both separation-rule APIs | Unchanged | Their direct squared-distance calculations still require their own bounded numeric review |
 | `Vec2.ClampMagnitude` | Recovers finite-component squared overflow with a double comparison/scale | Ordinary float arithmetic, nonfinite input behavior and resolver rejection remain unchanged; [separate clamp proof](CANONICAL_VECTOR_CLAMP.md) |
 | Cohesion and other generic vector operations | Unchanged | Generic normalization, squared underflow, finite-square scaling and extreme controls remain outside the bounded clamp correction |
 
@@ -125,8 +126,9 @@ Against the prior implementation, the focused matrix produced **8 failures and 1
 all eight intended large-distance visibility cases failed for the missing input. The correction
 does not broaden the accepted configuration domain, change existing fixtures, or make a throughput
 claim. Historical extreme-scale partial-FOV runs can change behavior and require their original
-binary for exact replay. Shaped avoidance, direct separation and generic vector operations remain
-open in #187; the aggregate-overflow follow-up is described below.
+binary for exact replay. The aggregate-overflow follow-up is described below; subsequent
+[clamp](CANONICAL_VECTOR_CLAMP.md) and [shaping](CANONICAL_SHAPED_AVOIDANCE.md) corrections have
+separate scopes. Direct separation and generic normalization remain open in #187.
 
 ## Distance-average follow-up — 2026-11-02
 
@@ -157,8 +159,8 @@ extreme-scale means were infinite; every ordinary control already passed. With t
 all **20 cases pass** in a fresh local Release build. The correction does not
 alter sensing, policy inputs or kinematic integration. Extreme runs whose sum overflowed can have
 different telemetry and CSV hashes, so exact historical replay still requires the original binary.
-No golden fixtures, numeric tolerances or throughput claims change. Other vector, shaping and
-direct-separation consumers remain in #187.
+No golden fixtures, numeric tolerances or throughput claims change. The consumer inventory above
+links the later bounded vector/shaping corrections and the remaining #187 work.
 
 ## Reproduce the checks
 
