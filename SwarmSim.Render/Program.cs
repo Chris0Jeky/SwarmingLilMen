@@ -779,6 +779,7 @@ internal static class Program
                 world.Vy[i] += dvy * dSpeed;
             }
             Console.WriteLine("Shook agents to break equilibrium!");
+            ForceSnapshotRefresh("velocity shake", notifyRunner: true);
         }
     }
 

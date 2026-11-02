@@ -51,6 +51,12 @@ The recorded base integrated Release gate at `e512f984` passes **1,346 non-Perfo
 with no build warnings or errors. The evidence below identifies subsequent targeted additions;
 PR checks qualify each integrated revision before merge.
 
+- **Immediate renderer shake feedback:** legacy X/shake now refreshes both interpolation
+  snapshots and notifies the simulation runner after changing velocities. Three real-input-path
+  regressions cover shake alone and same-frame parameter/preset recreation; they fail on stale
+  snapshots before the fix and pass afterward, including mutation-version/accumulator checks.
+  The renderer guide now describes canonical key 8/FOV and S/A/C switches accurately. This does
+  not complete the physical keyboard, focus, DPI or human visual acceptance in #40.
 - **Static-demo scanner admission:** visible function/key restrictions now span script blocks,
   inline handlers and `javascript:` URLs within each artifact, with explicit parse-unit boundaries.
   Visible reflection/prototype APIs are outside the admitted language. The 96 scanner tests pass,

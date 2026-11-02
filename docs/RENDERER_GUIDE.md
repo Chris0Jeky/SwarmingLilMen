@@ -70,10 +70,13 @@ Press **H** in either renderer for its complete control inventory. The maintaine
 Sense-radius circles are drawn only below 100 agents; the S binding's help states this limit.
 If parameter/preset changes and spawn/reset/shake actions arrive in the same frame, the later
 actions operate on the recreated active world rather than the discarded instance.
+Legacy spawn, reset and **X** shake actions refresh both interpolation snapshots and notify the
+simulation runner of the external mutation. A shake therefore displays its changed velocities
+immediately, without blending against a snapshot from before the input or carrying old elapsed time.
 
 `RendererControls` supplies the bindings consumed by both input paths and the labels in both
 overlays, the legacy parameter panel, canonical footer, parameter printing, and console help.
-Legacy labels advertise **1–8**; canonical accepts and advertises **1–7**. Headless regression
+Both renderers accept and advertise **1–8**, with engine-specific meanings for key **8**. Headless regression
 coverage checks the shared inventory and effective parameter semantics. The
 [native verification record](NATIVE_UI_VERIFICATION.md) includes direct captures of both panels,
 real input/preset/custom-startup checks, exact binary identities and the same-frame spawn regression.
@@ -82,13 +85,17 @@ Its scope is Linux software rendering, without a human sign-off or cross-platfor
 Friction key **8** is currently a no-op for every registered legacy preset because those presets
 inherit `SpeedModel.ConstantSpeed`; it affects only an explicit custom legacy `Damped`
 configuration. The legacy panel, help and console messages label that limitation explicitly.
-Canonical settings do not consume friction, and canonical input now ignores key **8** instead
-of changing an unused value (`SimConfig.SpeedModel`; `IntegrateSystem.Run`;
-`RendererControls.ApplyParameters`; `Program.ProcessCanonicalParameters`).
+Canonical key **8** selects field of view; arrows or the other adjustment aliases change it in
+15-degree steps, or one degree while holding Shift, bounded to 1–360 degrees. Canonical settings
+do not consume legacy friction (`RendererControls.ApplyParameters`; `Program.ProcessCanonicalParameters`).
 
 The canonical path has separate controls: **R** reset, **H** help, **O** selected-boid interaction
-overlay, **Tab** tracked-boid selection, parameter keys, and **F1-F5** presets
-(`Program.RunCanonicalMode`, `Program.ProcessCanonicalParameters`).
+overlay, **Tab** inspected-boid selection, **S/A/C** named separation/alignment/cohesion toggles,
+parameter keys, and **F1-F5** presets (`Program.RunCanonicalMode`, `Program.ProcessCanonicalParameters`).
+Rule switches survive reset and parameter/preset recreation. The selected subject is preserved or
+clamped during recreation. See [canonical inspection](CANONICAL_INSPECTION.md) for the distinction
+between completed-tick inputs, current positions, resolved force and heading, plus the remaining
+physical-input, full-window DPI and human visual acceptance.
 
 ## Performance Interpretation
 
