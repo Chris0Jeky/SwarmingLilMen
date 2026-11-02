@@ -184,11 +184,11 @@ void Capture(string name, int fov, KeyboardKey? toggle = null, bool closeNeighbo
                 // The seam scene's rear arc is outside the viewport, so it is not an aperture check.
                 if (!seam) Check("rear FOV arc matches aperture", Near(image, (int)center.X - 240, 570, Color.Gold) == (fov == 360));
                 Check("only the expected separation link segments are drawn", LinkPixelsMatch(image, new Color(255, 159, 67, 255),
-                    ExpectedLinks(inputs, separation ? [1] : [], -3f)));
+                    ExpectedLinks(inputs, separation ? [1] : [], -3f), center, force, settings));
                 Check("only the expected alignment link segments are drawn", LinkPixelsMatch(image, new Color(89, 200, 255, 255),
-                    ExpectedLinks(inputs, alignment ? expectedVisible : [], 0f)));
+                    ExpectedLinks(inputs, alignment ? expectedVisible : [], 0f), center, force, settings));
                 Check("only the expected cohesion link segments are drawn", LinkPixelsMatch(image, new Color(223, 164, 255, 255),
-                    ExpectedLinks(inputs, cohesion ? expectedVisible : [], 3f)));
+                    ExpectedLinks(inputs, cohesion ? expectedVisible : [], 3f), center, force, settings));
                 Check("force pixels follow the resolved vector and stop at its tip", ForcePixelsMatch(image, center, force, settings.MaxForce));
             }
         }
@@ -223,10 +223,10 @@ static unsafe RendererInputSnapshot Tap(params KeyboardKey[] keys)
     return input;
 }
 
-static bool Near(Image image, int x, int y, Color color)
+static bool Near(Image image, int x, int y, Color color, int radius = 3)
 {
-    for (int dy = -3; dy <= 3; dy++)
-        for (int dx = -3; dx <= 3; dx++)
+    for (int dy = -radius; dy <= radius; dy++)
+        for (int dx = -radius; dx <= radius; dx++)
             if ((uint)(x + dx) < image.Width && (uint)(y + dy) < image.Height
                 && Raylib.GetImageColor(image, x + dx, y + dy).Equals(color)) return true;
     return false;
@@ -246,20 +246,28 @@ static List<ProbeSegment> ExpectedLinks(Vector2[] inputs, int[] neighbors, float
     return segments;
 }
 
-static bool LinkPixelsMatch(Image image, Color color, List<ProbeSegment> segments)
+static bool LinkPixelsMatch(Image image, Color color, List<ProbeSegment> segments,
+    Vector2 center, Vec2 force, CanonicalWorldSettings settings)
 {
-    // Require a sample on every expected segment, including both clipped halves of a seam link.
-    // Several interior samples allow for occlusion by the selected marker or force arrow.
+    // Require every unoccluded interior sample, including both clipped halves of a seam link.
+    // Spacing is at most eight pixels; the explicit masks cover foreground geometry only.
     foreach (ProbeSegment segment in segments)
     {
-        bool found = false;
-        foreach (float fraction in new[] { 0.25f, 0.5f, 0.75f })
+        int checkedSamples = 0;
+        int steps = (int)MathF.Ceiling(Vector2.Distance(segment.Start, segment.End) / 8f);
+        for (int i = 1; i < steps; i++)
         {
-            Vector2 sample = Vector2.Lerp(segment.Start, segment.End, fraction);
-            if (sample.X >= 0 && sample.X < image.Width && Near(image, (int)MathF.Round(sample.X), (int)MathF.Round(sample.Y), color))
-                found = true;
+            Vector2 sample = Vector2.Lerp(segment.Start, segment.End, (float)i / steps);
+            if (sample.X < 3 || sample.X >= image.Width - 3 || sample.Y < 303 || sample.Y >= 897
+                || Vector2.DistanceSquared(sample, segment.Start) <= 64f
+                || Vector2.DistanceSquared(sample, segment.End) <= 64f
+                || LinkSampleIsOccluded(sample, center, force, settings)) continue;
+            checkedSamples++;
+            if (!Near(image, (int)MathF.Round(sample.X), (int)MathF.Round(sample.Y), color)) return false;
         }
-        if (!found) return false;
+        // Each explicit fixture segment has visible, unoccluded interior; do not accept a
+        // fixture that proves presence only through an empty set of sample points.
+        if (checkedSamples == 0) return false;
     }
 
     // Reject extra links even when the same rule also has a legitimate link. Exclude text/legend
@@ -271,9 +279,23 @@ static bool LinkPixelsMatch(Image image, Color color, List<ProbeSegment> segment
     return true;
 }
 
+static bool LinkSampleIsOccluded(Vector2 point, Vector2 center, Vec2 force, CanonicalWorldSettings settings)
+{
+    // These fixtures face right. Their neighbors lie inside the arc and off its boundary rays.
+    if (Vector2.DistanceSquared(point, center) <= 81f
+        || DistanceSquared(point, new(center, center + new Vector2(28, 0))) <= 36f) return true;
+    float lookAhead = settings.TargetSpeed * MathF.Max(0.05f, settings.WhiskerTimeHorizon);
+    if (MathF.Abs(Vector2.Distance(point, center + new Vector2(lookAhead, 0))
+        - MathF.Max(0.1f, settings.SeparationRadius)) <= 3f) return true;
+    Vector2 forceOffset = new Vector2(force.X, force.Y) * (64f / settings.MaxForce);
+    if (forceOffset.LengthSquared() > 128f * 128f) forceOffset = Vector2.Normalize(forceOffset) * 128f;
+    return DistanceSquared(point, new(center, center + forceOffset)) <= 36f;
+}
+
 static float DistanceSquared(Vector2 point, ProbeSegment segment)
 {
     Vector2 delta = segment.End - segment.Start;
+    if (delta.LengthSquared() == 0f) return Vector2.DistanceSquared(point, segment.Start);
     float fraction = Math.Clamp(Vector2.Dot(point - segment.Start, delta) / delta.LengthSquared(), 0f, 1f);
     return Vector2.DistanceSquared(point, segment.Start + delta * fraction);
 }
@@ -295,7 +317,17 @@ static bool ForcePixelsMatch(Image image, Vector2 center, Vec2 force, float maxF
             float across = MathF.Abs(delta.X * direction.Y - delta.Y * direction.X);
             if (along < -2f || along > length + 2f || across > MathF.Min(4f, length * 0.2f) + 2f) return false;
         }
-    return length < 0.1f ? pixels == 0 : pixels > 0 && Near(image, (int)MathF.Round(tip.X), (int)MathF.Round(tip.Y), Color.White);
+    if (length < 0.1f) return pixels == 0;
+    if (pixels == 0 || !Near(image, (int)MathF.Round(tip.X), (int)MathF.Round(tip.Y), Color.White)) return false;
+    // The arrowhead alone must not satisfy presence. Check the shaft from its origin up to
+    // the head, with a tighter one-pixel neighborhood than the endpoint raster tolerance.
+    float shaftLength = length - MathF.Min(8f, length * 0.4f);
+    for (float distance = 0; distance < shaftLength; distance += 3f)
+    {
+        Vector2 sample = center + direction * distance;
+        if (!Near(image, (int)MathF.Round(sample.X), (int)MathF.Round(sample.Y), Color.White, 1)) return false;
+    }
+    return true;
 }
 
 internal readonly record struct ProbeSegment(Vector2 Start, Vector2 End);

@@ -4,7 +4,7 @@ using System.Text;
 
 namespace SwarmSim.Cli.Visual;
 
-/// <summary>Writes filmstrip.png and a self-contained report.html (no external URLs, no scripts) into a run directory.</summary>
+/// <summary>Writes filmstrip.png, its final-panel thumbnail and a self-contained report.html into a run directory.</summary>
 internal static class RunReport
 {
     internal const string BaseCss = """
@@ -33,12 +33,15 @@ internal static class RunReport
         """;
 
     private const double SparkWidth = 240d, SparkHeight = 56d, SparkPad = 3d;
+    private const int SparkVertexBudget = 480;
 
     internal static void Write(string directory, FrameRecorder frames, RunManifest manifest)
     {
         Raster raster = Filmstrip.Render(frames.Ticks, frames.Frames, frames.WorldWidth, frames.WorldHeight);
         byte[] png = PngWriter.Encode(raster.Width, raster.Height, raster.Rgba);
         File.WriteAllBytes(Path.Combine(directory, "filmstrip.png"), png);
+        Raster thumbnail = Filmstrip.CropFinalPanel(raster, frames.Ticks.Length);
+        File.WriteAllBytes(Path.Combine(directory, "thumbnail.png"), PngWriter.Encode(thumbnail.Width, thumbnail.Height, thumbnail.Rgba));
         string csv = File.ReadAllText(Path.Combine(directory, "metrics.csv"));
         File.WriteAllText(Path.Combine(directory, "report.html"), Html(manifest, png, csv), new UTF8Encoding(false));
     }
@@ -116,18 +119,63 @@ internal static class RunReport
             segment.Clear();
             run = 0;
         }
-        for (int i = 0; i < values.Count; i++)
+        int previous = -1;
+        foreach (int i in SparklineSamples(values))
         {
-            if (double.IsNaN(values[i])) { Flush(); continue; } // gap: never bridged, never zero
+            // Sampling can omit a whole undefined interval. Check the original rows so it never becomes a line.
+            for (int gap = previous + 1; gap < i; gap++)
+                if (double.IsNaN(values[gap])) { Flush(); break; }
             double x = maxTick > 0 ? SparkPad + ticks[i] / maxTick * (SparkWidth - 2 * SparkPad) : SparkWidth / 2;
             double y = range > 0 ? SparkHeight - SparkPad - (values[i] - min) / range * (SparkHeight - 2 * SparkPad) : SparkHeight / 2;
             segment.Append(Num(x)).Append(',').Append(Num(y)).Append(' ');
             run++;
+            previous = i;
         }
         Flush();
         card.Append("</svg>");
         card.Append($"<div class=\"stats\"><span>first {Fmt(first)}</span><span>last {Fmt(last)}</span><span>min {Fmt(min)}</span><span>max {Fmt(max)}</span></div></div>");
         return card.ToString();
+    }
+
+    /// <summary>
+    /// Keep the first/last defined samples and each bucket's min/max in time order. Reserve two
+    /// vertices per sample because gaps can turn every selected sample into a round-capped dot.
+    /// Statistics still use every row; even many isolated samples cannot exceed the SVG budget.
+    /// </summary>
+    private static IEnumerable<int> SparklineSamples(List<double> values)
+    {
+        const int sampleBudget = SparkVertexBudget / 2;
+        if (values.Count <= sampleBudget)
+        {
+            for (int i = 0; i < values.Count; i++)
+                if (!double.IsNaN(values[i])) yield return i;
+            yield break;
+        }
+
+        int first = values.FindIndex(value => !double.IsNaN(value));
+        int last = values.FindLastIndex(value => !double.IsNaN(value));
+        if (first < 0) yield break;
+        yield return first;
+        if (last == first) yield break;
+
+        int interior = last - first - 1;
+        int buckets = Math.Min((sampleBudget - 2) / 2, interior);
+        for (int bucket = 0; bucket < buckets; bucket++)
+        {
+            int start = first + 1 + (int)((long)interior * bucket / buckets);
+            int end = first + 1 + (int)((long)interior * (bucket + 1) / buckets);
+            int low = -1, high = -1;
+            for (int i = start; i < end; i++)
+            {
+                if (double.IsNaN(values[i])) continue;
+                if (low < 0 || values[i] < values[low]) low = i;
+                if (high < 0 || values[i] > values[high]) high = i;
+            }
+            if (low < 0) continue;
+            yield return Math.Min(low, high);
+            if (low != high) yield return Math.Max(low, high);
+        }
+        yield return last;
     }
 
     internal static string Esc(string text) => WebUtility.HtmlEncode(text);

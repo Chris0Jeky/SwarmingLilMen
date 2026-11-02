@@ -114,6 +114,24 @@ showed a DPI-size mismatch; the explicit render target avoids presenting that as
 capture. Physical keyboard input, full-window DPI behavior, Linux/macOS interactive desktop behavior and
 human acceptance remain unverified. **Issue #40 and milestone 7 remain partial.**
 
+### 2026-11-02 follow-up verification
+
+The isolated renderer follow-up based on `bbe3873` passed 53 focused checks (inspection, controls,
+telemetry and exact goldens) and all 1,297 non-Performance tests on Ubuntu 24.04.3 x64, .NET 8.0.33.
+The nine-case probe passed **107 behavior checks and 18 separate artifact checks** with Mesa
+software rendering under Xvfb. The wrapped-seam and small-force (`cohesion-off`) captures were
+inspected: both seam halves are drawn without long links across the viewport, and the small white
+arrow remains visible over the gold marker.
+
+Three isolated visual mutations exited 1 as expected: doubling the arrow length failed all eight
+scene force checks; adding an extra alignment segment failed the six affected scene checks; and
+using direct instead of minimum-image link displacement failed the two colored-link checks in
+the seam scene. Independent review then identified two presence gaps: an arrowhead without its
+shaft and half-length primary links passed the first predicates. The strengthened predicates
+reject both deletions in all eight non-help scenes; all nine unmodified PNGs remain byte-identical.
+The production source was unchanged by these mutation runs. These remain
+render-target/event-playback checks within the acceptance limits above.
+
 ## Fast visual feedback
 
 From the repository root:
@@ -132,7 +150,10 @@ identify the build's Git revision but do not assert that its source checkout was
 The nine cases check native S/A/C playback changes applied contributions;
 8/arrows/Shift reach the production FOV configuration; O/Tab/H/R map to their actions; pixel
 probes check front/top/rear arc coverage, every expected colored link segment, absence of extra
-colored segments, the force arrow's direction and endpoint, and help-panel drawing. The wrapped
+colored segments, the force arrow's shaft, direction and endpoint, and help-panel drawing. Link
+presence requires every unoccluded interior sample, spaced at most eight pixels apart; explicit
+marker, heading, whisker-circle and force-arrow masks allow foreground occlusion. Force-shaft
+samples use a one-pixel neighborhood, separately from the wider endpoint raster tolerance. The wrapped
 scene requires both clipped halves of each seam link and rejects long lines across the open middle.
 The report and gallery count these behavioral checks separately from PNG export and image-dimension
 checks. The earlier eight-case total of 112 included 16 of those artifact checks.
@@ -142,7 +163,7 @@ Render targets avoid OS scaling and screenshot focus dependencies; exact whole-i
 are not a cross-GPU acceptance criterion. The raylib 5.5 event IDs come from
 [its native playback implementation](https://github.com/raysan5/raylib/blob/5.5/src/rcore.c).
 
-On the recorded Windows host the checks/captures took **1.64 seconds**, excluding build/startup.
+On the recorded Windows host the original eight-case probe took **1.64 seconds**, excluding build/startup.
 Removing the production force-arrow draw call made all seven non-help cases fail and the
 process exit 1; restoring it passes. This mutation demonstrates a missing visual is detected.
 
