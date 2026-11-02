@@ -40,7 +40,7 @@ internal static class GalleryReport
         Line(failed == 0
             ? $"<p class=\"banner pass\">PASS: all {results.Count} entries meet their bands.</p>"
             : $"<p class=\"banner fail\">FAIL: {failed} of {results.Count} entries are outside their bands (shown first).</p>");
-        Line("<p class=\"muted\">Each band bounds the mean of one metric over the final quarter of ticks. They are coarse behavioural sanity checks on one seed each, not determinism or science gates. Open a picture for the full run report.</p>");
+        Line("<p class=\"muted\">Each band bounds the mean of one metric over the final quarter of ticks. They are coarse behavioural sanity checks on one seed each, not determinism or science gates. Pictures show the final tick; open one for the full run report.</p>");
         Line("<section class=\"grid\">");
         foreach (EntryResult result in ordered)
         {
@@ -48,7 +48,7 @@ internal static class GalleryReport
             string name = RunReport.Esc(result.Entry.Name);
             string folder = RunReport.Esc(result.Entry.Directory);
             RunRequest request = result.Entry.Request;
-            Line($"<article class=\"gc {state}\"><a href=\"{folder}/report.html\"><img loading=\"lazy\" alt=\"{name} filmstrip\" src=\"{folder}/filmstrip.png\"></a>");
+            Line($"<article class=\"gc {state}\"><a href=\"{folder}/report.html\"><img loading=\"lazy\" alt=\"{name} final tick\" src=\"{folder}/thumbnail.png\"></a>");
             Line($"<h2><a href=\"{folder}/report.html\">{name}</a></h2>");
             Line(string.Create(CultureInfo.InvariantCulture,
                 $"<p class=\"muted\">{RunReport.Esc(request.Engine)} - seed {request.Seed} - {request.AgentCount} agents - {request.Ticks} ticks</p>"));
