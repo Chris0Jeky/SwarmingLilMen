@@ -280,6 +280,7 @@ class CaptureTests(unittest.TestCase):
 
 class CollectionWorkflowTests(unittest.TestCase):
     def run_fixture(self, root, *, fail_build=False, change_source=False, omit_binary=False, sdk_version="8.0.427"):
+        root = root.resolve()
         source = root / "Kernel.cs"
         source.write_bytes(b"source before")
         output = root / "custom output"
@@ -315,13 +316,15 @@ class CollectionWorkflowTests(unittest.TestCase):
             status = collect.collect_evidence(root, options)
         return status, output, child
 
-    def test_complete_bundle_records_actual_child_hashes_and_never_a_performance_verdict(self):
+    def test_aliased_root_records_child_hashes_without_a_performance_verdict(self):
         with tempfile.TemporaryDirectory() as temporary:
-            status, output, child = self.run_fixture(Path(temporary))
-            self.assertEqual(0, status)
+            root = Path(temporary)
+            (root / "existing").mkdir()
+            status, output, child = self.run_fixture(root / "existing" / "..")
             self.assertTrue((output / "receipt.json").is_file())
             receipt = json.loads((output / "receipt.json").read_text(encoding="utf-8"))
-            self.assertTrue(receipt["evidence_complete"])
+            self.assertEqual(0, status, receipt["errors"])
+            self.assertTrue(receipt["evidence_complete"], receipt["errors"])
             self.assertEqual("not_evaluated", receipt["performance_verdict"])
             self.assertEqual("8.0.427", receipt.get("selected_sdk_version"))
             self.assertEqual([], receipt["errors"])
@@ -334,37 +337,37 @@ class CollectionWorkflowTests(unittest.TestCase):
     def test_source_changes_make_run_incomplete_and_preserve_raw_evidence(self):
         with tempfile.TemporaryDirectory() as temporary:
             status, output, _ = self.run_fixture(Path(temporary), change_source=True)
-            self.assertEqual(1, status)
             receipt = json.loads((output / "receipt.json").read_text(encoding="utf-8"))
-            self.assertFalse(receipt["evidence_complete"])
-            self.assertNotEqual(receipt["source_before"], receipt["source_after"])
-            self.assertIn("Kernel.cs", receipt["changed_source_files"])
+            self.assertEqual(1, status, receipt["errors"])
+            self.assertFalse(receipt["evidence_complete"], receipt["errors"])
+            self.assertNotEqual(receipt["source_before"], receipt["source_after"], receipt["errors"])
+            self.assertIn("Kernel.cs", receipt.get("changed_source_files", []), receipt["errors"])
             self.assertTrue((output / "console.log").is_file())
 
     def test_failed_build_retains_an_incomplete_receipt_and_build_log(self):
         with tempfile.TemporaryDirectory() as temporary:
             status, output, _ = self.run_fixture(Path(temporary), fail_build=True)
-            self.assertEqual(1, status)
             receipt = json.loads((output / "receipt.json").read_text(encoding="utf-8"))
-            self.assertFalse(receipt["evidence_complete"])
-            self.assertEqual(1, receipt["commands"][-1]["exit_code"])
+            self.assertEqual(1, status, receipt["errors"])
+            self.assertFalse(receipt["evidence_complete"], receipt["errors"])
+            self.assertEqual(1, receipt["commands"][-1]["exit_code"], receipt["errors"])
             self.assertTrue((output / "build.log").is_file())
 
     def test_missing_actual_generated_binary_is_incomplete(self):
         with tempfile.TemporaryDirectory() as temporary:
             status, output, _ = self.run_fixture(Path(temporary), omit_binary=True)
-            self.assertEqual(1, status)
             receipt = json.loads((output / "receipt.json").read_text(encoding="utf-8"))
-            self.assertFalse(receipt["evidence_complete"])
-            self.assertTrue(any("generated.dll" in error for error in receipt["errors"]))
+            self.assertEqual(1, status, receipt["errors"])
+            self.assertFalse(receipt["evidence_complete"], receipt["errors"])
+            self.assertTrue(any("generated.dll" in error for error in receipt["errors"]), receipt["errors"])
 
     def test_missing_selected_sdk_version_is_incomplete(self):
         with tempfile.TemporaryDirectory() as temporary:
             status, output, _ = self.run_fixture(Path(temporary), sdk_version="not an SDK version")
-            self.assertEqual(1, status)
             receipt = json.loads((output / "receipt.json").read_text(encoding="utf-8"))
-            self.assertFalse(receipt["evidence_complete"])
-            self.assertTrue(any("SDK version" in error for error in receipt["errors"]))
+            self.assertEqual(1, status, receipt["errors"])
+            self.assertFalse(receipt["evidence_complete"], receipt["errors"])
+            self.assertTrue(any("SDK version" in error for error in receipt["errors"]), receipt["errors"])
 
     def test_unexpected_capture_exception_cannot_publish_a_complete_receipt(self):
         with tempfile.TemporaryDirectory() as temporary:
