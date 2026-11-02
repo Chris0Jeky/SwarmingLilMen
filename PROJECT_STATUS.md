@@ -76,6 +76,13 @@ PR checks qualify each integrated revision before merge.
   unproved. [#164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164) stays open; the
   [grammar limits](.hosting/README.md#scanner-grammar-limits-2026-11-02) retain artifact review and
   the allowlist as the publication boundary.
+- **Finite-vector normalization and ingestion:** huge finite velocity inputs no longer lose
+  their direction when `Normalized` or `WithLength` overflows a squared float norm. The fallback
+  retains a double norm, while ordinary rounding, each method's existing near-zero cutoff and
+  nonfinite target/source behavior stay unchanged. Sixty-three new cases pass after 18 failed
+  before, including real `TryAddBoid`/`SetVelocity` plus complete-tick displacement. The integrated
+  four-fix numeric lane passes 1,504 ordinary tests and six gallery entries. See
+  [the normalization contract](docs/CANONICAL_VECTOR_NORMALIZATION.md).
 - **Shaped avoidance at large finite distances:** an in-range neighbor no longer disappears
   from the avoidance blend when its squared float norm overflows. The exceptional path recovers
   both distance and away direction; ordinary arithmetic, tiny-distance cutoffs and the exclusive

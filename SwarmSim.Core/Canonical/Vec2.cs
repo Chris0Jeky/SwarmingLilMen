@@ -25,11 +25,29 @@ public readonly struct Vec2
         get
         {
             float len = Length;
+            if (!float.IsFinite(len) && float.IsFinite(X) && float.IsFinite(Y))
+            {
+                // A finite vector can overflow its squared float norm without losing its
+                // direction. Keep the recovered norm in double even beyond float's range.
+                double wideLength = Math.Sqrt((double)X * X + (double)Y * Y);
+                return new Vec2((float)(X / wideLength), (float)(Y / wideLength));
+            }
             return len <= 1e-6f ? Zero : new Vec2(X / len, Y / len);
         }
     }
 
-    public Vec2 WithLength(float length) => IsNearlyZero() ? Zero : new Vec2(X / Length * length, Y / Length * length);
+    public Vec2 WithLength(float length)
+    {
+        if (IsNearlyZero()) return Zero;
+        float len = Length;
+        if (!float.IsFinite(len) && float.IsFinite(X) && float.IsFinite(Y) && float.IsFinite(length))
+        {
+            double wideLength = Math.Sqrt((double)X * X + (double)Y * Y);
+            return new Vec2((float)(X / wideLength * length), (float)(Y / wideLength * length));
+        }
+        // Retain the ordinary divide-then-multiply rounding and nonfinite target behavior.
+        return new Vec2(X / len * length, Y / len * length);
+    }
 
     public Vec2 ClampMagnitude(float maxLength)
     {
