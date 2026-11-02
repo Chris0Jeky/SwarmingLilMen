@@ -42,7 +42,16 @@ JS_CODE = {"eval", "Function"}
 JS_TIMERS = {"setTimeout", "setInterval"}
 # Reject computed access AND aliases of globals; a direct dotted access is still lexed normally.
 JS_GLOBALS = {"window", "globalThis", "self", "navigator", "document", "defaultView"}
-JS_UNSAFE_PROPERTIES = JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | {"constructor", "serviceWorker"}
+# Visible reflection can acquire code through unknown keys without a constructor token.
+# Reserve the globals even when shadowed, and these property names on every receiver;
+# ordinary bare data locals and inert strings with the same names remain supported.
+JS_REFLECTION_GLOBALS = {"Reflect", "Proxy"}
+JS_REFLECTION_PROPERTIES = {"prototype", "__proto__", "getPrototypeOf", "setPrototypeOf",
+                            "getOwnPropertyDescriptor", "getOwnPropertyDescriptors",
+                            "getOwnPropertyNames", "getOwnPropertySymbols", "defineProperty", "defineProperties",
+                            "__defineGetter__", "__defineSetter__", "__lookupGetter__", "__lookupSetter__", "toPrimitive"}
+JS_UNSAFE_PROPERTIES = (JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS |
+                        JS_REFLECTION_GLOBALS | JS_REFLECTION_PROPERTIES | {"constructor", "serviceWorker"})
 # These names also occur as ordinary coordinates, instance identity, etc.
 # Computed lookup is rejected; bare `this` is further restricted below.
 JS_COMPUTED_GLOBALS = {"this", "top", "parent", "frames"}
@@ -55,8 +64,7 @@ JS_REGEX_AFTER = {"return", "typeof", "instanceof", "in", "of", "new", "delete",
                   "else", "yield", "await", "default"}
 # A `/` after `}` or `)` may divide or start a regex; if the regex reading would swallow any of these, reject.
 JS_SLASH_RISK = re.compile(r"""["'`]|\b(?:""" + "|".join(sorted(
-    JS_CALLS | JS_DENIED | JS_CODE | JS_TIMERS | JS_GLOBALS | JS_COMPUTED_GLOBALS |
-    {"serviceWorker", "export", "constructor"})) + r")\b")
+    JS_UNSAFE_PROPERTIES | JS_COMPUTED_GLOBALS | {"export"})) + r")\b")
 JS_EXPORT = re.compile(r"""\s*(?:\*(?:\s*as\s+[\w$]+)?|\{[^}'"`/]*\})""")
 JS_EXPORT_FROM = re.compile(r"""\s*from\s*(?:"([^"\\\r\n]*)"|'([^'\\\r\n]*)')""")
 JS_SCRIPT_TYPES = ("javascript", "ecmascript", "jscript", "livescript")
@@ -237,7 +245,7 @@ def _skip_js_trivia(text, i):
 def _reject_js_indirection(tokens):
     """Bounded lexical facts, not JavaScript evaluation or scope/type inference.
 
-    Names are conservative across the whole script: any visible function/unsafe-key assignment
+    Names are conservative across an artifact's executable units: any visible function/unsafe-key assignment
     taints straightforward aliases, including earlier uses and later reassignments. Ordinary
     unresolved data indices remain supported; arbitrary returned values/prototypes are not proved.
     """
@@ -253,6 +261,9 @@ def _reject_js_indirection(tokens):
     values = [value for _, value in tokens]
     pairs, stack = {}, []
     for i, (kind, value) in enumerate(tokens):
+        if kind == "boundary":
+            stack.clear()  # separate scripts/handlers cannot complete each other's delimiters
+            continue
         if kind not in {"punct", "lookup"}:
             continue
         if value in "([{":
@@ -272,6 +283,8 @@ def _reject_js_indirection(tokens):
         if i >= len(tokens):
             return True
         kind, value = tokens[i]
+        if kind == "boundary":
+            return True
         if kind == "punct" and value in terminal:
             return True
         if i not in line_before:
@@ -459,6 +472,8 @@ def js_refs(text, *, function_body=False, _tokens=None):
                 raise ValueError(f"forbidden network API {name}: demos must work offline")
             if name in JS_CODE:
                 raise ValueError(f"forbidden dynamic code API {name}")
+            if name in JS_REFLECTION_GLOBALS or dotted and name in JS_REFLECTION_PROPERTIES:
+                raise ValueError(f"unsupported reflection property or API {name}")
             if name == "constructor" and dotted:
                 raise ValueError("forbidden dynamic code property constructor")
             if name == "this":
@@ -633,8 +648,13 @@ def local_refs(rel, text):
         styles = parser.styles
     for style in styles:
         refs.extend(css_refs(style))
+    tokens = []
     for script in scripts:
-        refs.extend(js_refs(script))
+        # Lex each parse unit independently, but retain visible name restrictions across the
+        # artifact. A boundary ends aliases without inventing cross-script calls or brackets.
+        refs.extend(js_refs(script, _tokens=tokens))
+        tokens.append(("boundary", ";"))
+    _reject_js_indirection(tokens)
     for ref in refs:
         ref = ref.strip()
         if ref.lower().startswith(("data:", "blob:")):

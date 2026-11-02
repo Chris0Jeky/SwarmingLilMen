@@ -28,7 +28,7 @@ Origin of the decision (agent-hq hosting-public-demos, option b): agents prepare
 
 The index page labels the demos as separate from the native engine and makes no performance claim. Rollback: disable GitHub Pages for the repository. Any further publication change (new artifacts, new origin, paid hosting) remains a separate owner approval.
 
-## Scanner grammar limits (2026-10-29)
+## Scanner grammar limits (2026-11-02)
 
 Numeric JavaScript tokens stop before member access, including `0..constructor`; the lexer can
 therefore apply its existing constructor guard. CSS imports are checked with or without whitespace
@@ -43,7 +43,7 @@ string or numeric literal; escaped property names are not evaluated. This delibe
 rejects some harmless object-property definitions using the same unsupported syntax. Normal
 class constructors, ordinary data destructuring and inert strings/comments remain supported.
 
-Within one scanned script, visible function/class declarations and function/arrow assignments
+Within one scanned artifact, visible function/class declarations and function/arrow assignments
 make nonliteral property access on those bare bindings unsupported. Straightforward bare-name
 aliases and `.bind(...)` aliases inherit that restriction. Plain `=` and logical `||=`, `??=`,
 `&&=` assignments contribute these restrictions even when their execution is conditional.
@@ -53,16 +53,34 @@ are rejected when used in a computed lookup, including simple literal concatenat
 string-key bindings are conservatively unresolved, even when a person can see a safe value.
 Line terminators, including those in comments, preserve semicolon-free alias boundaries;
 newlines before calls, indexing, member access, tagged templates or binary operators continue
-the expression. The analysis uses all visible assignments regardless of their
-order or scope, so shadowing or a later safe assignment does not clear a restriction. It does
-not confuse a bare local name such as `value` with a property name in `ui.value`.
+the expression. Each script block, inline event handler and `javascript:` URL is lexed separately,
+then shares these name restrictions with the other executable units in the same HTML/SVG artifact.
+Explicit unit boundaries end aliases and prevent a call, bracket, comment or other token sequence
+from continuing into the next unit. The analysis uses all visible assignments regardless of their
+order or scope, including module and handler scopes, so shadowing or a later safe assignment does
+not clear a restriction. It does not confuse a bare local name such as `value` with a property name
+in `ui.value`. Separate allowlisted files do not share binding analysis.
+
+Visible reflection and prototype access are outside the admitted language. `Reflect` and `Proxy`
+identifiers are reserved in executable code, including aliases and locally shadowed bindings.
+Dot access to `prototype`, `__proto__`, `getPrototypeOf`, `setPrototypeOf`,
+`getOwnPropertyDescriptor`, `getOwnPropertyDescriptors`, `getOwnPropertyNames`,
+`getOwnPropertySymbols`, `defineProperty`, `defineProperties`, `__defineGetter__`,
+`__defineSetter__`, `__lookupGetter__`, `__lookupSetter__` and `toPrimitive` is also rejected.
+These names, plus `Reflect` and `Proxy`, cannot be acquired through a literal computed key, a visible
+string-key alias or an object binding key. The rule reserves these property names on any receiver,
+even a harmless data object: this bounded pass does not prove receiver types. Bare local names such
+as `prototype`, inert strings/comments/regexes, ordinary data indices, function dictionaries,
+`Object.assign`, `Object.entries` and numeric `.toString(...)` remain supported. None of the seven
+published demos needs the rejected reflection APIs.
 
 These checks do not prove that arbitrary JavaScript is offline. The existing demos need unresolved
 numeric/data indices and function dictionaries, so those uses remain admitted. The pass does not
-infer arbitrary member/returned values, interprocedural arguments, prototype changes, general
-coercions or bindings shared across script blocks. Those can still hide dynamic-code acquisition;
-[issue #164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164) remains open for the residual
-indirection scope. Retain explicit artifact review and the publication allowlist. This is neither
+infer arbitrary member/returned values, interprocedural arguments, prototype access hidden through
+unresolved keys, general coercions or bindings shared across separate files. Those can still hide
+dynamic-code acquisition; the residual indirection scope is tracked in
+[issue #164](https://github.com/Chris0Jeky/SwarmingLilMen/issues/164). Retain explicit artifact review
+and the publication allowlist. This is neither
 a JavaScript execution engine nor a security sandbox.
 Opaque `data:`/`blob:` resource URLs, including images, are rejected; their decoded dependencies
 are not scanned. Scanner tests build temporary copies and never deploy Pages.
