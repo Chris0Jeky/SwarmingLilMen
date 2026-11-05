@@ -45,7 +45,7 @@ have interactive Raylib renderers.
 | [Boids Basic](../js-demos/boids-basic/) | `legacy` and `canonical` are native boids implementations; no browser trace-equivalence claim. | Shared topology/state improvements must preserve canonical policy and historical replay contracts. |
 | [Self-Propelled Particles](../js-demos/self-propelled-particles/) | `vicsek` runs through CLI/configuration, metrics, sweeps, manifests and reports. Native updates are synchronous; the browser reference uses sequential updates. | Broader topology can be evaluated against the existing fixed model and exact platform references. |
 | [Ant Colony Optimization](../js-demos/ant-colony-optimization/) | `aco` is a bounded foraging model with a scalar pheromone field, carried food and separate agent/field phases. | Obstacles, multiple resources and optimization-quality criteria are absent; do not infer them from the demo title. |
-| [Firefly Synchrony](../js-demos/firefly-synchrony/) | Browser-only at this checkpoint; selected as the next native integration. | Typed phase/frequency state, synchronous coupling, independent RNG and phase-order metrics. |
+| [Firefly Synchrony](../js-demos/firefly-synchrony/) | `firefly` is a global, noiseless Kuramoto subset using typed phase/frequency state, shared synchronous phases/buffers, named initialization streams, schema-3 replay, phase metrics, sweeps and phase-colored reports. | Spatial/ring coupling, phase lag, ongoing noise, interventions and restore remain absent; see the [exact native scope](FIREFLY.md). |
 | [Turing Morphogenesis](../js-demos/turing-morphogenesis/) | Browser-only. | Multiple evolving field channels, stencil/boundary semantics, field-only experiment capture and field visualization. |
 | [Avalanche Lab](../js-demos/avalanche-lab/) | Browser-only. | Integer fields, stable event queues, relaxation-until-stable semantics and exact mass accounting. |
 | [Ecogenesis](../js-demos/ecogenesis/) | Browser-only. Existing legacy configuration names do not implement its ecology. | Stable lifecycle IDs, birth/death publication, typed traits/genomes, resources, lineage metrics and deterministic event order. |
@@ -67,3 +67,11 @@ Models do not need the same agent struct or the same equations. Generalization s
 phase execution, state publication, topology, fields, interactions and observation where the
 models provide concrete evidence for the contract. More foundation directories alone do not
 prove a universal engine.
+
+The first extracted [simulation mechanisms](SIMULATION_KERNEL.md) are now used by distinct
+models: `SimulationSchedule` orders Vicsek, ACO and Firefly phases; `DoubleBufferedState<T>`
+publishes Vicsek kinematics and Firefly oscillator state synchronously. Model-owned equations
+and [versioned state profiles](MODEL_STATE_HASHES.md) retain their meaning. These contracts do
+not yet supply a generic topology, field-only capture, lifecycle/event publication or checkpoint
+restore. Gray–Scott reaction diffusion is the next useful representation test because its
+state consists entirely of coupled fields, with no honest agent-velocity projection.

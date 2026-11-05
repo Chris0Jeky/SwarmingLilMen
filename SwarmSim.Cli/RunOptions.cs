@@ -101,6 +101,8 @@ internal sealed class RunOptions
             throw new UsageException("--manifest can be combined only with --out, --visual or --help; run-setting overrides are not accepted during replay.");
         if (options.ListMetrics && seen.Any(option => option is not ("--list-metrics" or "--engine" or "--help")))
             throw new UsageException("--list-metrics can be combined only with --engine or --help.");
+        if (!seen.Contains("--metrics"))
+            options.RequestedMetrics = MetricCatalog.DefaultsFor(options.Engine).ToArray();
         return options;
     }
 

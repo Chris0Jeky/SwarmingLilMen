@@ -5,10 +5,22 @@
 
 Standalone browser-based demonstrations of swarm algorithms and steering behaviors. These demos are simpler, more interactive alternatives to the C# implementation, designed for quick prototyping, education, and demonstrations.
 
+Native implementations cover boids, Vicsek, bounded ant foraging and a global/noiseless Firefly
+subset through five selectable engines. They are independent implementations: shared names do
+not promise identical update order, controls, random streams or trajectories. Turing Morphogenesis,
+Avalanche Lab, Ecogenesis and Particle Swarm Optimization remain browser-only. The
+[simulation catalog](../docs/SIMULATION_CATALOG.md) records the integration boundary and discovery
+commands; [shared phases and typed buffers](../docs/SIMULATION_KERNEL.md) describe actual native reuse.
+
 ## Available Demos
 
 ### [Firefly Synchrony](./firefly-synchrony/)
 Phase-coupled oscillators: global, spatial and ring coupling.
+
+The native [`firefly` engine](../docs/FIREFLY.md) implements global coupling without dynamic noise,
+stationary display positions and uniformly distributed natural frequencies. It records phase
+metrics and colours report dots by phase; phase is never passed off as physical velocity. Spatial
+and ring coupling and the browser's other controls are outside that native subset.
 
 **[Launch demo](./firefly-synchrony/index.html)** · [Integration plan](./firefly-synchrony/docs/IMPLEMENTATION_PLAN.md) · [Verification](./firefly-synchrony/VERIFICATION.md)
 
@@ -134,8 +146,9 @@ When adding new demos:
 |--------|-----------|----------|
 | **Purpose** | Research simulation with explicit scale targets | Education & prototyping |
 | **Scale** | Target: 50k-100k agents at 60 interactive FPS remains unmet; see [current core measurements and limits](../PROJECT_STATUS.md#performance-evidence-and-its-limits) | Unmeasured; no dated repository benchmark |
-| **Complexity** | Legacy and canonical paths; Phase 3+ behavior remains incomplete | Core algorithms only |
-| **Optimization** | SoA and uniform grids; SIMD remains planned | Direct, readable browser implementations |
+| **Model coverage** | Five native engines: legacy/canonical boids, Vicsek, ACO and bounded Firefly | Eight independent studies; four still have no native foundation |
+| **Shared mechanisms** | Ordered phases, typed double buffers, experiment registry and versioned native state profiles | Each study owns its simulation and UI; shared names do not imply native parity |
+| **Optimization** | SoA/typed state and uniform grids where applicable; SIMD remains planned | Direct, readable browser implementations |
 | **Platform** | .NET 8.0, desktop | Any modern browser |
 | **Use Case** | Research & development | Demos & learning |
 

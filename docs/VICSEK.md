@@ -170,6 +170,9 @@ rather than five decimal places. The assertions now pass an integer precision.
 
 ## Seam inventory
 
+This section records the original Vicsek integration (#196). The ACO checkpoint and the current
+shared-phase/Firefly update follow it, preserving which conclusions were established at each stage.
+
 **Boids stayed untouched.** `Canonical/`, legacy `World` and `Systems/` have no changes, and the
 exact boids goldens still pass.
 
@@ -205,12 +208,15 @@ exact boids goldens still pass.
 
 ### What was not earned
 
-`ISpatialIndex` stays typed on `Boid`. The issue allowed generalizing it here, but Vicsek agents
-have the same position and velocity shape, so a type parameter would solve nothing yet. `Boid`
-carries an unused `Group` byte in this foundation. Agent-state generics stay deferred until a
-foundation has a genuinely different shape.
+`ISpatialIndex` stayed typed on `Boid`. The issue allowed generalizing it, but Vicsek agents had
+the same position and velocity shape, so a type parameter did not solve a demonstrated problem.
+`Boid` carries an unused `Group` byte in this foundation. Generic state storage remained deferred
+at that checkpoint; the later shared buffer has a narrower contract than a generic spatial index.
 
 ## Seam inventory update: ACO
+
+This subsection records the ACO integration (#201), before the shared mechanisms described in
+the following update. Historical measurements and byte-identity comparisons retain their original scope.
 
 ACO (#30) is the first foundation with a different agent shape and non-agent state. Boids and
 Vicsek behaviour did not change: `Canonical/`, legacy `World`, `Systems/` and `Vicsek/` have no
@@ -218,12 +224,12 @@ edits, and the goldens and Vicsek tests pass unchanged.
 
 ### What the registry replaced
 
-Four engines met the rule of three, so the branching was removed before ACO was added. One
+At ACO integration, four engines met the rule of three, so the branching was removed. One
 `EngineDefinition` per engine (name, spawn model, minimum manifest schema, scenario support,
 resolve, default settings JSON, extra probes, factory) and one `IHeadlessSimulation` adapter now
 live in `SwarmSim.Cli/Engines.cs`. `RunOptions`, `RunRequest`, `PreparedSimulation`, `MetricCatalog`,
 `RunManifest`, `SweepPlan` and `ExperimentRunner` consult the registry; settings pass through the
-spine as an opaque object. There is no plugin system, reflection or public Core API. Final hashes
+spine as an opaque object. The registry is CLI-local; it is not dynamic plugin discovery. Final hashes
 and `metrics.csv` hashes of all three existing engines were byte-identical before and after.
 
 With the registry, adding the engine outside `Core/Aco/` took one definition, one adapter of 18
@@ -238,12 +244,12 @@ for two existing tests, which were kept unchanged on purpose.
 
 | Finding | Detail |
 |---|---|
-| **No non-agent state existed anywhere** | `ScalarField` is new: one sealed class, not `IField`, no layers. |
-| **The kernel has no scheduler** | The agent and field phases are distinct inside `AntColonyWorld`. `IHeadlessSimulation.Step` hides them. Two field foundations would earn a shared phase; one does not. |
-| **The kinematic hash cannot see the field** | Version 1 covers motion only, by design. Field, load and food divergence reaches it only through later motion. The gap is recorded, tested and left unwidened; field bits have their own repeat test. |
+| **No non-agent state existed before ACO** | `ScalarField` introduced one sealed class, not `IField` or a layer system. |
+| **No shared scheduler at that checkpoint** | The agent and field phases lived inside `AntColonyWorld`, hidden behind `IHeadlessSimulation.Step`. The subsequent extraction shares their execution order without moving model semantics into the runner. |
+| **The kinematic hash cannot see the field** | Version 1 still covers motion only. The original ACO proof used a separate field-bit repeat test; the subsequent `aco-state-v1` profile covers field, load, resources, phase progress and retained RNG without changing v1 bytes. |
 | **`MetricFrame` carries agents only** | World-state channels need a probe holding the world, as the boids instrumentation probe already did. Two probes now take that shape, so a world view in the frame is a candidate at the next one. |
 | **Probes need a metadata form** | Selection is validated before any world exists, so a probe must construct without one. `AntColonyMetricProbe` accepts null and refuses to sample. |
-| **The filmstrip sees kinematics only** | It works unchanged and draws ants well, but neither the field nor the nest and food. Pheromone visualization is a stated non-goal. |
+| **The original filmstrip saw kinematics only** | It drew ants but neither the field nor the nest and food. Later circular-state colour observations support Firefly phases; field visualization remains absent. |
 
 ### Reused unchanged by ACO
 
@@ -266,8 +272,58 @@ for two existing tests, which were kept unchanged on purpose.
 
 ### What was not earned
 
-Agent-state generics, a scheduler abstraction, `IField`, field layers and diffusion all stay
-deferred. Each has exactly one consumer or none.
+At the ACO checkpoint, a generic state buffer and shared phase runner were still deferred.
+`IField`, field layers and diffusion remain separate questions; an ant-specific field does not
+establish their complete contracts.
+
+## Seam inventory update: shared phases and Firefly
+
+The next extraction adds shared execution and state-publication mechanisms while each model
+retains its own equations. [`SimulationSchedule`](SIMULATION_KERNEL.md) executes a fixed order of
+named synchronous phases. `DoubleBufferedState<T>` owns current and next arrays of typed struct
+state and swaps them at an explicit commit. It neither chooses the timestep nor rolls back
+partial writes. Legacy and canonical boids retain their existing pipelines.
+
+| Native consumer | Shared phases | State publication |
+| --- | --- | --- |
+| Vicsek | `index`, `agents`, `commit` | Typed `Boid` double buffer; every next agent reads the preceding generation. |
+| ACO | `agents`, `field` | Model-owned ants and pending deposits; all agents read field(t), then the field update applies deposits and evaporation. |
+| Firefly | `mean-field`, `oscillators`, `commit` | Typed `Oscillator` double buffer; each phase update reads the same preceding population and mean field. |
+
+The bounded [`firefly` engine](FIREFLY.md) uses position, phase and natural frequency, with global
+noiseless Kuramoto coupling and stationary positions. It does not use `Boid`, a spatial index or
+force composition. Initialization uses independent named position/phase/frequency streams; stepping
+does not retain or consume randomness. Its native subset does not promise browser trajectory or
+feature parity: spatial/ring coupling and other browser controls remain outside the port.
+
+Five native engines now share the registry, discovery, configuration, metrics, manifests, sweeps
+and reports. ACO, Vicsek and Firefly also declare versioned native model-state profiles. Schema 3
+replay verifies those fingerprints alongside the unchanged v1 kinematic and CSV hashes. Legacy
+and canonical keep schema 2, and older schema 1/2 records retain their original verification
+contract. [Profile coverage](MODEL_STATE_HASHES.md) explicitly excludes checkpoint restoration
+and arbitrary extension state.
+
+Firefly adds two concrete observation needs. Its defaults are `population,firefly.coherence`;
+mean phase and natural frequency are optional channels. A separate circular-state colour source
+copies phase for selected report frames. Capture still reports zero physical velocity, so a
+colour change is never disguised as motion. Existing moving-agent reports keep heading colours
+when no independent colour source is present.
+
+### Remaining seams
+
+- `MetricFrame` and the current experiment/report capture path remain organized around agent
+  kinematics. Field-only models need an explicit observation path, finite field-channel metadata
+  and raster output; grid cells should not be invented as moving agents.
+- `ISpatialIndex` remains typed on `Boid`. Firefly's global mean field does not establish a
+  generic neighborhood or graph contract. Spatial/ring oscillator coupling needs its own evidence.
+- The phase runner has no work-budget protocol, event queue, implicit dependency ordering,
+  parallelism or rollback. Integer avalanche relaxation must specify unfinished work explicitly.
+- Stable lifecycle IDs, birth/death publication, resource accounting, cross-model interaction
+  and checkpoint restoration remain open. The four browser-only studies are mapped in the
+  [simulation catalog](SIMULATION_CATALOG.md).
+
+This proves reuse of bounded mechanisms across different native state shapes. It does not claim
+that all engines now share a universal kernel or that additional browser models are already ported.
 
 ## Limits
 

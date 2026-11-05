@@ -37,16 +37,16 @@ internal static class RunReport
 
     internal static void Write(string directory, FrameRecorder frames, RunManifest manifest)
     {
-        Raster raster = Filmstrip.Render(frames.Ticks, frames.Frames, frames.WorldWidth, frames.WorldHeight);
+        Raster raster = Filmstrip.Render(frames.Ticks, frames.Frames, frames.WorldWidth, frames.WorldHeight, frames.ColorAngles);
         byte[] png = PngWriter.Encode(raster.Width, raster.Height, raster.Rgba);
         File.WriteAllBytes(Path.Combine(directory, "filmstrip.png"), png);
         Raster thumbnail = Filmstrip.CropFinalPanel(raster, frames.Ticks.Length);
         File.WriteAllBytes(Path.Combine(directory, "thumbnail.png"), PngWriter.Encode(thumbnail.Width, thumbnail.Height, thumbnail.Rgba));
         string csv = File.ReadAllText(Path.Combine(directory, "metrics.csv"));
-        File.WriteAllText(Path.Combine(directory, "report.html"), Html(manifest, png, csv), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(directory, "report.html"), Html(manifest, png, csv, frames.ColorAngleLabel), new UTF8Encoding(false));
     }
 
-    internal static string Html(RunManifest manifest, byte[] png, string metricsCsv)
+    internal static string Html(RunManifest manifest, byte[] png, string metricsCsv, string? colorAngleLabel = null)
     {
         string[] lines = metricsCsv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         string[] header = lines[0].Split(',');
@@ -80,8 +80,15 @@ internal static class RunReport
             ("Git commit", commit), ("Final kinematic hash", manifest.FinalKinematicHash)
         })
             Line($"<div><dt>{Esc(key)}</dt><dd>{Esc(value)}</dd></div>");
+        if (manifest.ModelStateProfile is { } profile && manifest.FinalModelStateHash is { } modelHash)
+        {
+            Line($"<div><dt>Model state profile</dt><dd>{Esc(profile)}</dd></div>");
+            Line($"<div><dt>Final model state hash</dt><dd>{Esc(modelHash)}</dd></div>");
+        }
         Line("</dl>");
-        Line("<p class=\"muted\">Colour is heading angle: one colour means an aligned flock, a rainbow means disorder, grey dots are stationary. Tap the image for full size.</p>");
+        Line(colorAngleLabel is null
+            ? "<p class=\"muted\">Colour is heading angle: one colour means an aligned flock, a rainbow means disorder, grey dots are stationary. Tap the image for full size.</p>"
+            : $"<p class=\"muted\">Colour shows {Esc(colorAngleLabel)} on a circular scale. Matching colours indicate matching phases. Dots show stationary positions; colour does not represent velocity. Tap the image for full size.</p>");
         Line($"<a href=\"filmstrip.png\"><img class=\"film\" alt=\"Filmstrip of the swarm at evenly spaced ticks\" src=\"data:image/png;base64,{Convert.ToBase64String(png)}\"></a>");
         Line("<section class=\"cards\">");
         for (int c = 0; c < columns.Length; c++)

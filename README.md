@@ -4,9 +4,11 @@
 > test, and performance state; older plans and milestone prose are context only.
 
 SwarmingLilMen explores the smallest reusable contracts for a generalized experimental engine for
-emergent multi-agent systems. Its current proving ground is a 2D boids/swarm simulation built from
-first principles in C#/.NET 8.0; the generalized kernel remains roadmap work. The scale figures
-below are goals, not achieved throughput claims.
+emergent multi-agent systems in C#/.NET 8.0. Five native engines are selectable: legacy and canonical
+boids, Vicsek particles, scalar-field ant foraging, and a bounded Firefly oscillator model. Shared
+phase execution and typed current/next buffers now complement the experiment spine; a universal
+world, topology or observation model remains open. The scale figures below are goals, not achieved
+throughput claims.
 
 ![Status](https://img.shields.io/badge/status-early%20development-orange)
 ![.NET](https://img.shields.io/badge/.NET-8.0-blue)
@@ -19,15 +21,17 @@ below are goals, not achieved throughput claims.
 - **Determinism**: Fixed-timestep legacy and canonical paths reproduce ordered agent positions and
   velocities for a matching .NET 8 binary, platform, supported seed, configuration, timestep, and
   ordered input sequence. Experiment manifests verify the final kinematic state and complete
-  deterministic CSV on replay. Full-state restart checkpoints and arbitrary cross-platform
-  identity remain unproven; see [measured determinism scope](docs/DETERMINISM.md)
+  deterministic CSV on replay. ACO, Vicsek and Firefly additionally verify versioned native
+  model-state fingerprints, including state that motion cannot reveal. Checkpoint restoration is
+  not implemented, and arbitrary cross-platform identity remains unproven; see
+  [measured determinism scope](docs/DETERMINISM.md) and [profile coverage](docs/MODEL_STATE_HASHES.md)
 - **Observability**: Metrics, snapshots, profiling, property tests, benchmarks
 - **Extensibility**: Small public API, Structure-of-Arrays internals, modular systems
 
 ## 📝 Implementation Note
 
 This project is undergoing an architectural transition from an aggregate-driven systems approach
-to independently testable, Reynolds-style steering rules. Two implementations currently exist side-by-side:
+to independently testable, Reynolds-style steering rules. Two boids implementations coexist:
 - **Legacy** (default renderer): Aggregate-driven SoA steering systems architecture
 - **Canonical** (`--canonical` flag): Three steering rules, an equivalence-tested spatial contract,
   reusable researcher telemetry, and named force policies with bounded observations. The default
@@ -35,8 +39,9 @@ to independently testable, Reynolds-style steering rules. Two implementations cu
   uses independent rule clamps. Instrumentation UX and multi-group semantics remain incomplete
 
 For developers: See [`docs/archive/IMPLEMENTATION_EVOLUTION.md`](docs/archive/IMPLEMENTATION_EVOLUTION.md)
-for the preserved story of the pivot and `PROJECT_STATUS.md` for current evidence. New features
-should target the canonical implementation.
+for the preserved story of the pivot and `PROJECT_STATUS.md` for current evidence. New boids
+behavior targets the canonical implementation. Models with different state or update equations
+belong in their own `Core/<Model>/` foundation and reuse the shared mechanisms where they fit.
 
 ## ✨ Current Capabilities
 
@@ -45,13 +50,16 @@ should target the canonical implementation.
   coverage, including wander-enabled and two-process headless checks on the same platform/runtime
 - ✅ Agent-genome data structures and mutation API
 - ✅ Configurable simulation parameters with presets
-- ✅ JSON round-trip for both engine configurations and a strict layered scenario resolver
+- ✅ Strict native JSON configurations and layered scenario resolution
 - ✅ Radius-complete legacy grid sensing with periodic seam handling
 - ✅ Canonical zero-allocation warm-tick regressions and a dedicated BenchmarkDotNet route
 - ✅ Raylib-free experiments with native configurations, versioned manifests and exact CSV replay
 - ✅ Registered analysis channels, periodic centroids and opt-in exact nearest-neighbor statistics
 - ✅ Sequential seed/parameter sweeps with stable summary rows and replayable cell manifests
-- ✅ Vicsek particles and a scalar-field ant colony as separate foundations on that spine
+- ✅ Vicsek particles, a scalar-field ant colony and global Firefly oscillators on that spine
+- ✅ Shared ordered phases for Vicsek/ACO/Firefly and typed double buffers for Vicsek/Firefly
+- ✅ Engine discovery with native defaults, state, metrics and replay capabilities
+- ✅ Schema 3 native model-state verification alongside unchanged v1 kinematic hashes
 - ✅ Display-free filmstrips, run reports and a one-command behaviour gallery
 - ✅ Named deterministic random streams and bounded, injectable force-policy compositions
 - ✅ Public classic-Reynolds configuration with independent rule clamps and named enable controls
@@ -67,12 +75,16 @@ should target the canonical implementation.
 
 - **Composition:** preserve the exact default traces while addressing the measured small-population
   cost of the new bounded policy API (#27). See [composition and its limits](docs/CANONICAL_COMPOSITION.md).
-- **Proof of generality:** [Vicsek](docs/VICSEK.md) and a minimal [scalar-field ACO](docs/ACO.md) now run
-  through the shared experiment spine with no boids change. They share registry, metrics, RNG,
-  manifests and sweeps, not a simulation kernel. Behavioral parity qualification (#28) remains; its
-  [comparison harness](docs/BEHAVIORAL_PARITY.md)
-  and [legacy retirement checklist](docs/LEGACY_RETIREMENT.md) are now implemented; the measured
-  full 100-run calibration exceeds the 60-second goal.
+- **Proof of generality:** [Vicsek](docs/VICSEK.md), [scalar-field ACO](docs/ACO.md) and the bounded
+  [Firefly port](docs/FIREFLY.md) reuse the experiment spine and
+  [shared phase mechanisms](docs/SIMULATION_KERNEL.md). Firefly adds phase/frequency state without
+  encoding phase as physical velocity. Field-only observations, richer topology, lifecycle and
+  remaining browser-study ports still need concrete contracts; see the
+  [integration map](docs/SIMULATION_CATALOG.md).
+- **Behavioral parity:** the [comparison harness](docs/BEHAVIORAL_PARITY.md) and
+  [legacy retirement checklist](docs/LEGACY_RETIREMENT.md) are implemented. Full scientific
+  qualification passes on the recorded platforms, while the measured primary matrix remains
+  above the 60-second goal (#28).
 - **Renderer readiness:** qualify native input/human acceptance for the new
   [rule-control inspection visuals](docs/CANONICAL_INSPECTION.md) and define the remaining faster/slower
   overtaking scenario (#40/#41). Nineteen quantitative canonical cases now cover integrated and
@@ -110,6 +122,9 @@ dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Perform
 # Discover native models and inspect a model's configuration/state/metrics
 dotnet run --project SwarmSim.Cli -c Release -- --list-engines
 dotnet run --project SwarmSim.Cli -c Release -- --engine aco --describe-engine --json
+
+# Run the bounded global oscillator model; report colours show phase at fixed positions
+dotnet run --project SwarmSim.Cli -c Release -- --engine firefly --config scenarios/firefly/base.json --ticks 1000 --agents 128 --seed 21 --visual --out runs/
 
 # Launch the interactive renderer
 dotnet run --project SwarmSim.Render
@@ -293,6 +308,33 @@ effects see [`docs/PARAMETER_GUIDE.md`](docs/PARAMETER_GUIDE.md).
 
 For quick prototyping, demonstrations, and learning, we provide standalone browser-based implementations:
 
+The eight studies are independent browser implementations. Native foundations cover boids,
+Vicsek, bounded ant foraging and the global/noiseless Firefly subset; shared names do not imply
+matching controls or trajectories. Turing Morphogenesis, Avalanche Lab, Ecogenesis and Particle
+Swarm Optimization remain browser-only. See the [integration map](docs/SIMULATION_CATALOG.md).
+
+### [Firefly Synchrony](js-demos/firefly-synchrony/)
+
+Phase-coupled oscillators with global, spatial and ring coupling in the browser. The native
+[`firefly` engine](docs/FIREFLY.md) implements global, noiseless coupling with stationary positions,
+uniform natural frequencies, phase metrics and display-free reports. Spatial/ring coupling and
+the browser's other controls are outside that native subset.
+
+### [Turing Morphogenesis](js-demos/turing-morphogenesis/)
+
+Gray–Scott reaction–diffusion fields with editable chemistry and boundaries. Its native port
+still needs field-only experiment observations and an explicit numerical/stencil contract.
+
+### [Avalanche Lab](js-demos/avalanche-lab/)
+
+Integer sandpiles with threshold cascades, sinks and mass accounting. A native port needs bounded
+relaxation work and explicit unfinished-event state rather than treating topplings as physical time.
+
+### [Ecogenesis](js-demos/ecogenesis/)
+
+Synthetic ecology with inherited controllers, resources, disease, reproduction and lineage
+clustering. Legacy configuration names do not implement this browser model's lifecycle.
+
 ### [Boids Basic Demo](js-demos/boids-basic/)
 A beautiful, interactive implementation of Reynolds' Boids algorithm:
 - ✨ Real-time parameter adjustment with sliders
@@ -355,10 +397,14 @@ SwarmingLilMen/
 │   ├── World.cs            # Main simulation with SoA data
 │   ├── Systems/            # Legacy per-tick sense, behavior, wander, and integrate
 │   ├── Spatial/            # Uniform grid for neighbor queries
-│   ├── Diagnostics/        # Ordered kinematic hash
+│   ├── Diagnostics/        # Kinematic v1 and versioned native model-state hashes
+│   ├── Simulation/         # Ordered phases and typed current/next buffers
 │   ├── Configuration/      # JSON round-trip and layered scenario resolution
 │   ├── Metrics/            # Registered analysis probes and invariant writers
 │   ├── Canonical/          # New canonical boids implementation
+│   ├── Vicsek/             # Synchronous self-propelled particles
+│   ├── Aco/                # Ant foraging with a scalar pheromone field
+│   ├── Firefly/            # Global phase-coupled oscillators
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Cli/           # Display-free experiments, artifacts and manifest replay
 ├── SwarmSim.Parity/        # Fixed four-model comparisons and metric envelopes
@@ -369,6 +415,10 @@ SwarmingLilMen/
 │   ├── boids-basic/        # Interactive boids simulation
 │   ├── self-propelled-particles/  # Vicsek model (phase transitions)
 │   ├── ant-colony-optimization/   # ACO pathfinding (stigmergy)
+│   ├── firefly-synchrony/  # Phase-coupled oscillators
+│   ├── turing-morphogenesis/ # Reaction-diffusion fields (browser-only)
+│   ├── avalanche-lab/     # Integer sandpiles (browser-only)
+│   ├── ecogenesis/        # Synthetic ecology (browser-only)
 │   └── particle-swarm-optimization/ # PSO (continuous optimization)
 ├── docs/                  # Live guides, roadmap vision, and dated archive
 │   ├── CONFIGURATION_COOKBOOK.md
@@ -563,7 +613,7 @@ dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical-experiment
 
 It uses at most 256 agents and does not launch BenchmarkDotNet or a renderer. See
 [method, counterexamples and measured limits](docs/CANONICAL_EXPERIMENT.md). General experiments
-use the separate [headless runner](docs/HEADLESS_EXPERIMENTS.md), which supports either engine.
+use the separate [headless runner](docs/HEADLESS_EXPERIMENTS.md), which supports all five native engines.
 
 ## 🤝 Contributing
 
@@ -585,7 +635,11 @@ force-budget enforcement and explicit telemetry are covered. Bounded named force
 public classic mode now preserve the default traces and old manifests; their measured performance
 cost is recorded. The four-model parity harness now records reproducible inputs, per-tick
 metrics and locked multi-seed bands; remaining qualification and runtime work is explicit.
-Instrumentation UX, multi-group semantics and additional simulation foundations remain open. See
+The five native engines now share discovery and the experiment spine. Vicsek, ACO and Firefly
+also reuse ordered phase execution; Vicsek and Firefly share typed double-buffer publication.
+Their schema 3 fingerprints cover native state beyond motion and preserve older replay contracts.
+Field-only capture, remaining browser-study ports, instrumentation UX and multi-group semantics
+remain open. No checkpoint restoration or general cross-model interaction protocol is implied. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 
 ## 🔧 Troubleshooting

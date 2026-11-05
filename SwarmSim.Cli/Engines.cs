@@ -4,6 +4,7 @@ using SwarmSim.Core.Aco;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Configuration;
 using SwarmSim.Core.Diagnostics;
+using SwarmSim.Core.Firefly;
 using SwarmSim.Core.Metrics;
 using SwarmSim.Core.Utils;
 using SwarmSim.Core.Vicsek;
@@ -39,6 +40,7 @@ internal sealed class EngineDefinition
     internal required bool AcceptsScenario { get; init; }
     internal required EngineDescription Description { get; init; }
     internal string? ModelStateProfile { get; init; }
+    internal IReadOnlyList<string>? DefaultMetrics { get; init; }
     /// <summary>A field older manifests may omit, and what that omission has always meant.</summary>
     internal (string Name, Func<JsonElement> Meaning)? VersionedOptionalField { get; private init; }
     /// <summary>Scenario, file, overrides, then defaults; returns validated native settings.</summary>
@@ -97,13 +99,26 @@ internal sealed class EngineDefinition
         simulation => [new AntColonyMetricProbe((simulation as AcoSimulation)?.World)],
         modelStateProfile: AntColonyWorld.ModelStateProfile);
 
+    internal static readonly EngineDefinition Firefly = Native<FireflySettings>(
+        "firefly", "firefly-uniform-v1", minimumManifestSchema: 3, acceptsScenario: false,
+        new("Global phase-coupled oscillators with synchronous updates and stationary display positions.",
+            ["position", "phase", "naturalFrequency"], false, "docs/FIREFLY.md"),
+        (_, file, overrides, defaults) => ConfigurationResolver.ResolveFireflySettings(file, overrides, defaults),
+        settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
+        request => request.AgentCount <= FireflyWorld.MaxAgents ? new FireflySimulation(request)
+            : throw new ArgumentException($"--agents exceeds the firefly maximum of {FireflyWorld.MaxAgents}."),
+        simulation => [new FireflyMetricProbe((simulation as FireflySimulation)?.World)],
+        modelStateProfile: FireflyWorld.ModelStateProfile,
+        defaultMetrics: ["population", "firefly.coherence"]);
+
     private static EngineDefinition Native<TSettings>(string name, string spawnModel, int minimumManifestSchema, bool acceptsScenario,
         EngineDescription description,
         Func<string?, string?, IReadOnlyDictionary<string, JsonElement>?, TSettings?, TSettings> resolve,
         Func<TSettings, string> json, Func<TSettings, uint> seed, Func<TSettings, float> fixedDeltaTime,
         Func<RunRequest, IHeadlessSimulation> create, Func<IHeadlessSimulation?, IMetricProbe[]> extraProbes,
         (string Name, Func<JsonElement> Meaning)? versionedOptionalField = null,
-        string? modelStateProfile = null)
+        string? modelStateProfile = null,
+        string[]? defaultMetrics = null)
         where TSettings : class, new() => new()
         {
             Name = name,
@@ -112,6 +127,7 @@ internal sealed class EngineDefinition
             AcceptsScenario = acceptsScenario,
             Description = description,
             ModelStateProfile = modelStateProfile,
+            DefaultMetrics = defaultMetrics is null ? null : Array.AsReadOnly((string[])defaultMetrics.Clone()),
             VersionedOptionalField = versionedOptionalField,
             Resolve = (scenario, file, overrides, defaults) => resolve(scenario, file, overrides, (TSettings?)defaults),
             DefaultSettingsJson = () => json(new TSettings()),
@@ -127,7 +143,7 @@ internal sealed class EngineDefinition
 internal static class EngineRegistry
 {
     private static readonly EngineDefinition[] Definitions =
-        [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek, EngineDefinition.Aco];
+        [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek, EngineDefinition.Aco, EngineDefinition.Firefly];
 
     internal static IReadOnlyList<EngineDefinition> All { get; } = Array.AsReadOnly(Definitions);
 
@@ -281,5 +297,36 @@ internal sealed class AcoSimulation(RunRequest request) : IHeadlessSimulation, I
     {
         World.CopyKinematics(destination);
         return World.Ants.Length;
+    }
+}
+
+internal sealed class FireflySimulation(RunRequest request) : IHeadlessSimulation, IModelStateSimulation, IAgentColorSource
+{
+    private readonly FireflySettings _settings = (FireflySettings)request.Settings;
+    internal FireflyWorld World { get; } = new((FireflySettings)request.Settings, request.AgentCount);
+    public int MetricCapacity => World.Count;
+    public float WorldWidth => _settings.WorldWidth;
+    public float WorldHeight => _settings.WorldHeight;
+    public MetricDomain Domain => MetricDomain.Toroidal(_settings.WorldWidth, _settings.WorldHeight);
+    public void Step() => World.Step();
+    public ModelStateHash StateHash() => World.StateHash();
+    public int Capture(Span<KinematicSample> destination)
+    {
+        World.CopyKinematics(destination);
+        return World.Count;
+    }
+    public string KinematicHash()
+    {
+        var samples = new KinematicSample[World.Count];
+        World.CopyKinematics(samples);
+        return SimulationKinematicHash.Compute(samples);
+    }
+    public string ColorAngleLabel => "oscillator phase";
+    public void CaptureColorAngles(Span<float> destination)
+    {
+        if (destination.Length < World.Count)
+            throw new ArgumentException("Color buffer must hold every oscillator; state is never truncated.", nameof(destination));
+        for (int i = 0; i < World.Count; i++)
+            destination[i] = World.Agents[i].Phase;
     }
 }

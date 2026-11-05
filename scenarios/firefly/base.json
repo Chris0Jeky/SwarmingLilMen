@@ -1,0 +1,8 @@
+{
+  "Coupling": 1.55,
+  "MeanFrequency": 1.8,
+  "FrequencySpread": 0.35,
+  "WorldWidth": 100,
+  "WorldHeight": 60,
+  "FixedDeltaTime": 0.02
+}

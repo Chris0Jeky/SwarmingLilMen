@@ -1,6 +1,7 @@
 using System.Text.Json;
 using SwarmSim.Core.Aco;
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Firefly;
 using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Core.Configuration;
@@ -104,6 +105,13 @@ public static class ConfigurationResolver
         IReadOnlyDictionary<string, JsonElement>? overrides = null,
         AntColonySettings? defaults = null) => AntColonySettings.FromJson(
             ResolveJson(defaults ?? new AntColonySettings(), null, filePath, overrides, canonical: false));
+
+    /// <summary>Resolves global oscillator settings as defaults, file, explicit overrides.</summary>
+    public static FireflySettings ResolveFireflySettings(
+        string? filePath = null,
+        IReadOnlyDictionary<string, JsonElement>? overrides = null,
+        FireflySettings? defaults = null) => FireflySettings.FromJson(
+            ResolveJson(defaults ?? new FireflySettings(), null, filePath, overrides, canonical: false));
 
     private static string ResolveJson<T>(
         T defaults,

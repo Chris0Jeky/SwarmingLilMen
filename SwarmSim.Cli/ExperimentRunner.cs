@@ -32,7 +32,8 @@ internal static class ExperimentRunner
             throw new InvalidOperationException("Engine model-state metadata must match its simulation capability.");
         var observer = new ExperimentMetrics(request, simulation);
         FrameRecorder? frames = request.Visual
-            ? new FrameRecorder(request.Ticks, simulation.WorldWidth, simulation.WorldHeight) : null;
+            ? new FrameRecorder(request.Ticks, simulation.WorldWidth, simulation.WorldHeight,
+                simulation.Simulation as IAgentColorSource) : null;
         string parent = Path.GetFullPath(outputDirectory);
         (string? commit, bool? dirty) = RunProvenance.Git();
         RuntimeIdentity runtime = RunProvenance.Runtime();

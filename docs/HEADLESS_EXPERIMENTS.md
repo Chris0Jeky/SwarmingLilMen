@@ -32,13 +32,15 @@ v1 sweep axes remain numeric scalar fields.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
-| `--engine legacy\|canonical\|vicsek\|aco` | `canonical` | Selects the engine and native file schema |
+| `--engine legacy\|canonical\|vicsek\|aco\|firefly` | `canonical` | Selects the engine and native file schema |
+| `--list-engines` | — | Lists native models; accepts `--json`, creates no run |
+| `--describe-engine` | — | Describes the selected model's defaults, state, profiles and metrics; accepts `--json` |
 | `--scenario NAME` | None | Shared named configuration overlay |
 | `--config FILE` | None | Sparse native configuration file |
 | `--seed N` | Resolved configuration seed | Integer from 0 through 2147483647 |
 | `--ticks N` | `600` | Non-negative logical step count; zero records initial state only |
 | `--agents N` | `400` | Positive initial population; at most legacy `MaxCapacity` or canonical effective `InitialCapacity` |
-| `--metrics NAME,NAME,...` | `population,meanSpeed,polarization` | Registered channel names, case-sensitive, in exact CSV order |
+| `--metrics NAME,NAME,...` | `population,meanSpeed,polarization`; Firefly uses `population,firefly.coherence` | Registered channel names, case-sensitive, in exact CSV order |
 | `--list-metrics` | — | Lists names, applicability and cost for `--engine`; creates no run |
 | `--out DIRECTORY` | `runs` | Parent of a new run directory; existing runs are preserved |
 | `--manifest FILE` | None | Replays a completed manifest into a new run directory |
@@ -65,7 +67,7 @@ Each successful run publishes a new `runs/run-<random-id>/` child containing exa
 `--visual` files described under [visual reports](#visual-reports) when requested):
 
 - **`manifest.json`** — Schema version 2 for engines without a model-state profile, or version 3
-  for ACO/Vicsek, run ID and creation UTC, engine, seed, tick count,
+  for ACO/Vicsek/Firefly, run ID and creation UTC, engine, seed, tick count,
   agent count, fixed timestep, complete resolved native configuration, requested metrics,
   metric-contract version and determinism flag, spawn-model version, hash version, final
   kinematic hash, CSV SHA-256, runtime identity, and (schema 3) the versioned model-state profile
@@ -139,6 +141,10 @@ The [ACO engine](ACO.md) has no named scenarios, records spawn model `aco-nest-v
 `aco.foodReturned`, `aco.carrying` and `aco.fieldTotal`, which must be requested by name. Its
 kinematic hash covers ant motion only; its separate `aco-state-v1` profile includes the field,
 carrying flags, resources and retained random state.
+The [Firefly engine](FIREFLY.md) takes native configuration only and records `firefly-uniform-v1`.
+Its default metrics are `population,firefly.coherence`; it also exposes `firefly.meanPhase` and
+`firefly.meanNaturalFrequency`. It requires schema 3 with `firefly-state-v1`, since its positions
+remain fixed and zero physical velocity cannot describe phase evolution.
 Definitions, percentile interpolation, stationary-member convention and missing-value behavior
 are specified in [METRICS.md](METRICS.md). The CLI selects live agents from engine state; legacy
 dead slots are excluded. Canonical and legacy Wrap worlds use periodic distances/circular
@@ -185,7 +191,7 @@ and exact position/velocity float bits. It does not include RNG state, groups, e
 or every internal engine field, and is not a complete restart checkpoint. The manifest separately
 pins configuration and the full CSV hash.
 
-Native ACO and Vicsek runs additionally write schema 3 `modelStateProfile` and
+Native ACO, Vicsek and Firefly runs additionally write schema 3 `modelStateProfile` and
 `finalModelStateHash`. Their bounded native profiles include complete settings, clocks and
 retained random state, together with model-specific persistent state. Exact replay verifies
 that fingerprint as well as the original two hashes. Unsupported profiles, malformed hashes
@@ -226,8 +232,11 @@ A visual sweep gives every cell those three files and adds `index.html` at the s
 per cell with its parameter values, terminal metric values and a final-tick thumbnail linking to
 that cell's `report.html` by relative path. Without `--visual` the output files are exactly as before.
 
-Rendering reads the metric sampler's capture buffer only, copies just the 8 chosen frames, and
-never touches the simulation, so `metrics.csv`, the hashes and the RNG are unchanged.
+Rendering reads the metric sampler's capture buffer and, when available, an optional model-owned
+circular color channel. It copies only the selected frames and never advances the simulation or
+draws randomness, so `metrics.csv` and both state hashes are unchanged. Firefly keeps positions
+fixed and velocity zero while its dots show oscillator phase. The report labels this projection
+and shows the model-state profile/hash separately from the kinematic hash.
 PNG bytes are repeatable on one machine. Pictures are written through the same staging directory,
 so a failed render publishes nothing. The renderer needs only positions, velocities and world
 extent, so any foundation that implements `PreparedSimulation.Capture` gets it.
@@ -240,10 +249,12 @@ extent, so any foundation that implements `PreparedSimulation.Capture` gets it.
 dotnet run --project SwarmSim.Cli -c Release -- --gallery scenarios/gallery.json --out runs
 ```
 
-The committed recipe [`scenarios/gallery.json`](../scenarios/gallery.json) runs six short entries
+The committed recipe [`scenarios/gallery.json`](../scenarios/gallery.json) runs eight short entries
 through the ordinary `ExperimentRunner` with pictures on: a tuned canonical flock
 (`scenarios/gallery/canonical-flock.json`), legacy `balanced`, Vicsek at low and high noise and
-the ant colony with and without pheromone. A recipe is `{"entries": [...]}`; each entry requires
+the ant colony with and without pheromone, and Firefly with and without global coupling.
+The [Firefly guide](FIREFLY.md) defines its finite coherence controls and native subset.
+A recipe is `{"entries": [...]}`; each entry requires
 `name` (a lowercase slug), `engine`, `agents`, `ticks` (at least 1), `seed`, `metrics` and `expect`.
 `config` (a native file, relative to the recipe) and `settings` (inline fields applied over it) are
 optional. `expect` maps a metric you record to `min` and/or `max`, both inclusive, bounding the

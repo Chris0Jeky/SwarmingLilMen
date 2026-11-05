@@ -76,8 +76,23 @@ state. Reading a fingerprint does not consume a random draw or apply a deposit.
 The public observation boundary is between completed ticks. The next-state buffer and neighbor
 scratch are overwritten before use, and the native spatial index is rebuilt from current agents;
 those derived buffers are excluded. State inside an injected custom index is outside this native
-profile. The initialization-only spawn generator is discarded. Neither profile is thread-safe
+profile. The initialization-only spawn generator is discarded. No profile is thread-safe
 against concurrent world mutation.
+
+### `firefly-state-v1`
+
+[`FireflyWorld.StateHash`](../SwarmSim.Core/Firefly/FireflyWorld.cs) writes single-precision
+`Coupling`, `MeanFrequency`, `FrequencySpread`, `WorldWidth`, `WorldHeight`, `FixedDeltaTime`,
+then unsigned 32-bit `Seed`, signed 64-bit tick count and signed 32-bit oscillator count.
+Each oscillator contributes single-precision X, Y, phase and natural frequency in stable order.
+All initialization streams are discarded, so there is no retained RNG cursor. The mean-field
+scratch and next-state buffer are overwritten before use and excluded. The public observation
+boundary is between completed ticks; see the [model's numerical contract](FIREFLY.md).
+
+Positions remain fixed and physical velocities remain zero. The unchanged v1 kinematic hash
+therefore stays constant as phases evolve. Schema 3 is the minimum Firefly manifest version:
+the model-state fingerprint is required even when a selected CSV channel, such as population,
+cannot see changes in phase or natural frequency.
 
 ## Manifest compatibility and verification
 

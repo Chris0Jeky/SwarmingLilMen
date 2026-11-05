@@ -53,7 +53,7 @@ internal static class EngineCatalog
                     modelStateProfile = selected.ModelStateProfile,
                     checkpointRestore = false,
                     defaultConfiguration = defaults.RootElement,
-                    defaultMetrics = MetricCatalog.DefaultMetrics,
+                    defaultMetrics = MetricCatalog.DefaultsFor(selected.Name),
                     metrics
                 }
             }, JsonOptions));
