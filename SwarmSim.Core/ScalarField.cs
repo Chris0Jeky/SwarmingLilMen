@@ -47,12 +47,19 @@ public sealed class ScalarField
 
     public float Sample(float x, float y) => _cells[CellIndex(x, y)];
 
-    /// <summary>Adds a finite, non-negative amount to the cell containing the point.</summary>
+    /// <summary>
+    /// Adds a finite, non-negative amount to the cell containing the point. An unrepresentable
+    /// sum throws before changing the cell; saturation would silently change the field model.
+    /// </summary>
     public void Deposit(float x, float y, float amount)
     {
         if (!float.IsFinite(amount) || amount < 0f)
             throw new ArgumentOutOfRangeException(nameof(amount), "A deposit must be finite and non-negative.");
-        _cells[CellIndex(x, y)] += amount;
+        int index = CellIndex(x, y);
+        float value = _cells[index] + amount;
+        if (!float.IsFinite(value))
+            throw new OverflowException("The scalar-field deposit exceeds the finite cell range.");
+        _cells[index] = value;
     }
 
     /// <summary>Multiplies every cell by 1 - rate, then flushes values below the threshold.</summary>
