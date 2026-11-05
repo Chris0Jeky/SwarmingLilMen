@@ -20,17 +20,19 @@ Deterministic 2D swarm simulation in C#/.NET 8: `SwarmSim.Core` (library),
 `js-demos/` holds independent standalone browser studies. **Two boids engines coexist on purpose**: legacy
 Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer, and
 `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`). Both engines
-have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/`, `Core/Aco/` and
-`Core/Firefly/` are separate foundations on the same experiment spine: five selectable engines in
+have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/`, `Core/Aco/`,
+`Core/Firefly/` and `Core/ReactionDiffusion/` are separate foundations on the same experiment spine: six selectable engines in
 `SwarmSim.Cli/Engines.cs`, with native discovery, metrics, named RNG, manifests, sweeps and reports.
-Vicsek, ACO and Firefly reuse `SimulationSchedule`; Vicsek and Firefly also reuse
+Vicsek, ACO, Firefly and reaction diffusion reuse `SimulationSchedule`; Vicsek, Firefly and U/V fields reuse
 `DoubleBufferedState<T>`. The model still owns its timestep, state semantics and commit boundary.
 See `docs/SIMULATION_KERNEL.md` and `docs/VICSEK.md` for the bounded shared-kernel scope.
 Firefly is a global/noiseless oscillator subset, not a complete browser-port parity claim.
-Turing Morphogenesis, Avalanche Lab, Ecogenesis and PSO remain browser-only.
+Reaction diffusion is a bounded periodic Gray–Scott field model; it has zero kinematic agents,
+native concentration metrics and fixed-scale heatmap reports. See `docs/FIELD_OBSERVATIONS.md`.
+Avalanche Lab, Ecogenesis and PSO remain browser-only.
 A foundation is a different model with its own state and update rule, such as Vicsek particles or
 ACO ants. It gets its own `Core/<Name>/` and a registry entry in `SwarmSim.Cli/Engines.cs`.
-ACO, Vicsek and Firefly write schema 3 model-state profiles in addition to unchanged v1 kinematic
+ACO, Vicsek, Firefly and reaction diffusion write schema 3 model-state profiles in addition to unchanged v1 kinematic
 hashes. Legacy/canonical retain schema 2; old manifests keep their recorded verification contract.
 Profiles observe native persistent state and do not provide checkpoint restoration; see
 `docs/MODEL_STATE_HASHES.md`.

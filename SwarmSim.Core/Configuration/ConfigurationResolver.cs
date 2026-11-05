@@ -2,6 +2,7 @@ using System.Text.Json;
 using SwarmSim.Core.Aco;
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Firefly;
+using SwarmSim.Core.ReactionDiffusion;
 using SwarmSim.Core.Vicsek;
 
 namespace SwarmSim.Core.Configuration;
@@ -112,6 +113,13 @@ public static class ConfigurationResolver
         IReadOnlyDictionary<string, JsonElement>? overrides = null,
         FireflySettings? defaults = null) => FireflySettings.FromJson(
             ResolveJson(defaults ?? new FireflySettings(), null, filePath, overrides, canonical: false));
+
+    /// <summary>Resolves field dimensions and Gray-Scott parameters as defaults, file, explicit overrides.</summary>
+    public static ReactionDiffusionSettings ResolveReactionDiffusionSettings(
+        string? filePath = null,
+        IReadOnlyDictionary<string, JsonElement>? overrides = null,
+        ReactionDiffusionSettings? defaults = null) => ReactionDiffusionSettings.FromJson(
+            ResolveJson(defaults ?? new ReactionDiffusionSettings(), null, filePath, overrides, canonical: false));
 
     private static string ResolveJson<T>(
         T defaults,

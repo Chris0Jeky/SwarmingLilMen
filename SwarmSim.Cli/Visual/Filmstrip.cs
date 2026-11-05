@@ -2,21 +2,39 @@ using SwarmSim.Core.Metrics;
 
 namespace SwarmSim.Cli.Visual;
 
+internal sealed record FieldProjection(int Columns, int Rows, string Label, float Minimum, float Maximum);
+
 /// <summary>Copies only the frames a filmstrip needs (preselected ticks); null in the runner when --visual is off.</summary>
 internal sealed class FrameRecorder
 {
     private readonly KinematicSample[][] _frames;
     private readonly IAgentColorSource? _colorSource;
+    private readonly IFieldSnapshotSource? _fieldSource;
     private int _next;
 
-    internal FrameRecorder(int ticks, float worldWidth, float worldHeight, IAgentColorSource? colorSource = null)
+    internal FrameRecorder(int ticks, float worldWidth, float worldHeight, IAgentColorSource? colorSource = null,
+        IFieldSnapshotSource? fieldSource = null)
     {
+        if (colorSource is not null && fieldSource is not null)
+            throw new ArgumentException("Choose one primary report projection: agent colors or a scalar field.");
         Ticks = Filmstrip.SelectTicks(ticks);
         WorldWidth = worldWidth;
         WorldHeight = worldHeight;
         _frames = new KinematicSample[Ticks.Length][];
         _colorSource = colorSource;
         ColorAngles = colorSource is null ? null : new float[Ticks.Length][];
+        _fieldSource = fieldSource;
+        if (fieldSource is not null)
+        {
+            if (fieldSource.FieldColumns <= 0 || fieldSource.FieldRows <= 0 ||
+                (long)fieldSource.FieldColumns * fieldSource.FieldRows > int.MaxValue ||
+                !float.IsFinite(fieldSource.ColorMinimum) || !float.IsFinite(fieldSource.ColorMaximum) ||
+                fieldSource.ColorMinimum >= fieldSource.ColorMaximum || string.IsNullOrWhiteSpace(fieldSource.FieldLabel))
+                throw new ArgumentException("Field projection needs valid dimensions, a label and an increasing finite color range.", nameof(fieldSource));
+            Field = new(fieldSource.FieldColumns, fieldSource.FieldRows, fieldSource.FieldLabel,
+                fieldSource.ColorMinimum, fieldSource.ColorMaximum);
+            FieldFrames = new float[Ticks.Length][];
+        }
     }
 
     internal int[] Ticks { get; }
@@ -25,6 +43,8 @@ internal sealed class FrameRecorder
     internal KinematicSample[][] Frames => _frames;
     internal float[][]? ColorAngles { get; }
     internal string? ColorAngleLabel => _colorSource?.ColorAngleLabel;
+    internal FieldProjection? Field { get; }
+    internal float[][]? FieldFrames { get; }
 
     /// <summary>Ticks arrive in increasing order; a tick that was not preselected costs one comparison.</summary>
     internal void Capture(int tick, ReadOnlySpan<KinematicSample> agents)
@@ -37,6 +57,12 @@ internal sealed class FrameRecorder
                 var angles = new float[agents.Length];
                 _colorSource.CaptureColorAngles(angles);
                 ColorAngles![_next] = angles;
+            }
+            if (_fieldSource is not null && Field is { } field)
+            {
+                var cells = new float[field.Columns * field.Rows];
+                _fieldSource.CaptureField(cells);
+                FieldFrames![_next] = cells;
             }
             _next++;
         }

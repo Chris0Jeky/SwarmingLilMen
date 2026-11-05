@@ -47,6 +47,7 @@ internal static class MetricCatalog
                 ExactNearestNeighborProbe => "O(N^2) exact analysis plus sorting; opt in for affordable populations",
                 RuntimeCostMetricProbe => "nondeterministic; completed simulation Step only; exact replay unavailable",
                 SwarmSim.Core.Aco.AntColonyMetricProbe => "O(field cells); deterministic",
+                SwarmSim.Core.ReactionDiffusion.ReactionDiffusionMetricProbe => "O(field cells); deterministic",
                 _ => "O(N); deterministic"
             };
             foreach (string channel in probe.Channels)
@@ -60,6 +61,8 @@ internal static class MetricCatalog
     {
         EngineDefinition definition = EngineRegistry.Find(engine)
             ?? throw new ArgumentException($"Metric engine must be {EngineRegistry.NameList}.", nameof(engine));
+        if (!definition.SupportsKinematics)
+            return [runtimeCosts, .. definition.ExtraProbes(simulation)];
         var nearest = new ExactNearestNeighborProbe(0);
         // Metadata registration is cheap. Allocate the four capacity-sized exact-analysis
         // buffers only when at least one of that probe's channels is requested.

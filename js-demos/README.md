@@ -5,10 +5,10 @@
 
 Standalone browser-based demonstrations of swarm algorithms and steering behaviors. These demos are simpler, more interactive alternatives to the C# implementation, designed for quick prototyping, education, and demonstrations.
 
-Native implementations cover boids, Vicsek, bounded ant foraging and a global/noiseless Firefly
-subset through five selectable engines. They are independent implementations: shared names do
-not promise identical update order, controls, random streams or trajectories. Turing Morphogenesis,
-Avalanche Lab, Ecogenesis and Particle Swarm Optimization remain browser-only. The
+Native implementations cover boids, Vicsek, bounded ant foraging, a global/noiseless Firefly
+subset and periodic Gray–Scott fields through six selectable engines. They are independent
+implementations: shared names do not promise identical update order, controls, random streams
+or trajectories. Avalanche Lab, Ecogenesis and Particle Swarm Optimization remain browser-only. The
 [simulation catalog](../docs/SIMULATION_CATALOG.md) records the integration boundary and discovery
 commands; [shared phases and typed buffers](../docs/SIMULATION_KERNEL.md) describe actual native reuse.
 
@@ -36,6 +36,11 @@ A beautiful implementation of Craig Reynolds' Boids algorithm with:
 
 ### [Turing Morphogenesis](./turing-morphogenesis/)
 Gray–Scott reaction–diffusion fields with editable chemistry and boundaries.
+
+The native [`reaction-diffusion` engine](../docs/REACTION_DIFFUSION.md) implements periodic
+five-point U/V evolution with zero kinematic agents, a required field-state fingerprint and
+fixed-scale heatmap reports. Browser brushes, alternate boundaries and its nine-point/frame
+policy are outside that bounded native subset.
 
 **[Launch demo](./turing-morphogenesis/index.html)** · [Integration plan](./turing-morphogenesis/docs/IMPLEMENTATION_PLAN.md) · [Verification](./turing-morphogenesis/VERIFICATION.md)
 

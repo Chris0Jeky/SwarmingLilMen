@@ -289,6 +289,7 @@ partial writes. Legacy and canonical boids retain their existing pipelines.
 | Vicsek | `index`, `agents`, `commit` | Typed `Boid` double buffer; every next agent reads the preceding generation. |
 | ACO | `agents`, `field` | Model-owned ants and pending deposits; all agents read field(t), then the field update applies deposits and evaporation. |
 | Firefly | `mean-field`, `oscillators`, `commit` | Typed `Oscillator` double buffer; each phase update reads the same preceding population and mean field. |
+| Reaction–diffusion | `stability`, `reaction-diffusion`, `commit` | Typed U/V cell double buffer; all stencil and reaction terms read the preceding fields, and only a complete validated generation is published. |
 
 The bounded [`firefly` engine](FIREFLY.md) uses position, phase and natural frequency, with global
 noiseless Kuramoto coupling and stationary positions. It does not use `Boid`, a spatial index or
@@ -296,8 +297,8 @@ force composition. Initialization uses independent named position/phase/frequenc
 does not retain or consume randomness. Its native subset does not promise browser trajectory or
 feature parity: spatial/ring coupling and other browser controls remain outside the port.
 
-Five native engines now share the registry, discovery, configuration, metrics, manifests, sweeps
-and reports. ACO, Vicsek and Firefly also declare versioned native model-state profiles. Schema 3
+Six native engines now share the registry, discovery, configuration, metrics, manifests, sweeps
+and reports. ACO, Vicsek, Firefly and reaction diffusion declare versioned native model-state profiles. Schema 3
 replay verifies those fingerprints alongside the unchanged v1 kinematic and CSV hashes. Legacy
 and canonical keep schema 2, and older schema 1/2 records retain their original verification
 contract. [Profile coverage](MODEL_STATE_HASHES.md) explicitly excludes checkpoint restoration
@@ -309,17 +310,24 @@ copies phase for selected report frames. Capture still reports zero physical vel
 colour change is never disguised as motion. Existing moving-agent reports keep heading colours
 when no independent colour source is present.
 
+The [Gray–Scott foundation](REACTION_DIFFUSION.md) goes further: it has no kinematic agents.
+Registry capabilities select zero-agent count semantics and native field metrics; the adapter
+returns an empty compatibility kinematic capture while the full-state profile covers both
+concentration fields. A [scalar field observation](FIELD_OBSERVATIONS.md) copies selected V
+frames into fixed-scale heatmaps. Cells are never invented as agents. Stencil/boundary and
+numerical admission rules remain model-owned.
+
 ### Remaining seams
 
-- `MetricFrame` and the current experiment/report capture path remain organized around agent
-  kinematics. Field-only models need an explicit observation path, finite field-channel metadata
-  and raster output; grid cells should not be invented as moving agents.
+- `MetricFrame` still carries a kinematic compatibility view, while native field probes read
+  typed state directly. One scalar projection is supported for field reports; multiple views,
+  integer/vector channels and cross-model field exchange still need concrete contracts.
 - `ISpatialIndex` remains typed on `Boid`. Firefly's global mean field does not establish a
   generic neighborhood or graph contract. Spatial/ring oscillator coupling needs its own evidence.
 - The phase runner has no work-budget protocol, event queue, implicit dependency ordering,
   parallelism or rollback. Integer avalanche relaxation must specify unfinished work explicitly.
 - Stable lifecycle IDs, birth/death publication, resource accounting, cross-model interaction
-  and checkpoint restoration remain open. The four browser-only studies are mapped in the
+  and checkpoint restoration remain open. The three browser-only studies are mapped in the
   [simulation catalog](SIMULATION_CATALOG.md).
 
 This proves reuse of bounded mechanisms across different native state shapes. It does not claim

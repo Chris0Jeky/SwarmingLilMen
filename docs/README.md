@@ -8,7 +8,7 @@ ordering authority. Historical documents are context, not proof.
 
 - [`EXPERIMENT_FOUNDATION.md`](EXPERIMENT_FOUNDATION.md) - reusable configuration, spatial semantics and explicit telemetry
 - [`HEADLESS_EXPERIMENTS.md`](HEADLESS_EXPERIMENTS.md) - run artifacts, native configurations and exact manifest replay
-- [`SIMULATION_CATALOG.md`](SIMULATION_CATALOG.md) - five native engines, discovery and the browser-study integration map
+- [`SIMULATION_CATALOG.md`](SIMULATION_CATALOG.md) - six native engines, discovery and the browser-study integration map
 - [`SIMULATION_KERNEL.md`](SIMULATION_KERNEL.md) - shared ordered phases, typed state publication and model-owned boundaries
 - [`METRICS.md`](METRICS.md) - reusable analysis probes, exact neighbor distributions and deterministic versus runtime channels
 - [`DETERMINISM.md`](DETERMINISM.md) - measured platform scope, exact golden traces and fixture policy
@@ -23,6 +23,10 @@ ordering authority. Historical documents are context, not proof.
 - [`VICSEK.md`](VICSEK.md) - measured noise response and the historical/current kernel seam inventory
 - [`ACO.md`](ACO.md) - scalar field, agent and field phases, and the pheromone A/B proof
 - [`FIREFLY.md`](FIREFLY.md) - bounded global oscillator model, phase/frequency state and circular observations
+- [`REACTION_DIFFUSION.md`](REACTION_DIFFUSION.md) - field-only Gray–Scott equations, periodic stencil and numerical admission bounds
+- [`FIELD_OBSERVATIONS.md`](FIELD_OBSERVATIONS.md) - zero-agent capabilities, field metrics and fixed-scale heatmap snapshots
+- [`SCALAR_FIELD_RANGE.md`](SCALAR_FIELD_RANGE.md) - finite deposit overflow rejection and per-deposit atomicity
+- [`CANONICAL_SEPARATION.md`](CANONICAL_SEPARATION.md) - finite squared-distance overflow and preserved separation arithmetic
 - [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
 - [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics
 - [`NATIVE_UI_VERIFICATION.md`](NATIVE_UI_VERIFICATION.md) - native Linux interactions, screenshots and exact evidence scope

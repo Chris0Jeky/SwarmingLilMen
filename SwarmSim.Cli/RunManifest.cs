@@ -63,7 +63,7 @@ internal sealed class RunManifest
         else if (document.RootElement.TryGetProperty("modelStateProfile", out _) ||
                  document.RootElement.TryGetProperty("finalModelStateHash", out _))
             throw new InvalidDataException("Schema 1 and 2 do not support model-state metadata; use schema 3 with a supported engine profile.");
-        if (manifest.Ticks < 0 || manifest.AgentCount <= 0 || !float.IsFinite(manifest.FixedDeltaTime) || manifest.FixedDeltaTime <= 0f)
+        if (manifest.Ticks < 0 || !engine.IsValidAgentCount(manifest.AgentCount) || !float.IsFinite(manifest.FixedDeltaTime) || manifest.FixedDeltaTime <= 0f)
             throw new InvalidDataException("Manifest ticks, agentCount, or fixedDeltaTime is invalid.");
         if (manifest.RunId is null || !manifest.RunId.StartsWith("run-", StringComparison.Ordinal) ||
             !Guid.TryParseExact(manifest.RunId.AsSpan(4), "N", out _) || manifest.CreatedUtc == default)
@@ -170,7 +170,9 @@ internal sealed record RunRequest(
         if (options.Seed.HasValue)
             overrides[nameof(SimConfig.Seed)] = JsonSerializer.SerializeToElement(options.Seed.Value);
         MetricCatalog.ValidateSelection(options.Engine, options.RequestedMetrics);
-        object settings = EngineRegistry.Get(options.Engine).Resolve(options.Scenario, options.ConfigPath, overrides, null);
+        EngineDefinition selected = EngineRegistry.Get(options.Engine);
+        selected.RequireAgentCount(options.AgentCount);
+        object settings = selected.Resolve(options.Scenario, options.ConfigPath, overrides, null);
         return new RunRequest(options.Engine, options.Ticks, options.AgentCount, settings, null)
             { RequestedMetrics = options.RequestedMetrics.ToArray() };
     }

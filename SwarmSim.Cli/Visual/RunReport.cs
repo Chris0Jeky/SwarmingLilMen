@@ -37,16 +37,19 @@ internal static class RunReport
 
     internal static void Write(string directory, FrameRecorder frames, RunManifest manifest)
     {
-        Raster raster = Filmstrip.Render(frames.Ticks, frames.Frames, frames.WorldWidth, frames.WorldHeight, frames.ColorAngles);
+        Raster raster = frames.Field is { } field
+            ? FieldFilmstrip.Render(frames.Ticks, frames.FieldFrames!, field.Columns, field.Rows, field.Minimum, field.Maximum)
+            : Filmstrip.Render(frames.Ticks, frames.Frames, frames.WorldWidth, frames.WorldHeight, frames.ColorAngles);
         byte[] png = PngWriter.Encode(raster.Width, raster.Height, raster.Rgba);
         File.WriteAllBytes(Path.Combine(directory, "filmstrip.png"), png);
         Raster thumbnail = Filmstrip.CropFinalPanel(raster, frames.Ticks.Length);
         File.WriteAllBytes(Path.Combine(directory, "thumbnail.png"), PngWriter.Encode(thumbnail.Width, thumbnail.Height, thumbnail.Rgba));
         string csv = File.ReadAllText(Path.Combine(directory, "metrics.csv"));
-        File.WriteAllText(Path.Combine(directory, "report.html"), Html(manifest, png, csv, frames.ColorAngleLabel), new UTF8Encoding(false));
+        File.WriteAllText(Path.Combine(directory, "report.html"), Html(manifest, png, csv, frames.ColorAngleLabel, frames.Field), new UTF8Encoding(false));
     }
 
-    internal static string Html(RunManifest manifest, byte[] png, string metricsCsv, string? colorAngleLabel = null)
+    internal static string Html(RunManifest manifest, byte[] png, string metricsCsv, string? colorAngleLabel = null,
+        FieldProjection? field = null)
     {
         string[] lines = metricsCsv.Split('\n', StringSplitOptions.RemoveEmptyEntries);
         string[] header = lines[0].Split(',');
@@ -85,11 +88,16 @@ internal static class RunReport
             Line($"<div><dt>Model state profile</dt><dd>{Esc(profile)}</dd></div>");
             Line($"<div><dt>Final model state hash</dt><dd>{Esc(modelHash)}</dd></div>");
         }
+        if (field is not null)
+            Line($"<div><dt>Field grid</dt><dd>{field.Columns} × {field.Rows}</dd></div>");
         Line("</dl>");
-        Line(colorAngleLabel is null
+        Line(field is not null
+            ? $"<p class=\"muted\">Colour shows {Esc(field.Label)} on a fixed scale from {Fmt(field.Minimum)} (purple) to {Fmt(field.Maximum)} (yellow). Each region represents a field cell. Values outside this scale use the end colours; grey marks undefined values. Tap the image for full size.</p>"
+            : colorAngleLabel is null
             ? "<p class=\"muted\">Colour is heading angle: one colour means an aligned flock, a rainbow means disorder, grey dots are stationary. Tap the image for full size.</p>"
             : $"<p class=\"muted\">Colour shows {Esc(colorAngleLabel)} on a circular scale. Matching colours indicate matching phases. Dots show stationary positions; colour does not represent velocity. Tap the image for full size.</p>");
-        Line($"<a href=\"filmstrip.png\"><img class=\"film\" alt=\"Filmstrip of the swarm at evenly spaced ticks\" src=\"data:image/png;base64,{Convert.ToBase64String(png)}\"></a>");
+        string imageDescription = field is null ? "Filmstrip of the swarm at evenly spaced ticks" : "Filmstrip of the scalar field at evenly spaced ticks";
+        Line($"<a href=\"filmstrip.png\"><img class=\"film\" alt=\"{imageDescription}\" src=\"data:image/png;base64,{Convert.ToBase64String(png)}\"></a>");
         Line("<section class=\"cards\">");
         for (int c = 0; c < columns.Length; c++)
             Line(Card(header[c + 1], ticks, columns[c]));

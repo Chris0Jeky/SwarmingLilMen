@@ -94,6 +94,20 @@ therefore stays constant as phases evolve. Schema 3 is the minimum Firefly manif
 the model-state fingerprint is required even when a selected CSV channel, such as population,
 cannot see changes in phase or natural frequency.
 
+### `reaction-diffusion-state-v1`
+
+[`ReactionDiffusionWorld.StateHash`](../SwarmSim.Core/ReactionDiffusion/ReactionDiffusionWorld.cs)
+writes signed 32-bit `Columns`, `Rows`; single-precision `DiffusionU`, `DiffusionV`,
+`ReactionRate`, `Feed`, `Kill`, `FixedDeltaTime`, `PatchFraction`, `PatchNoise`; unsigned 32-bit
+`Seed`; signed 64-bit tick count; signed 32-bit cell count; then the single-precision U and V
+of every row-major cell. Initialization randomness is discarded, and the next field buffer is
+overwritten before commit. The observation boundary is between completed steps or after a
+rejected step, whose current field and tick are unchanged. This model requires schema 3.
+
+The engine has zero kinematic agents, so its v1 hash describes an empty capture and remains
+constant. The required model profile covers both fields even though reports display only V.
+The hash is independent of which field metric channels the user chooses.
+
 ## Manifest compatibility and verification
 
 | Manifest | Reader and replay behavior |
