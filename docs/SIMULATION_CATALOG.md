@@ -46,7 +46,7 @@ have interactive Raylib renderers.
 | [Self-Propelled Particles](../js-demos/self-propelled-particles/) | `vicsek` runs through CLI/configuration, metrics, sweeps, manifests and reports. Native updates are synchronous; the browser reference uses sequential updates. | Broader topology can be evaluated against the existing fixed model and exact platform references. |
 | [Ant Colony Optimization](../js-demos/ant-colony-optimization/) | `aco` is a bounded foraging model with a scalar pheromone field, carried food and separate agent/field phases. | Obstacles, multiple resources and optimization-quality criteria are absent; do not infer them from the demo title. |
 | [Firefly Synchrony](../js-demos/firefly-synchrony/) | `firefly` is a global, noiseless Kuramoto subset using typed phase/frequency state, shared synchronous phases/buffers, named initialization streams, schema-3 replay, phase metrics, sweeps and phase-colored reports. | Spatial/ring coupling, phase lag, ongoing noise, interventions and restore remain absent; see the [exact native scope](FIREFLY.md). |
-| [Turing Morphogenesis](../js-demos/turing-morphogenesis/) | Browser-only. | Multiple evolving field channels, stencil/boundary semantics, field-only experiment capture and field visualization. |
+| [Turing Morphogenesis](../js-demos/turing-morphogenesis/) | `reaction-diffusion` is a field-only Gray–Scott subset with typed U/V concentrations, periodic five-point updates, native metrics, schema-3 replay, sweeps and fixed-scale heatmaps. | Browser nine-point/frame cadence, alternate boundaries, brushes, morphology classification and checkpoint restore remain separate; see the [native numerical contract](REACTION_DIFFUSION.md). |
 | [Avalanche Lab](../js-demos/avalanche-lab/) | Browser-only. | Integer fields, stable event queues, relaxation-until-stable semantics and exact mass accounting. |
 | [Ecogenesis](../js-demos/ecogenesis/) | Browser-only. Existing legacy configuration names do not implement its ecology. | Stable lifecycle IDs, birth/death publication, typed traits/genomes, resources, lineage metrics and deterministic event order. |
 | [Particle Swarm Optimization](../js-demos/particle-swarm-optimization/) | Browser-only. | Objective evaluation, per-agent best memory, shared best reduction, optimization bounds and fitness metrics. |
@@ -69,9 +69,12 @@ models provide concrete evidence for the contract. More foundation directories a
 prove a universal engine.
 
 The first extracted [simulation mechanisms](SIMULATION_KERNEL.md) are now used by distinct
-models: `SimulationSchedule` orders Vicsek, ACO and Firefly phases; `DoubleBufferedState<T>`
-publishes Vicsek kinematics and Firefly oscillator state synchronously. Model-owned equations
+models: `SimulationSchedule` orders Vicsek, ACO, Firefly and reaction–diffusion phases;
+`DoubleBufferedState<T>` publishes Vicsek kinematics, Firefly oscillator state and typed U/V
+fields synchronously. Model-owned equations
 and [versioned state profiles](MODEL_STATE_HASHES.md) retain their meaning. These contracts do
-not yet supply a generic topology, field-only capture, lifecycle/event publication or checkpoint
-restore. Gray–Scott reaction diffusion is the next useful representation test because its
-state consists entirely of coupled fields, with no honest agent-velocity projection.
+not yet supply generic topology, lifecycle/event publication or checkpoint restore. The optional
+[field observation](FIELD_OBSERVATIONS.md) capability and explicit zero-agent engine semantics
+let Gray–Scott run on the same experiment path without inventing a particle representation.
+Six selectable engines now cover five distinct model families; Avalanche, Ecogenesis and PSO
+still need native foundations.

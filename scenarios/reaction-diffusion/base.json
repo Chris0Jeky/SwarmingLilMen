@@ -1,0 +1,12 @@
+{
+  "Columns": 64,
+  "Rows": 64,
+  "DiffusionU": 0.16,
+  "DiffusionV": 0.08,
+  "ReactionRate": 1,
+  "Feed": 0.035,
+  "Kill": 0.065,
+  "FixedDeltaTime": 0.5,
+  "PatchFraction": 0.2,
+  "PatchNoise": 0.02
+}

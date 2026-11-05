@@ -4,8 +4,9 @@
 > test, and performance state; older plans and milestone prose are context only.
 
 SwarmingLilMen explores the smallest reusable contracts for a generalized experimental engine for
-emergent multi-agent systems in C#/.NET 8.0. Five native engines are selectable: legacy and canonical
-boids, Vicsek particles, scalar-field ant foraging, and a bounded Firefly oscillator model. Shared
+emergent systems in C#/.NET 8.0. Six native engines are selectable: legacy and canonical
+boids, Vicsek particles, scalar-field ant foraging, a bounded Firefly oscillator model, and
+field-only Gray–Scott reaction diffusion. Shared
 phase execution and typed current/next buffers now complement the experiment spine; a universal
 world, topology or observation model remains open. The scale figures below are goals, not achieved
 throughput claims.
@@ -21,7 +22,7 @@ throughput claims.
 - **Determinism**: Fixed-timestep legacy and canonical paths reproduce ordered agent positions and
   velocities for a matching .NET 8 binary, platform, supported seed, configuration, timestep, and
   ordered input sequence. Experiment manifests verify the final kinematic state and complete
-  deterministic CSV on replay. ACO, Vicsek and Firefly additionally verify versioned native
+  deterministic CSV on replay. ACO, Vicsek, Firefly and reaction diffusion additionally verify versioned native
   model-state fingerprints, including state that motion cannot reveal. Checkpoint restoration is
   not implemented, and arbitrary cross-platform identity remains unproven; see
   [measured determinism scope](docs/DETERMINISM.md) and [profile coverage](docs/MODEL_STATE_HASHES.md)
@@ -56,11 +57,12 @@ belong in their own `Core/<Model>/` foundation and reuse the shared mechanisms w
 - ✅ Raylib-free experiments with native configurations, versioned manifests and exact CSV replay
 - ✅ Registered analysis channels, periodic centroids and opt-in exact nearest-neighbor statistics
 - ✅ Sequential seed/parameter sweeps with stable summary rows and replayable cell manifests
-- ✅ Vicsek particles, a scalar-field ant colony and global Firefly oscillators on that spine
-- ✅ Shared ordered phases for Vicsek/ACO/Firefly and typed double buffers for Vicsek/Firefly
+- ✅ Vicsek particles, a scalar-field ant colony, global Firefly oscillators and field-only reaction diffusion
+- ✅ Shared ordered phases for four distinct model families, with typed buffers for particles, oscillators and U/V fields
 - ✅ Engine discovery with native defaults, state, metrics and replay capabilities
 - ✅ Schema 3 native model-state verification alongside unchanged v1 kinematic hashes
 - ✅ Display-free filmstrips, run reports and a one-command behaviour gallery
+- ✅ Explicit zero-agent field models, native concentration metrics and fixed-scale heatmap reports
 - ✅ Named deterministic random streams and bounded, injectable force-policy compositions
 - ✅ Public classic-Reynolds configuration with independent rule clamps and named enable controls
 - ✅ Four-model headless comparison with five data recipes, five fixed seeds and locked metric bands
@@ -75,10 +77,11 @@ belong in their own `Core/<Model>/` foundation and reuse the shared mechanisms w
 
 - **Composition:** preserve the exact default traces while addressing the measured small-population
   cost of the new bounded policy API (#27). See [composition and its limits](docs/CANONICAL_COMPOSITION.md).
-- **Proof of generality:** [Vicsek](docs/VICSEK.md), [scalar-field ACO](docs/ACO.md) and the bounded
-  [Firefly port](docs/FIREFLY.md) reuse the experiment spine and
+- **Proof of generality:** [Vicsek](docs/VICSEK.md), [scalar-field ACO](docs/ACO.md), the bounded
+  [Firefly port](docs/FIREFLY.md) and [reaction diffusion](docs/REACTION_DIFFUSION.md) reuse the experiment spine and
   [shared phase mechanisms](docs/SIMULATION_KERNEL.md). Firefly adds phase/frequency state without
-  encoding phase as physical velocity. Field-only observations, richer topology, lifecycle and
+  encoding phase as physical velocity. Gray–Scott adds two evolving fields and
+  [field-only observations](docs/FIELD_OBSERVATIONS.md). Richer topology, lifecycle and
   remaining browser-study ports still need concrete contracts; see the
   [integration map](docs/SIMULATION_CATALOG.md).
 - **Behavioral parity:** the [comparison harness](docs/BEHAVIORAL_PARITY.md) and
@@ -309,8 +312,8 @@ effects see [`docs/PARAMETER_GUIDE.md`](docs/PARAMETER_GUIDE.md).
 For quick prototyping, demonstrations, and learning, we provide standalone browser-based implementations:
 
 The eight studies are independent browser implementations. Native foundations cover boids,
-Vicsek, bounded ant foraging and the global/noiseless Firefly subset; shared names do not imply
-matching controls or trajectories. Turing Morphogenesis, Avalanche Lab, Ecogenesis and Particle
+Vicsek, bounded ant foraging, the global/noiseless Firefly subset and periodic Gray–Scott fields;
+shared names do not imply matching controls or trajectories. Avalanche Lab, Ecogenesis and Particle
 Swarm Optimization remain browser-only. See the [integration map](docs/SIMULATION_CATALOG.md).
 
 ### [Firefly Synchrony](js-demos/firefly-synchrony/)
@@ -322,8 +325,10 @@ the browser's other controls are outside that native subset.
 
 ### [Turing Morphogenesis](js-demos/turing-morphogenesis/)
 
-Gray–Scott reaction–diffusion fields with editable chemistry and boundaries. Its native port
-still needs field-only experiment observations and an explicit numerical/stencil contract.
+Gray–Scott reaction–diffusion fields with editable chemistry and boundaries. The native
+[`reaction-diffusion` engine](docs/REACTION_DIFFUSION.md) supplies periodic five-point U/V evolution,
+zero-agent experiments, complete field-state replay and fixed-scale heatmaps. Browser brushes,
+alternate boundaries and nine-point/frame cadence are outside the native subset.
 
 ### [Avalanche Lab](js-demos/avalanche-lab/)
 
@@ -405,6 +410,7 @@ SwarmingLilMen/
 │   ├── Vicsek/             # Synchronous self-propelled particles
 │   ├── Aco/                # Ant foraging with a scalar pheromone field
 │   ├── Firefly/            # Global phase-coupled oscillators
+│   ├── ReactionDiffusion/  # Field-only Gray–Scott U/V concentrations
 │   └── Utils/              # Math and RNG utilities
 ├── SwarmSim.Cli/           # Display-free experiments, artifacts and manifest replay
 ├── SwarmSim.Parity/        # Fixed four-model comparisons and metric envelopes
@@ -613,7 +619,7 @@ dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical-experiment
 
 It uses at most 256 agents and does not launch BenchmarkDotNet or a renderer. See
 [method, counterexamples and measured limits](docs/CANONICAL_EXPERIMENT.md). General experiments
-use the separate [headless runner](docs/HEADLESS_EXPERIMENTS.md), which supports all five native engines.
+use the separate [headless runner](docs/HEADLESS_EXPERIMENTS.md), which supports all six native engines.
 
 ## 🤝 Contributing
 
@@ -635,10 +641,11 @@ force-budget enforcement and explicit telemetry are covered. Bounded named force
 public classic mode now preserve the default traces and old manifests; their measured performance
 cost is recorded. The four-model parity harness now records reproducible inputs, per-tick
 metrics and locked multi-seed bands; remaining qualification and runtime work is explicit.
-The five native engines now share discovery and the experiment spine. Vicsek, ACO and Firefly
-also reuse ordered phase execution; Vicsek and Firefly share typed double-buffer publication.
+The six native engines now share discovery and the experiment spine. Vicsek, ACO, Firefly and
+reaction diffusion also reuse ordered phase execution; particles, oscillators and U/V fields
+share typed double-buffer publication.
 Their schema 3 fingerprints cover native state beyond motion and preserve older replay contracts.
-Field-only capture, remaining browser-study ports, instrumentation UX and multi-group semantics
+Field-only capture is implemented; remaining browser-study ports, instrumentation UX and multi-group semantics
 remain open. No checkpoint restoration or general cross-model interaction protocol is implied. See
 [PROJECT_STATUS.md](PROJECT_STATUS.md) for the verified queue.
 

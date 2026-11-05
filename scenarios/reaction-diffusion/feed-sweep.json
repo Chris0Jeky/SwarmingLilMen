@@ -1,0 +1,9 @@
+{
+  "base": "base.json",
+  "engine": "reaction-diffusion",
+  "agents": 0,
+  "seeds": [7, 21],
+  "grid": { "Feed": [0.025, 0.035, 0.045] },
+  "ticks": 1000,
+  "metrics": ["reactionDiffusion.uMean", "reactionDiffusion.vMean", "reactionDiffusion.vMax"]
+}

@@ -23,6 +23,7 @@ The implementation uses the existing .NET 8 stack and adds no package dependency
 | Vicsek | `index`, `agents`, `commit` | Rebuild from current agents; compute every next agent from that same generation; publish all agents together. Positions still advance with the old velocity. |
 | ACO | `agents`, `field` | Ants read field(t), buffer deposits, and retain stable food-contention order. The field phase deposits, evaporates and advances the tick. |
 | Firefly | `mean-field`, `oscillators`, `commit` | Reduce current phases, write typed next phase/frequency state, then publish every oscillator together. Physical positions remain fixed. |
+| Reaction–diffusion | `stability`, `reaction-diffusion`, `commit` | Validate the current concentration-dependent step bound; compute every U/V cell from the preceding field; publish the complete checked field together. |
 
 Legacy and canonical boids keep their existing update implementations. These mechanisms do not
 establish that all foundations share a complete kernel, spatial representation or renderer.
@@ -63,8 +64,9 @@ population-sized startup copy. `Current` is read-only; the compute phase must wr
 every `Next` slot. `Commit()` swaps the arrays without copying or clearing: the next write buffer
 then contains the old generation. Borrowed spans must not be retained across commits. Structs
 containing references are allowed, but reference targets are not deep-copied or made immutable.
-Empty buffers are supported for future field-only models; the current CLI still requires a
-positive population. Construction allocates; neither `Run()` nor `Commit()` allocates by design.
+Empty buffers are supported. The field-only Gray–Scott model uses nonempty typed cell buffers
+and an empty kinematic capture; it does not count cells as agents. Construction allocates;
+neither `Run()` nor `Commit()` allocates by design.
 
 ## Verification and limits
 
@@ -81,6 +83,7 @@ dotnet test SwarmSim.Tests -c Release --filter "FullyQualifiedName~SimulationKer
 
 Then use the full ordinary suite and behavior gallery from `CLAUDE.md`. A passing allocation
 check does not establish throughput or remove the existing performance qualification issues.
-Firefly supplies the next reuse proof: richer oscillator state on these same mechanisms. General topology,
-multi-field evolution, coupled foundations, dynamic lifecycle and checkpoint restore remain
+Firefly supplies richer oscillator state and Gray–Scott supplies field-only U/V evolution on
+these same mechanisms. General topology, cross-model field exchange, coupled foundations,
+dynamic lifecycle and checkpoint restore remain
 separate design questions with their own acceptance evidence.

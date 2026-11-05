@@ -94,7 +94,8 @@ internal sealed class GalleryPlan
 
             EngineDefinition definition = EngineRegistry.Find(Text(fields["engine"], where, "engine").ToLowerInvariant())
                 ?? throw new ArgumentException($"Gallery {where} engine must be {EngineRegistry.NameList}.");
-            int agents = Count(fields["agents"], where, "agents", minimum: 1);
+            int agents = Count(fields["agents"], where, "agents", minimum: definition.SupportsKinematics ? 1 : 0);
+            definition.RequireAgentCount(agents);
             int ticks = Count(fields["ticks"], where, "ticks", minimum: 1); // 0 ticks has no final quarter to average
             if (fields["seed"].ValueKind != JsonValueKind.Number || !fields["seed"].TryGetUInt32(out uint seed) || seed > Rng.MaxSupportedSeed)
                 throw new ArgumentException($"Gallery {where} seed must be an integer from 0 through {Rng.MaxSupportedSeed}.");

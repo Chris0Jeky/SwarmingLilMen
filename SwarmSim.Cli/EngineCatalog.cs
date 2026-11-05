@@ -48,6 +48,9 @@ internal static class EngineCatalog
                     interactiveRenderer = selected.Description.InteractiveRenderer,
                     documentation = selected.Description.Documentation,
                     acceptsScenario = selected.AcceptsScenario,
+                    supportsKinematics = selected.SupportsKinematics,
+                    defaultAgentCount = selected.DefaultAgentCount,
+                    agentCountContract = selected.SupportsKinematics ? "positive" : "zero; grid dimensions are native configuration",
                     minimumManifestSchema = selected.MinimumManifestSchema,
                     spawnModel = selected.SpawnModel,
                     modelStateProfile = selected.ModelStateProfile,
@@ -62,6 +65,9 @@ internal static class EngineCatalog
 
         output.WriteLine($"{selected.Name} — {selected.Description.Summary}");
         output.WriteLine("Principal state: " + string.Join(", ", selected.Description.State));
+        output.WriteLine(selected.SupportsKinematics
+            ? $"Kinematic agents: available; --agents is positive and defaults to {selected.DefaultAgentCount}."
+            : "Field-only observations: --agents is 0; grid dimensions are native configuration. Shared motion and exact-neighbor metrics are unavailable.");
         output.WriteLine("Interactive renderer: " + (selected.Description.InteractiveRenderer ? "available" : "not integrated; use CLI --visual reports"));
         output.WriteLine($"Native configuration: defaults below, then --config overrides; named boids scenarios {(selected.AcceptsScenario ? "accepted" : "not accepted")}.");
         output.WriteLine($"Spawn: {selected.SpawnModel}; minimum manifest schema: {selected.MinimumManifestSchema}.");
@@ -79,6 +85,8 @@ internal static class EngineCatalog
         name = engine.Name,
         summary = engine.Description.Summary,
         state = engine.Description.State,
+        supportsKinematics = engine.SupportsKinematics,
+        defaultAgentCount = engine.DefaultAgentCount,
         interactiveRenderer = engine.Description.InteractiveRenderer,
         documentation = engine.Description.Documentation
     };

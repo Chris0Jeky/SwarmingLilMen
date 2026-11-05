@@ -358,7 +358,7 @@ public sealed class GalleryTests
         Assert.True(result.Code == 0, result.Output + result.Error);
         string gallery = result.Output.Split('\n')[0].Trim();
         using JsonDocument summary = JsonDocument.Parse(File.ReadAllText(Path.Combine(gallery, "summary.json")));
-        Assert.Equal(8, summary.RootElement.GetProperty("entries").GetArrayLength());
+        Assert.Equal(10, summary.RootElement.GetProperty("entries").GetArrayLength());
     }
 
     private static string RepositoryRoot()

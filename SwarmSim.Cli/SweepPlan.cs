@@ -43,7 +43,8 @@ internal sealed class SweepPlan
             ?? throw new ArgumentException($"Sweep engine must be {EngineRegistry.NameList}.");
         int ticks = ReadCount(Require(fields, "ticks"), "ticks", allowZero: true);
         int agents = fields.TryGetValue("agents", out JsonElement agentValue)
-            ? ReadCount(agentValue, "agents", allowZero: false) : 400;
+            ? ReadCount(agentValue, "agents", allowZero: !definition.SupportsKinematics) : definition.DefaultAgentCount;
+        definition.RequireAgentCount(agents);
         uint[] seeds = ReadSeeds(Require(fields, "seeds"));
         string[] metrics = ReadMetrics(Require(fields, "metrics"));
         if (!MetricCatalog.ValidateSelection(engine, metrics))

@@ -6,6 +6,7 @@ using SwarmSim.Core.Configuration;
 using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Firefly;
 using SwarmSim.Core.Metrics;
+using SwarmSim.Core.ReactionDiffusion;
 using SwarmSim.Core.Utils;
 using SwarmSim.Core.Vicsek;
 
@@ -38,6 +39,11 @@ internal sealed class EngineDefinition
     internal required int MinimumManifestSchema { get; init; }
     /// <summary>Named scenarios are boids recipes; other engines take --config only.</summary>
     internal required bool AcceptsScenario { get; init; }
+    /// <summary>Whether the engine exposes physical agents to the shared motion probes.</summary>
+    internal bool SupportsKinematics { get; init; } = true;
+    internal int DefaultAgentCount => SupportsKinematics ? 400 : 0;
+    internal bool IsValidAgentCount(int count) => SupportsKinematics ? count > 0 : count == 0;
+    internal void RequireAgentCount(int count) => RequireAgentCount(Name, SupportsKinematics, count);
     internal required EngineDescription Description { get; init; }
     internal string? ModelStateProfile { get; init; }
     internal IReadOnlyList<string>? DefaultMetrics { get; init; }
@@ -111,6 +117,18 @@ internal sealed class EngineDefinition
         modelStateProfile: FireflyWorld.ModelStateProfile,
         defaultMetrics: ["population", "firefly.coherence"]);
 
+    internal static readonly EngineDefinition ReactionDiffusion = Native<ReactionDiffusionSettings>(
+        "reaction-diffusion", "gray-scott-centered-patch-v1", minimumManifestSchema: 3, acceptsScenario: false,
+        new("Gray-Scott reaction diffusion on a periodic scalar grid with synchronous updates.",
+            ["U concentration", "V concentration"], false, "docs/REACTION_DIFFUSION.md"),
+        (_, file, overrides, defaults) => ConfigurationResolver.ResolveReactionDiffusionSettings(file, overrides, defaults),
+        settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
+        request => new ReactionDiffusionSimulation(request),
+        simulation => [new ReactionDiffusionMetricProbe((simulation as ReactionDiffusionSimulation)?.World)],
+        modelStateProfile: ReactionDiffusionWorld.ModelStateProfile,
+        defaultMetrics: ["reactionDiffusion.uMean", "reactionDiffusion.vMean"],
+        supportsKinematics: false);
+
     private static EngineDefinition Native<TSettings>(string name, string spawnModel, int minimumManifestSchema, bool acceptsScenario,
         EngineDescription description,
         Func<string?, string?, IReadOnlyDictionary<string, JsonElement>?, TSettings?, TSettings> resolve,
@@ -118,13 +136,15 @@ internal sealed class EngineDefinition
         Func<RunRequest, IHeadlessSimulation> create, Func<IHeadlessSimulation?, IMetricProbe[]> extraProbes,
         (string Name, Func<JsonElement> Meaning)? versionedOptionalField = null,
         string? modelStateProfile = null,
-        string[]? defaultMetrics = null)
+        string[]? defaultMetrics = null,
+        bool supportsKinematics = true)
         where TSettings : class, new() => new()
         {
             Name = name,
             SpawnModel = spawnModel,
             MinimumManifestSchema = minimumManifestSchema,
             AcceptsScenario = acceptsScenario,
+            SupportsKinematics = supportsKinematics,
             Description = description,
             ModelStateProfile = modelStateProfile,
             DefaultMetrics = defaultMetrics is null ? null : Array.AsReadOnly((string[])defaultMetrics.Clone()),
@@ -134,16 +154,30 @@ internal sealed class EngineDefinition
             SettingsJson = settings => json((TSettings)settings),
             Seed = settings => seed((TSettings)settings),
             FixedDeltaTime = settings => fixedDeltaTime((TSettings)settings),
-            Create = create,
+            Create = request =>
+            {
+                RequireAgentCount(name, supportsKinematics, request.AgentCount);
+                return create(request);
+            },
             ExtraProbes = extraProbes
         };
+
+    private static void RequireAgentCount(string name, bool supportsKinematics, int count)
+    {
+        if (supportsKinematics ? count <= 0 : count != 0)
+            throw new ArgumentException(supportsKinematics
+                ? $"--agents must be a positive integer for engine '{name}'."
+                : $"--agents must be 0 for field-only engine '{name}'; grid dimensions belong in its native configuration.",
+                "agentCount");
+    }
 }
 
 /// <summary>The closed list of engines. Adding one means one definition here, nothing else.</summary>
 internal static class EngineRegistry
 {
     private static readonly EngineDefinition[] Definitions =
-        [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek, EngineDefinition.Aco, EngineDefinition.Firefly];
+        [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek, EngineDefinition.Aco, EngineDefinition.Firefly,
+            EngineDefinition.ReactionDiffusion];
 
     internal static IReadOnlyList<EngineDefinition> All { get; } = Array.AsReadOnly(Definitions);
 
@@ -328,5 +362,31 @@ internal sealed class FireflySimulation(RunRequest request) : IHeadlessSimulatio
             throw new ArgumentException("Color buffer must hold every oscillator; state is never truncated.", nameof(destination));
         for (int i = 0; i < World.Count; i++)
             destination[i] = World.Agents[i].Phase;
+    }
+}
+
+internal sealed class ReactionDiffusionSimulation(RunRequest request) : IHeadlessSimulation, IModelStateSimulation, IFieldSnapshotSource
+{
+    internal ReactionDiffusionWorld World { get; } = new((ReactionDiffusionSettings)request.Settings);
+    public int MetricCapacity => 0;
+    public float WorldWidth => World.Columns;
+    public float WorldHeight => World.Rows;
+    public MetricDomain Domain => MetricDomain.Toroidal(World.Columns, World.Rows);
+    public void Step() => World.Step();
+    public ModelStateHash StateHash() => World.StateHash();
+    public int Capture(Span<KinematicSample> destination) => World.CopyKinematics(destination);
+    public string KinematicHash() => SimulationKinematicHash.Compute(ReadOnlySpan<KinematicSample>.Empty);
+    public int FieldColumns => World.Columns;
+    public int FieldRows => World.Rows;
+    public string FieldLabel => "V concentration";
+    public float ColorMinimum => 0f;
+    public float ColorMaximum => 1f;
+    public void CaptureField(Span<float> destination)
+    {
+        if (destination.Length < World.CellCount)
+            throw new ArgumentException("Field buffer must hold every cell; state is never truncated.", nameof(destination));
+        ReadOnlySpan<CellState> cells = World.Cells;
+        for (int i = 0; i < cells.Length; i++)
+            destination[i] = cells[i].V;
     }
 }

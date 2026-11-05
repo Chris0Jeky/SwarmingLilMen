@@ -78,7 +78,7 @@ internal sealed class RunOptions
                     options.Seed = seed;
                     break;
                 case "--ticks": options.Ticks = ParseCount(option, value, allowZero: true); break;
-                case "--agents": options.AgentCount = ParseCount(option, value, allowZero: false); break;
+                case "--agents": options.AgentCount = ParseCount(option, value, allowZero: true); break;
             }
         }
 
@@ -103,6 +103,13 @@ internal sealed class RunOptions
             throw new UsageException("--list-metrics can be combined only with --engine or --help.");
         if (!seen.Contains("--metrics"))
             options.RequestedMetrics = MetricCatalog.DefaultsFor(options.Engine).ToArray();
+        EngineDefinition selected = EngineRegistry.Get(options.Engine);
+        if (!seen.Contains("--agents"))
+            options.AgentCount = selected.DefaultAgentCount;
+        if (!selected.IsValidAgentCount(options.AgentCount))
+            throw new UsageException(selected.SupportsKinematics
+                ? $"--agents must be a positive integer for engine '{selected.Name}'."
+                : $"--agents must be 0 for field-only engine '{selected.Name}'; grid dimensions belong in its native configuration.");
         return options;
     }
 

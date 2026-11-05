@@ -33,7 +33,7 @@ internal static class ExperimentRunner
         var observer = new ExperimentMetrics(request, simulation);
         FrameRecorder? frames = request.Visual
             ? new FrameRecorder(request.Ticks, simulation.WorldWidth, simulation.WorldHeight,
-                simulation.Simulation as IAgentColorSource) : null;
+                simulation.Simulation as IAgentColorSource, simulation.Simulation as IFieldSnapshotSource) : null;
         string parent = Path.GetFullPath(outputDirectory);
         (string? commit, bool? dirty) = RunProvenance.Git();
         RuntimeIdentity runtime = RunProvenance.Runtime();
