@@ -15,6 +15,10 @@ internal struct Pcg32State
     private ulong _state;
     private readonly ulong _increment;
 
+    // Observation only: no public restoration API or change to the PCG transition.
+    internal readonly ulong State => _state;
+    internal readonly ulong Increment => _increment;
+
     internal Pcg32State(ulong initialState, ulong sequence)
     {
         _state = 0;

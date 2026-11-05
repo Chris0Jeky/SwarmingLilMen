@@ -50,6 +50,7 @@ internal static class EngineCatalog
                     acceptsScenario = selected.AcceptsScenario,
                     minimumManifestSchema = selected.MinimumManifestSchema,
                     spawnModel = selected.SpawnModel,
+                    modelStateProfile = selected.ModelStateProfile,
                     checkpointRestore = false,
                     defaultConfiguration = defaults.RootElement,
                     defaultMetrics = MetricCatalog.DefaultMetrics,
@@ -64,6 +65,7 @@ internal static class EngineCatalog
         output.WriteLine("Interactive renderer: " + (selected.Description.InteractiveRenderer ? "available" : "not integrated; use CLI --visual reports"));
         output.WriteLine($"Native configuration: defaults below, then --config overrides; named boids scenarios {(selected.AcceptsScenario ? "accepted" : "not accepted")}.");
         output.WriteLine($"Spawn: {selected.SpawnModel}; minimum manifest schema: {selected.MinimumManifestSchema}.");
+        output.WriteLine("Model-state verification: " + (selected.ModelStateProfile ?? "unavailable; kinematic v1 identity only"));
         output.WriteLine("Replay reruns from initialization; checkpoint restore is not implemented.");
         output.WriteLine("Guide: " + selected.Description.Documentation);
         output.WriteLine($"Run: --engine {selected.Name} --ticks 600 --out runs --visual");
