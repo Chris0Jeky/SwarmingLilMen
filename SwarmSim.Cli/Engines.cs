@@ -37,6 +37,7 @@ internal sealed class EngineDefinition
     internal required int MinimumManifestSchema { get; init; }
     /// <summary>Named scenarios are boids recipes; other engines take --config only.</summary>
     internal required bool AcceptsScenario { get; init; }
+    internal required EngineDescription Description { get; init; }
     /// <summary>A field older manifests may omit, and what that omission has always meant.</summary>
     internal (string Name, Func<JsonElement> Meaning)? VersionedOptionalField { get; private init; }
     /// <summary>Scenario, file, overrides, then defaults; returns validated native settings.</summary>
@@ -54,12 +55,16 @@ internal sealed class EngineDefinition
 
     internal static readonly EngineDefinition Legacy = Native<SimConfig>(
         "legacy", "uniform-single-group-v1", minimumManifestSchema: 1, acceptsScenario: true,
+        new("Legacy boids with the original SoA update pipeline.",
+            ["position", "velocity", "group", "energy", "genome"], true, "docs/EXPERIMENT_FOUNDATION.md"),
         (scenario, file, overrides, defaults) => ConfigurationResolver.ResolveSimConfig(scenario, file, overrides, defaults),
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
         request => new LegacySimulation(request), _ => []);
 
     internal static readonly EngineDefinition Canonical = Native<CanonicalWorldSettings>(
         "canonical", "uniform-single-group-v1", minimumManifestSchema: 1, acceptsScenario: true,
+        new("Canonical boids with bounded force composition and steering inspection.",
+            ["position", "velocity", "wander"], true, "docs/CANONICAL_COMPOSITION.md"),
         (scenario, file, overrides, defaults) => ConfigurationResolver.ResolveCanonicalSettings(scenario, file, overrides, defaults),
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
         request => new CanonicalSimulation(request),
@@ -72,6 +77,8 @@ internal sealed class EngineDefinition
 
     internal static readonly EngineDefinition Vicsek = Native<VicsekSettings>(
         "vicsek", "vicsek-uniform-v1", minimumManifestSchema: 2, acceptsScenario: false,
+        new("Synchronous self-propelled particles with local heading alignment and angular noise.",
+            ["position", "velocity"], false, "docs/VICSEK.md"),
         (_, file, overrides, defaults) => ConfigurationResolver.ResolveVicsekSettings(file, overrides, defaults),
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
         request => request.AgentCount <= VicsekWorld.MaxAgents ? new VicsekSimulation(request)
@@ -79,6 +86,8 @@ internal sealed class EngineDefinition
 
     internal static readonly EngineDefinition Aco = Native<AntColonySettings>(
         "aco", "aco-nest-v1", minimumManifestSchema: 2, acceptsScenario: false,
+        new("Ant foraging with carried food and a shared scalar pheromone field.",
+            ["position", "heading", "carrying", "food", "pheromone"], false, "docs/ACO.md"),
         (_, file, overrides, defaults) => ConfigurationResolver.ResolveAntColonySettings(file, overrides, defaults),
         settings => settings.ToJson(), settings => settings.Seed, settings => settings.FixedDeltaTime,
         request => request.AgentCount <= AntColonyWorld.MaxAnts ? new AcoSimulation(request)
@@ -86,6 +95,7 @@ internal sealed class EngineDefinition
         simulation => [new AntColonyMetricProbe((simulation as AcoSimulation)?.World)]);
 
     private static EngineDefinition Native<TSettings>(string name, string spawnModel, int minimumManifestSchema, bool acceptsScenario,
+        EngineDescription description,
         Func<string?, string?, IReadOnlyDictionary<string, JsonElement>?, TSettings?, TSettings> resolve,
         Func<TSettings, string> json, Func<TSettings, uint> seed, Func<TSettings, float> fixedDeltaTime,
         Func<RunRequest, IHeadlessSimulation> create, Func<IHeadlessSimulation?, IMetricProbe[]> extraProbes,
@@ -96,6 +106,7 @@ internal sealed class EngineDefinition
             SpawnModel = spawnModel,
             MinimumManifestSchema = minimumManifestSchema,
             AcceptsScenario = acceptsScenario,
+            Description = description,
             VersionedOptionalField = versionedOptionalField,
             Resolve = (scenario, file, overrides, defaults) => resolve(scenario, file, overrides, (TSettings?)defaults),
             DefaultSettingsJson = () => json(new TSettings()),
@@ -113,6 +124,8 @@ internal static class EngineRegistry
     private static readonly EngineDefinition[] Definitions =
         [EngineDefinition.Legacy, EngineDefinition.Canonical, EngineDefinition.Vicsek, EngineDefinition.Aco];
 
+    internal static IReadOnlyList<EngineDefinition> All { get; } = Array.AsReadOnly(Definitions);
+
     /// <summary>For messages: "a, b or c".</summary>
     internal static string NameList => string.Join(", ", Definitions[..^1].Select(engine => engine.Name)) + " or " + Definitions[^1].Name;
     /// <summary>For usage text: "a|b|c".</summary>
@@ -123,6 +136,9 @@ internal static class EngineRegistry
     internal static EngineDefinition Get(string name) =>
         Find(name) ?? throw new ArgumentException($"Engine must be {NameList}.", nameof(name));
 }
+
+/// <summary>Discovery metadata belongs to the engine registration, not a second engine switch.</summary>
+internal sealed record EngineDescription(string Summary, string[] State, bool InteractiveRenderer, string Documentation);
 
 /// <summary>The boids spawn contract, uniform-single-group-v1, on the legacy generator.</summary>
 file static class BoidsSpawn

@@ -26,6 +26,9 @@ public static class Program
                       --agents N                 Positive initial population (default: 400)
                       --metrics NAME,NAME,...    Exact metric columns in the requested order
                       --list-metrics             Show available names for the selected engine
+                      --list-engines             Show every engine registered in this build
+                      --describe-engine          Show the selected engine's state, defaults and metrics
+                      --json                     Machine-readable discovery (with either engine command)
                       --out DIRECTORY            Parent for a new run directory (default: runs)
                       --manifest FILE            Replay recorded settings; only --out and --visual may be added
                       --sweep FILE               Run a deterministic parameter grid; only --out and --visual may be added
@@ -43,6 +46,11 @@ public static class Program
                     Exit codes: 0 success (gallery: every band holds), 1 run/config/replay/I/O failure (gallery: or any band fails,
                     with output still published), 2 invalid usage.
                     """);
+                return 0;
+            }
+            if (options.ListEngines || options.DescribeEngine)
+            {
+                EngineCatalog.Write(options, output);
                 return 0;
             }
             if (options.ListMetrics)

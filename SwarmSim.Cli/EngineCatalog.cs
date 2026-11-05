@@ -1,0 +1,83 @@
+using System.Text.Json;
+
+namespace SwarmSim.Cli;
+
+/// <summary>Read-only discovery from the same definitions that construct actual simulations.</summary>
+internal static class EngineCatalog
+{
+    private static readonly JsonSerializerOptions JsonOptions = new()
+    {
+        PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
+        WriteIndented = true
+    };
+
+    internal static void Write(RunOptions options, TextWriter output)
+    {
+        if (options.ListEngines)
+        {
+            if (options.Json)
+                output.WriteLine(JsonSerializer.Serialize(new
+                {
+                    schemaVersion = 1,
+                    engines = EngineRegistry.All.Select(Summary).ToArray()
+                }, JsonOptions));
+            else
+            {
+                output.WriteLine("Available simulation engines:");
+                foreach (EngineDefinition engine in EngineRegistry.All)
+                    output.WriteLine($"  {engine.Name} — {engine.Description.Summary}");
+                output.WriteLine("Inspect: --engine NAME --describe-engine [--json]");
+                output.WriteLine("Run: --engine NAME --config FILE --ticks 600 --out runs");
+            }
+            return;
+        }
+
+        EngineDefinition selected = EngineRegistry.Get(options.Engine);
+        using JsonDocument defaults = JsonDocument.Parse(selected.DefaultSettingsJson());
+        IReadOnlyList<MetricDescription> metrics = MetricCatalog.Describe(selected.Name);
+        if (options.Json)
+        {
+            output.WriteLine(JsonSerializer.Serialize(new
+            {
+                schemaVersion = 1,
+                engine = new
+                {
+                    name = selected.Name,
+                    summary = selected.Description.Summary,
+                    state = selected.Description.State,
+                    interactiveRenderer = selected.Description.InteractiveRenderer,
+                    documentation = selected.Description.Documentation,
+                    acceptsScenario = selected.AcceptsScenario,
+                    minimumManifestSchema = selected.MinimumManifestSchema,
+                    spawnModel = selected.SpawnModel,
+                    checkpointRestore = false,
+                    defaultConfiguration = defaults.RootElement,
+                    defaultMetrics = MetricCatalog.DefaultMetrics,
+                    metrics
+                }
+            }, JsonOptions));
+            return;
+        }
+
+        output.WriteLine($"{selected.Name} — {selected.Description.Summary}");
+        output.WriteLine("Principal state: " + string.Join(", ", selected.Description.State));
+        output.WriteLine("Interactive renderer: " + (selected.Description.InteractiveRenderer ? "available" : "not integrated; use CLI --visual reports"));
+        output.WriteLine($"Native configuration: defaults below, then --config overrides; named boids scenarios {(selected.AcceptsScenario ? "accepted" : "not accepted")}.");
+        output.WriteLine($"Spawn: {selected.SpawnModel}; minimum manifest schema: {selected.MinimumManifestSchema}.");
+        output.WriteLine("Replay reruns from initialization; checkpoint restore is not implemented.");
+        output.WriteLine("Guide: " + selected.Description.Documentation);
+        output.WriteLine($"Run: --engine {selected.Name} --ticks 600 --out runs --visual");
+        output.WriteLine("Default configuration:");
+        output.WriteLine(selected.DefaultSettingsJson());
+        MetricCatalog.WriteAvailable(selected.Name, output);
+    }
+
+    private static object Summary(EngineDefinition engine) => new
+    {
+        name = engine.Name,
+        summary = engine.Description.Summary,
+        state = engine.Description.State,
+        interactiveRenderer = engine.Description.InteractiveRenderer,
+        documentation = engine.Description.Documentation
+    };
+}
