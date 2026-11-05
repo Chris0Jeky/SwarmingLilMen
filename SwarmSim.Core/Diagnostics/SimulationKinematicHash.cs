@@ -60,7 +60,12 @@ public static class SimulationKinematicHash
         ArgumentNullException.ThrowIfNull(world);
         var samples = new KinematicSample[world.Ants.Length];
         world.CopyKinematics(samples);
+        return Compute(samples);
+    }
 
+    /// <summary>Computes the unchanged version-1 byte contract from an ordered model-independent capture.</summary>
+    public static string Compute(ReadOnlySpan<KinematicSample> samples)
+    {
         using var hash = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
         AppendInt32(hash, samples.Length);
         foreach (KinematicSample sample in samples)

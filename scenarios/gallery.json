@@ -35,6 +35,18 @@
       "agents": 300, "ticks": 2000, "seed": 7,
       "metrics": ["aco.foodReturned"],
       "expect": { "aco.foodReturned": { "min": 150, "max": 800 } }
+    },
+    {
+      "name": "firefly-coupled", "engine": "firefly", "config": "firefly/base.json", "settings": { "Coupling": 3 },
+      "agents": 128, "ticks": 1000, "seed": 7,
+      "metrics": ["population", "firefly.coherence"],
+      "expect": { "population": { "min": 128, "max": 128 }, "firefly.coherence": { "min": 0.95 } }
+    },
+    {
+      "name": "firefly-control", "engine": "firefly", "config": "firefly/base.json", "settings": { "Coupling": 0 },
+      "agents": 128, "ticks": 1000, "seed": 7,
+      "metrics": ["population", "firefly.coherence"],
+      "expect": { "population": { "min": 128, "max": 128 }, "firefly.coherence": { "max": 0.4 } }
     }
   ]
 }

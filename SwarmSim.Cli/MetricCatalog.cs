@@ -10,6 +10,9 @@ internal static class MetricCatalog
     internal static readonly IReadOnlyList<string> DefaultMetrics = Array.AsReadOnly(new[]
         { "population", "meanSpeed", "polarization" });
 
+    internal static IReadOnlyList<string> DefaultsFor(string engine) =>
+        EngineRegistry.Get(engine).DefaultMetrics ?? DefaultMetrics;
+
     /// <summary>Checks names, uniqueness and engine support without constructing a simulation.</summary>
     internal static bool ValidateSelection(string engine, string[] requestedMetrics) =>
         CreatePlan(engine, requestedMetrics, 0, null, new RuntimeCostMetricProbe()).IsDeterministic;
@@ -31,7 +34,7 @@ internal static class MetricCatalog
         output.WriteLine($"Available metrics for {engine} (names are case-sensitive):");
         foreach (MetricDescription channel in Describe(engine))
             output.WriteLine($"  {channel.Name} — {channel.Cost}");
-        output.WriteLine("Default: " + string.Join(',', DefaultMetrics));
+        output.WriteLine("Default: " + string.Join(',', DefaultsFor(engine)));
     }
 
     internal static IReadOnlyList<MetricDescription> Describe(string engine)

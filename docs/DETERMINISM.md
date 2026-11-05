@@ -129,11 +129,14 @@ distinct in the raw bits and hash.
 
 ## Versioned native model-state fingerprints
 
-ACO and Vicsek additionally record bounded model-owned state profiles in schema 3 manifests.
+ACO, Vicsek and Firefly additionally record bounded model-owned state profiles in schema 3 manifests.
 The original `kinematicHashVersion: 1` bytes and platform goldens stay unchanged. The new ACO
 profile includes ant carrying flags, resource counters, the scalar field, pending deposits,
 phase progress, clocks, complete settings and retained random streams. Vicsek includes current
-agents, clocks, complete settings and its retained noise stream. The byte-level coverage,
+agents, clocks, complete settings and its retained noise stream. Firefly covers phase, natural
+frequency, fixed positions, clocks and settings; its initialization streams are discarded.
+Its kinematic hash remains constant while the model-state hash tracks phase evolution.
+The byte-level coverage,
 observation boundaries and old-manifest compatibility rules are specified in
 [MODEL_STATE_HASHES.md](MODEL_STATE_HASHES.md).
 

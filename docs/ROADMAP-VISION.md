@@ -43,17 +43,28 @@ not queued implementation work.
 
 ### Deferral boundary
 
-The Vicsek and ACO vertical proofs are implemented
+The original Vicsek and ACO vertical proofs were implemented
 ([#29](https://github.com/Chris0Jeky/SwarmingLilMen/issues/29) and
 [#30](https://github.com/Chris0Jeky/SwarmingLilMen/issues/30)). They demonstrated reuse of the
-experiment spine: registry, metrics, RNG, manifests, sweeps and reports. They did **not** establish
-a shared simulation kernel or scheduler. Each world still owns its update phases; ACO owns its
-scalar-field phase, and the boids force pipeline cannot express Vicsek heading replacement.
-See [the seam inventory](VICSEK.md#seam-inventory-update-aco).
+experiment spine: registry, metrics, RNG, manifests, sweeps and reports. Those initial proofs did
+not yet establish shared phase execution. The engine now extracts two bounded mechanisms:
+`SimulationSchedule` runs ordered synchronous phases for Vicsek, ACO and Firefly, while
+`DoubleBufferedState<T>` publishes typed current/next state for Vicsek and Firefly. Models retain
+their own equations, state, timestep and commit semantics; the boids force pipeline is not used
+to represent heading replacement, pheromone updates or oscillator coupling. See
+[shared mechanisms](SIMULATION_KERNEL.md) and [the updated seam inventory](VICSEK.md#seam-inventory-update-shared-phases-and-firefly).
 
-The primitives below remain speculative. Neither the completed experiment-spine proofs nor the
-independent browser demos satisfy a general-kernel prerequisite. Each proposed primitive still
-needs a concrete consumer and the direct prerequisites below; this vision does not schedule it.
+Five native engines are discoverable: legacy, canonical, Vicsek, ACO and the bounded
+[global/noiseless Firefly subset](FIREFLY.md). ACO, Vicsek and Firefly additionally expose
+[versioned model-state profiles](MODEL_STATE_HASHES.md) through schema 3 manifests. These
+fingerprints do not provide checkpoint restoration or identify arbitrary plugin state. Turing
+Morphogenesis, Avalanche Lab, Ecogenesis and PSO remain browser-only; their required native
+mechanisms are recorded in the [integration map](SIMULATION_CATALOG.md).
+
+The generalized primitives below remain proposals. The shared phase runner, typed buffer and
+model-state profiles do not supply field-only observations, arbitrary topology, lifecycle,
+cross-model interaction or rollback semantics. Each proposed primitive still needs a concrete
+consumer and the direct prerequisites below; this vision does not schedule it.
 
 In this table, #27's implemented bounded contract means boids observations and tagged force intents.
 Its resolver arbitrates steering-policy forces. Message, institution, market and payoff intents
@@ -65,7 +76,7 @@ explicit design decision.
 
 | Deferred primitive | Kernel prerequisite before implementation |
 | --- | --- |
-| Resources | #30 delivered scalar fields and an ACO-owned pheromone update phase, not a generic kernel field phase. A second concrete field consumer must establish which storage, phase ordering and observation contracts can be shared before a general resource seam is introduced. |
+| Resources | #30 delivered scalar fields and an ACO-owned pheromone update; the shared phase runner now executes that ordering. A second concrete field consumer must establish multiple field channels, stencil/boundary semantics and field-only observation before a general resource seam is introduced. |
 | Communication | The bounded Observation/Intent contract from #27 plus deterministic, capacity-bounded message topology, delivery order, and cadence owned by a module. |
 | Institutions | Module-owned durable state, a versioned event contract and a separately designed institutional-intent contract; the module owns deterministic arbitration. The current boids force contract does not supply these semantics. |
 | Markets | Resource/inventory ownership, a separately designed order-intent contract, a module-owned deterministic market resolver, and metrics registered through #24's probe contract. The current boids force contract does not supply order semantics. |

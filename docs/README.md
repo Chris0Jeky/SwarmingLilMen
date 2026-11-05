@@ -8,8 +8,11 @@ ordering authority. Historical documents are context, not proof.
 
 - [`EXPERIMENT_FOUNDATION.md`](EXPERIMENT_FOUNDATION.md) - reusable configuration, spatial semantics and explicit telemetry
 - [`HEADLESS_EXPERIMENTS.md`](HEADLESS_EXPERIMENTS.md) - run artifacts, native configurations and exact manifest replay
+- [`SIMULATION_CATALOG.md`](SIMULATION_CATALOG.md) - five native engines, discovery and the browser-study integration map
+- [`SIMULATION_KERNEL.md`](SIMULATION_KERNEL.md) - shared ordered phases, typed state publication and model-owned boundaries
 - [`METRICS.md`](METRICS.md) - reusable analysis probes, exact neighbor distributions and deterministic versus runtime channels
 - [`DETERMINISM.md`](DETERMINISM.md) - measured platform scope, exact golden traces and fixture policy
+- [`MODEL_STATE_HASHES.md`](MODEL_STATE_HASHES.md) - versioned native state fingerprints, schema 3 replay and checkpoint exclusions
 - [`RANDOM_STREAMS.md`](RANDOM_STREAMS.md) - named PCG32 streams, independent ownership and the byte contract
 - [`CANONICAL_COMPOSITION.md`](CANONICAL_COMPOSITION.md) - bounded force policies, classic mode and measured cost
 - [`CANONICAL_NEIGHBOR_REUSE.md`](CANONICAL_NEIGHBOR_REUSE.md) - equivalent statistics reuse and matched timing evidence
@@ -17,8 +20,9 @@ ordering authority. Historical documents are context, not proof.
 - [`BEHAVIORAL_PARITY.md`](BEHAVIORAL_PARITY.md) - four-model scenario runner, fixed seed calibration and explicit verification gates
 - [`LEGACY_RETIREMENT.md`](LEGACY_RETIREMENT.md) - group, lifecycle, behavioral, performance and migration criteria
 - [`CANONICAL_BEHAVIOR_SCENARIOS.md`](CANONICAL_BEHAVIOR_SCENARIOS.md) - quantitative scenarios and mutation witnesses
-- [`VICSEK.md`](VICSEK.md) - second foundation, measured noise response and the kernel seam inventory, updated for ACO
-- [`ACO.md`](ACO.md) - third foundation: scalar field, agent and field phases, and the pheromone A/B proof
+- [`VICSEK.md`](VICSEK.md) - measured noise response and the historical/current kernel seam inventory
+- [`ACO.md`](ACO.md) - scalar field, agent and field phases, and the pheromone A/B proof
+- [`FIREFLY.md`](FIREFLY.md) - bounded global oscillator model, phase/frequency state and circular observations
 - [`RENDERER_CONFIGURATION.md`](RENDERER_CONFIGURATION.md) - shared startup layering and preserved renderer profiles
 - [`CANONICAL_RENDER_TELEMETRY.md`](CANONICAL_RENDER_TELEMETRY.md) - reusable capture and recorded versus current query diagnostics
 - [`NATIVE_UI_VERIFICATION.md`](NATIVE_UI_VERIFICATION.md) - native Linux interactions, screenshots and exact evidence scope

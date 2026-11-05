@@ -17,14 +17,23 @@ unreviewed merge is ever in scope — that dial presumes the laws it is declared
 Deterministic 2D swarm simulation in C#/.NET 8: `SwarmSim.Core` (library),
 `SwarmSim.Cli` (display-free runs, replay, sweeps and visual reports), `SwarmSim.Render` (Raylib window),
 `SwarmSim.Tests` (xUnit), `SwarmSim.Benchmarks`;
-`js-demos/` holds unrelated standalone browser demos. **Two engines coexist on purpose**: legacy
+`js-demos/` holds independent standalone browser studies. **Two boids engines coexist on purpose**: legacy
 Structure-of-Arrays `Core/World.cs` + `Core/Systems/` drives the default renderer, and
 `Core/Canonical/` is its incomplete Reynolds-style per-boid successor (`--canonical`). Both engines
-have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/` and `Core/Aco/` are separate
-foundations on the same experiment spine (`SwarmSim.Cli/Engines.cs`, one registry entry per engine).
-They share metrics, RNG, manifests, sweeps and reports, not a simulation kernel: see `docs/VICSEK.md`.
+have headless experiments and BenchmarkDotNet entry points. `Core/Vicsek/`, `Core/Aco/` and
+`Core/Firefly/` are separate foundations on the same experiment spine: five selectable engines in
+`SwarmSim.Cli/Engines.cs`, with native discovery, metrics, named RNG, manifests, sweeps and reports.
+Vicsek, ACO and Firefly reuse `SimulationSchedule`; Vicsek and Firefly also reuse
+`DoubleBufferedState<T>`. The model still owns its timestep, state semantics and commit boundary.
+See `docs/SIMULATION_KERNEL.md` and `docs/VICSEK.md` for the bounded shared-kernel scope.
+Firefly is a global/noiseless oscillator subset, not a complete browser-port parity claim.
+Turing Morphogenesis, Avalanche Lab, Ecogenesis and PSO remain browser-only.
 A foundation is a different model with its own state and update rule, such as Vicsek particles or
 ACO ants. It gets its own `Core/<Name>/` and a registry entry in `SwarmSim.Cli/Engines.cs`.
+ACO, Vicsek and Firefly write schema 3 model-state profiles in addition to unchanged v1 kinematic
+hashes. Legacy/canonical retain schema 2; old manifests keep their recorded verification contract.
+Profiles observe native persistent state and do not provide checkpoint restoration; see
+`docs/MODEL_STATE_HASHES.md`.
 "50k agents at 60 FPS" is an unmet target; live state is the verified block atop `PROJECT_STATUS.md`.
 
 **Which engine gets new work.** Legacy is the *default*, not the *target*: new Phase 3+ behavior
@@ -70,8 +79,9 @@ dotnet test SwarmSim.Tests/SwarmSim.Tests.csproj -c Release --filter "FullyQuali
 
 Useful seam filters include `SpatialIndexEquivalenceTests`, `UniformGridTests`, `WorldTests`,
 `DeterminismTests`, `GoldenTraceTests`, `CanonicalBoidsTests`, `SimulationRunnerTests`,
-`CanonicalSteeringBudgetTests`, `ConfigTests`, `VicsekModelTests`, `AntColonyModelTests` and
-`GalleryTests`. Use `~SwarmSim.Tests.BoidsTests` to avoid also
+`CanonicalSteeringBudgetTests`, `ConfigTests`, `VicsekModelTests`, `AntColonyModelTests`,
+`FireflyModelTests`, `SimulationKernelTests`, `ModelStateHashTests`, `ModelStateManifestTests`
+and `GalleryTests`. Use `~SwarmSim.Tests.BoidsTests` to avoid also
 matching canonical tests. **Run `~RngTests` explicitly for RNG changes**: it includes legacy,
 PCG and named-stream tests; the `Determinism` category alone omits several bounds/sequence tests.
 `Category=Performance` is opt-in and Release-only.

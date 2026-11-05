@@ -6,26 +6,40 @@ namespace SwarmSim.Cli.Visual;
 internal sealed class FrameRecorder
 {
     private readonly KinematicSample[][] _frames;
+    private readonly IAgentColorSource? _colorSource;
     private int _next;
 
-    internal FrameRecorder(int ticks, float worldWidth, float worldHeight)
+    internal FrameRecorder(int ticks, float worldWidth, float worldHeight, IAgentColorSource? colorSource = null)
     {
         Ticks = Filmstrip.SelectTicks(ticks);
         WorldWidth = worldWidth;
         WorldHeight = worldHeight;
         _frames = new KinematicSample[Ticks.Length][];
+        _colorSource = colorSource;
+        ColorAngles = colorSource is null ? null : new float[Ticks.Length][];
     }
 
     internal int[] Ticks { get; }
     internal float WorldWidth { get; }
     internal float WorldHeight { get; }
     internal KinematicSample[][] Frames => _frames;
+    internal float[][]? ColorAngles { get; }
+    internal string? ColorAngleLabel => _colorSource?.ColorAngleLabel;
 
     /// <summary>Ticks arrive in increasing order; a tick that was not preselected costs one comparison.</summary>
     internal void Capture(int tick, ReadOnlySpan<KinematicSample> agents)
     {
         if (_next < Ticks.Length && Ticks[_next] == tick)
-            _frames[_next++] = agents.ToArray();
+        {
+            _frames[_next] = agents.ToArray();
+            if (_colorSource is not null)
+            {
+                var angles = new float[agents.Length];
+                _colorSource.CaptureColorAngles(angles);
+                ColorAngles![_next] = angles;
+            }
+            _next++;
+        }
     }
 }
 
@@ -33,7 +47,8 @@ internal readonly record struct Raster(int Width, int Height, byte[] Rgba);
 
 /// <summary>
 /// Dependency-free software renderer: 8 panels (4x2) of agents as short heading lines coloured by
-/// heading angle on a hue wheel. It sees only kinematic samples, so it works for any engine.
+/// heading angle on a hue wheel, or by an optional independent circular-state observation.
+/// Physical headings and stationary positions remain kinematic; color never invents velocity.
 /// </summary>
 internal static class Filmstrip
 {
@@ -76,10 +91,14 @@ internal static class Filmstrip
         return (int)Math.Clamp(Math.Round(PanelWidth * ratio), 48d, 1440d);
     }
 
-    internal static Raster Render(IReadOnlyList<int> ticks, IReadOnlyList<KinematicSample[]> frames, float worldWidth, float worldHeight)
+    internal static Raster Render(IReadOnlyList<int> ticks, IReadOnlyList<KinematicSample[]> frames, float worldWidth, float worldHeight,
+        IReadOnlyList<float[]>? colorAngles = null)
     {
         if (ticks.Count != frames.Count || ticks.Count is 0 or > PanelCount)
             throw new ArgumentException("A filmstrip needs between 1 and 8 frames, one per tick.");
+        if (colorAngles is not null && (colorAngles.Count != frames.Count ||
+            colorAngles.Where((values, index) => values is null || values.Length != frames[index].Length).Any()))
+            throw new ArgumentException("Circular color state must match every captured frame and agent.", nameof(colorAngles));
         int panelHeight = PanelHeight(worldWidth, worldHeight);
         int width = Columns * PanelWidth + (Columns + 1) * Gap;
         int height = Rows * panelHeight + (Rows + 1) * Gap;
@@ -89,7 +108,8 @@ internal static class Filmstrip
         {
             int column = index % Columns, row = index / Columns;
             DrawPanel(rgba, width, Gap + column * (PanelWidth + Gap), Gap + row * (panelHeight + Gap),
-                PanelWidth, panelHeight, frames[index], worldWidth, worldHeight, ticks[index]);
+                PanelWidth, panelHeight, frames[index], worldWidth, worldHeight, ticks[index],
+                colorAngles is null ? default : colorAngles[index]);
         }
         return new Raster(width, height, rgba);
     }
@@ -109,32 +129,39 @@ internal static class Filmstrip
     }
 
     internal static void DrawPanel(byte[] rgba, int stride, int left, int top, int panelWidth, int panelHeight,
-        ReadOnlySpan<KinematicSample> agents, float worldWidth, float worldHeight, int tick)
+        ReadOnlySpan<KinematicSample> agents, float worldWidth, float worldHeight, int tick,
+        ReadOnlySpan<float> colorAngles = default)
     {
+        if (!colorAngles.IsEmpty && colorAngles.Length != agents.Length)
+            throw new ArgumentException("Circular color state must match the captured agents.", nameof(colorAngles));
         Fill(rgba, stride, left, top, panelWidth, panelHeight, PanelBackground);
         double sx = (panelWidth - 1) / (IsUsable(worldWidth) ? worldWidth : 1d);
         double sy = (panelHeight - 1) / (IsUsable(worldHeight) ? worldHeight : 1d);
         // Line length follows the panel, not world units: other foundations use a world of size 10.
         double half = Math.Max(2d, panelWidth * 0.0125) / 2d;
         var clip = new Clip(left + 1, top + 1, left + panelWidth - 2, top + panelHeight - 2);
-        foreach (KinematicSample agent in agents)
+        for (int index = 0; index < agents.Length; index++)
         {
+            KinematicSample agent = agents[index];
             if (!float.IsFinite(agent.X) || !float.IsFinite(agent.Y)) continue;
             double cx = left + Math.Clamp(agent.X * sx, 0d, panelWidth - 1);
             double cy = top + Math.Clamp(agent.Y * sy, 0d, panelHeight - 1);
             float speedSquared = agent.Vx * agent.Vx + agent.Vy * agent.Vy;
+            (byte R, byte G, byte B) observedColor = !colorAngles.IsEmpty && float.IsFinite(colorAngles[index])
+                ? HeadingColor(colorAngles[index]) : Stationary;
             if (!(speedSquared > StationarySpeedSquared))
             {
                 int x = (int)cx, y = (int)cy;
                 for (int dy = 0; dy < 2; dy++)
                     for (int dx = 0; dx < 2; dx++)
-                        Plot(rgba, stride, clip, x + dx, y + dy, Stationary);
+                        Plot(rgba, stride, clip, x + dx, y + dy, observedColor);
                 continue;
             }
             // Heading is the velocity direction in image space (y down); sx/sy keep it true for any world aspect.
             double heading = Math.Atan2(agent.Vy, agent.Vx);
             double ux = Math.Cos(heading), uy = Math.Sin(heading);
-            Line(rgba, stride, clip, cx - ux * half, cy - uy * half, cx + ux * half, cy + uy * half, HeadingColor(heading));
+            Line(rgba, stride, clip, cx - ux * half, cy - uy * half, cx + ux * half, cy + uy * half,
+                colorAngles.IsEmpty ? HeadingColor(heading) : observedColor);
         }
         Outline(rgba, stride, left, top, panelWidth, panelHeight, Border);
         DrawNumber(rgba, stride, left + 5, top + 5, tick);

@@ -45,7 +45,7 @@ public sealed class VicsekWorld
             throw new ArgumentException("The spatial index must use the configured world extents.", nameof(index));
         _index.Initialize(agents.Length);
         _noise = new RandomStreams(settings.Seed).CreateStream(NoiseStream);
-        _state = new DoubleBufferedState<Boid>(agents);
+        _state = DoubleBufferedState<Boid>.TakeOwnership(agents);
         // Every other agent fits, so a query can never truncate the neighborhood the model defines.
         _neighbors = new int[agents.Length];
         // Below rounding in a sum of N velocities the resultant has no meaningful direction.

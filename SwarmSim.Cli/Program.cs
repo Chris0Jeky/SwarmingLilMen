@@ -40,8 +40,8 @@ public static class Program
                     --visual adds filmstrip.png and report.html (self-contained, no GPU or display needed);
                     it never changes the simulation, metrics.csv or hashes. Valid with --manifest and --sweep.
                     Sweeps: summary.csv and replayable cell directories in a new sweep-<id> child.
-                    Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians); aco files use Deposit and Evaporation (Deposit 0 is the control).
-                    Default metrics: population,meanSpeed,polarization.
+                    Native canonical files use TargetSpeed; legacy files use MaxSpeed; vicsek files use Speed and Noise (radians); aco files use Deposit and Evaporation (Deposit 0 is the control); firefly files use Coupling and FrequencySpread.
+                    Default metrics: population,meanSpeed,polarization (firefly: population,firefly.coherence).
                     Runtime cost metrics are nondeterministic and disable exact manifest replay.
                     Exit codes: 0 success (gallery: every band holds), 1 run/config/replay/I/O failure (gallery: or any band fails,
                     with output still published), 2 invalid usage.

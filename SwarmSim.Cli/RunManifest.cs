@@ -143,7 +143,7 @@ internal sealed record RunRequest(
     internal RunRequest(string engine, int ticks, int agentCount, SimConfig? legacy, CanonicalWorldSettings? canonical, RunManifest? replay)
         : this(engine, ticks, agentCount, (object?)legacy ?? canonical!, replay) { }
 
-    internal string[] RequestedMetrics { get; init; } = MetricCatalog.DefaultMetrics.ToArray();
+    internal string[] RequestedMetrics { get; init; } = MetricCatalog.DefaultsFor(Engine).ToArray();
     /// <summary>Also render filmstrip.png and report.html; never influences the simulation.</summary>
     internal bool Visual { get; init; }
     internal EngineDefinition Definition => EngineRegistry.Get(Engine);

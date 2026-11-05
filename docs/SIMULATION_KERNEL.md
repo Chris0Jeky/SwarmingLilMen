@@ -22,6 +22,7 @@ The implementation uses the existing .NET 8 stack and adds no package dependency
 | --- | --- | --- |
 | Vicsek | `index`, `agents`, `commit` | Rebuild from current agents; compute every next agent from that same generation; publish all agents together. Positions still advance with the old velocity. |
 | ACO | `agents`, `field` | Ants read field(t), buffer deposits, and retain stable food-contention order. The field phase deposits, evaporates and advances the tick. |
+| Firefly | `mean-field`, `oscillators`, `commit` | Reduce current phases, write typed next phase/frequency state, then publish every oscillator together. Physical positions remain fixed. |
 
 Legacy and canonical boids keep their existing update implementations. These mechanisms do not
 establish that all foundations share a complete kernel, spatial representation or renderer.
@@ -56,7 +57,9 @@ writes remain. The runner releases its recursion guard, but it does not rewind a
 retry safe. A model that can fail mid-step must define its own recovery. In particular ACO's
 existing public `AgentPhase()` / `FieldPhase()` alternation guards remain in effect.
 
-The double buffer copies its initial span. `Current` is read-only; the compute phase must write
+The public double-buffer constructor copies its initial span. Native worlds may transfer a
+freshly allocated, unexposed array through an internal ownership factory to avoid a redundant
+population-sized startup copy. `Current` is read-only; the compute phase must write
 every `Next` slot. `Commit()` swaps the arrays without copying or clearing: the next write buffer
 then contains the old generation. Borrowed spans must not be retained across commits. Structs
 containing references are allowed, but reference targets are not deep-copied or made immutable.
@@ -78,6 +81,6 @@ dotnet test SwarmSim.Tests -c Release --filter "FullyQualifiedName~SimulationKer
 
 Then use the full ordinary suite and behavior gallery from `CLAUDE.md`. A passing allocation
 check does not establish throughput or remove the existing performance qualification issues.
-The next reuse proof is richer oscillator state on these same mechanisms. General topology,
+Firefly supplies the next reuse proof: richer oscillator state on these same mechanisms. General topology,
 multi-field evolution, coupled foundations, dynamic lifecycle and checkpoint restore remain
 separate design questions with their own acceptance evidence.

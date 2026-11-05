@@ -13,9 +13,19 @@ public sealed class DoubleBufferedState<T> where T : struct
     private T[] _next;
 
     public DoubleBufferedState(ReadOnlySpan<T> initialState)
+        : this(initialState.ToArray(), new T[initialState.Length]) { }
+
+    private DoubleBufferedState(T[] current, T[] next)
     {
-        _current = initialState.ToArray();
-        _next = new T[initialState.Length];
+        _current = current;
+        _next = next;
+    }
+
+    /// <summary>For freshly constructed, model-owned arrays whose references never escape.</summary>
+    internal static DoubleBufferedState<T> TakeOwnership(T[] initialState)
+    {
+        ArgumentNullException.ThrowIfNull(initialState);
+        return new DoubleBufferedState<T>(initialState, new T[initialState.Length]);
     }
 
     public int Count => _current.Length;
