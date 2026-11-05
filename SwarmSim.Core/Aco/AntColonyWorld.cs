@@ -1,5 +1,6 @@
 using SwarmSim.Core.Canonical;
 using SwarmSim.Core.Metrics;
+using SwarmSim.Core.Simulation;
 using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core.Aco;
@@ -26,6 +27,7 @@ public sealed class AntColonyWorld
     private readonly float _step;
     private int _depositCount;
     private bool _agentPhaseDone;
+    private readonly SimulationSchedule _schedule;
 
     /// <summary>Largest supported colony; each ant retains its own generator object.</summary>
     public const int MaxAnts = 1 << 24;
@@ -56,6 +58,9 @@ public sealed class AntColonyWorld
         if (CarryingCount > FoodRemaining)
             throw new ArgumentException("Initial ants cannot carry more than FoodAmount.", nameof(ants));
         FoodRemaining -= CarryingCount;
+        _schedule = new SimulationSchedule(
+            new SimulationPhase("agents", AgentPhase),
+            new SimulationPhase("field", FieldPhase));
     }
 
     public AntColonySettings Settings { get; }
@@ -67,13 +72,10 @@ public sealed class AntColonyWorld
     public int CarryingCount { get; private set; }
     /// <summary>Deposits buffered by the agent phase and not yet applied.</summary>
     public int PendingDeposits => _depositCount;
+    public IReadOnlyList<string> PhaseNames => _schedule.PhaseNames;
 
     /// <summary>One agent phase, then one field phase.</summary>
-    public void Step()
-    {
-        AgentPhase();
-        FieldPhase();
-    }
+    public void Step() => _schedule.Run();
 
     /// <summary>
     /// Moves every ant in index order. Reads field(t) only and buffers deposits; resources (food,

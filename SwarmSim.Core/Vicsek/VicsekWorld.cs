@@ -1,4 +1,5 @@
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Simulation;
 using SwarmSim.Core.Utils;
 
 namespace SwarmSim.Core.Vicsek;
@@ -23,8 +24,8 @@ public sealed class VicsekWorld
     private readonly Pcg32Rng _noise;
     private readonly int[] _neighbors;
     private readonly float _zeroResultantSquared;
-    private Boid[] _current;
-    private Boid[] _next;
+    private readonly DoubleBufferedState<Boid> _state;
+    private readonly SimulationSchedule _schedule;
 
     /// <summary>Creates uniformly placed agents with uniform headings from the named spawn stream.</summary>
     public VicsekWorld(VicsekSettings settings, int agentCount, ISpatialIndex? index = null)
@@ -42,32 +43,39 @@ public sealed class VicsekWorld
             throw new ArgumentException("The spatial index must use the configured world extents.", nameof(index));
         _index.Initialize(agents.Length);
         _noise = new RandomStreams(settings.Seed).CreateStream(NoiseStream);
-        _current = agents;
-        _next = new Boid[agents.Length];
+        _state = new DoubleBufferedState<Boid>(agents);
         // Every other agent fits, so a query can never truncate the neighborhood the model defines.
         _neighbors = new int[agents.Length];
         // Below rounding in a sum of N velocities the resultant has no meaningful direction.
         float zeroResultant = 1e-6f * settings.Speed;
         _zeroResultantSquared = zeroResultant * zeroResultant;
+        _schedule = new SimulationSchedule(
+            new SimulationPhase("index", RebuildIndex),
+            new SimulationPhase("agents", ComputeNext),
+            new SimulationPhase("commit", CommitTick));
     }
 
     public VicsekSettings Settings { get; }
     public long TickCount { get; private set; }
-    public ReadOnlySpan<Boid> Agents => _current;
+    public ReadOnlySpan<Boid> Agents => _state.Current;
+    public IReadOnlyList<string> PhaseNames => _schedule.PhaseNames;
 
     /// <summary>
     /// Advances one tick. Each agent consumes exactly one noise draw in index order, whatever its
     /// neighborhood, so runs that differ only in eta share one noise sequence.
     /// </summary>
-    public void Step()
+    public void Step() => _schedule.Run();
+
+    private void RebuildIndex() => _index.Rebuild(_state.Current);
+
+    private void ComputeNext()
     {
-        ReadOnlySpan<Boid> current = _current;
-        Span<Boid> next = _next;
+        ReadOnlySpan<Boid> current = _state.Current;
+        Span<Boid> next = _state.Next;
         float eta = Settings.Noise;
         float speed = Settings.Speed;
         float radius = Settings.InteractionRadius;
         float dt = Settings.FixedDeltaTime;
-        _index.Rebuild(current);
 
         for (int i = 0; i < current.Length; i++)
         {
@@ -103,7 +111,11 @@ public sealed class VicsekWorld
             next[i] = new Boid(new Vec2(x, y), new Vec2(cos * speed, sin * speed));
         }
 
-        (_current, _next) = (_next, _current);
+    }
+
+    private void CommitTick()
+    {
+        _state.Commit();
         TickCount++;
     }
 
