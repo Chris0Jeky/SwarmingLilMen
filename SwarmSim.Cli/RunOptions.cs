@@ -20,6 +20,9 @@ internal sealed class RunOptions
     internal string OutputDirectory { get; private set; } = "runs";
     internal string[] RequestedMetrics { get; private set; } = MetricCatalog.DefaultMetrics.ToArray();
     internal bool ListMetrics { get; private set; }
+    internal bool ListEngines { get; private set; }
+    internal bool DescribeEngine { get; private set; }
+    internal bool Json { get; private set; }
     internal bool Help { get; private set; }
     internal bool Visual { get; private set; }
 
@@ -32,10 +35,13 @@ internal sealed class RunOptions
             string option = args[index];
             if (!seen.Add(option))
                 throw new UsageException($"Option '{option}' was specified more than once.");
-            if (option is "--help" or "--list-metrics" or "--visual")
+            if (option is "--help" or "--list-metrics" or "--visual" or "--list-engines" or "--describe-engine" or "--json")
             {
                 if (option == "--help") options.Help = true;
                 else if (option == "--visual") options.Visual = true;
+                else if (option == "--list-engines") options.ListEngines = true;
+                else if (option == "--describe-engine") options.DescribeEngine = true;
+                else if (option == "--json") options.Json = true;
                 else options.ListMetrics = true;
                 continue;
             }
@@ -76,6 +82,12 @@ internal sealed class RunOptions
             }
         }
 
+        if (options.ListEngines && seen.Any(option => option is not ("--list-engines" or "--json" or "--help")))
+            throw new UsageException("--list-engines can be combined only with --json or --help.");
+        if (options.DescribeEngine && seen.Any(option => option is not ("--describe-engine" or "--engine" or "--json" or "--help")))
+            throw new UsageException("--describe-engine can be combined only with --engine, --json or --help.");
+        if (options.Json && !options.ListEngines && !options.DescribeEngine)
+            throw new UsageException("--json requires --list-engines or --describe-engine.");
         if (options.Scenario is not null && !EngineRegistry.Get(options.Engine).AcceptsScenario)
             throw new UsageException($"--scenario names boids recipes; the {options.Engine} engine takes --config.");
         if (options.SweepPath is not null && seen.Any(option =>
