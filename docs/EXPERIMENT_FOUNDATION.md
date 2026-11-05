@@ -1,20 +1,27 @@
 # Experiment foundation
 
-This guide covers the two boids implementations; [Vicsek](VICSEK.md) and [ACO](ACO.md) share the
-experiment spine and have their own guides. The legacy `World` is a
+This guide covers the two boids implementations; [Vicsek](VICSEK.md), [ACO](ACO.md),
+[Firefly](FIREFLY.md) and [reaction diffusion](REACTION_DIFFUSION.md) share the experiment spine
+and have their own guides. The legacy `World` is a
 structure-of-arrays pipeline whose spawn calls can grow storage up to `MaxCapacity`;
 `CanonicalWorld` retains fixed storage and is the target for new boids behavior. A different model
 with its own state and update rule is a separate foundation, with its own `Core/<Name>/` directory
-and a registry entry in `SwarmSim.Cli/Engines.cs`, as Vicsek and ACO demonstrate. Neither boids engine
+and a registry entry in `SwarmSim.Cli/Engines.cs`, as those four models demonstrate. Neither boids engine
 is a general-purpose dynamics kernel. This guide describes the shared configuration and diagnostics
 that experiments can rely on without a renderer.
 
 ## Resolve and record configuration
 
-`ConfigurationResolver` applies **defaults → named scenario → file → explicit overrides**. Files
+For boids, `ConfigurationResolver` applies **defaults → named scenario → file → explicit overrides**. Files
 and overrides are sparse layers; matrix values replace the complete matrix. Unknown names in the
 new resolver fail instead of silently running a misspelled experiment. The older standalone JSON
 loaders retain their permissive unknown-property behavior for compatibility.
+
+Vicsek, ACO, Firefly and reaction diffusion resolve **defaults → file → explicit overrides** using
+their native settings classes. They reject named boids scenarios. Reaction diffusion takes grid
+dimensions from `Columns` and `Rows` and accepts only zero agents; the other engines keep positive
+agent counts. Use `--engine NAME --describe-engine --json` to inspect these capabilities and
+`--engine NAME --list-metrics` for the supported observation channels.
 
 ```csharp
 using SwarmSim.Core.Configuration;
@@ -25,7 +32,7 @@ settings.SaveToJson("resolved-canonical.json");
 var roundTrip = CanonicalWorldSettings.LoadFromJson("resolved-canonical.json");
 ```
 
-Both configuration classes support `FromJson`, `ToJson`, `LoadFromJson` and `SaveToJson`.
+Both boids configuration classes support `FromJson`, `ToJson`, `LoadFromJson` and `SaveToJson`.
 `SimConfig.AggressionMatrix` remains a public `float[,]`; a converter writes JSON row arrays so
 existing C# callers keep their accessors. JSON cannot represent NaN/infinity. Save validates before
 opening the output file. See the [configuration cookbook](CONFIGURATION_COOKBOOK.md) and
@@ -33,7 +40,9 @@ opening the output file. See the [configuration cookbook](CONFIGURATION_COOKBOOK
 
 The renderer now uses the same layered startup resolver while retaining its existing preset
 definitions and F-key assignments. Its separate default profile and fixed world dimensions are
-documented in [renderer configuration](RENDERER_CONFIGURATION.md). Manual window checks remain open.
+documented in [renderer configuration](RENDERER_CONFIGURATION.md). Automated native Linux checks
+and the remaining human/platform acceptance boundaries are recorded in
+[native renderer verification](NATIVE_UI_VERIFICATION.md).
 In particular, legacy `MaxSpeed` and canonical `TargetSpeed` are related configuration inputs with
 different integration semantics. A legacy JSON file is not a native canonical file.
 
@@ -105,10 +114,22 @@ The canonical BenchmarkDotNet route includes `[MemoryDiagnoser]` at 1k/10k/50k a
 warmup/measurement. It is a defined workload, not a universal frame-rate claim. The current measured
 results and host limitations belong in [PROJECT_STATUS.md](../PROJECT_STATUS.md).
 
-## Next experimental contracts
+## Shared contracts and remaining scope
 
-[Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) remains the ordering authority:
-golden traces and an explicit platform contract; a Core-only headless runner with manifests;
-registered metrics whose analysis neighborhoods are independent of steering caps; deterministic
-parameter/seed sweeps; named RNG streams; then actual intent composition. The
-[seam inventory](VICSEK.md#seam-inventory) records how far those contracts generalized.
+The [headless runner](HEADLESS_EXPERIMENTS.md) now provides native configuration, registered
+metrics, deterministic parameter/seed sweeps and manifest replay across all six engines.
+[Named RNG streams](RANDOM_STREAMS.md) and [bounded canonical force composition](CANONICAL_COMPOSITION.md)
+are implemented. The four newer models also reuse [ordered simulation phases](SIMULATION_KERNEL.md);
+their native state remains model-owned.
+
+Legacy/canonical runs retain schema 2 and the v1 kinematic/CSV replay contract. Vicsek, ACO,
+Firefly and reaction diffusion emit schema 3 with [model-state fingerprints](MODEL_STATE_HASHES.md)
+that cover state outside physical motion. Existing schema 2 Vicsek/ACO manifests retain their
+original checks; the two newest engines require schema 3. Replay reconstructs a run from its
+initial configuration, not a saved checkpoint. Reaction diffusion's empty kinematic hash carries
+no field information; its required native fingerprint verifies the U/V state, while its
+[field observation](FIELD_OBSERVATIONS.md) supplies the heatmap projection.
+
+[Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10) remains the ordering authority for
+remaining work. The [simulation catalog](SIMULATION_CATALOG.md) records the native browser-study
+subsets and the topology, lifecycle and observation contracts still needed for further models.

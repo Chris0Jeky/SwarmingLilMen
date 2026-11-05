@@ -9,8 +9,8 @@ Get SwarmingLilMen running in 5 minutes!
 
 Open a terminal and verify you have .NET 8.0:
 ```bash
-dotnet --version
-# Should show 8.0.x or higher
+dotnet --list-sdks
+# Should include an 8.0.x SDK; global.json selects .NET 8 inside this repository
 ```
 
 If not, install from: https://dotnet.microsoft.com/download/dotnet/8.0
@@ -52,6 +52,19 @@ dotnet run --project SwarmSim.Cli --configuration Release -- --engine canonical 
 ```
 
 Each run creates a new child directory with `manifest.json`, `metrics.csv`, and `log.txt`.
+Discover all six native engines and run a field-only experiment with a heatmap:
+
+```bash
+dotnet run --project SwarmSim.Cli --configuration Release -- --list-engines
+dotnet run --project SwarmSim.Cli --configuration Release -- --engine reaction-diffusion --config scenarios/reaction-diffusion/base.json --ticks 1000 --agents 0 --seed 7 --visual --out runs/
+```
+
+Reaction diffusion uses native `Columns`/`Rows` settings and accepts only zero agents; omitting
+`--agents` also selects zero for that engine. Its default metrics are U/V concentration means,
+and `--visual` adds a V-concentration heatmap, thumbnail and HTML report. Agent engines retain a
+positive count with default 400. For engine-specific defaults and channels, use
+`--engine NAME --describe-engine --json` or `--engine NAME --list-metrics`.
+
 See [HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for replay and the native engine configuration
 schemas. The CLI uses `--agents`; the renderer uses `--agent-count`. The renderer's old
 `--benchmark` flag prints migration guidance and exits without running an experiment.
@@ -76,9 +89,9 @@ dotnet run --project SwarmSim.Render -- --canonical
 ```
 
 Tips:
-- Press **H** for the partial in-app quick reference; use [`CONTROLS.md`](CONTROLS.md) for the
-  complete list (runtime overlay drift is tracked in
-  [issue #39](https://github.com/Chris0Jeky/SwarmingLilMen/issues/39)).
+- Press **H** for the active renderer's complete control inventory; input, help, HUD labels and
+  printed controls share the same definitions. See [`CONTROLS.md`](CONTROLS.md) for the reference
+  and [native verification](NATIVE_UI_VERIFICATION.md) for measured coverage and remaining limits.
 - Legacy renderer only: press **F12** for the snapshot/debug overlay.
 - Canonical renderer only: press **O** for the interaction overlay and **Tab** to cycle the tracked
   boid.
@@ -103,7 +116,8 @@ Tips:
 - `SwarmSim.Tests/WorldTests.cs` - World behavior tests
 - `SwarmSim.Tests/CanonicalBoidsTests.cs` - Canonical steering and determinism tests
 - `SwarmSim.Tests/SimulationRunnerTests.cs` - Fixed-step and interpolation tests
-- `SwarmSim.Tests/CommandLineOptionsTests.cs` - CLI parsing/help tests
+- `SwarmSim.Tests/CommandLineOptionsTests.cs` - Renderer CLI parsing/help tests
+- `SwarmSim.Tests/ReactionDiffusionCliTests.cs` - Field-only run, replay, metrics and visual-report tests
 - `SwarmSim.Tests/RngTests.cs` - RNG determinism tests
 
 ## 6. Try the Configuration Presets
