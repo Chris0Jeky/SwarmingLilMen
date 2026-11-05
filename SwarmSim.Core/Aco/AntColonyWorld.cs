@@ -1,4 +1,5 @@
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Metrics;
 using SwarmSim.Core.Simulation;
 using SwarmSim.Core.Utils;
@@ -20,6 +21,7 @@ public sealed class AntColonyWorld
     /// <summary>Stream names belong to the replay contract; renaming one changes every trajectory.</summary>
     public const string SpawnStream = "aco.spawn";
     public const string ForageStream = "aco.forage";
+    public const string ModelStateProfile = "aco-state-v1";
 
     private readonly Ant[] _ants;
     private readonly Pcg32Rng[] _forage;
@@ -73,6 +75,62 @@ public sealed class AntColonyWorld
     /// <summary>Deposits buffered by the agent phase and not yet applied.</summary>
     public int PendingDeposits => _depositCount;
     public IReadOnlyList<string> PhaseNames => _schedule.PhaseNames;
+
+    /// <summary>
+    /// Fingerprints native persistent state, including a completed agent phase's pending deposits.
+    /// Call between phase invocations, never concurrently with mutation. This is not a checkpoint.
+    /// </summary>
+    public ModelStateHash StateHash()
+    {
+        using var hash = new StateHashWriter(ModelStateProfile);
+        // The explicit order below is the aco-state-v1 binary contract.
+        hash.WriteSingle(Settings.Deposit);
+        hash.WriteSingle(Settings.Evaporation);
+        hash.WriteInt32(Settings.FieldCadence);
+        hash.WriteSingle(Settings.Speed);
+        hash.WriteSingle(Settings.TurnNoise);
+        hash.WriteSingle(Settings.SensorAngle);
+        hash.WriteSingle(Settings.SensorDistance);
+        hash.WriteInt32(Settings.FieldColumns);
+        hash.WriteInt32(Settings.FieldRows);
+        hash.WriteSingle(Settings.NestX);
+        hash.WriteSingle(Settings.NestY);
+        hash.WriteSingle(Settings.NestRadius);
+        hash.WriteSingle(Settings.FoodX);
+        hash.WriteSingle(Settings.FoodY);
+        hash.WriteSingle(Settings.FoodRadius);
+        hash.WriteInt32(Settings.FoodAmount);
+        hash.WriteSingle(Settings.WorldWidth);
+        hash.WriteSingle(Settings.WorldHeight);
+        hash.WriteSingle(Settings.FixedDeltaTime);
+        hash.WriteUInt32(Settings.Seed);
+        hash.WriteInt64(TickCount);
+        hash.WriteInt32(FoodRemaining);
+        hash.WriteInt64(FoodReturned);
+        hash.WriteInt32(CarryingCount);
+        hash.WriteBoolean(_agentPhaseDone);
+        hash.WriteInt32(_ants.Length);
+        foreach (Ant ant in _ants)
+        {
+            hash.WriteSingle(ant.Position.X);
+            hash.WriteSingle(ant.Position.Y);
+            hash.WriteSingle(ant.Heading);
+            hash.WriteBoolean(ant.Carrying);
+        }
+        hash.WriteInt32(Field.Cells.Length);
+        foreach (float value in Field.Cells)
+            hash.WriteSingle(value);
+        hash.WriteInt32(_depositCount);
+        foreach (Vec2 deposit in _deposits.AsSpan(0, _depositCount))
+        {
+            hash.WriteSingle(deposit.X);
+            hash.WriteSingle(deposit.Y);
+        }
+        hash.WriteInt32(_forage.Length);
+        foreach (Pcg32Rng random in _forage)
+            hash.WriteRandomState(random);
+        return hash.Finish();
+    }
 
     /// <summary>One agent phase, then one field phase.</summary>
     public void Step() => _schedule.Run();

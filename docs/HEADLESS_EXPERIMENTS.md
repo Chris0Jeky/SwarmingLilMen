@@ -64,10 +64,12 @@ See [population capacity](PARAMETER_GUIDE.md#population-capacity) for growth and
 Each successful run publishes a new `runs/run-<random-id>/` child containing exactly (plus the
 `--visual` files described under [visual reports](#visual-reports) when requested):
 
-- **`manifest.json`** — Schema version 2, run ID and creation UTC, engine, seed, tick count,
+- **`manifest.json`** — Schema version 2 for engines without a model-state profile, or version 3
+  for ACO/Vicsek, run ID and creation UTC, engine, seed, tick count,
   agent count, fixed timestep, complete resolved native configuration, requested metrics,
   metric-contract version and determinism flag, spawn-model version, hash version, final
-  kinematic hash, CSV SHA-256, runtime identity,
+  kinematic hash, CSV SHA-256, runtime identity, and (schema 3) the versioned model-state profile
+  and final model-state SHA-256,
   Git commit and dirty-worktree status.
 - **`metrics.csv`** — Selected channels as UTF-8 data with LF line endings and invariant decimal
   formatting, including under cultures such as `fr-FR`. Default channels and other deterministic
@@ -135,7 +137,8 @@ statistics. The canonical engine additionally exposes the `boids.*` instrumentat
 The [Vicsek engine](VICSEK.md) has no named scenarios and records spawn model `vicsek-uniform-v1`.
 The [ACO engine](ACO.md) has no named scenarios, records spawn model `aco-nest-v1` and adds
 `aco.foodReturned`, `aco.carrying` and `aco.fieldTotal`, which must be requested by name. Its
-kinematic hash covers ant motion only, not the field.
+kinematic hash covers ant motion only; its separate `aco-state-v1` profile includes the field,
+carrying flags, resources and retained random state.
 Definitions, percentile interpolation, stationary-member convention and missing-value behavior
 are specified in [METRICS.md](METRICS.md). The CLI selects live agents from engine state; legacy
 dead slots are excluded. Canonical and legacy Wrap worlds use periodic distances/circular
@@ -181,6 +184,15 @@ The final kinematic hash uses `SimulationKinematicHash` version 1: SHA-256 of or
 and exact position/velocity float bits. It does not include RNG state, groups, energy, configuration,
 or every internal engine field, and is not a complete restart checkpoint. The manifest separately
 pins configuration and the full CSV hash.
+
+Native ACO and Vicsek runs additionally write schema 3 `modelStateProfile` and
+`finalModelStateHash`. Their bounded native profiles include complete settings, clocks and
+retained random state, together with model-specific persistent state. Exact replay verifies
+that fingerprint as well as the original two hashes. Unsupported profiles, malformed hashes
+and schema 3 manifests for engines without this capability fail before output. Old schema 1/2
+manifests retain their original checks; replaying an old native schema 2 run writes a new schema 3
+record with the additional observation. See [the profile contract](MODEL_STATE_HASHES.md) for
+byte coverage and exclusions. These fingerprints do not provide checkpoint restoration.
 
 ## Visual reports
 
@@ -290,12 +302,13 @@ Replay validates the schema, supported spawn/metric/hash versions, complete nati
 and consistency of seed/timestep metadata. Unknown fields and duplicate object fields are errors,
 including nested runtime/configuration fields; duplicate-name checks are case-insensitive and run
 before deserialization so no earlier value can be silently replaced. It executes the recorded
-settings and verifies both the final kinematic hash and the complete metrics-file hash before
-publishing a new run directory.
+settings and verifies the final kinematic hash and complete metrics-file hash, plus the native
+model-state fingerprint for schema 3, before publishing a new run directory.
 The source manifest is read-only. Manifest content never chooses an output path.
 
-New runs use schema 2 with `metricContractVersion: 1`, the exact `requestedMetrics` order and
-`metricsDeterministic`. The reader validates that classification against the actual registry,
+New runs use schema 2 or 3 according to the engine's model-state capability. Both use
+`metricContractVersion: 1`, the exact `requestedMetrics` order and `metricsDeterministic`.
+The reader validates that classification against the actual registry,
 so a manifest cannot relabel runtime channels as deterministic. Replay verifies the entire
 selected deterministic CSV, including header/order and missing fields; it is not limited to the
 original three columns or the final row. Schema 1 manifests remain supported with their original
@@ -421,8 +434,9 @@ Replay any cell using its manifest alone:
 dotnet run --project SwarmSim.Cli -c Release -- --manifest sweeps/sweep-<id>/cell-000005/manifest.json --out replays/
 ```
 
-The normal replay path verifies both the final state hash and complete metric CSV hash. Schema
-1 and schema 2 single-run replay remain available; newly produced sweep cells use schema 2.
+The normal replay path verifies the final kinematic and complete metric CSV hashes, plus the
+model-state hash for schema 3. Schema 1 and schema 2 single-run replay remain available; newly
+produced sweep cells use schema 2 or 3 according to their engine's model-state capability.
 To check a sweep, run the example twice and compare the two `summary.csv` files, then replay
 one cell and compare its `metrics.csv`. The hosted headless smoke performs that bounded proof
 on each CI operating system.

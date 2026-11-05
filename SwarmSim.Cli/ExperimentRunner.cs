@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 using SwarmSim.Cli.Visual;
+using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Metrics;
 
 namespace SwarmSim.Cli;
@@ -19,10 +20,16 @@ internal static class ExperimentRunner
         bool deterministic = MetricCatalog.ValidateSelection(request.Engine, request.RequestedMetrics);
         if (request.Replay is not null && !deterministic)
             throw new InvalidDataException("Exact replay is unavailable for nondeterministic metric selections.");
+        string? modelStateProfile = request.Definition.ModelStateProfile;
+        if (request.Replay is { SchemaVersion: 3 } replay &&
+            (modelStateProfile is null || replay.ModelStateProfile != modelStateProfile))
+            throw new InvalidDataException("Manifest modelStateProfile is unsupported by this engine.");
         // Serialize and construct before touching output; this also catches non-serializable
         // reserved values and index/capacity limits that scalar validation cannot establish.
         using JsonDocument resolved = JsonDocument.Parse(request.ConfigJson);
         var simulation = new PreparedSimulation(request);
+        if ((modelStateProfile is not null) != (simulation.Simulation is IModelStateSimulation))
+            throw new InvalidOperationException("Engine model-state metadata must match its simulation capability.");
         var observer = new ExperimentMetrics(request, simulation);
         FrameRecorder? frames = request.Visual
             ? new FrameRecorder(request.Ticks, simulation.WorldWidth, simulation.WorldHeight) : null;
@@ -57,6 +64,9 @@ internal static class ExperimentRunner
             }
             elapsed.Stop();
             string stateHash = simulation.KinematicHash();
+            ModelStateHash? modelState = simulation.StateHash();
+            if (modelState is { } observed && observed.Profile != modelStateProfile)
+                throw new InvalidOperationException("Engine state fingerprint does not match its declared model-state profile.");
             string metricsHash;
             using (FileStream metricsFile = File.OpenRead(metricsPath))
                 metricsHash = Convert.ToHexString(SHA256.HashData(metricsFile));
@@ -64,10 +74,14 @@ internal static class ExperimentRunner
                 (!string.Equals(request.Replay.FinalKinematicHash, stateHash, StringComparison.OrdinalIgnoreCase) ||
                  !string.Equals(request.Replay.MetricsSha256, metricsHash, StringComparison.OrdinalIgnoreCase)))
                 throw new InvalidDataException("Replay hash verification failed; no completed run was published. Check binary/runtime and recorded configuration.");
+            if (request.Replay is { SchemaVersion: 3 } stateReplay &&
+                (modelState is null ||
+                 !string.Equals(stateReplay.FinalModelStateHash, modelState.Value.Hash, StringComparison.OrdinalIgnoreCase)))
+                throw new InvalidDataException("Replay model-state hash verification failed; no completed run was published. Check binary/runtime and recorded configuration.");
 
             var manifest = new RunManifest
             {
-                SchemaVersion = 2,
+                SchemaVersion = modelState is null ? 2 : 3,
                 RunId = runId,
                 CreatedUtc = createdUtc,
                 GitCommit = commit,
@@ -84,6 +98,8 @@ internal static class ExperimentRunner
                 SpawnModel = request.Definition.SpawnModel,
                 KinematicHashVersion = 1,
                 FinalKinematicHash = stateHash,
+                ModelStateProfile = modelState?.Profile,
+                FinalModelStateHash = modelState?.Hash,
                 MetricsSha256 = metricsHash,
                 Runtime = runtime
             };
@@ -95,13 +111,19 @@ internal static class ExperimentRunner
                 log.WriteLine($"Engine: {request.Engine}");
                 log.WriteLine(FormattableString.Invariant($"Seed: {request.Seed}; ticks: {request.Ticks}; agents: {request.AgentCount}; fixedDeltaTime: {request.FixedDeltaTime:R}"));
                 log.WriteLine($"FinalKinematicHash v1: {stateHash}");
+                if (modelState is { } complete)
+                    log.WriteLine($"FinalModelStateHash ({complete.Profile}): {complete.Hash}");
                 log.WriteLine($"MetricsSha256: {metricsHash}");
                 log.WriteLine($"MetricContractVersion: {MetricCatalog.ContractVersion}; deterministic: {observer.Plan.IsDeterministic}");
                 if (!observer.Plan.IsDeterministic)
                     log.WriteLine("Runtime metric scope: simulation Step only; allocations on the calling thread; capture, metric sampling and I/O excluded. Exact manifest replay is unavailable.");
                 log.WriteLine($"ElapsedRunMilliseconds (includes metrics I/O): {elapsed.Elapsed.TotalMilliseconds.ToString("F3", CultureInfo.InvariantCulture)}");
                 if (request.Replay is not null)
+                {
                     log.WriteLine($"Verified replay of {request.Replay.RunId}");
+                    if (request.Replay.SchemaVersion < 3 && modelState is not null)
+                        log.WriteLine("Model-state fingerprint is a new observation; the source manifest verifies kinematic and CSV hashes only.");
+                }
             }
 
             if (frames is not null)
