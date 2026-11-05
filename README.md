@@ -129,6 +129,9 @@ dotnet run --project SwarmSim.Cli -c Release -- --engine aco --describe-engine -
 # Run the bounded global oscillator model; report colours show phase at fixed positions
 dotnet run --project SwarmSim.Cli -c Release -- --engine firefly --config scenarios/firefly/base.json --ticks 1000 --agents 128 --seed 21 --visual --out runs/
 
+# Run the field-only Gray–Scott model; dimensions come from config and colours show V concentration
+dotnet run --project SwarmSim.Cli -c Release -- --engine reaction-diffusion --config scenarios/reaction-diffusion/base.json --ticks 1000 --agents 0 --seed 7 --visual --out runs/
+
 # Launch the interactive renderer
 dotnet run --project SwarmSim.Render
 
@@ -422,7 +425,7 @@ SwarmingLilMen/
 │   ├── self-propelled-particles/  # Vicsek model (phase transitions)
 │   ├── ant-colony-optimization/   # ACO pathfinding (stigmergy)
 │   ├── firefly-synchrony/  # Phase-coupled oscillators
-│   ├── turing-morphogenesis/ # Reaction-diffusion fields (browser-only)
+│   ├── turing-morphogenesis/ # Independent Gray–Scott demo; periodic native subset available
 │   ├── avalanche-lab/     # Integer sandpiles (browser-only)
 │   ├── ecogenesis/        # Synthetic ecology (browser-only)
 │   └── particle-swarm-optimization/ # PSO (continuous optimization)

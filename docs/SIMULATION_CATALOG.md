@@ -47,9 +47,9 @@ have interactive Raylib renderers.
 | [Ant Colony Optimization](../js-demos/ant-colony-optimization/) | `aco` is a bounded foraging model with a scalar pheromone field, carried food and separate agent/field phases. | Obstacles, multiple resources and optimization-quality criteria are absent; do not infer them from the demo title. |
 | [Firefly Synchrony](../js-demos/firefly-synchrony/) | `firefly` is a global, noiseless Kuramoto subset using typed phase/frequency state, shared synchronous phases/buffers, named initialization streams, schema-3 replay, phase metrics, sweeps and phase-colored reports. | Spatial/ring coupling, phase lag, ongoing noise, interventions and restore remain absent; see the [exact native scope](FIREFLY.md). |
 | [Turing Morphogenesis](../js-demos/turing-morphogenesis/) | `reaction-diffusion` is a field-only Gray–Scott subset with typed U/V concentrations, periodic five-point updates, native metrics, schema-3 replay, sweeps and fixed-scale heatmaps. | Browser nine-point/frame cadence, alternate boundaries, brushes, morphology classification and checkpoint restore remain separate; see the [native numerical contract](REACTION_DIFFUSION.md). |
-| [Avalanche Lab](../js-demos/avalanche-lab/) | Browser-only. | Integer fields, stable event queues, relaxation-until-stable semantics and exact mass accounting. |
-| [Ecogenesis](../js-demos/ecogenesis/) | Browser-only. Existing legacy configuration names do not implement its ecology. | Stable lifecycle IDs, birth/death publication, typed traits/genomes, resources, lineage metrics and deterministic event order. |
-| [Particle Swarm Optimization](../js-demos/particle-swarm-optimization/) | Browser-only. | Objective evaluation, per-agent best memory, shared best reduction, optimization bounds and fitness metrics. |
+| [Avalanche Lab](../js-demos/avalanche-lab/) | Browser-only; [native slice #235](https://github.com/Chris0Jeky/SwarmingLilMen/issues/235). | Integer fields, deterministic work queues, explicit unfinished relaxation and exact mass accounting. |
+| [Ecogenesis](../js-demos/ecogenesis/) | Browser-only; [native slice #237](https://github.com/Chris0Jeky/SwarmingLilMen/issues/237). Existing legacy configuration names do not implement its ecology. | Stable lifecycle IDs, birth/death publication and a minimal resource ledger before broader traits/genomes and lineage metrics. |
+| [Particle Swarm Optimization](../js-demos/particle-swarm-optimization/) | Browser-only; [native slice #236](https://github.com/Chris0Jeky/SwarmingLilMen/issues/236). | One defined objective, personal/shared best memory, stable tie rules, explicit publication order and fitness metrics. |
 
 The demos remain independently usable. The goal of native integration is to extract mechanisms
 that multiple models can share while retaining their different state and equations. Copying each
@@ -78,3 +78,7 @@ not yet supply generic topology, lifecycle/event publication or checkpoint resto
 let Gray–Scott run on the same experiment path without inventing a particle representation.
 Six selectable engines now cover five distinct model families; Avalanche, Ecogenesis and PSO
 still need native foundations.
+
+[#225](https://github.com/Chris0Jeky/SwarmingLilMen/issues/225) tracks those remaining integrations
+under the epic. The linked slices define their acceptance rather than treating the browser names
+as complete native requirements.

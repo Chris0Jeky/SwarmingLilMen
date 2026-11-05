@@ -1,12 +1,21 @@
 # Analysis metrics contract
 
-`SwarmSim.Core.Metrics` provides explicit, reusable probes over a finite 2D kinematic snapshot.
-It separates physical analysis from the neighbors selected by a steering algorithm. A registry
+`SwarmSim.Core.Metrics` provides explicit, reusable probes and a common sampling/output contract.
+Its kinematic probes analyze finite 2D snapshots independently of the neighbors selected by a
+steering algorithm; model-specific probes can read native oscillator or field state. A registry
 selects columns in a caller-supplied order; invariant CSV and JSONL writers use that same schema.
 
 The headless CLI consumes this registry through `--metrics` and `--list-metrics`, with reusable
-engine capture and schema-versioned manifests. It preserves the original three default columns
-and verifies the complete selected deterministic CSV during replay. See
+engine capture and schema-versioned manifests. Defaults depend on the engine:
+
+| Engines | Default metric columns |
+| --- | --- |
+| `legacy`, `canonical`, `vicsek`, `aco` | `population`, `meanSpeed`, `polarization` |
+| `firefly` | `population`, `firefly.coherence` |
+| `reaction-diffusion` | `reactionDiffusion.uMean`, `reactionDiffusion.vMean` |
+
+Replay verifies the complete selected deterministic CSV. Schema 3 additionally verifies the
+engine's native model-state fingerprint alongside the unchanged v1 kinematic hash. See
 [headless experiments](HEADLESS_EXPERIMENTS.md) for selection, compatibility, operational metrics
 and the separately measured 50,000-agent sparse pipeline.
 
@@ -68,10 +77,15 @@ containing only that basic probe rejects centroid requests, rather than supplyin
 for a channel the probe does not declare. Passing `true` retains all five outputs. The actual
 parameterless constructor remains available for already compiled callers.
 
-The CLI chooses basic mode when no centroid channel is requested, including its default
-three-column plan. Requesting either `centroidX` or `centroidY` enables both centroid computations;
-only selected columns are written. Metric discovery continues to list the full supported schema.
-No metric definition or schema 2/metric-contract-1 replay semantics changed.
+For engines with kinematic agents, the CLI chooses basic mode when no centroid channel is requested,
+including the original three-column default plan. Requesting either `centroidX` or `centroidY`
+enables both centroid computations; only selected columns are written. Metric discovery continues
+to list the full schema supported by the selected engine. No motion metric definition or schema
+2/metric-contract-1 replay semantics changed.
+
+Field-only `reaction-diffusion` does not register motion, centroid or exact-neighbor probes. It
+accepts only zero agents, and grid cells are not counted as a population. Unsupported metric
+requests fail before run output is created. See [field observations](FIELD_OBSERVATIONS.md).
 
 | Channel | Definition |
 | --- | --- |
@@ -170,6 +184,29 @@ completed canonical step and before the next step overwrites instrumentation. Th
 that instrumentation and frame counts agree; the caller remains responsible for associating them
 with the same tick. Empty instrumentation/frame pairs report zero means and fraction.
 
+### Native state channels
+
+These probes read their associated world directly; the kinematic frame does not encode food,
+pheromone, oscillator phase or concentration. Each probe declares deterministic channels and
+refuses to sample when constructed with a null world for discovery only.
+
+| Probe | Channels | Meaning |
+| --- | --- | --- |
+| `AntColonyMetricProbe` | `aco.foodReturned`, `aco.carrying`, `aco.fieldTotal` | Returned food count, carrying-ant count, and ordered sum of pheromone cells |
+| `FireflyMetricProbe` | `firefly.coherence`, `firefly.meanPhase`, `firefly.meanNaturalFrequency` | Circular phase coherence, circular mean phase, and arithmetic mean natural frequency |
+| `ReactionDiffusionMetricProbe` | `reactionDiffusion.uMean`, `reactionDiffusion.uMin`, `reactionDiffusion.uMax`, `reactionDiffusion.vMean`, `reactionDiffusion.vMin`, `reactionDiffusion.vMax` | Arithmetic mean and extrema of each concentration over every row-major grid cell |
+
+Firefly coherence is `abs(mean(exp(i * phase)))`, clamped to `[0, 1]` for rounding. Mean phase
+is in `[0, 2*pi)` and is undefined when coherence is at most `1e-6`; it follows the missing-value
+output rules below. Natural frequency is measured in radians per simulation-time unit. Physical
+velocities remain zero, so motion polarization does not measure phase synchronization.
+
+Reaction-diffusion statistics use raw concentrations, including valid values above one. The
+heatmap's fixed display range does not normalize or clip these metrics. ACO field totals and
+reaction-diffusion reductions scan their cells; Firefly reductions scan its oscillators. See
+[ACO](ACO.md), [Firefly](FIREFLY.md) and [reaction diffusion](REACTION_DIFFUSION.md) for their state
+and update contracts.
+
 ### Runtime costs
 
 `RuntimeCostMetricProbe` exposes `runtime.wallMilliseconds` and `runtime.allocatedBytes`. The
@@ -208,9 +245,15 @@ reuse of exact-neighbor scratch across 1,000 samples.
 This library-only evidence does not exercise 50,000-agent quadratic nearest-neighbor analysis,
 engine snapshot copying or real disk writers, and is not a throughput claim. The separate CLI
 consumer now uses the same registry and CSV sink with a reusable capture buffer. It supports
-`--metrics` selection and discovery, schema 1 compatibility, and schema 2 exact replay across
-the complete selected deterministic CSV. Operational runtime channels are classified explicitly
-and disable exact replay. See [HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for its separate
+`--metrics` selection and discovery, schema 1/2 compatibility, and schema 3 native-state
+verification in addition to the complete selected deterministic CSV. New legacy/canonical runs
+use schema 2; new Vicsek, ACO, Firefly and reaction-diffusion runs use schema 3. Existing schema 2
+Vicsek/ACO manifests still verify their original kinematic and CSV hashes; Firefly and reaction
+diffusion require schema 3. Replay reruns initialization and steps; it does not restore a checkpoint.
+See [model-state hashes](MODEL_STATE_HASHES.md) for profile coverage and compatibility.
+
+Operational runtime channels are classified explicitly and disable exact replay for every engine.
+See [HEADLESS_EXPERIMENTS.md](HEADLESS_EXPERIMENTS.md) for its separate
 50k sparse full-pipeline verification and precise allocation boundaries.
 
 Runtime/platform and ordered input snapshots remain part of reproducibility; these formulas do

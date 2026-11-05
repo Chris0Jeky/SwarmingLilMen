@@ -61,7 +61,11 @@ The four non-boids foundations additionally expose
 [versioned model-state profiles](MODEL_STATE_HASHES.md) through schema 3 manifests. These
 fingerprints do not provide checkpoint restoration or identify arbitrary plugin state.
 Avalanche Lab, Ecogenesis and PSO remain browser-only; their required native
-mechanisms are recorded in the [integration map](SIMULATION_CATALOG.md).
+mechanisms are recorded in the [integration map](SIMULATION_CATALOG.md) and tracked under
+[#225](https://github.com/Chris0Jeky/SwarmingLilMen/issues/225). The bounded next slices are
+[#235](https://github.com/Chris0Jeky/SwarmingLilMen/issues/235) (integer relaxation),
+[#236](https://github.com/Chris0Jeky/SwarmingLilMen/issues/236) (objective/best-state memory), and
+[#237](https://github.com/Chris0Jeky/SwarmingLilMen/issues/237) (lifecycle IDs and resource accounting).
 
 The generalized primitives below remain proposals. The shared phase runner, typed buffer and
 model-state profiles now work with [field-only observations](FIELD_OBSERVATIONS.md), but do not

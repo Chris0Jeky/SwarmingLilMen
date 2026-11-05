@@ -1,28 +1,46 @@
 # SwarmingLilMen — verified project state
 
-**Updated: 2026-11-02.** This file describes current capabilities and the evidence behind them.
+**Updated: 2026-11-05.** This file describes current capabilities and the evidence behind them.
 [The earlier tracker](docs/archive/PROJECT_STATUS_BEFORE_2026-10-29.md) preserves historical logs,
 measurements and superseded plans. [Epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10)
 is the roadmap and ordering authority; historical phase checklists are not a second work queue.
 
 ## What the engine is today
 
-SwarmingLilMen is a C#/.NET 8 research foundation for deterministic 2D swarms. Besides Vicsek and
-ACO foundations, two boids engines
-coexist deliberately: legacy `World` is a SoA pipeline with bounded spawn-time growth and the default renderer;
-`CanonicalWorld` is the target for new boids behavior. A different model with its own state and
-update rule is a separate foundation, in its own `Core/<Name>/` directory with an entry in
-`SwarmSim.Cli/Engines.cs`. Named deterministic RNG streams now support
-independent stochastic consumers. Bounded named force policies, two resolvers and explicit velocity
-stages now make steering composition real. Synchronous Vicsek particles now run headless through
-the shared neighborhood, RNG, metric, manifest and sweep seams with no boids change. A minimal ant
-colony adds the first non-agent state, a scalar pheromone field with its own phase, through the same
-CLI spine, which now consults one engine registry. The shared part is that experiment spine: a
-reusable simulation kernel or scheduler remains roadmap work.
+SwarmingLilMen is a C#/.NET 8 simulation research foundation. Six registered engines represent five
+model families through one headless experiment workflow:
 
-The browser demos are separate implementations. The existing public Pages site is unchanged by
-these native-engine changes. Combat, metabolism, reproduction and cross-group interactions are
-not made active merely because `SimConfig` contains related settings.
+| Engine | Represented state and update | Observation |
+| --- | --- | --- |
+| `legacy` | Existing boids SoA pipeline, bounded spawn-time growth | Agent kinematics |
+| `canonical` | Composable boids policies, resolvers and velocity stages | Agent kinematics and optional rule telemetry |
+| `vicsek` | Synchronous heading replacement with angular noise | Agent kinematics and polarization |
+| `aco` | Ants, resources, carrying state, pheromone field and retained per-ant RNG | Agent kinematics and native foraging/field metrics |
+| `firefly` | Fixed-position oscillators with phase and natural frequency | Phase-coloured agents and coherence |
+| `reaction-diffusion` | Synchronous Gray–Scott U/V concentration fields; zero agents | Native field metrics and a fixed-scale V heatmap |
+
+New boids behavior belongs in `CanonicalWorld`; a different state/update model has its own
+`Core/<Name>/` foundation and one registration in `SwarmSim.Cli/Engines.cs`. Discovery comes from
+that registry: `--list-engines` and `--engine NAME --describe-engine`, optionally `--json`, expose supported
+configuration, counts, observations and metrics without running a simulation. See the
+[eight-study integration map](docs/SIMULATION_CATALOG.md).
+
+The common layer now includes actual simulation mechanisms: immutable ordered synchronous
+`SimulationSchedule` phases are used by Vicsek, ACO, Firefly and reaction–diffusion; typed
+`DoubleBufferedState<T>` generations are used by Vicsek, Firefly and reaction–diffusion. Named RNG
+streams, native configuration, metrics, manifests, replay, sweeps and reports remain shared.
+Versioned model-state fingerprints cover the complete native state of those four models, while
+historical kinematic hashes remain unchanged. The kernel does not yet own heterogeneous coupled
+worlds, dynamic lifecycle/event semantics, checkpoint restore or a universal state schema. The
+[kernel contract](docs/SIMULATION_KERNEL.md) and [fingerprint contract](docs/MODEL_STATE_HASHES.md)
+state these limits explicitly.
+
+The eight browser demos remain separate implementations; five study families now have native
+counterparts with documented differences. Avalanche, PSO and Ecogenesis remain browser-only.
+The public Pages site is unchanged. Combat, metabolism, reproduction and cross-group interactions
+are not made active merely because `SimConfig` contains related settings.
+
+### Historical scientific qualification — 2026-11-02
 
 `SwarmSim.Parity` now compares Enhanced, ClassicReynolds, legacy and an independent float32
 Reynolds reference through five explicit data recipes and five fixed seeds. It records requested
@@ -50,14 +68,70 @@ See [behavioral parity](docs/BEHAVIORAL_PARITY.md) and the
 
 ## Verified live state
 
-The integrated Release gate passes **1,532 non-Performance tests**, with zero failures/skips
-locally and in all four Ubuntu/Windows exact-head/generated-merge jobs in
-[CI run 41449137035](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449137035).
-The local build reports no warnings or errors. The scanner, benchmark collector and scientific
-wrapper separately pass **96**, **40** and **14** Python tests. All four complete normal/witness
-jobs passed in [scientific run 41449136980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449136980)
-at the same reviewed head, with the actual merged tree verified equal to the tested tree.
-The historical counts below identify the specific additions that produced this state.
+The integrated Release gate passes **1,780 non-Performance tests**, with zero failures or skips
+in all four Ubuntu/Windows exact-head/generated-merge jobs in
+[CI run 42085048980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/42085048980).
+The reviewed head is `9245c9c89db75550c0e85fbbfeba2005329782eb`; merged commit
+`8ae2cadcb5232027d98b8e90a9572cf1d4aac60c` has the same tree,
+`e1632c401b4978b080b118da5b402c6737419346`. Both exact-head logs report clean Release builds,
+all nine existing golden checks, unchanged old-engine repeat/replay identities, collector tests
+and smoke, and all ten gallery entries. Linux native renderer probes also pass. The separate
+hosting scanner gate is green.
+
+The working environment for this round had no .NET SDK; C# execution evidence is from Actions.
+The scanner, benchmark collector and scientific-wrapper suites separately passed **96**, **40**
+and **14** Python tests locally. The complete normal/witness scientific matrices were last qualified
+in [run 41449136980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/41449136980) on
+2026-11-02; those expensive matrices were not rerun for the new model integrations. Their prior
+measurements and limitations remain historical evidence, not new performance results.
+
+### Completed in this round
+
+- **Shared phases and typed generations** ([#224](https://github.com/Chris0Jeky/SwarmingLilMen/pull/224)):
+  Vicsek and ACO first exercised the common synchronous phase runner, preserving their existing
+  operation/RNG order. Firefly and reaction–diffusion subsequently reused it without changing the
+  scheduler. Phase exceptions stop later phases; the scheduler itself does not roll back model
+  mutations. Generation publication is explicit. See [simulation kernel](docs/SIMULATION_KERNEL.md).
+- **Registry-derived discovery** ([#226](https://github.com/Chris0Jeky/SwarmingLilMen/pull/226)):
+  CLI text/JSON discovery exposes actual native support and metric costs; the catalogue maps all
+  eight studies and separates model subsets from browser equivalence.
+- **Finite scalar deposits** ([#228](https://github.com/Chris0Jeky/SwarmingLilMen/pull/228)):
+  an overflowing finite sum now fails before changing the destination cell. Two tests failed on
+  the preceding implementation; all six focused cases pass. Ordinary float rounding is unchanged,
+  and this is single-deposit atomicity, not transactional rollback of an entire ACO phase. See
+  [scalar-field range](docs/SCALAR_FIELD_RANGE.md).
+- **Complete native state identity** ([#230](https://github.com/Chris0Jeky/SwarmingLilMen/pull/230)):
+  schema 3 adds a profile-qualified hash of native settings, clock, ordered state and retained RNG
+  cursors. Fields, resources, pending deposits, phases and frequencies cannot hide behind unchanged
+  kinematics or a sparse metric selection. Schema 1/2 compatibility and their original checks are
+  retained. Hashing is observational and does not consume random draws or provide checkpoint restore.
+  See [model-state identity](docs/MODEL_STATE_HASHES.md).
+- **Direct separation distance overflow** ([#231](https://github.com/Chris0Jeky/SwarmingLilMen/pull/231)):
+  both `Compute` and `Emit` recover overflowing squared finite distances through the same bounded
+  helper. Twelve tests failed before the fix; all 58 focused cases pass. Ordinary arithmetic,
+  weighting, cutoffs and nonfinite behavior remain intact. The observable witness uses large finite
+  caller weights; it is not an ordinary-world trajectory change. Wider #187 work remains open. See
+  [separation scope](docs/CANONICAL_SEPARATION.md).
+- **Native Firefly synchrony** ([#232](https://github.com/Chris0Jeky/SwarmingLilMen/pull/232)):
+  global synchronous Kuramoto phases reuse the shared schedule/buffers and now have configuration,
+  metrics, full-state replay, sweeps and phase-coloured reports. The committed finite gallery control
+  measures approximately 0.998 coherence with coupling and 0.0233 without it on both CI platforms;
+  actual generated filmstrips were inspected. This is not spatial/noisy browser-feature parity or a
+  phase-transition measurement. See [Firefly contract](docs/FIREFLY.md).
+- **Field-only Gray–Scott experiments** ([#234](https://github.com/Chris0Jeky/SwarmingLilMen/pull/234)):
+  zero-agent engine capabilities, strict native metrics, synchronous U/V state, complete fingerprints
+  and optional field observation now use the same run/replay/sweep/gallery pipeline. Conservative
+  depletion bounds and finite stored-value checks reject unsafe steps before committing the field;
+  concentrations are never clipped. Independent review found and corrected one maximum-float
+  rounding boundary. The patch evolves while the equilibrium stays at U = 1, V = 0 in the inspected
+  exact-head gallery artifact. The 86 added cases include independent stencils, conservation,
+  atomicity, hash fixtures, CLI behavior and real pixels. No convergence or Turing-instability claim
+  is made. See [model](docs/REACTION_DIFFUSION.md) and [field observations](docs/FIELD_OBSERVATIONS.md).
+
+### Earlier verified additions
+
+The records below preserve the counts and measurements at their original checkpoints. They do
+not imply that every historical benchmark or scientific matrix was rerun in this round.
 
 - **Profile-guided parity runtime:** strict guards skip identity remainder operations in the
   spatial minimum-image helper and geometry probe, while 64-agent hash batches retain the exact
@@ -130,10 +204,10 @@ The historical counts below identify the specific additions that produced this s
   committed in `61748c7` before those seeds ran. All 13 source mutations fail, nine of them only
   through analytic tests. Filmstrips show a two-way trail with pheromone and none without. This is a
   foraging comparison with no optimization-quality claim. Engine dispatch moved from seven CLI files
-  to one registry with all three earlier engines byte-identical. **The epic's core claim holds for
-  the experiment spine: three foundations share registry, metrics, RNG contract, manifests, sweeps
-  and reports. There is still no shared simulation kernel or scheduler,** and hash version 1 cannot
-  see the field. See [the model and evidence](docs/ACO.md) and
+  to one registry with all three earlier engines byte-identical. At that checkpoint, the shared
+  claim covered the experiment spine, with world-owned phases and a kinematic hash unable to see
+  the field. The current shared schedule and schema 3 state profiles close those specific gaps;
+  the broader kernel limits remain explicit above. See [the model and evidence](docs/ACO.md) and
   [the seam inventory](docs/VICSEK.md#seam-inventory-update-aco).
 - **Vicsek foundation:** `VicsekWorld` runs the original synchronous model through the unchanged
   `ISpatialIndex`, named streams and `polarization` probe, with no change to `Canonical/` or legacy
@@ -142,8 +216,9 @@ The historical counts below identify the specific additions that produced this s
   equivalence, repeat/replay bytes and zero warm-tick allocation. Five locked seeds (N=100, density
   4) measure order 0.988 at η=0.5 and 0.126-0.136 at η=5, inside bands committed before those seeds
   ran. Seven source mutations fail. This is a finite noise-response result, not a phase-transition
-  measurement. The seam inventory finds engine dispatch spread across seven CLI files and force
-  composition unable to express heading replacement. See
+  measurement. The original seam inventory found engine dispatch spread across seven CLI files;
+  the later registry removed that duplication. Boids force composition still does not express
+  heading replacement; Vicsek uses its native update semantics. See
   [the model, evidence and seam inventory](docs/VICSEK.md).
 - **Vicsek exact traces and manifest guards:** five new regressions directly exercise schema-1
   rejection, spawn-model mismatch, shared-name configuration overlays and an eight-agent exact
@@ -153,17 +228,20 @@ The historical counts below identify the specific additions that produced this s
   witness diverges at tick 1 on both platforms, and a separate source mutation fails the ordinary
   Linux golden assertion; existing boids/legacy fixtures are unchanged. See
   [the scenario, reference provenance and mutation evidence](docs/VICSEK.md#exact-trajectory-regression).
-- **Behaviour gallery:** `SwarmSim.Cli --gallery scenarios/gallery.json` runs six short entries
-  (tuned canonical flock, legacy balanced, Vicsek low and high noise, ACO with and without
-  pheromone) in 1.8 s of run time on the recorded host, prints one PASS/FAIL line per entry, and
-  publishes `index.html` plus `summary.json` over ordinary replayable run directories. Bands are
-  coarse final-quarter-mean sanity checks set from seeds 1-10, not determinism or science gates;
-  the locked Vicsek and ACO tests remain the evidence. 52 `GalleryTests` (including the committed
-  recipe in about 2 s on the recorded host); inverting a bound, widening the quarter window and reversing the failure sort
-  each fail tests. Filmstrips seen by eye on one machine only. See
+- **Behaviour gallery:** `SwarmSim.Cli --gallery scenarios/gallery.json` now runs ten entries:
+  tuned canonical flock, legacy balanced, Vicsek low/high noise, ACO with/without pheromone,
+  Firefly coupled/control and reaction–diffusion patch/equilibrium. It prints one PASS/FAIL line per
+  entry and publishes `index.html` plus `summary.json` over ordinary replayable run directories.
+  The original six-entry gallery took 1.8 s of run time on its recorded host; that timing is not a
+  current ten-entry measurement. Bounds are coarse final-quarter sanity checks. Existing Vicsek/ACO
+  scientific evidence and the new analytical/controlled model tests have separate scopes. At the
+  original gallery addition, 52 `GalleryTests` passed; inverting a bound, widening the quarter
+  window and reversing the failure sort each failed tests. Actual Firefly and field artifacts
+  from this round's exact-head Linux CI were also inspected. See
   [behaviour gallery](docs/HEADLESS_EXPERIMENTS.md#behaviour-gallery).
-- **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (8 panels, heading-coloured
-  agents) and a self-contained `report.html` to any run, replay or sweep cell, plus an `index.html`
+- **Visual reports:** `SwarmSim.Cli --visual` adds `filmstrip.png` (up to eight selected ticks,
+  heading-coloured agents, Firefly phases or a fixed-scale scalar field) and a self-contained
+  `report.html` to any run, replay or sweep cell, plus an `index.html`
   for sweeps, using only the standard library and no display. Tests prove it leaves `metrics.csv`
   and hashes unchanged and decode the PNG independently (43 cases in `VisualReportTests`). The
   filmstrips were checked by eye for canonical and legacy 400-agent runs; final-panel thumbnails
@@ -320,10 +398,12 @@ The historical counts below identify the specific additions that produced this s
   One-ULP force changes fail the ordinary golden assertions. The golden suite enforces the
   reviewed .NET 8 / x64 / Linux-or-Windows band; new bands require reviewed measured references.
   See [determinism and fixture policy](docs/DETERMINISM.md).
-- **Headless experiments:** `SwarmSim.Cli` references only Core and runs either engine without a
+- **Headless experiments:** `SwarmSim.Cli` references only Core and runs all six engines without a
   display. A completed run contains a versioned manifest with the full resolved native config,
   deterministic invariant-culture CSV, and an operational log. Seeded initialization and manifest
-  replay verify both exact state and CSV hashes. Duplicate manifest fields and unknown fields are
+  replay verify the compatibility kinematic and CSV hashes, plus the required complete native
+  state hash for schema 3 models. Field-only runs use zero agents and native metrics instead of
+  fabricated motion channels. Duplicate manifest fields and unknown fields are
   rejected. Git provenance comes from the built assembly when available; unknown build dirtiness
   remains null and the launch directory cannot invent source identity. Output is published into
   a fresh run directory after completion. See [headless experiments](docs/HEADLESS_EXPERIMENTS.md).
@@ -339,7 +419,7 @@ registered foundation-specific probe. Runtime costs explicitly declare nondeterm
 nearest-neighbor implementation is O(N²), opt-in, and not a 50k-agent throughput claim. Periodic
 analysis preserves tiny signed offsets even in very large worlds. See [metrics](docs/METRICS.md).
 The CLI now selects registered channels with `--metrics`, records their order and determinism in
-schema 2 manifests, and verifies the complete deterministic CSV on replay. Original schema 1
+schema 2/3 manifests, and verifies the complete deterministic CSV on replay. Original schema 1
 manifests remain replayable with byte-identical default CSV. Runtime-cost channels measure only
 Step and explicitly disable exact replay. The suite passed 853 tests at the metrics addition; a
 separate 50k sparse/1,000-step proof observes zero current-thread allocation in physics, reused
@@ -392,6 +472,9 @@ dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Perform
 dotnet run --project SwarmSim.Benchmarks -c Release --no-build -- --canonical-experiment
 dotnet run --project SwarmSim.Benchmarks -c Release --no-build -- --canonical
 dotnet run --project SwarmSim.Cli -c Release --no-build -- --scenario balanced --seed 7 --ticks 600 --out runs/
+dotnet run --project SwarmSim.Cli -c Release --no-build -- --list-engines
+dotnet run --project SwarmSim.Cli -c Release --no-build -- --engine reaction-diffusion --agents 0 --seed 7 --ticks 1000 --visual --out runs/
+dotnet run --project SwarmSim.Cli -c Release --no-build -- --gallery scenarios/gallery.json --out runs/
 ```
 
 Rebuild after source changes before using `--no-build`. The canonical benchmark route accepts
@@ -477,34 +560,51 @@ speedup or machine-independent performance bound.
 
 ## Current limitations and next work
 
-1. Preserve the committed platform-specific golden traces and their explicit runtime band (#21).
-2. Preserve single-run and sweep replay while extending experiments through concrete consumers.
-   Runtime channels stay explicitly separate from byte-repeatable physical metrics; exact
-   nearest-neighbor analysis remains opt-in O(N²), and sweep aggregation is sequential.
-3. Investigate the earlier canonical 10k BenchmarkDotNet 5 B/op observation (#20); direct warm-tick
-   probes measured zero but did not identify that sample's cause. Native HUD/O/Tab/F12, all five
-   presets and custom-startup acceptance now have recorded Linux evidence. Current overlay
-   geometry refreshes the index only when shown, using the completed tick's input positions.
-4. Address the measured composition cost (#27), preserving the exact default trajectories and
-   bounded observations. The new force-only API still needs a concrete consumer to earn public
-   per-agent identity/noise and heading/velocity update seams.
-5. Reduce the primary-matrix runtime for the behavioral parity harness (#28), preserving every
-   fixed recipe, seed, per-tick metric and exact comparison. Full Ubuntu/Windows scientific
-   qualification now passes through the explicit workflow; the under-60-second target is unmet.
-   Vicsek and ACO are complete on the shared spine. The honest next generality question is a real
-   scheduler and a hash that sees field state; a third foundation's phases still live inside its
-   own world. Named rule-control visuals (#40) now consume the settled composition API; native-input and
-   human acceptance remain open. Neither engine is deleted without the owner's
-   eventual migration sign-off.
+The owner-directed continuation in [epic #10](https://github.com/Chris0Jeky/SwarmingLilMen/issues/10)
+allows richer-state work to proceed alongside the remaining boids qualifications. The next native
+integrations are tracked under [#225](https://github.com/Chris0Jeky/SwarmingLilMen/issues/225):
+
+1. **Avalanche (#235):** integer heights, exact mass accounting and deterministic relaxation with
+   an explicit work budget and unfinished-event state. Reuse field observation without silently
+   rounding authoritative integers or treating partial relaxation as a stable system.
+2. **PSO (#236):** one defined objective, personal/shared best memory, stable tie rules, named RNG
+   and explicit synchronous-versus-sequential best publication. Hash the memory that affects the
+   next step, not only current positions.
+3. **Ecogenesis (#237):** stable lifecycle identities, deterministic birth/death publication,
+   resource accounting and survivor RNG ownership before adding a broad ecology/genome model.
+
+Each integration must preserve old goldens/replay, supply analytical and controlled behavior
+evidence, and reuse or justify a concrete shared mechanism. The shared scheduler and full-state
+hashes are implemented; heterogeneous coupling, generic event/lifecycle semantics, reusable
+stencil operators, richer field/vector observations and checkpoint restore remain separate work.
+An in-process common scheduler does not itself provide those contracts.
+
+Other active work retains its existing acceptance criteria:
+
+- #20/#27: investigate the historical canonical 10k BDN allocation observation and qualify the
+  measured composition cost. Direct zero-allocation probes and inconsistent short benchmark pairs
+  do not explain the old sample or prove performance recovery.
+- #28: reduce the complete primary scientific matrix below 60 seconds without changing recipes,
+  seeds, cadence, metrics or locked bands. The 2026-11-02 qualification is recorded above; its
+  runtime target remains unmet.
+- #40: physical input, full-window/DPI and human visual acceptance. Recorded Linux software-rendered
+  captures and automated probes do not substitute for that scope.
+- #41: define and implement a meaningful persistent faster/slower overtaking case.
+- #187: derived-control overflow, subnormal/scaling behavior, accumulation and sample-count limits
+  beyond the bounded numerical fixes already merged.
+- #164: publication-scanner indirection outside the admitted grammar. #44 remains the future
+  prerequisite before executing untrusted extensions.
+
+Exact replay remains scoped to its implementation/runtime band (#21). Runtime channels declare
+nondeterminism, exact nearest-neighbor analysis is opt-in O(N²), and sweeps remain sequential.
+Legacy retirement still requires the owner's eventual migration sign-off.
 
 The documentation residue audit (#60/#63) now uses stable source symbols, current headless and
 benchmark commands, explicit historical measurement labels and the actual sequential/stochastic
 browser-demo semantics. The old readiness checklist points scheduling back to the epic instead
 of directing new work to closed issues.
 
-Other tracked residue: a defined faster/slower overtaking scenario (#41), the remaining
-extreme-scale geometry audit (#187), and publication-scanner indirection gaps (#164). A green engine suite does not validate
-renderer interaction, browser demos, or a deployment.
+A green engine suite does not validate every renderer interaction, browser demo or deployment.
 
 ## Trust and publication boundary
 
