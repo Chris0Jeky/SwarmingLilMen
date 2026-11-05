@@ -107,6 +107,10 @@ dotnet test SwarmingLilMen.sln -c Release --no-build --filter "Category!=Perform
 
 ### Running the Simulation
 ```bash
+# Discover native models and inspect a model's configuration/state/metrics
+dotnet run --project SwarmSim.Cli -c Release -- --list-engines
+dotnet run --project SwarmSim.Cli -c Release -- --engine aco --describe-engine --json
+
 # Launch the interactive renderer
 dotnet run --project SwarmSim.Render
 
@@ -134,6 +138,8 @@ dotnet run --project SwarmSim.Benchmarks -c Release -- --canonical
 
 For reusable configuration and telemetry APIs, see the
 [experiment foundation guide](docs/EXPERIMENT_FOUNDATION.md).
+For every browser study's native integration status and machine-readable engine discovery, see
+the [simulation catalog](docs/SIMULATION_CATALOG.md).
 
 While the renderer is running:
 - Press **H** to toggle the engine-specific help panel; input, help, HUD labels and printed controls

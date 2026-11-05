@@ -29,18 +29,27 @@ internal static class MetricCatalog
     internal static void WriteAvailable(string engine, TextWriter output)
     {
         output.WriteLine($"Available metrics for {engine} (names are case-sensitive):");
+        foreach (MetricDescription channel in Describe(engine))
+            output.WriteLine($"  {channel.Name} — {channel.Cost}");
+        output.WriteLine("Default: " + string.Join(',', DefaultMetrics));
+    }
+
+    internal static IReadOnlyList<MetricDescription> Describe(string engine)
+    {
+        var result = new List<MetricDescription>();
         foreach (IMetricProbe probe in CreateProbes(engine, [], 0, null, new RuntimeCostMetricProbe()))
         {
             string cost = probe switch
             {
                 ExactNearestNeighborProbe => "O(N^2) exact analysis plus sorting; opt in for affordable populations",
                 RuntimeCostMetricProbe => "nondeterministic; completed simulation Step only; exact replay unavailable",
+                SwarmSim.Core.Aco.AntColonyMetricProbe => "O(field cells); deterministic",
                 _ => "O(N); deterministic"
             };
             foreach (string channel in probe.Channels)
-                output.WriteLine($"  {channel} — {cost}");
+                result.Add(new(channel, probe.IsDeterministic, cost));
         }
-        output.WriteLine("Default: " + string.Join(',', DefaultMetrics));
+        return result.AsReadOnly();
     }
 
     private static IMetricProbe[] CreateProbes(string engine, string[] requestedMetrics, int capacity,
@@ -60,6 +69,8 @@ internal static class MetricCatalog
         return [new MotionMetricProbe(includeCentroids), nearest, runtimeCosts, .. definition.ExtraProbes(simulation)];
     }
 }
+
+internal sealed record MetricDescription(string Name, bool Deterministic, string Cost);
 
 /// <summary>Initial state has no completed rule observation; later mismatches still fail.</summary>
 internal sealed class CompletedStepBoidsMetricProbe : IMetricProbe
