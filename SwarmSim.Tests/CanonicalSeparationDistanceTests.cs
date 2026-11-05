@@ -184,8 +184,9 @@ public sealed class CanonicalSeparationDistanceTests
             for (int i = 0; i < neighbors.Length; i++)
             {
                 Vec2 reverse = reverseOffsets[i];
+                float distance = (float)Math.Sqrt((double)reverse.X * reverse.X + (double)reverse.Y * reverse.Y);
                 neighbors[i] = new NeighborView(new Vec2(-reverse.X, -reverse.Y), reverse,
-                    new Vec2(-selfVelocity.X, -selfVelocity.Y), Vec2.Zero, 0, weights[i], 0f);
+                    new Vec2(-selfVelocity.X, -selfVelocity.Y), Vec2.Zero, 0, weights[i], distance);
             }
             var observation = new LocalObservation(self, neighbors);
             var context = new LocalPolicyContext(targetSpeed, 100f, radius, -1f, 1f, boost);

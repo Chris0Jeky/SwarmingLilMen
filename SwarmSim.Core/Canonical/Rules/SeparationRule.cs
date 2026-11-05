@@ -32,9 +32,7 @@ public sealed class SeparationRule : IRule, ILocalSteeringPolicy
             float weight = neighbor.FieldOfViewWeight;
             if (weight <= 0f) continue;
             Vec2 delta = neighbor.ReverseRelativePosition;
-            float distSq = delta.LengthSquared;
-            if (distSq <= 0f || distSq > _radiusSq) continue;
-            float dist = MathF.Sqrt(distSq);
+            if (!TryGetDistance(delta, weight, out float dist)) continue;
             if (dist <= 1e-4f) continue;
             Vec2 direction = delta / dist;
             float strength = MathF.Max(0f, 1f - dist / _radius);
@@ -62,12 +60,9 @@ public sealed class SeparationRule : IRule, ILocalSteeringPolicy
                 continue;
 
             Vec2 delta = context.MinimumImageDelta(boids[neighborIndex].Position, self.Position);
-            float distSq = delta.LengthSquared;
-
-            if (distSq <= 0f || distSq > _radiusSq)
+            if (!TryGetDistance(delta, weight, out float dist))
                 continue;
 
-            float dist = MathF.Sqrt(distSq);
             if (dist <= 1e-4f)
                 continue;
 
@@ -83,5 +78,35 @@ public sealed class SeparationRule : IRule, ILocalSteeringPolicy
         Vec2 desired = accumulator.WithLength(context.TargetSpeed * _weight * context.SeparationPriorityBoost);
         Vec2 steer = desired - self.Velocity;
         return steer;
+    }
+
+    private bool TryGetDistance(Vec2 delta, float weight, out float distance)
+    {
+        float distanceSq = delta.LengthSquared;
+        if (distanceSq <= 0f || distanceSq > _radiusSq)
+        {
+            distance = 0f;
+            return false;
+        }
+
+        // Retain ordinary float rounding. Recover only overflow from finite inputs;
+        // comparing before narrowing also rejects lengths beyond the finite radius.
+        if (!float.IsFinite(distanceSq) && float.IsFinite(delta.X) && float.IsFinite(delta.Y)
+            && float.IsFinite(_radius) && float.IsFinite(weight))
+        {
+            double wideDistanceSq = (double)delta.X * delta.X + (double)delta.Y * delta.Y;
+            double wideRadiusSq = (double)_radius * _radius;
+            if (wideDistanceSq > wideRadiusSq)
+            {
+                distance = 0f;
+                return false;
+            }
+            distance = (float)Math.Sqrt(wideDistanceSq);
+        }
+        else
+        {
+            distance = MathF.Sqrt(distanceSq);
+        }
+        return true;
     }
 }
