@@ -1,4 +1,5 @@
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Simulation;
 using SwarmSim.Core.Utils;
 
@@ -16,6 +17,7 @@ public sealed class VicsekWorld
     /// <summary>Stream names belong to the replay contract; renaming one changes every trajectory.</summary>
     public const string SpawnStream = "vicsek.spawn";
     public const string NoiseStream = "vicsek.noise";
+    public const string ModelStateProfile = "vicsek-state-v1";
 
     /// <summary>Largest supported population; three N-sized buffers stay well inside address limits.</summary>
     public const int MaxAgents = 1 << 26;
@@ -59,6 +61,35 @@ public sealed class VicsekWorld
     public long TickCount { get; private set; }
     public ReadOnlySpan<Boid> Agents => _state.Current;
     public IReadOnlyList<string> PhaseNames => _schedule.PhaseNames;
+
+    /// <summary>
+    /// Fingerprints native persistent state between completed ticks. Scratch buffers and the
+    /// rebuilt spatial index are excluded; custom index implementation state is outside this profile.
+    /// This is an observation, not a checkpoint. Do not call concurrently with mutation.
+    /// </summary>
+    public ModelStateHash StateHash()
+    {
+        using var hash = new StateHashWriter(ModelStateProfile);
+        // The explicit order below is the vicsek-state-v1 binary contract.
+        hash.WriteSingle(Settings.Noise);
+        hash.WriteSingle(Settings.Speed);
+        hash.WriteSingle(Settings.InteractionRadius);
+        hash.WriteSingle(Settings.WorldWidth);
+        hash.WriteSingle(Settings.WorldHeight);
+        hash.WriteSingle(Settings.FixedDeltaTime);
+        hash.WriteUInt32(Settings.Seed);
+        hash.WriteInt64(TickCount);
+        hash.WriteInt32(Agents.Length);
+        foreach (Boid agent in Agents)
+        {
+            hash.WriteSingle(agent.Position.X);
+            hash.WriteSingle(agent.Position.Y);
+            hash.WriteSingle(agent.Velocity.X);
+            hash.WriteSingle(agent.Velocity.Y);
+        }
+        hash.WriteRandomState(_noise);
+        return hash.Finish();
+    }
 
     /// <summary>
     /// Advances one tick. Each agent consumes exactly one noise draw in index order, whatever its

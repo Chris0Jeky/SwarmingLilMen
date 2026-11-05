@@ -67,6 +67,8 @@ public sealed class VicsekCliTests
         // Make this otherwise valid schema 1, so only the engine's minimum schema can reject it.
         manifest.Remove("metricContractVersion");
         manifest.Remove("metricsDeterministic");
+        manifest.Remove("modelStateProfile");
+        manifest.Remove("finalModelStateHash");
         File.WriteAllText(path, manifest.ToJsonString());
 
         var error = Assert.Throws<InvalidDataException>(() => RunManifest.Read(path));
@@ -215,7 +217,8 @@ public sealed class VicsekCliTests
         string path = Path.Combine(result.Output.Trim(), "manifest.json");
         RunManifest manifest = RunManifest.Read(path);
         Assert.Equal("vicsek", manifest.Engine);
-        Assert.Equal(2, manifest.SchemaVersion);
+        Assert.Equal(3, manifest.SchemaVersion);
+        Assert.Equal(VicsekWorld.ModelStateProfile, manifest.ModelStateProfile);
         Assert.Equal("vicsek-uniform-v1", manifest.SpawnModel);
         Assert.Equal(new[] { "population", "meanSpeed", "polarization" }, manifest.RequestedMetrics);
         return path;

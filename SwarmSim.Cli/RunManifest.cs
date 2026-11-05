@@ -34,6 +34,10 @@ internal sealed class RunManifest
     public required string SpawnModel { get; init; }
     public required int KinematicHashVersion { get; init; }
     public required string FinalKinematicHash { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? ModelStateProfile { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? FinalModelStateHash { get; init; }
     public required string MetricsSha256 { get; init; }
     public required RuntimeIdentity Runtime { get; init; }
 
@@ -43,12 +47,22 @@ internal sealed class RunManifest
         RejectDuplicateProperties(document.RootElement, "$");
         RunManifest manifest = document.RootElement.Deserialize<RunManifest>(JsonOptions)
             ?? throw new InvalidDataException("A replay manifest must be a JSON object.");
-        if (manifest.SchemaVersion is not (1 or 2))
-            throw new InvalidDataException($"Unsupported manifest schemaVersion {manifest.SchemaVersion}; expected 1 or 2.");
+        if (manifest.SchemaVersion is not (1 or 2 or 3))
+            throw new InvalidDataException($"Unsupported manifest schemaVersion {manifest.SchemaVersion}; expected 1, 2 or 3.");
         EngineDefinition engine = EngineRegistry.Find(manifest.Engine)
             ?? throw new InvalidDataException($"Manifest engine must be {EngineRegistry.NameList}.");
         if (manifest.SchemaVersion < engine.MinimumManifestSchema)
             throw new InvalidDataException($"{engine.Name} manifests require schema {engine.MinimumManifestSchema}.");
+        if (manifest.SchemaVersion == 3)
+        {
+            if (engine.ModelStateProfile is null || manifest.ModelStateProfile != engine.ModelStateProfile)
+                throw new InvalidDataException($"Manifest modelStateProfile is missing or unsupported for engine '{engine.Name}'.");
+            if (!IsHash(manifest.FinalModelStateHash, 64))
+                throw new InvalidDataException("Schema 3 finalModelStateHash must be a SHA-256 hexadecimal value.");
+        }
+        else if (document.RootElement.TryGetProperty("modelStateProfile", out _) ||
+                 document.RootElement.TryGetProperty("finalModelStateHash", out _))
+            throw new InvalidDataException("Schema 1 and 2 do not support model-state metadata; use schema 3 with a supported engine profile.");
         if (manifest.Ticks < 0 || manifest.AgentCount <= 0 || !float.IsFinite(manifest.FixedDeltaTime) || manifest.FixedDeltaTime <= 0f)
             throw new InvalidDataException("Manifest ticks, agentCount, or fixedDeltaTime is invalid.");
         if (manifest.RunId is null || !manifest.RunId.StartsWith("run-", StringComparison.Ordinal) ||

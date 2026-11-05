@@ -21,6 +21,8 @@ public sealed class Pcg32Rng
 
     internal Pcg32Rng(Pcg32State state) => _state = state;
 
+    internal Pcg32State Snapshot => _state;
+
     /// <summary>Returns a full-width unsigned 32-bit word.</summary>
     public uint NextUInt32() => _state.NextUInt32();
 

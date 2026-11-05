@@ -127,6 +127,22 @@ state, and scratch buffers are outside this hash. The fixed scenario controls th
 inputs, and later kinematic checkpoints detect their effect on motion. Signed zero remains
 distinct in the raw bits and hash.
 
+## Versioned native model-state fingerprints
+
+ACO and Vicsek additionally record bounded model-owned state profiles in schema 3 manifests.
+The original `kinematicHashVersion: 1` bytes and platform goldens stay unchanged. The new ACO
+profile includes ant carrying flags, resource counters, the scalar field, pending deposits,
+phase progress, clocks, complete settings and retained random streams. Vicsek includes current
+agents, clocks, complete settings and its retained noise stream. The byte-level coverage,
+observation boundaries and old-manifest compatibility rules are specified in
+[MODEL_STATE_HASHES.md](MODEL_STATE_HASHES.md).
+
+These profiles detect hidden-state changes before their effects reach position, velocity or a
+selected metric. They do not serialize restorable checkpoints, cover arbitrary plugin state, or
+extend the recorded platform/runtime determinism band. Legacy and canonical remain explicitly
+without a model-state profile. Schema 1/2 replay keeps its existing checks; new native runs and
+successful native replays also record the schema 3 fingerprint.
+
 ## RNG sequence reference
 
 The same fixture pins the first 16 results of each of these APIs, each starting with a fresh

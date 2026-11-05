@@ -1,4 +1,5 @@
 using SwarmSim.Core.Canonical;
+using SwarmSim.Core.Diagnostics;
 using SwarmSim.Core.Metrics;
 
 namespace SwarmSim.Cli;
@@ -15,5 +16,6 @@ internal sealed class PreparedSimulation(RunRequest request)
     internal MetricDomain Domain => Simulation.Domain;
     internal void Step() => Simulation.Step();
     internal string KinematicHash() => Simulation.KinematicHash();
+    internal ModelStateHash? StateHash() => (Simulation as IModelStateSimulation)?.StateHash();
     internal int Capture(Span<KinematicSample> destination) => Simulation.Capture(destination);
 }
