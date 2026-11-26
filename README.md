@@ -135,8 +135,11 @@ dotnet run --project SwarmSim.Cli -c Release -- --engine reaction-diffusion --co
 # Launch the interactive renderer
 dotnet run --project SwarmSim.Render
 
-# Display CLI options
+# Display options, interactive controls and presets without opening the simulation window
 dotnet run --project SwarmSim.Render -- --help
+
+# Show only the registered presets
+dotnet run --project SwarmSim.Render -- --list-presets
 
 # Run a headless canonical experiment and write manifest/metrics/log artifacts
 dotnet run --project SwarmSim.Cli -c Release -- --scenario balanced --seed 7 --ticks 600 --agents 400 --out runs/
@@ -169,16 +172,104 @@ While the renderer is running:
 - Legacy renderer: press **F12** to toggle the snapshot/debug overlay (shows interpolation details).
 - Canonical renderer: press **O** to toggle the interaction overlay and **Tab** to cycle the tracked
   boid.
+- See [`docs/CONTROLS.md`](docs/CONTROLS.md) for a printable list of every mouse/keyboard shortcut.
 
 ### Command-Line Options
+SwarmSim.Render now accepts a lightweight CLI so you can start with presets or external configs without modifying code:
 
-Use the renderer's built-in help for the flag and keyboard/mouse reference.
-List presets separately to see the names accepted by the current build.
-Neither command opens the simulation window.
+```text
+Usage: SwarmSim.Render [OPTIONS]
 
-```bash
-dotnet run --project SwarmSim.Render -- --help
-dotnet run --project SwarmSim.Render -- --list-presets
+Options:
+  -h, --help                Show this help message and exit
+  -v, --version             Show version information
+  -l, --list-presets        List built-in presets and exit
+  -p, --preset NAME         Load a registered preset (e.g., balanced, strong-separation)
+  -c, --config FILE         Load configuration from JSON file (e.g., configs/peaceful.json)
+  -n, --agent-count N       Override initial agent count (default: 400)
+  -b, --benchmark           Print migration guidance for SwarmSim.Cli (deprecated)
+      --canonical           Launch the single-group canonical boids renderer
+      --minimal             Launch the minimal debugging harness
+
+Examples:
+  SwarmSim.Render
+  SwarmSim.Render --preset balanced
+  SwarmSim.Render --config configs/warbands.json -n 5000
+  dotnet run --project SwarmSim.Cli -- --engine canonical --ticks 600
+
+Legacy interactive controls (default renderer):
+PARAMETERS (1-8 to select)
+  1: Select Separation weight
+  2: Select Alignment weight
+  3: Select Cohesion weight
+  4: Select Separation radius
+  5: Select Sense radius
+  6: Select Max speed
+  7: Select Max force
+  8: Select Friction (Damped only)
+  Up/+/KP+: Increase selected parameter
+  Down/-/KP-: Decrease selected parameter
+  Shift: Hold for fine adjustment with any adjust key
+  Friction is inactive with ConstantSpeed (Damped only).
+PRESETS
+  F1: Load Balanced (Recommended)
+  F2: Load Strong Separation
+  F3: Load Tight Flocking
+  F4: Load Fast & Loose
+  F5: Load Slow & Cohesive
+WORLD
+  P: Print current parameters to the console
+  R: Reset/respawn the world
+  Esc: Quit
+  Left click: Spawn up to 50 agents at cursor (group 0)
+  Right click: Spawn up to 50 agents at cursor (group 1)
+  Space: Spawn up to 100 random agents across groups
+  X: Shake (add random velocity)
+  C: Export CSV snapshot
+VISUALIZATION
+  H: Toggle this help overlay
+  V: Toggle velocity vectors
+  S: Toggle sense radius circles (below 100 agents)
+  N: Toggle tracked-agent neighbor connections
+  F12: Toggle snapshot/debug overlay
+
+Canonical interactive controls (--canonical):
+PARAMETERS (1-8 to select)
+  1: Select Separation weight
+  2: Select Alignment weight
+  3: Select Cohesion weight
+  4: Select Separation radius
+  5: Select Sense radius
+  6: Select Target speed
+  7: Select Max force
+  8: Select Field of view
+  Up/+/KP+: Increase selected parameter
+  Down/-/KP-: Decrease selected parameter
+  Shift: Hold for fine adjustment with any adjust key
+PRESETS
+  F1: Load Balanced (Recommended)
+  F2: Load Strong Separation
+  F3: Load Tight Flocking
+  F4: Load Fast & Loose
+  F5: Load Slow & Cohesive
+WORLD
+  P: Print current parameters to the console
+  R: Reset/respawn the world
+  Esc: Quit
+VISUALIZATION
+  H: Toggle this help overlay
+  S: Toggle named separation rule
+  A: Toggle named alignment rule
+  C: Toggle named cohesion rule
+  O: Toggle interaction overlay
+  Tab: Cycle inspected boid
+
+Available presets:
+  balanced        - Balanced (Recommended) :: Canonical boids tuning with smooth flocking
+  strong-separation - Strong Separation :: Agents prioritize personal space, useful for dense scenes
+  tight-flocking  - Tight Flocking :: Emphasizes cohesion/alignment for ribbon-like formations
+  fast-loose      - Fast & Loose :: Higher speed ceiling with lighter cohesion
+  slow-cohesive   - Slow & Cohesive :: Lower speed with high cohesion for schooling behavior
 ```
 
 `SwarmSim.Render --benchmark` now prints migration guidance and exits successfully without
@@ -193,8 +284,7 @@ channels record operational costs and disable exact replay. Definitions and anal
 
 Renderer startup applies `--preset` before `--config`, so omitted file fields retain the selected
 preset's values. Both renderer modes use `SimConfig` files (use `MaxSpeed`, not `TargetSpeed`).
-Native canonical files with `TargetSpeed` belong to the headless CLI. The existing five-entry
-F-key menu and default renderer profile are preserved.
+Native canonical files with `TargetSpeed` belong to the headless CLI. The existing five-entry F-key menu and default renderer profile are preserved.
 See [renderer configuration](docs/RENDERER_CONFIGURATION.md) and
 [canonical telemetry](docs/CANONICAL_RENDER_TELEMETRY.md) for the tested contracts and manual-check scope.
 
