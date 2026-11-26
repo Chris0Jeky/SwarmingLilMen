@@ -135,8 +135,11 @@ dotnet run --project SwarmSim.Cli -c Release -- --engine reaction-diffusion --co
 # Launch the interactive renderer
 dotnet run --project SwarmSim.Render
 
-# Display CLI options
+# Display options, interactive controls and presets without opening the simulation window
 dotnet run --project SwarmSim.Render -- --help
+
+# Show only the registered presets
+dotnet run --project SwarmSim.Render -- --list-presets
 
 # Run a headless canonical experiment and write manifest/metrics/log artifacts
 dotnet run --project SwarmSim.Cli -c Release -- --scenario balanced --seed 7 --ticks 600 --agents 400 --out runs/
@@ -280,8 +283,8 @@ channels record operational costs and disable exact replay. Definitions and anal
 [the metrics contract](docs/METRICS.md).
 
 Renderer startup applies `--preset` before `--config`, so omitted file fields retain the selected
-preset's values. Both renderer modes use `SimConfig` files; native canonical files belong to the
-headless CLI. The existing five-entry F-key menu and default renderer profile are preserved.
+preset's values. Both renderer modes use `SimConfig` files (use `MaxSpeed`, not `TargetSpeed`).
+Native canonical files with `TargetSpeed` belong to the headless CLI. The existing five-entry F-key menu and default renderer profile are preserved.
 See [renderer configuration](docs/RENDERER_CONFIGURATION.md) and
 [canonical telemetry](docs/CANONICAL_RENDER_TELEMETRY.md) for the tested contracts and manual-check scope.
 
