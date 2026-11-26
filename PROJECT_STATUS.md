@@ -85,6 +85,11 @@ in [run 41449136980](https://github.com/Chris0Jeky/SwarmingLilMen/actions/runs/4
 2026-11-02; those expensive matrices were not rerun for the new model integrations. Their prior
 measurements and limitations remain historical evidence, not new performance results.
 
+**Runner compatibility follow-up (2026-11-26):** the results above are historical, not a
+qualification of Linux userspaces beyond the tested image. See
+[determinism and the hosted Linux runner](docs/DETERMINISM.md#hosted-linux-runner) for the
+canonical drift observed after the Ubuntu image transition and the controlled fixture comparison.
+
 ### Completed in this round
 
 - **Shared phases and typed generations** ([#224](https://github.com/Chris0Jeky/SwarmingLilMen/pull/224)):

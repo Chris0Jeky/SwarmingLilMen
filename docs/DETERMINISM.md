@@ -16,6 +16,20 @@ measured a different canonical trace, so the canonical fixture is explicitly sel
 the legacy and RNG references are shared. The golden suite currently requires .NET 8, x64, and
 Linux or Windows. Other environments need measured, reviewed references before entering this band.
 
+## Hosted Linux runner
+
+The main CI workflow targets the Ubuntu 24.04 image for both the generated merge and the
+exact PR head. Check and artifact names retain the historical `ubuntu-latest` suffix; the job's
+setup log records the actual runner image. This keeps the existing exact fixture gate on the
+same Ubuntu release family as the reference, without pinning an individual image build.
+
+In [#240](https://github.com/Chris0Jeky/SwarmingLilMen/issues/240), both Ubuntu 26.04 jobs
+reported canonical drift starting at tick 1. A same-host fixture harness used one Release
+binary and each of .NET 8.0.33 and 8.0.34: Ubuntu 24.04.3 userspace matched all five canonical
+checkpoints on both patches, while Debian 13 userspace reproduced the four differing hosted
+hashes on both. This isolates a userspace difference, not a particular library or operation.
+The harness is not a full CI run. Newer userspaces are not qualified by the Ubuntu 24.04 gate.
+
 ## Named-stream migration (issue #26)
 
 Canonical wander now uses the specified named PCG32 contract in [RANDOM_STREAMS.md](RANDOM_STREAMS.md).

@@ -15,14 +15,18 @@ permissions:
 jobs:
   build-and-test:
     name: Release (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        os:
-          - ubuntu-latest
-          - windows-latest
+        # Keep existing check and artifact IDs; select the actual image separately (#240).
+        os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            runner: ubuntu-24.04
+          - os: windows-latest
+            runner: windows-latest
 
     steps:
       - name: Check out repository
@@ -96,12 +100,18 @@ jobs:
     # Keep the merge-ref integration gate above and independently prove the reviewed commit.
     name: Exact head (${{ matrix.os }})
     if: github.event_name == 'pull_request'
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.runner }}
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
+        # Keep existing check and artifact IDs; select the actual image separately (#240).
         os: [ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            runner: ubuntu-24.04
+          - os: windows-latest
+            runner: windows-latest
     steps:
       - name: Check out reviewed head
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
